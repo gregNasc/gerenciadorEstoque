@@ -1,0 +1,225 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Histórico de Movimentações{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">📜 Histórico de Movimentações</h4>
+        <a href="{% url 'estoque:exportar_historico_csv' %}" class="btn btn-success btn-sm">
+            <i class="bi bi-download"></i> Exportar CSV
+        </a>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h6 class="mb-1 text-muted">Total de Registros</h6>
+                    <h3 class="fw-bold text-primary mb-0">
+                        {{ total_registros }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        {% for acao in acoes_agrupadas %}
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h6 class="mb-1 text-muted">
+                        {{ acao.descricao }}
+                    </h6>
+                    <h4 class="fw-bold mb-0">
+                        {{ acao.total }}
+                    </h4>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Tipo de Ação</label>
+                    <select name="tipo_acao" class="form-select">
+                        <option value="">Todos</option>
+                        {% for codigo, nome in tipos_acao %}
+                            <option value="{{ codigo }}"
+                                {% if filtros.tipo_acao == codigo %}selected{% endif %}>
+                                {{ nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Equipamento</label>
+                    <input type="text"
+                           name="equipamento"
+                           class="form-control"
+                           value="{{ filtros.equipamento_query }}"
+                           placeholder="Série ou patrimônio">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Data Início</label>
+                    <input type="date"
+                           name="data_inicio"
+                           class="form-control"
+                           value="{{ filtros.data_inicio }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Data Fim</label>
+                    <input type="date"
+                           name="data_fim"
+                           class="form-control"
+                           value="{{ filtros.data_fim }}">
+                </div>
+
+                <div class="col-md-2">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">
+                            Filtrar
+                        </button>
+                        <a href="{% url 'estoque:historico' %}" class="btn btn-outline-secondary">
+                            Limpar
+                        </a>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <strong>Registros</strong>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Equipamento</th>
+                        <th>Ação</th>
+                        <th>Usuário</th>
+                        <th>Resumo</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for historico in historicos %}
+                    <tr>
+                        <td class="text-nowrap">
+                            {{ historico.data|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+                            <strong>{{ historico.equipamento.produto.descricao }}</strong><br>
+                            <small class="text-muted">
+                                S/N: {{ historico.equipamento.numero_serie|default:"-" }} |
+                                Patr.: {{ historico.equipamento.patrimonio|default:"-" }}
+                            </small>
+                        </td>
+
+                        <td>
+                            <span class="badge
+                                {% if historico.tipo_acao == 'CRIACAO' %}bg-primary
+                                {% elif historico.tipo_acao == 'SICK' %}bg-danger
+                                {% elif historico.tipo_acao == 'TRANSFERENCIA' %}bg-warning text-dark
+                                {% elif historico.tipo_acao == 'RECEBIMENTO' %}bg-success
+                                {% else %}bg-secondary{% endif %}">
+                                {{ historico.get_tipo_acao_display }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {{ historico.usuario.username|default:"Sistema" }}
+                        </td>
+
+                        <td>
+                            {% if historico.detalhes %}
+                                <small class="text-muted">
+                                    {% for chave, valor in historico.detalhes.items %}
+                                        <div>
+                                            <strong>{{ chave }}:</strong>
+                                            {{ valor|truncatechars:30 }}
+                                        </div>
+                                    {% endfor %}
+                                </small>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end">
+                            <a href="{% url 'estoque:historico_detalhes' historico.id %}"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> Detalhes
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Nenhum registro encontrado com os filtros aplicados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if historicos.has_other_pages %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+
+                    {% if historicos.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?page={{ historicos.previous_page_number }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
+                            Anterior
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for i in historicos.paginator.page_range %}
+                    <li class="page-item {% if historicos.number == i %}active{% endif %}">
+                        <a class="page-link"
+                           href="?page={{ i }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
+                            {{ i }}
+                        </a>
+                    </li>
+                    {% endfor %}
+
+                    {% if historicos.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?page={{ historicos.next_page_number }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
+                            Próxima
+                        </a>
+                    </li>
+                    {% endif %}
+
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+
+{% endblock %}

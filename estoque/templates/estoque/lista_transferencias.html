@@ -1,0 +1,174 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Transferências{% endblock %}
+
+{% block content %}
+{% if request.user.is_authenticated %}
+<div class="container py-3">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">🚚 Transferências</h4>
+        <span class="badge bg-secondary">
+            {{ transferencias|length }} registros
+        </span>
+    </div>
+
+    <!-- FILTROS -->
+    <form method="get" class="row g-3 mb-4">
+
+        <div class="col-md-2">
+            <label>Status</label>
+            <select name="status" class="form-select">
+                <option value="">Todos</option>
+                {% for cod, nome in status_choices %}
+                    <option value="{{ cod }}" {% if filtros.status == cod %}selected{% endif %}>
+                        {{ nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label>Origem</label>
+            <select name="origem" class="form-select">
+                <option value="">Todas</option>
+                {% for base in bases %}
+                    <option value="{{ base.id }}" {% if filtros.origem == base.id|stringformat:"s" %}selected{% endif %}>
+                        {{ base.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label>Destino</label>
+            <select name="destino" class="form-select">
+                <option value="">Todos</option>
+                {% for base in bases %}
+                    <option value="{{ base.id }}" {% if filtros.destino == base.id|stringformat:"s" %}selected{% endif %}>
+                        {{ base.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label>Data início</label>
+            <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" class="form-control">
+        </div>
+
+        <div class="col-md-2">
+            <label>Data fim</label>
+            <input type="date" name="data_fim" value="{{ filtros.data_fim }}" class="form-control">
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100">Filtrar</button>
+        </div>
+
+    </form>
+
+    <!-- TABELA -->
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Protocolo</th>
+                        <th>Equipamento</th>
+                        <th>Origem → Destino</th>
+                        <th>Status</th>
+                        <th>Dias</th>
+                        <th>Solicitado por</th>
+                        <th>Data</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for t in transferencias %}
+                    <tr>
+
+                        <!-- PROTOCOLO -->
+                        <td>
+                            <strong>{{ t.protocolo }}</strong>
+                        </td>
+
+                        <!-- EQUIPAMENTO -->
+                        <td>
+                            <div>
+                                <strong>{{ t.equipamento.produto.descricao }}</strong><br>
+                                <small class="text-muted">S/N: {{ t.equipamento.numero_serie }}</small>
+                            </div>
+                        </td>
+
+                        <!-- ORIGEM DESTINO -->
+                        <td>
+                            <strong>{{ t.regional_origem.nome }}</strong>
+                            <span class="text-muted mx-1">→</span>
+                            <strong>{{ t.regional_destino.nome }}</strong>
+                        </td>
+
+                        <!-- STATUS -->
+                        <td>
+                            <span class="badge
+                                {% if t.status == 'PENDENTE' %}bg-warning text-dark
+                                {% elif t.status == 'RECEBIDO' %}bg-success
+                                {% elif t.status == 'CANCELADO' %}bg-danger
+                                {% endif %}">
+                                {{ t.get_status_display }}
+                            </span>
+                        </td>
+
+                        <!-- DIAS -->
+                        <td>
+                            <span class="{% if t.dias > 3 %}text-danger fw-bold{% endif %}">
+                                {{ t.dias }} dias
+                            </span>
+                        </td>
+
+                        <!-- USUÁRIO -->
+                        <td>{{ t.solicitado_por.username }}</td>
+
+                        <!-- DATA -->
+                        <td>{{ t.data_solicitacao|date:"d/m/Y H:i" }}</td>
+
+                        <!-- AÇÕES -->
+                        <td class="text-center">
+
+                        {% if t.pode_receber %}
+                            <form method="post" action="{% url 'estoque:receber_transferencia' t.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-success">
+                                    ✔ Receber
+                                </button>
+                            </form>
+
+                        {% elif t.status == 'RECEBIDO' %}
+                            <span class="text-success small">✔ Concluído</span>
+
+                        {% elif t.status == 'CANCELADO' %}
+                            <span class="text-danger small">✖ Cancelado</span>
+
+                        {% else %}
+                            <span class="text-muted small">--</span>
+                        {% endif %}
+
+                    </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            Nenhuma transferência encontrada
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endif %}{% endblock %}

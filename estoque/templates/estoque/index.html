@@ -1,0 +1,465 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Dashboard | Estoque{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <!-- Título -->
+    <div class="border-bottom pb-3 mb-4">
+        <h1 class="h3 mb-0 fw-semibold">Dashboard de Ativos</h1>
+        <p class="text-secondary small mt-1">Visão geral dos equipamentos</p>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body bg-light">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Categoria</label>
+                    <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todas</option>
+                        <option value="Coletores" {% if request.GET.categoria == "Coletores" %}selected{% endif %}>Coletores</option>
+                        <option value="Impressoras" {% if request.GET.categoria == "Impressoras" %}selected{% endif %}>Impressoras</option>
+                        <option value="Notebooks" {% if request.GET.categoria == "Notebooks" %}selected{% endif %}>Notebooks</option>
+                        <option value="Routers" {% if request.GET.categoria == "Routers" %}selected{% endif %}>Routers</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Equipamento</label>
+                    <select name="produto" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todos</option>
+                        {% for p in produtos_lista %}
+                            <option value="{{ p.id }}"
+                                {% if request.GET.produto == p.id|stringformat:"s" %}selected{% endif %}>
+                                {{ p.descricao }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Regional</label>
+                    <select name="regional" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todas</option>
+                        {% for r in regionais %}
+                            <option value="{{ r.id }}"
+                            {% if request.GET.regional == r.id|stringformat:"s" %}selected{% endif %}>
+                            {{ r.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alerta de consistência -->
+    <div class="alert alert-secondary alert-dismissible fade show mb-4" role="alert" id="consistencyAlert" style="display: none;">
+        <i class="bi bi-cloud-check fs-6 me-2"></i>
+        <strong>Dados sincronizados!</strong> Todas as informações estão consistentes em tempo real.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Cards KPI Superiores -->
+    <div class="row g-3 mb-5">
+    {% for item in produtos_na_categoria %}
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100
+            {% if categoria_selecionada %}filtro-produto{% else %}filtro-categoria{% endif %}"
+            {% if categoria_selecionada %}data-produto-id="{{ item.id }}"{% else %}data-categoria="{{ item.nome }}"{% endif %}
+            style="cursor: pointer;">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="text-secondary small text-uppercase fw-semibold">{{ item.nome }}</span>
+                        <h2 class="fw-bold mb-0 mt-1">{{ item.total }}</h2>
+                    </div>
+                    <div class="text-secondary opacity-50">
+                        {% if categoria_selecionada %}
+                            <i class="bi bi-box-seam fs-4"></i>
+                        {% else %}
+                            <i class="{{ item.icone }} fs-4"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between small">
+                    <span class="text-secondary">Ativos</span>
+                    <strong class="text-success">{{ item.ativos }}</strong>
+                </div>
+                <div class="d-flex justify-content-between small">
+                    <span class="text-secondary">Em Manutenção</span>
+                    <strong class="text-danger">{{ item.sick }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">Nenhum equipamento encontrado.</div>
+    </div>
+    {% endfor %}
+</div>
+
+    <!-- Cards por Regional -->
+    <div class="row g-3">
+        {% for r in kpis_regionais %}
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-white regional-card"
+                 data-regional-id="{{ r.regional__id }}"
+                 data-regional-nome="{{ r.regional__nome }}"
+                 style="cursor: pointer;">
+                <div class="card-body p-3">
+                    <h6 class="fw-semibold mb-3 pb-1 border-bottom">{{ r.regional__nome }}</h6>
+
+                    {% if categoria_selecionada %}
+                        <!-- Exibe os modelos específicos da categoria selecionada -->
+                        {% for produto in r.produtos_detalhados %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 small">
+                            <span class="text-secondary">
+                                <i class="bi bi-box-seam me-1"></i>
+                                {{ produto.produto__descricao }}
+                            </span>
+                            <div>
+                                <span class="text-success me-2">{{ produto.ativos }}</span>
+                                <span class="text-danger">{{ produto.sick }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-secondary small text-center py-2">
+                            Nenhum equipamento desta categoria na regional
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Exibe as quatro categorias resumidas (original) -->
+                        {% for tipo, dados in r.produtos.items %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 small">
+                            <span class="text-secondary">
+                                {% if tipo == "Coletores" %}<i class="bi bi-upc-scan me-1"></i>
+                                {% elif tipo == "Impressoras" %}<i class="bi bi-printer me-1"></i>
+                                {% elif tipo == "Notebooks" %}<i class="bi bi-laptop me-1"></i>
+                                {% else %}<i class="bi bi-wifi me-1"></i>{% endif %}
+                                {{ tipo }}
+                            </span>
+                            <div>
+                                <span class="text-success me-2">{{ dados.ativos }}</span>
+                                <span class="text-danger">{{ dados.sick }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-secondary">Total</span>
+                        <strong>{{ r.total }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-secondary">Em Operação</span>
+                        <strong class="text-success">{{ r.ativos }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span class="text-secondary">Em Manutenção</span>
+                        <strong class="text-danger">{{ r.sick }}</strong>
+                    </div>
+
+                    <!-- Barra de disponibilidade com cores dinâmicas -->
+                    <div class="small text-secondary mb-1">Disponibilidade: {{ r.disponibilidade }}%</div>
+                    <div class="progress" style="height: 3px;">
+                        <div class="progress-bar
+                            {% if r.disponibilidade >= 80 %}bg-success
+                            {% elif r.disponibilidade >= 50 %}bg-warning
+                            {% else %}bg-danger{% endif %}"
+                            role="progressbar"
+                            style="width: {{ r.disponibilidade }}%;"
+                            aria-valuenow="{{ r.disponibilidade }}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <small class="text-secondary">
+                            <i class="bi bi-chevron-right"></i> Ver detalhes
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    </div>
+
+    <!-- Modal para detalhes da regional -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content card border-0 shadow-lg" style="max-width: 90%; width: 1000px;">
+            <div class="modal-header bg-light border-0 px-4 py-3">
+                <h5 id="modal-title" class="fw-semibold mb-0">Detalhes da Regional</h5>
+                <button class="btn-close" id="closeModal"></button>
+            </div>
+            <div id="modal-body" class="modal-body p-4"></div>
+        </div>
+    </div>
+
+<style>
+  .produtos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.produto-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: box-shadow 0.2s;
+}
+
+.produto-card:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.05);
+}
+
+.produto-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.produto-header i {
+    font-size: 1.1rem;
+    color: #6c757d;
+}
+
+.produto-header h6 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #2c3e50;
+}
+
+.produto-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+}
+
+.stat {
+    flex: 1;
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.produto-progress {
+    margin-top: 0.5rem;
+}
+
+.progress-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-bottom: 0.2rem;
+}
+
+.progress-bar-bg {
+    background-color: #e9ecef;
+    border-radius: 10px;
+    height: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s;
+}
+
+.bg-success { background-color: #137333; }
+.bg-warning { background-color: #b06000; }
+.bg-danger { background-color: #c5221f; }
+
+.text-success { color: #137333; }
+.text-danger { color: #c5221f; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const DOM = {
+        modal: document.getElementById('modal'),
+        modalBody: document.getElementById('modal-body'),
+        modalTitle: document.getElementById('modal-title'),
+        closeBtn: document.getElementById('closeModal')
+    };
+
+    let currentRegionalId = null;
+    let currentRegionalNome = null;
+
+    const closeModal = () => {
+        if (DOM.modal) DOM.modal.classList.add('hidden');
+        currentRegionalId = null;
+        currentRegionalNome = null;
+    };
+
+    const showLoading = () => {
+        DOM.modalBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-secondary"></div>
+                <p class="mt-3 text-secondary">Carregando...</p>
+            </div>
+        `;
+    };
+
+    const showError = () => {
+        DOM.modalBody.innerHTML = `
+            <div class="alert alert-secondary">Erro ao carregar dados.</div>
+            <button class="btn btn-secondary btn-sm mt-2" id="btnFecharModal">Fechar</button>
+        `;
+        document.getElementById('btnFecharModal')?.addEventListener('click', closeModal);
+    };
+
+    const renderDetalhes = (data) => {
+        if (!data.categorias?.length) {
+            DOM.modalBody.innerHTML = `
+                <div class="text-center text-secondary py-4">Nenhum equipamento encontrado nesta regional.</div>
+                <button class="btn btn-secondary btn-sm mt-2" id="btnFecharModal">Fechar</button>
+            `;
+            document.getElementById('btnFecharModal')?.addEventListener('click', closeModal);
+            return;
+        }
+
+        let html = `
+            <div class="mb-4 p-3 bg-light rounded">
+                <div class="row small g-2">
+                    <div class="col-md-4"><span class="text-secondary">Regional:</span> <strong>${currentRegionalNome}</strong></div>
+                    <div class="col-md-4"><span class="text-secondary">Total:</span> <strong>${data.total_regional}</strong></div>
+                    <div class="col-md-4"><span class="text-secondary">Disponibilidade:</span> <strong>${data.disponibilidade_regional}%</strong></div>
+                </div>
+            </div>
+            <div class="produtos-grid">
+        `;
+
+        data.categorias.forEach(categoria => {
+            categoria.produtos.forEach(produto => {
+                if (produto.total === 0) return;
+
+                const percentAtivo = produto.total > 0 ? Math.round((produto.ativos / produto.total) * 100) : 0;
+                let progressClass = 'bg-danger';
+                if (percentAtivo >= 80) progressClass = 'bg-success';
+                else if (percentAtivo >= 50) progressClass = 'bg-warning';
+
+                html += `
+                    <div class="produto-card">
+                        <div class="produto-header">
+                            <i class="bi bi-box-seam"></i>
+                            <h6>${produto.nome}</h6>
+                        </div>
+                        <div class="produto-stats">
+                            <div class="stat">
+                                <span class="stat-label">Total</span>
+                                <span class="stat-value">${produto.total}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label text-success">Ativos</span>
+                                <span class="stat-value text-success">${produto.ativos}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label text-danger">Sick</span>
+                                <span class="stat-value text-danger">${produto.sick}</span>
+                            </div>
+                        </div>
+                        <div class="produto-progress">
+                            <div class="progress-label">Disponibilidade: ${percentAtivo}%</div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-fill ${progressClass}" style="width: ${percentAtivo}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        html += `</div><button class="btn btn-secondary btn-sm mt-4" id="btnFecharModal">Fechar</button>`;
+
+        DOM.modalBody.innerHTML = html;
+        document.getElementById('btnFecharModal')?.addEventListener('click', closeModal);
+    };
+
+    const carregarDetalhesRegional = async (id, nome) => {
+        currentRegionalId = id;
+        currentRegionalNome = nome;
+        DOM.modalTitle.innerText = nome;
+        DOM.modal.classList.remove('hidden');
+        showLoading();
+
+        try {
+            const response = await fetch(`/estoque/detalhes-regional/${id}/`);
+            if (!response.ok) throw new Error();
+            const data = await response.json();
+            renderDetalhes(data);
+        } catch {
+            showError();
+        }
+    };
+
+    // Cards regionais
+    document.querySelectorAll('.regional-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const regionalId = card.dataset.regionalId;
+            const regionalNome = card.dataset.regionalNome;
+            if (regionalId && regionalNome) {
+                carregarDetalhesRegional(regionalId, regionalNome);
+            }
+        });
+    });
+
+    // Cards de categoria
+    document.querySelectorAll('.filtro-categoria').forEach(card => {
+        card.addEventListener('click', () => {
+            const categoria = card.dataset.categoria;
+            const selectCategoria = document.querySelector('select[name="categoria"]');
+            if (selectCategoria) {
+                selectCategoria.value = categoria;
+                selectCategoria.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+
+    // Fechar modal
+    DOM.closeBtn?.addEventListener('click', closeModal);
+    DOM.modal?.addEventListener('click', e => { if (e.target === DOM.modal) closeModal(); });
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.querySelectorAll('.filtro-produto').forEach(card => {
+    card.addEventListener('click', () => {
+        const produtoId = card.dataset.produtoId;
+        if (produtoId) {
+            const selectProduto = document.querySelector('select[name="produto"]');
+            if (selectProduto) {
+                selectProduto.value = produtoId;
+                selectProduto.dispatchEvent(new Event('change'));
+            }
+        }
+    });
+});
+});
+</script>
+{% endblock %}

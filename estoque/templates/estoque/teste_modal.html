@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Modal Sick</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-5">
+
+<h2>Teste Modal Sick</h2>
+
+<!-- Form principal -->
+<form id="form_principal" method="POST">
+    <input type="hidden" name="produto_sick_id" id="produto_sick_id">
+    <input type="hidden" name="motivo_sick_hidden" id="motivo_sick_hidden">
+
+    <!-- Botão que abre modal -->
+    <button type="button" class="btn btn-danger" onclick="abrirModalSick(123, 'Produto Teste')">
+        Abrir Sick
+    </button>
+</form>
+
+<!-- Modal único -->
+<div class="modal fade" id="sickModal" tabindex="-1" aria-labelledby="sickModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sickModalLabel">Registrar Produto como Sick</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="modal_produto_nome"></p>
+                <textarea id="modal_motivo_sick" class="form-control" placeholder="Digite o motivo"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="registrarSick()">Registrar Sick</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let produtoAtualId = null;
+
+function abrirModalSick(itemId, descricao) {
+    produtoAtualId = itemId;
+    document.getElementById("modal_produto_nome").textContent = descricao;
+    document.getElementById("modal_motivo_sick").value = "";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("sickModal")).show();
+}
+
+function registrarSick() {
+    const motivo = document.getElementById("modal_motivo_sick").value.trim();
+    if (!motivo) {
+        alert("Digite um motivo!");
+        return;
+    }
+
+    document.getElementById("produto_sick_id").value = produtoAtualId;
+    document.getElementById("motivo_sick_hidden").value = motivo;
+
+    bootstrap.Modal.getInstance(document.getElementById("sickModal")).hide();
+
+    alert(`Form submetido!\nID: ${produtoAtualId}\nMotivo: ${motivo}`);
+}
+</script>
+
+</body>
+</html>

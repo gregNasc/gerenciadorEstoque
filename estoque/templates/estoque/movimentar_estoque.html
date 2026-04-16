@@ -1,0 +1,34 @@
+{% extends "estoque/base.html" %}
+{% block title %}Solicitar Transferência{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+    <h3>Solicitar Transferência</h3>
+
+    <p><strong>Equipamento:</strong> {{ equipamento.produto.nome }}</p>
+    <p><strong>Regional Atual:</strong> {{ equipamento.regional.nome }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            {{ form.regional_destino.label_tag }}
+            {{ form.regional_destino }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.local_destino.label_tag }}
+            {{ form.local_destino }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.motivo.label_tag }}
+            {{ form.motivo }}
+        </div>
+
+        <button class="btn btn-primary">Solicitar</button>
+    </form>
+
+</div>
+{% endblock %}

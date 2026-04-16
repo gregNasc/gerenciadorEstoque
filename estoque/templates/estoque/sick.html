@@ -1,0 +1,295 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Equipamentos SICK{% endblock %}
+
+{% block content %}
+{% if request.user.is_authenticated %}
+<div class="container-fluid px-4">
+
+    <!-- Título -->
+    <div class="border-bottom pb-3 mb-4">
+        <h1 class="h3 fw-semibold mb-0">Equipamentos em SICK</h1>
+        <p class="text-secondary small mt-1">Gestão de equipamentos com problemas</p>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-secondary small text-uppercase fw-semibold">Total SICK</span>
+                            <h2 class="fw-bold mb-0 mt-1">{{ total_sick }}</h2>
+                        </div>
+                        <div class="text-secondary opacity-50">
+                            <i class="bi bi-exclamation-triangle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-secondary small text-uppercase fw-semibold">Pendentes</span>
+                            <h2 class="fw-bold mb-0 mt-1" style="color: #c5221f;">{{ total_pendentes }}</h2>
+                        </div>
+                        <div class="text-secondary opacity-50">
+                            <i class="bi bi-clock-history fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-secondary small text-uppercase fw-semibold">Resolvidos</span>
+                            <h2 class="fw-bold mb-0 mt-1" style="color: #137333;">{{ total_resolvidos }}</h2>
+                        </div>
+                        <div class="text-secondary opacity-50">
+                            <i class="bi bi-check-circle fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body bg-light p-3">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Status</label>
+                    <select name="status" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="todos" {% if status_filter == 'todos' %}selected{% endif %}>Todos</option>
+                        <option value="pendentes" {% if status_filter == 'pendentes' %}selected{% endif %}>Pendentes</option>
+                        <option value="resolvidos" {% if status_filter == 'resolvidos' %}selected{% endif %}>Resolvidos</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Categoria</label>
+                    <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todas as categorias</option>
+                        {% for cat in categorias %}
+                            <option value="{{ cat }}" {% if categoria_filter == cat %}selected{% endif %}>
+                                {{ cat }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Equipamento</label>
+                    <select name="equipamento" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todos os equipamentos</option>
+                        {% for eq in equipamentos %}
+                            <option value="{{ eq.id }}" {% if equipamento_filter == eq.id|stringformat:"s" %}selected{% endif %}>
+                                {{ eq.produto.descricao }} - {{ eq.numero_serie }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 text-end">
+                    <a href="{% url 'estoque:sick' %}" class="btn btn-outline-secondary btn-sm px-3">Limpar filtros</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr class="small text-secondary">
+                            <th class="py-3 px-3">Equipamento</th>
+                            <th class="py-3">Série</th>
+                            <th class="py-3">Patrimônio</th>
+                            <th class="py-3">Categoria</th>
+                            <th class="py-3">Motivo</th>
+                            <th class="py-3">Ocorrência</th>
+                            <th class="py-3">Previsão Retorno</th>
+                            <th class="py-3">Status</th>
+                            <th class="py-3 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sick in sicks %}
+                        <tr>
+                            <td class="px-3 fw-semibold">{{ sick.equipamento.produto.descricao }}</td>
+                            <td><code class="small">{{ sick.equipamento.numero_serie }}</code></td>
+                            <td class="text-secondary">{{ sick.equipamento.patrimonio }}</td>
+                            <td>{{ sick.categoria }}</td>
+                            <td style="max-width: 250px;">
+                                {% if sick.motivo %}
+                                    <small class="text-secondary">
+                                        {{ sick.motivo|truncatechars:60 }}
+                                        {% if sick.motivo|length > 60 %}
+                                            <a href="#" class="text-decoration-none small"
+                                               data-bs-toggle="modal"
+                                               data-bs-target="#motivoModal{{ sick.id }}">
+                                                Ver mais
+                                            </a>
+                                        {% endif %}
+                                    </small>
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endif %}
+
+                                <!-- Modal Motivo -->
+                                {% if sick.motivo and sick.motivo|length > 60 %}
+                                <div class="modal fade" id="motivoModal{{ sick.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow-lg">
+                                            <div class="modal-header bg-light border-0">
+                                                <h6 class="modal-title fw-semibold">Motivo do SICK</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p class="mb-0">{{ sick.motivo }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-secondary small">{{ sick.data_ocorrencia|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if sick.previsao_retorno %}
+                                    <span class="small">{{ sick.previsao_retorno|date:"d/m/Y" }}</span>
+                                {% else %}
+                                    <span class="text-secondary small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if sick.data_resolucao %}
+                                    <!-- Status RESOLVIDO -->
+                                    <span class="badge" style="background-color: #e6f4ea; color: #137333; padding: 4px 8px;">
+                                        <i class="bi bi-check-circle-fill me-1" style="font-size: 0.7rem;"></i>Resolvido
+                                    </span>
+                                    <div class="small text-secondary mt-1">
+                                        {{ sick.data_resolucao|date:"d/m/Y H:i" }}
+                                    </div>
+                                {% else %}
+                                    <!-- Status PENDENTE -->
+                                    <span class="badge" style="background-color: #fce8e6; color: #c5221f; padding: 4px 8px;">
+                                        <i class="bi bi-exclamation-circle-fill me-1" style="font-size: 0.7rem;"></i>Pendente
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not sick.data_resolucao %}
+                                <form method="post" action="{% url 'estoque:sick' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="sick_id" value="{{ sick.id }}">
+                                    <input type="hidden" name="acao" value="resolver">
+                                    <button type="submit" class="btn btn-sm btn-outline-success px-3"
+                                            onclick="return confirm('Confirmar resolução deste SICK?')">
+                                        <i class="bi bi-check-lg me-1"></i>Resolver
+                                    </button>
+                                </form>
+                                {% else %}
+                                    <span class="text-secondary small">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-secondary py-5">
+                                <i class="bi bi-inbox fs-2"></i>
+                                <p class="mt-2 mb-0">Nenhum equipamento SICK encontrado</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link text-secondary" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        ← Anterior
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link {% if page_obj.number == num %}bg-secondary border-secondary{% else %}text-secondary{% endif %}"
+                       href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        {{ num }}
+                    </a>
+                </li>
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link text-secondary" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        Próximo →
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<style>
+    /* Estilos personalizados para badges */
+    .badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+        border-radius: 4px;
+    }
+
+    .table > :not(caption) > * > * {
+        border-bottom-color: #e9ecef;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .page-link {
+        color: #5f6368;
+        border-color: #e9ecef;
+    }
+
+    .page-link:hover {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        color: #3c4043;
+    }
+
+    .page-item.active .page-link {
+        background-color: #5f6368;
+        border-color: #5f6368;
+    }
+</style>
+
+<!-- Auto-submit para filtros -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.auto-submit').forEach(select => {
+        select.addEventListener('change', () => {
+            select.closest('form').submit();
+        });
+    });
+});
+</script>
+{% endif %}{% endblock %}

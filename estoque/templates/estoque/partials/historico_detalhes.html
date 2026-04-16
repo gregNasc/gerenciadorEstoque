@@ -1,0 +1,66 @@
+<div>
+    <!--button class="btn btn-secondary btn-sm mb-3" id="btnVoltarEquipamentos">
+        ← Voltar
+    </button-->
+
+    <div class="row g-3">
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <strong>Informações do Registro</strong>
+                </div>
+                <div class="card-body">
+
+                    <div class="row mb-2">
+                        <div class="col-sm-4 fw-bold">Data / Hora</div>
+                        <div class="col-sm-8">{{ historico.data|date:"d/m/Y H:i:s" }}</div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-sm-4 fw-bold">Tipo</div>
+                        <div class="col-sm-8">
+                            <span class="badge bg-primary">
+                                {{ historico.get_tipo_acao_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-sm-4 fw-bold">Usuário</div>
+                        <div class="col-sm-8">
+                            {{ historico.usuario.username|default:"Sistema" }}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6>📦 Equipamento</h6>
+
+                    <div><strong>Produto:</strong> {{ historico.equipamento.produto.descricao }}</div>
+                    <div><strong>Série:</strong> {{ historico.equipamento.numero_serie }}</div>
+                    <div><strong>Patrimônio:</strong> {{ historico.equipamento.patrimonio }}</div>
+                    <div><strong>Status:</strong> {{ historico.equipamento.get_status_display }}</div>
+                    {% if historico.equipamento.foto %}
+                    <div class="mt-3 text-center">
+                        <img src="{{ historico.equipamento.foto.url }}"
+                             class="img-fluid rounded shadow"
+                             style="max-height: 250px;">
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header"><strong>Detalhes</strong></div>
+                <div class="card-body">
+                    <pre class="small">{{ historico.detalhes|pprint }}</pre>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

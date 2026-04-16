@@ -1,0 +1,25 @@
+{% extends "estoque/base.html" %}
+{% block title %}Produtos Selecionados{% endblock %}
+
+{% block content %}
+<h2>Produtos Selecionados</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Regional</th>
+            <th>Descrição</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for produto in produtos_selecionados %}
+        <tr>
+            <td>{{ produto.regional }}</td>
+            <td>{{ produto.descricao }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'estoque:estoque' %}" class="btn btn-secondary">Voltar ao Estoque</a>
+{% endblock %}

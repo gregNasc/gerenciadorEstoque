@@ -1,0 +1,412 @@
+{% extends 'estoque/base.html' %}
+{% load static %}
+
+{% block title %}Cadastrar Usuário - Gerenciador de Estoque{% endblock %}
+
+{% block content %}
+{% if request.user.is_authenticated %}
+<div class="container-fluid px-4 py-3">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+
+            <!-- Cabeçalho -->
+            <div class="border-bottom pb-3 mb-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-person-plus fs-3 text-secondary"></i>
+                    <div>
+                        <h1 class="h3 fw-semibold mb-0">Cadastrar Usuário</h1>
+                        <p class="text-secondary small mt-1">Preencha os dados abaixo para criar um novo usuário</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card do Formulário -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+
+                    <form method="post" id="form-cadastro">
+                        {% csrf_token %}
+
+                        <!-- Dados de Acesso -->
+                        <div class="mb-4 pb-2 border-bottom">
+                            <h6 class="fw-semibold mb-3">
+                                <i class="bi bi-key me-2 text-secondary"></i>Dados de Acesso
+                            </h6>
+
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="username" class="form-label small text-secondary fw-semibold">
+                                        Usuário <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text"
+                                           name="username"
+                                           id="username"
+                                           class="form-control form-control-sm bg-white"
+                                           required
+                                           autofocus>
+                                    <small class="text-secondary">Nome único para login</small>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label for="password" class="form-label small text-secondary fw-semibold">
+                                        Senha <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password"
+                                           name="password"
+                                           id="password"
+                                           class="form-control form-control-sm bg-white"
+                                           required
+                                           minlength="6">
+                                    <small class="text-secondary">Mínimo de 6 caracteres</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dados Pessoais -->
+                        <div class="mb-4 pb-2 border-bottom">
+                            <h6 class="fw-semibold mb-3">
+                                <i class="bi bi-person me-2 text-secondary"></i>Dados Pessoais
+                            </h6>
+
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="first_name" class="form-label small text-secondary fw-semibold">
+                                        Nome completo
+                                    </label>
+                                    <input type="text"
+                                           name="first_name"
+                                           id="first_name"
+                                           class="form-control form-control-sm bg-white">
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label for="email" class="form-label small text-secondary fw-semibold">
+                                        E-mail
+                                    </label>
+                                    <input type="email"
+                                           name="email"
+                                           id="email"
+                                           class="form-control form-control-sm bg-white">
+                                    <small class="text-secondary">Será usado para recuperação de senha</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Perfil de Acesso -->
+                        <div class="mb-4 pb-2 border-bottom">
+                            <h6 class="fw-semibold mb-3">
+                                <i class="bi bi-shield-lock me-2 text-secondary"></i>Perfil de Acesso
+                            </h6>
+
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="role" class="form-label small text-secondary fw-semibold">
+                                        Perfil <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="role" id="role" class="form-select form-select-sm bg-white" required>
+                                        <option value="operador">👤 Operador - Visualização e marcação de SICK</option>
+                                        <option value="gestor">📊 Gestor - Gerenciamento de equipamentos</option>
+                                        {% if request.user.perfil.role == 'admin' %}
+                                            <option value="admin">👑 Administrador - Acesso total ao sistema</option>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Regionais -->
+                        <div class="mb-4" id="regional-group">
+                            <h6 class="fw-semibold mb-3">
+                                <i class="bi bi-geo-alt me-2 text-secondary"></i>Regionais
+                            </h6>
+
+                            <!-- Ações rápidas -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-light" id="btnSelecionarTodas">
+                                        Selecionar todas
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light" id="btnLimpar">
+                                        Limpar
+                                    </button>
+                                </div>
+
+                                <input type="text"
+                                       id="searchRegional"
+                                       class="form-control form-control-sm w-auto"
+                                       placeholder="🔍 Buscar">
+                            </div>
+
+                            <!-- Grid -->
+                            <div class="regionais-grid" id="regionaisContainer">
+                                {% for r in regionais %}
+                                <label class="regional-card" data-nome="{{ r.nome|lower }}">
+                                    <input type="checkbox" name="regionais" value="{{ r.id }}">
+
+                                    <div class="regional-content">
+                                        <div class="regional-header">
+                                            <span class="regional-nome">{{ r.nome }}</span>
+                                            <i class="bi bi-check-circle-fill check-icon"></i>
+                                        </div>
+
+                                        <div class="regional-empresa">
+                                            {{ r.empresa.nome }}
+                                        </div>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+
+                            <small class="text-secondary d-block mt-2">
+                                <i class="bi bi-info-circle"></i>
+                                Selecione uma ou mais regionais
+                            </small>
+                        </div>
+
+                        <!-- Botão Submit -->
+                        <div class="mt-4">
+                            <button type="submit"
+                                    id="btn-submit"
+                                    class="btn btn-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+                                <span id="btn-text">Criar Usuário</span>
+                                <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Link Voltar -->
+                    <div class="mt-3 text-center">
+                        <a href="{% url 'estoque:index' %}" class="text-decoration-none small text-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar ao dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ===============================
+    // ELEMENTOS
+    // ===============================
+    const form = document.getElementById('form-cadastro');
+    const selectRole = document.getElementById('role');
+    const regionalGroup = document.getElementById('regional-group');
+
+    const btnSubmit = document.getElementById('btn-submit');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+
+    const searchInput = document.getElementById('searchRegional');
+    const cards = document.querySelectorAll('.regional-card');
+    const checkboxes = document.querySelectorAll('input[name="regionais"]');
+
+    const passwordInput = document.getElementById('password');
+
+
+    // ===============================
+    // CONTROLE DE VISIBILIDADE (ROLE)
+    // ===============================
+    function toggleRegionalByRole() {
+        const role = selectRole?.value;
+
+        if (role === 'admin') {
+            regionalGroup.style.display = 'none';
+        } else {
+            regionalGroup.style.display = 'block';
+        }
+    }
+
+    if (selectRole) {
+        selectRole.addEventListener('change', toggleRegionalByRole);
+        toggleRegionalByRole();
+    }
+
+
+    // ===============================
+    // VALIDAÇÃO DE SENHA
+    // ===============================
+    if (passwordInput) {
+        passwordInput.addEventListener('input', function () {
+            if (this.value.length > 0 && this.value.length < 6) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+
+
+    // ===============================
+    // BUSCA DE REGIONAIS
+    // ===============================
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const termo = this.value.toLowerCase();
+
+            cards.forEach(card => {
+                const nome = card.dataset.nome || '';
+                card.style.display = nome.includes(termo) ? 'block' : 'none';
+            });
+        });
+    }
+
+
+    // ===============================
+    // AÇÕES EM LOTE
+    // ===============================
+    document.getElementById('btnSelecionarTodas')?.addEventListener('click', () => {
+        checkboxes.forEach(cb => cb.checked = true);
+    });
+
+    document.getElementById('btnLimpar')?.addEventListener('click', () => {
+        checkboxes.forEach(cb => cb.checked = false);
+    });
+
+
+    // ===============================
+    // VALIDAÇÃO DE REGIONAIS
+    // ===============================
+    function temRegionalSelecionada() {
+        return Array.from(checkboxes).some(cb => cb.checked);
+    }
+
+
+    // ===============================
+    // SUBMIT (VALIDAÇÃO + LOADING)
+    // ===============================
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            const role = selectRole?.value;
+
+            // 🔒 valida regionais
+            if (role !== 'admin') {
+                if (!temRegionalSelecionada()) {
+                    e.preventDefault();
+                    alert('Selecione pelo menos uma regional.');
+                    return;
+                }
+            }
+
+            // 🚀 loading (só executa se passou validação)
+            if (btnSubmit && btnText && btnSpinner) {
+                btnSubmit.disabled = true;
+                btnText.textContent = 'Criando usuário...';
+                btnSpinner.classList.remove('d-none');
+            }
+        });
+    }
+
+    // ===============================
+    // CORREÇÃO: clique no card marca checkbox
+    // ===============================
+    document.querySelectorAll('.regional-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+
+            // evita conflito se clicar direto no checkbox
+            if (e.target.tagName === 'INPUT') return;
+
+            const checkbox = this.querySelector('input[type="checkbox"]');
+
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+});
+
+
+});
+</script>
+
+<style>
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+
+    .is-invalid {
+        border-color: #dc3545;
+    }
+
+    .btn-secondary {
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary:active:not(:disabled) {
+        transform: translateY(0);
+
+    .regionais-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    max-height: 320px;
+    overflow-y: auto;
+    }
+
+    .regional-card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: #fff;
+    }
+
+    .regional-card:hover {
+        border-color: #adb5bd;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .regional-card input {
+        display: none;
+    }
+
+    .regional-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .regional-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .regional-nome {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #2c3e50;
+    }
+
+    .regional-empresa {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    .check-icon {
+        display: none;
+        color: #198754;
+    }
+
+    /* Estado selecionado */
+    .regional-card input:checked + .regional-content {
+        background: #f0fdf4;
+    }
+
+    .regional-card input:checked + .regional-content .check-icon {
+        display: block;
+    }
+
+    .regional-card input:checked + .regional-content .regional-nome {
+        color: #198754;
+    }
+
+</style>
+{% endif %}{% endblock %}
