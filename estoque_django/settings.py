@@ -35,9 +35,11 @@ LOGOUT_REDIRECT_URL = 'estoque:login'
 import dj_database_url
 
 DATABASES = {
-    'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
+    'default': dj_database_url.parse(
+        os.environ('DATABASE_URL')
+    )
 }
-
+print("DATABASE_URL =", os.environ.get("DATABASE_URL"))
 # Application definition
 
 INSTALLED_APPS = [
@@ -85,16 +87,16 @@ WSGI_APPLICATION = 'estoque_django.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'estoque',
-        'USER': 'postgres',
-        'PASSWORD': 'admininventory',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'estoque',
+#        'USER': 'postgres',
+#        'PASSWORD': 'admininventory',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+#}
 
 
 # Password validation
