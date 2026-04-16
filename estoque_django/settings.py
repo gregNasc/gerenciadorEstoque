@@ -20,12 +20,12 @@ print(BASE_DIR)
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8lt^j)-@ti@kmb7$73d-s94gi!5h*+@tdyfi0fgfg_or_zfqr#'
+SECRET_KEY = os.getenv('SECRET_KEY', 'unsafe-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['.onrender.com']
+ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
 
 LOGIN_URL = 'estoque:login'
 LOGIN_REDIRECT_URL = 'estoque:index'
@@ -121,7 +121,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
@@ -142,10 +142,14 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configurações CSRF
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_HTTPONLY = False
-CSRF_USE_SESSIONS = False
-CSRF_COOKIE_NAME = 'csrftoken'
+#CSRF_COOKIE_SECURE = False
+#CSRF_COOKIE_HTTPONLY = False
+#CSRF_USE_SESSIONS = False
+#CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
