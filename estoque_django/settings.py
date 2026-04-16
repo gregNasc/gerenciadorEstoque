@@ -36,7 +36,7 @@ import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.parse(
-        os.environ('DATABASE_URL')
+        os.environ['DATABASE_URL']
     )
 }
 print("DATABASE_URL =", os.environ.get("DATABASE_URL"))
