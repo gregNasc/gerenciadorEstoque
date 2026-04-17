@@ -19,7 +19,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .utils import EstoqueService
 from .security import secure_queryset
-#from .services.transferencia_service import gerar_transferencias_da_solicitacao
+from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
 
 
 
@@ -1025,8 +1025,6 @@ def criar_solicitacao(request):
         'produtos': Produto.objects.all()
     })
 
-@login_required
-@role_required('admin', 'gestor')
 def iniciar_transferencia(equipamento, destino, user, solicitacao=None):
     transferencia = Transferencia.objects.create(
         solicitacao=solicitacao,
@@ -1087,15 +1085,11 @@ def aprovar_solicitacao(request, solicitacao_id):
     origem = get_object_or_404(Base, id=origem_id)
 
     with transaction.atomic():
-
         solicitacao.status = 'APROVADO'
         solicitacao.aprovado_por = request.user
         solicitacao.regional_origem = origem
         solicitacao.data_aprovacao = timezone.now()
         solicitacao.save()
-
-        solicitacao.status = 'EM_TRANSFERENCIA'
-        solicitacao.save(update_fields=['status'])
 
         gerar_transferencias_da_solicitacao(
             solicitacao,
@@ -1307,15 +1301,16 @@ def lista_transferencias(request):
         'regional_destino',
         'solicitado_por',
         'recebido_por'
-    ).order_by('-data_solicitacao')
+    ).order_by('-data_envio')  # ← corrigido
 
     if perfil.role != 'admin':
         qs = qs.filter(
             Q(regional_destino__in=perfil.regionais_ids) |
-            Q(regional_origem=perfil.regional)
+            Q(regional_origem=perfil.regionais.first())  # cuidado: veja nota abaixo
         )
 
     hoje = timezone.now().date()
+    qs = list(qs)
 
     for t in qs:
         t.pode_receber = (
@@ -1325,11 +1320,10 @@ def lista_transferencias(request):
                 t.regional_destino.id in perfil.regionais_ids
             )
         )
-
         base = t.data_recebimento.date() if t.data_recebimento else hoje
-        t.dias = (base - t.data_solicitacao.date()).days
+        t.dias = (base - t.data_envio.date()).days  # ← corrigido
 
-    return render(request, 'estoque/lista_transferencias.html', {
+    return render(request, 'estoque/transferencia/listar.html', {
         'transferencias': qs
     })
 

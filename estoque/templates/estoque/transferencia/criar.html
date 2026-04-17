@@ -1,10 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<h3>Nova Transferência</h3>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="row">
+        <div class="col-md-6">
+            <label>Origem</label>
+            {{ form.origem }}
+        </div>
+
+        <div class="col-md-6">
+            <label>Destino</label>
+            {{ form.destino }}
+        </div>
+    </div>
+
+    <hr>
+
+    <h5>Itens</h5>
+
+    {{ formset.management_form }}
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Equipamento</th>
+                <th>Quantidade</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for form in formset %}
+            <tr>
+                <td>{{ form.equipamento }}</td>
+                <td>{{ form.quantidade }}</td>
+                <td></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button class="btn btn-success">
+        Salvar Transferência
+    </button>
+</form>
+{% endblock %}

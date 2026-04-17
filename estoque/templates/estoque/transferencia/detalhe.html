@@ -1,10 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<h3>Transferência {{ transferencia.protocolo }}</h3>
+
+<p><strong>Origem:</strong> {{ transferencia.origem }}</p>
+<p><strong>Destino:</strong> {{ transferencia.destino }}</p>
+<p><strong>Status:</strong> {{ transferencia.status }}</p>
+
+<hr>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Equipamento</th>
+            <th>Quantidade</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for item in itens %}
+        <tr>
+            <td>{{ item.equipamento }}</td>
+            <td>{{ item.quantidade }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

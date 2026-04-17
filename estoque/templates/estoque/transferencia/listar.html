@@ -1,10 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<h3>Transferências</h3>
+
+<a href="{% url 'transferencia_criar' %}" class="btn btn-primary mb-3">
+    Nova Transferência
+</a>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Protocolo</th>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Status</th>
+            <th>Data</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for t in transferencias %}
+        <tr>
+            <td>{{ t.protocolo }}</td>
+            <td>{{ t.origem }}</td>
+            <td>{{ t.destino }}</td>
+            <td>{{ t.status }}</td>
+            <td>{{ t.created_at }}</td>
+            <td>
+                <a href="{% url 'transferencia_detalhe' t.id %}" class="btn btn-sm btn-info">
+                    Ver
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

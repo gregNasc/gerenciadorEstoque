@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from . import views
+from .views import lista_transferencias
 
 app_name = 'estoque'
 
@@ -20,7 +21,7 @@ urlpatterns = [
     path('historico-modal/<int:equipamento_id>/', views.historico_equipamento_modal, name='historico_modal'),
     path('historico/exportar/', views.exportar_historico_csv, name='exportar_historico_csv'),
     path('transferir-em-lote/', views.transferir_em_lote, name='transferir_em_lote'),
-    path('transferencias/', views.lista_transferencias, name='lista_transferencias'),
+    path('transferencias/', lista_transferencias, name='lista_transferencias'),
     path('detalhes-produto/<int:produto_id>/', views.detalhes_produto, name='detalhes_produto'),
     path('equipamentos-por-regional/<int:produto_id>/<int:regional_id>/', views.equipamentos_por_regional, name='equipamentos_por_regional'),
     path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),

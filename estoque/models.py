@@ -200,6 +200,12 @@ class Solicitacao(models.Model):
     data_aprovacao = models.DateTimeField(null=True, blank=True)
 
 class Transferencia(models.Model):
+
+    class Status(models.TextChoices):
+        PENDENTE = 'PENDENTE'
+        RECEBIDO = 'RECEBIDO'
+        CANCELADO = 'CANCELADO'
+
     solicitacao = models.ForeignKey(
         Solicitacao,
         on_delete=models.CASCADE,

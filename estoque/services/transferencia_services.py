@@ -3,25 +3,19 @@ from estoque.models import Transferencia, Historico
 
 
 def gerar_transferencias_da_solicitacao(solicitacao, origem, user):
+
     equipamentos = Equipamento.objects.filter(
         produto=solicitacao.produto,
         regional=origem,
         status='ATIVO'
     )[:solicitacao.quantidade]
 
-    transferencias = []
-
     for e in equipamentos:
-        e.status = 'TRANSFERENCIA'
-        e.save(update_fields=['status'])
-
-        t = Transferencia.objects.create(
-            solicitacao=solicitacao,
+        iniciar_transferencia(
             equipamento=e,
-            regional_origem=origem,
-            regional_destino=solicitacao.regional_solicitante,
-            solicitado_por=user,
-            status='PENDENTE'
+            destino=solicitacao.regional_solicitante,
+            user=user,
+            solicitacao=solicitacao
         )
 
         transferencias.append(t)

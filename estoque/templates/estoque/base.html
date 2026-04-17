@@ -64,12 +64,12 @@
         {% endif %}
 
         {% if request.user.perfil.is_admin %}
-        <li class="nav-item">
+        <!--li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'lista_transferencias' %}active{% endif %}"
                href="{% url 'estoque:lista_transferencias' %}">
                 <i class="bi bi-arrow-left-right"></i> Transferências
             </a>
-        </li>
+        </li-->
         {% endif %}
 
         {% if request.user.perfil.is_admin %}
