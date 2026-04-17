@@ -17,4 +17,3 @@ application = get_wsgi_application()
 
 if not settings.DEBUG:
     application = WhiteNoise(application, root=settings.STATIC_ROOT)
-EOF
