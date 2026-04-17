@@ -64,7 +64,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'estoque.apps.EstoqueConfig',
     'core',
-    'estoque',
 ]
 
 MIDDLEWARE = [
