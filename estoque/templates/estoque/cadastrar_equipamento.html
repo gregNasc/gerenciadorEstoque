@@ -14,61 +14,77 @@
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
 
-                <div class="row">
+               <div class="row">
 
-                    <!-- ✅ CATEGORIA (CONTROLADO) -->
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Categoria</label>
-                        {{ form.categoria }}
-                        {% if form.categoria.errors %}
-                            <div class="text-danger small">
-                                {{ form.categoria.errors }}
-                            </div>
-                        {% endif %}
+    <!-- ✅ CATEGORIA -->
+    <div class="col-md-6 mb-3">
+        <label class="form-label fw-bold">Categoria</label>
+        {{ form.categoria }}
+        {% if form.categoria.errors %}
+            <div class="text-danger small">
+                {{ form.categoria.errors }}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ✅ PRODUTO -->
+    <div class="col-md-6 mb-3">
+        <label class="form-label fw-bold">Equipamento</label>
+        {{ form.produto }}
+        {% if form.produto.errors %}
+            <div class="text-danger small">
+                {{ form.produto.errors }}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 🔁 CAMPOS (SEM IMAGEM) -->
+    {% for field in form %}
+        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'imagem' %}
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                    <div class="text-danger small">
+                        {{ field.errors }}
                     </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
 
-                    <!-- ✅ PRODUTO (DEPENDENTE) -->
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Equipamento</label>
-                        {{ form.produto }}
-                        {% if form.produto.errors %}
-                            <div class="text-danger small">
-                                {{ form.produto.errors }}
-                            </div>
-                        {% endif %}
-                    </div>
+    <!-- 📸 IMAGEM COM CÂMERA + PREVIEW -->
+    <div class="col-md-6 mb-3">
+        <label class="form-label fw-bold">Imagem</label>
 
-                    <!-- 🔁 RESTANTE DOS CAMPOS -->
-                    {% for field in form %}
-                        {% if field.name != 'categoria' and field.name != 'produto' %}
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">
-                                    {{ field.label }}
-                                </label>
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="text-danger small">
-                                        {{ field.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
+        <input 
+            type="file" 
+            name="imagem" 
+            id="id_imagem"
+            accept="image/*" 
+            capture="environment"
+            class="form-control"
+            required
+        >
 
-                </div>
+        <!-- Preview -->
+        <img id="previewImagem" 
+             src="#" 
+             alt="Preview" 
+             class="img-fluid mt-2 d-none"
+             style="max-height: 200px; border-radius: 8px;">
 
-                <div class="text-end mt-3">
-                    <button type="submit" class="btn btn-primary">
-                        Salvar
-                    </button>
-                </div>
-
-            </form>
-        </div>
+        {% if form.imagem.errors %}
+            <div class="text-danger small">
+                {{ form.imagem.errors }}
+            </div>
+        {% endif %}
     </div>
 
 </div>
-
+    
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -125,6 +141,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 </script>
+<script>
+document.getElementById('id_imagem').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('previewImagem');
+
+    if (file) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+        };
+
+        reader.readAsDataURL(file);
+    }
+});
+</script>                
 
 {% endif %}
 {% endblock %}
