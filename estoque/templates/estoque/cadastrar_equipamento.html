@@ -16,7 +16,7 @@
 
                <div class="row">
 
-    <!-- ✅ CATEGORIA -->
+    <!-- CATEGORIA -->
     <div class="col-md-6 mb-3">
         <label class="form-label fw-bold">Categoria</label>
         {{ form.categoria }}
@@ -27,7 +27,7 @@
         {% endif %}
     </div>
 
-    <!-- ✅ PRODUTO -->
+    <!-- PRODUTO -->
     <div class="col-md-6 mb-3">
         <label class="form-label fw-bold">Equipamento</label>
         {{ form.produto }}
@@ -38,9 +38,9 @@
         {% endif %}
     </div>
 
-    <!-- 🔁 CAMPOS (SEM IMAGEM) -->
+    <!-- CAMPOS (SEM IMAGEM) -->
     {% for field in form %}
-        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'imagem' %}
+        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'imagem' and field.name != 'foto' %}
             <div class="col-md-6 mb-3">
                 <label class="form-label fw-bold">
                     {{ field.label }}
@@ -55,14 +55,14 @@
         {% endif %}
     {% endfor %}
 
-    <!-- 📸 IMAGEM COM CÂMERA + PREVIEW -->
+    <!-- IMAGEM COM CÂMERA + PREVIEW -->
     <div class="col-md-6 mb-3">
         <label class="form-label fw-bold">Imagem</label>
 
         <input 
             type="file" 
-            name="imagem" 
-            id="id_imagem"
+            name="foto" 
+            id="id_foto"
             accept="image/*" 
             capture="environment"
             class="form-control"
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!categoriaSelect || !produtoSelect) return;
 
-    const produtoSelecionado = produtoSelect.value; // mantém valor em caso de erro
+    const produtoSelecionado = produtoSelect.value; 
 
     const carregarProdutos = async (categoria, selectedProduto = null) => {
         produtoSelect.innerHTML = '<option>Carregando...</option>';
