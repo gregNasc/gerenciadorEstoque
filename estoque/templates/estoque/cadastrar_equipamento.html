@@ -14,77 +14,90 @@
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
 
-               <div class="row">
+                <div class="row">
 
-    <!-- CATEGORIA -->
-    <div class="col-md-6 mb-3">
-        <label class="form-label fw-bold">Categoria</label>
-        {{ form.categoria }}
-        {% if form.categoria.errors %}
-            <div class="text-danger small">
-                {{ form.categoria.errors }}
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- PRODUTO -->
-    <div class="col-md-6 mb-3">
-        <label class="form-label fw-bold">Equipamento</label>
-        {{ form.produto }}
-        {% if form.produto.errors %}
-            <div class="text-danger small">
-                {{ form.produto.errors }}
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- CAMPOS (SEM IMAGEM) -->
-    {% for field in form %}
-        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'imagem' and field.name != 'foto' %}
-            <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">
-                    {{ field.label }}
-                </label>
-                {{ field }}
-                {% if field.errors %}
-                    <div class="text-danger small">
-                        {{ field.errors }}
+                    <!-- CATEGORIA -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Categoria</label>
+                        {{ form.categoria }}
+                        {% if form.categoria.errors %}
+                            <div class="text-danger small">
+                                {{ form.categoria.errors }}
+                            </div>
+                        {% endif %}
                     </div>
-                {% endif %}
-            </div>
-        {% endif %}
-    {% endfor %}
 
-    <!-- IMAGEM COM CÂMERA + PREVIEW -->
-    <div class="col-md-6 mb-3">
-        <label class="form-label fw-bold">Imagem</label>
+                    <!-- PRODUTO -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Equipamento</label>
+                        {{ form.produto }}
+                        {% if form.produto.errors %}
+                            <div class="text-danger small">
+                                {{ form.produto.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
 
-        <input 
-            type="file" 
-            name="foto" 
-            id="id_foto"
-            accept="image/*" 
-            capture="environment"
-            class="form-control"
-            required
-        >
+                    <!-- CAMPOS DINÂMICOS (SEM FOTO) -->
+                    {% for field in form %}
+                        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'foto' %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger small">
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
 
-        <!-- Preview -->
-        <img id="previewImagem" 
-             src="#" 
-             alt="Preview" 
-             class="img-fluid mt-2 d-none"
-             style="max-height: 200px; border-radius: 8px;">
+                    <!-- FOTO COM CÂMERA + PREVIEW -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Foto</label>
 
-        {% if form.imagem.errors %}
-            <div class="text-danger small">
-                {{ form.imagem.errors }}
-            </div>
-        {% endif %}
+                        <input
+                            type="file"
+                            name="foto"
+                            id="id_foto"
+                            accept="image/*"
+                            capture="environment"
+                            class="form-control"
+                            required
+                        >
+
+                        <!-- Preview -->
+                        <img id="previewImagem"
+                             src="#"
+                             alt="Preview"
+                             class="img-fluid mt-2 d-none"
+                             style="max-height: 200px; border-radius: 8px;">
+
+                        {% if form.foto.errors %}
+                            <div class="text-danger small">
+                                {{ form.foto.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+
+                <!-- BOTÃO -->
+                <div class="text-end mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        Salvar
+                    </button>
+                </div>
+
+            </form>
+        </div>
     </div>
 
 </div>
-    
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -93,12 +106,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!categoriaSelect || !produtoSelect) return;
 
-    const produtoSelecionado = produtoSelect.value; 
+    const produtoSelecionado = produtoSelect.value;
+
+    const URL_PRODUTOS = "{% url 'estoque:produtos_por_categoria' %}";
 
     const carregarProdutos = async (categoria, selectedProduto = null) => {
         produtoSelect.innerHTML = '<option>Carregando...</option>';
-
-    const URL_PRODUTOS = "{% url 'estoque:produtos_por_categoria' %}";
 
         try {
             const response = await fetch(`${URL_PRODUTOS}?categoria=${categoria}`);
@@ -141,8 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 </script>
+
 <script>
-document.getElementById('id_imagem').addEventListener('change', function(event) {
+document.getElementById('id_foto').addEventListener('change', function(event) {
     const file = event.target.files[0];
     const preview = document.getElementById('previewImagem');
 
@@ -157,7 +171,7 @@ document.getElementById('id_imagem').addEventListener('change', function(event) 
         reader.readAsDataURL(file);
     }
 });
-</script>                
+</script>
 
 {% endif %}
 {% endblock %}

@@ -276,6 +276,21 @@ def detalhes_regional_api(request, regional_id):
 
 @login_required
 @role_required('admin', 'gestor')
+def api_regionais_produto(request, produto_id):
+    dados = (
+        Equipamento.objects
+        .filter(produto_id=produto_id)
+        .values('regional__id', 'regional__nome')
+        .annotate(total=Count('id'))
+        .order_by('regional__nome')
+    )
+
+    return JsonResponse({
+        'regionais': list(dados)
+    })
+
+@login_required
+@role_required('admin', 'gestor')
 def lista_regionais_json(request):
     from django.apps import apps
     Base = apps.get_model('estoque', 'Base')
@@ -686,6 +701,7 @@ def detalhes_produto(request, produto_id):
         "transferencias": trans_list,
         "regional_id": regional_id
     })
+
 # ----------------- SICK -----------------
 @login_required
 @role_required('admin', 'gestor')
@@ -817,7 +833,8 @@ def marcar_sick_ajax(request, equipamento_id):
         Sick.objects.create(
             equipamento=equipamento,
             motivo='Via sistema',
-            categoria='OPERACIONAL'
+            categoria='OPERACIONAL',
+            descricao=descricao
         )
 
         Historico.objects.create(
@@ -1327,7 +1344,6 @@ def lista_transferencias(request):
         'transferencias': qs
     })
 
-
 @login_required
 @role_required('admin', 'gestor')
 def equipamentos_por_regional(request, produto_id, regional_id):
@@ -1340,14 +1356,15 @@ def equipamentos_por_regional(request, produto_id, regional_id):
         'equipamentos': [
             {
                 'id': e.id,
-                'nome': e.numero_serie,
+                'numero_serie': e.numero_serie,
+                'patrimonio': e.patrimonio,
                 'status': e.status
             }
             for e in equipamentos
         ],
-        'regionais_destino': list(
+        'regionais': list(
             Base.objects.exclude(id=regional_id).values('id', 'nome')
         )
     }
-    print(request.POST)
+
     return JsonResponse(data)

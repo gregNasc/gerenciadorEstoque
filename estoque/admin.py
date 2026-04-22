@@ -20,7 +20,7 @@ class EmpresaAdminMixin:
         if request.user.is_superuser:
             return qs
 
-        if hasattr(request.user, "perfil"):
+        if hasattr(reques0t.user, "perfil"):
             empresa = request.user.perfil.empresa
 
             if hasattr(self.model, "regional"):
@@ -67,6 +67,7 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
         "get_produto",
         "regional",
         "status_colored",
+        "preview_foto",
         "data_atualizacao"
     )
 
@@ -82,15 +83,21 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
 
     list_filter = ("status", "regional", "produto__fabricante")
 
-    readonly_fields = ("data_cadastro", "data_atualizacao")
+    readonly_fields = (
+        "data_cadastro",
+        "data_atualizacao",
+        "preview_foto"
+    )
 
     list_per_page = 50
 
+    # -------- PRODUTO --------
     def get_produto(self, obj):
         return obj.produto.descricao
     get_produto.short_description = "Produto"
     get_produto.admin_order_field = "produto__descricao"
 
+    # -------- STATUS COLORIDO --------
     def status_colored(self, obj):
         colors = {
             "ATIVO": "green",
@@ -105,6 +112,20 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
             obj.get_status_display()
         )
     status_colored.short_description = "Status"
+
+    # -------- FOTO PREVIEW --------
+    def preview_foto(self, obj):
+        if obj.foto:
+            return format_html(
+                '<a href="{}" target="_blank">'
+                '<img src="{}" style="height: 60px; border-radius: 6px;" />'
+                '</a>',
+                obj.foto.url,
+                obj.foto.url
+            )
+        return "Sem foto"
+
+    preview_foto.short_description = "Foto"
 
 
 # ================== TRANSFERÊNCIA ==================

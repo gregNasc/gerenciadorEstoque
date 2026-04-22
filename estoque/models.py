@@ -257,7 +257,7 @@ class Sick(models.Model):
     data_resolucao = models.DateTimeField(null=True, blank=True)
     resolvido_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     ativo = models.BooleanField(default=True, db_index=True)
-
+    descricao = models.TextField(null=True, blank=True)
 
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):

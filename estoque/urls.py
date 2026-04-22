@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from . import views
 from .views import lista_transferencias
+from .models import Equipamento
 
 app_name = 'estoque'
 
@@ -14,6 +15,7 @@ urlpatterns = [
     path('produtos-por-categoria/', views.produtos_por_categoria, name='produtos_por_categoria'),
     path('usuarios/cadastro/', views.cadastrar_usuario, name='cadastrar_usuario'),
     path('estoque/', views.estoque_view, name='estoque'),
+    path('api/produto/<int:produto_id>/regionais/', views.api_regionais_produto, name='api_regionais_produto'),
     path('produto/<int:produto_id>/<str:regional_id>/', views.detalhes_produto_view, name='detalhes_produto'),
     path('sick/', views.sick_view, name='sick'),
     path('historico/', views.historico_view, name='historico'),
