@@ -25,138 +25,139 @@ from estoque.services.transferencia_services import gerar_transferencias_da_soli
 
 # ----------------- DASHBOARD -----------------
 @login_required
-@cache_page(60 * 5)
+#@cache_page(60 * 5)
 def index(request):
     equipamentos = secure_queryset(
         Equipamento.objects.select_related('regional', 'produto'),
         request.user
     )
 
-    # Configuração das categorias
-    categorias_config = {
-        'Coletores': {
-            'keywords': ['coletor', 'mobydata', 'mc-65', 'ranger 2k', 'scorpio'],
-            'icone': 'bi-upc-scan'
-        },
-        'Impressoras': {
-            'keywords': ['impressora', 'hp', 'brother', 'samsung', 'xerox', 'pantum'],
-            'icone': 'bi-printer'
-        },
-        'Notebooks': {
-            'keywords': ['notebook', 'positivo', 'dell', 'lenovo', 'hp', 'samsung'],
-            'icone': 'bi-laptop'
-        },
-        'Routers': {
-            'keywords': ['router', 'roteador', 'switch', 'tp-link', 'mikrotik'],
-            'icone': 'bi-wifi'
-        }
-    }
-
-    # Filtros recebidos
+    # Filtros
     categoria = request.GET.get('categoria')
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
 
-    # Aplica filtro de categoria (afeta equipamentos para tudo)
     if categoria:
         equipamentos = equipamentos.filter(produto__categoria=categoria)
 
-    # Aplica filtros de produto e regional
     if produto_id and produto_id.isdigit():
         equipamentos = equipamentos.filter(produto_id=produto_id)
+
     if regional_id and regional_id.isdigit():
         equipamentos = equipamentos.filter(regional_id=regional_id)
 
+    # ================================
+    # KPI SUPERIOR
+    # ================================
+    if categoria:
+        # Por produto
+        produtos_na_categoria = list(
+            equipamentos
+            .values('produto__id', 'produto__descricao')
+            .annotate(
+                total=Count('id'),
+                ativos=Count('id', filter=Q(status='ATIVO')),
+                sick=Count('id', filter=Q(status='SICK')),
+                transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
+            )
+            .order_by('produto__descricao')
+        )
 
-    # CARDS SUPERIORES (KPIs dinâmicos)
+        for p in produtos_na_categoria:
+            p['id'] = p.pop('produto__id')
+            p['nome'] = p.pop('produto__descricao')
 
-    produtos_na_categoria = []
-    if categoria and categoria in categorias_config:
-        # Exibe os modelos específicos da categoria selecionada
-        produtos_agrupados = equipamentos.values(
-            'produto__id', 'produto__descricao'
-        ).annotate(
-            total=Count('id'),
-            ativos=Count('id', filter=Q(status='ATIVO')),
-            sick=Count('id', filter=Q(status='SICK')),
-        ).order_by('produto__descricao')
-        for p in produtos_agrupados:
-            produtos_na_categoria.append({
-                'id': p['produto__id'],
-                'nome': p['produto__descricao'],
-                'total': p['total'],
-                'ativos': p['ativos'],
-                'sick': p['sick'],
-            })
     else:
-        # Exibe as 4 categorias
-        for tipo, config in categorias_config.items():
-            query = Q()
-            for kw in config['keywords']:
-                query |= Q(produto__descricao__icontains=kw)
-            equip_tipo = equipamentos.filter(query)
-            produtos_na_categoria.append({
-                'id': tipo,
-                'nome': tipo,
-                'total': equip_tipo.count(),
-                'ativos': equip_tipo.filter(status='ATIVO').count(),
-                'sick': equip_tipo.filter(status='SICK').count(),
-                'icone': config['icone']
-            })
+        # Por categoria
+        produtos_na_categoria = list(
+            equipamentos
+            .values('produto__categoria')
+            .annotate(
+                total=Count('id'),
+                ativos=Count('id', filter=Q(status='ATIVO')),
+                sick=Count('id', filter=Q(status='SICK')),
+                transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
+            )
+            .order_by('produto__categoria')
+        )
 
+        for c in produtos_na_categoria:
+            c['id'] = c['produto__categoria']
+            c['nome'] = c['produto__categoria']
+            c['icone'] = 'bi-box'  # opcional mapear depois
 
-    # CARDS REGIONAIS
+    # ================================
+    # KPIs REGIONAIS
+    # ================================
     regionais_ids = equipamentos.values_list('regional_id', flat=True).distinct()
     regionais_lista = Base.objects.filter(id__in=regionais_ids).order_by('nome')
 
     kpis_regionais = []
+
     for regional in regionais_lista:
         equip_regional = equipamentos.filter(regional=regional)
-        total_regional = equip_regional.count()
-        ativos_regional = equip_regional.filter(status='ATIVO').count()
-        sick_regional = equip_regional.filter(status='SICK').count()
+
+        total = equip_regional.count()
+        ativos = equip_regional.filter(status='ATIVO').count()
+        sick = equip_regional.filter(status='SICK').count()
 
         regional_data = {
             'regional__id': regional.id,
             'regional__nome': regional.nome,
-            'total': total_regional,
-            'ativos': ativos_regional,
-            'sick': sick_regional,
-            'disponibilidade': round((ativos_regional / total_regional * 100), 2) if total_regional else 0,
+            'total': total,
+            'ativos': ativos,
+            'sick': sick,
+            'disponibilidade': round((ativos / total * 100), 2) if total else 0,
         }
 
-        if categoria and categoria in categorias_config:
-            # Mostra produtos detalhados (modelos) dentro da categoria para esta regional
-            produtos_detalhados = equip_regional.values('produto__id', 'produto__descricao').annotate(
+        if categoria:
+            # detalhado por produto
+            produtos = equip_regional.values(
+                'produto__id', 'produto__descricao'
+            ).annotate(
                 total=Count('id'),
                 ativos=Count('id', filter=Q(status='ATIVO')),
                 sick=Count('id', filter=Q(status='SICK')),
+                transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
             ).order_by('produto__descricao')
-            regional_data['produtos_detalhados'] = list(produtos_detalhados)
-        else:
-            # Mostra resumo das 4 categorias
-            produtos = {}
-            for tipo, config in categorias_config.items():
-                query = Q()
-                for kw in config['keywords']:
-                    query |= Q(produto__descricao__icontains=kw)
-                equip_tipo = equip_regional.filter(query)
-                produtos[tipo] = {
-                    'total': equip_tipo.count(),
-                    'ativos': equip_tipo.filter(status='ATIVO').count(),
-                    'sick': equip_tipo.filter(status='SICK').count(),
-                }
-            regional_data['produtos'] = produtos
 
+            regional_data['produtos_detalhados'] = list(produtos)
+
+        else:
+            # resumo por categoria
+            categorias_base = ['Coletores', 'Impressoras', 'Notebooks', 'Routers']
+
+            produtos_query = (
+                equip_regional
+                .values('produto__categoria')
+                .annotate(
+                    total=Count('id'),
+                    ativos=Count('id', filter=Q(status='ATIVO')),
+                    sick=Count('id', filter=Q(status='SICK')),
+                    transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
+                )
+            )
+
+            produtos_dict = {p['produto__categoria']: p for p in produtos_query}
+
+            regional_data['produtos'] = {
+                categoria: {
+                    'total': produtos_dict.get(categoria, {}).get('total', 0),
+                    'ativos': produtos_dict.get(categoria, {}).get('ativos', 0),
+                    'sick': produtos_dict.get(categoria, {}).get('sick', 0),
+                    'transferencia': produtos_dict.get(categoria, {}).get('transferencia', 0),
+                }
+                for categoria in categorias_base
+            }
         kpis_regionais.append(regional_data)
 
-
-    # Produtos disponíveis (filtrados pela categoria)
+    # ================================
+    # SELECTS
+    # ================================
     produtos_lista = Produto.objects.all()
     if categoria:
         produtos_lista = produtos_lista.filter(categoria=categoria)
 
-    # Regionais para o select (todas, sem filtro)
     regionais_select = Base.objects.all().order_by('nome')
 
     context = {
@@ -168,6 +169,7 @@ def index(request):
         'filtro_produto_id': produto_id,
         'filtro_regional_id': regional_id,
     }
+
     return render(request, 'estoque/index.html', context)
 
 @login_required
@@ -209,61 +211,49 @@ def detalhes_regional_api(request, regional_id):
     equipamentos = secure_queryset(
         Equipamento.objects.select_related('regional', 'produto'),
         request.user
+    ).filter(regional_id=regional_id)
+
+    produtos_agrupados = (
+        equipamentos
+        .values(
+            'produto__id',
+            'produto__descricao',
+            'produto__categoria'
+        )
+        .annotate(
+            total=Count('id'),
+            ativos=Count('id', filter=Q(status='ATIVO')),
+            sick=Count('id', filter=Q(status='SICK')),
+            transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
+            manutencao=Count('id', filter=Q(status='MANUTENCAO')),
+        )
+        .order_by('produto__categoria', 'produto__descricao')
     )
-    equipamentos = equipamentos.filter(regional_id=regional_id)
 
+    categorias_dict = defaultdict(list)
 
-    categorias = {
-        'Coletores': ['Coletor', 'MobyData', 'MC-65', 'Ranger 2K', 'MovFast', 'Coletor de Dados'],
-        'Impressoras': ['Impressora', 'HP', 'Brother', 'Samsung', 'Xerox', 'Pantum', 'Argox', 'Zebra', 'Lexmark'],
-        'Notebooks': ['Notebook', 'Laptop', 'Dell', 'LG', 'Samsung', 'Positivo', 'Compac'],
-        'Routers': ['Router', 'Roteador', 'Switch', 'TP-Link', 'Mikrotik']
-    }
+    for produto in produtos_agrupados:
+        categorias_dict[produto['produto__categoria']].append({
+            'id': produto['produto__id'],
+            'nome': produto['produto__descricao'],
+            'total': produto['total'],
+            'ativos': produto['ativos'],
+            'sick': produto['sick'],
+            'transferencia': produto['transferencia'],
+            'manutencao': produto['manutencao'],
+        })
 
-    produtos_detalhados = []
-
-    for categoria, keywords in categorias.items():
-        query = Q()
-        for keyword in keywords:
-            query |= Q(produto__descricao__icontains=keyword)
-
-        equip_categoria = equipamentos.filter(query)
-
-        if equip_categoria.exists():
-            produtos_agrupados = equip_categoria.values(
-                'produto__id',
-                'produto__descricao'
-            ).annotate(
-                total=Count('id'),
-                ativos=Count('id', filter=Q(status='ATIVO')),
-                sick=Count('id', filter=Q(status='SICK')),
-                transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
-                manutencao=Count('id', filter=Q(status='MANUTENCAO')),
-            ).order_by('produto__descricao')
-
-            produtos_com_equipamentos = []
-            for produto in produtos_agrupados:
-                equip_lista = equip_categoria.filter(produto_id=produto['produto__id']).values(
-                    'id', 'numero_serie', 'patrimonio', 'status', 'responsavel'
-                ).order_by('status', 'numero_serie')
-
-                produtos_com_equipamentos.append({
-                    'id': produto['produto__id'],
-                    'nome': produto['produto__descricao'],
-                    'total': produto['total'],
-                    'ativos': produto['ativos'],
-                    'sick': produto['sick'],
-                    'transferencia': produto['transferencia'],
-                    'manutencao': produto['manutencao'],
-                    'equipamentos': list(equip_lista)
-                })
-
-            produtos_detalhados.append({
-                'categoria': categoria,
-                'produtos': produtos_com_equipamentos
-            })
+    produtos_detalhados = [
+        {
+            'categoria': categoria,
+            'produtos': produtos
+        }
+        for categoria, produtos in categorias_dict.items()
+    ]
 
     kpis_regional = EstoqueService.get_kpis_gerais(equipamentos)
+    disponibilidade = EstoqueService.get_disponibilidade(equipamentos)
+
     regional = Base.objects.only('id', 'nome').get(id=regional_id)
 
     return JsonResponse({
@@ -271,7 +261,7 @@ def detalhes_regional_api(request, regional_id):
         'regional_id': regional.id,
         'regional_nome': regional.nome,
         'total_regional': kpis_regional['total'],
-        'disponibilidade_regional': EstoqueService.get_disponibilidade(equipamentos),
+        'disponibilidade_regional': disponibilidade,
     })
 
 @login_required
