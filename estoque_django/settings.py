@@ -154,10 +154,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #CSRF_COOKIE_HTTPONLY = False
 #CSRF_USE_SESSIONS = False
 #CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
+CSRF_TRUSTED_ORIGINS = [
+    "https://gerenciadorestoque.onrender.com",
+]
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
-
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
