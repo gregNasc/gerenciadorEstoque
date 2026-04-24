@@ -171,8 +171,8 @@ class Solicitacao(models.Model):
         ('FINALIZADO', 'Finalizado'),
     ]
 
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
-    quantidade = models.IntegerField()
+    #produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    #quantidade = models.IntegerField()
     motivo = models.TextField()
 
     regional_solicitante = models.ForeignKey(Base, on_delete=models.CASCADE)
@@ -199,34 +199,51 @@ class Solicitacao(models.Model):
     data_criacao = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     data_aprovacao = models.DateTimeField(null=True, blank=True)
 
-class Transferencia(models.Model):
+class SolicitacaoItem(models.Model):
 
-    class Status(models.TextChoices):
-        PENDENTE = 'PENDENTE'
-        RECEBIDO = 'RECEBIDO'
-        CANCELADO = 'CANCELADO'
+    CATEGORIAS = [
+        ('Coletores', 'Coletores'),
+        ('Impressoras', 'Impressoras'),
+        ('Notebooks', 'Notebooks'),
+        ('Routers', 'Routers'),
+    ]
 
     solicitacao = models.ForeignKey(
-        Solicitacao,
+        'Solicitacao',
         on_delete=models.CASCADE,
-        related_name="transferencias"
+        related_name='itens'
     )
 
-    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE)
+    categoria = models.CharField(
+        max_length=50,
+        choices=CATEGORIAS,
+        db_index=True
+    )
+
+    quantidade = models.PositiveIntegerField()
+    atendido = models.PositiveIntegerField(default=0)
+
+    @property
+    def pendente(self):
+        return self.quantidade - self.atendido
+
+class AlocacaoSolicitacaoItem(models.Model):
+    item = models.ForeignKey(
+        SolicitacaoItem,
+        on_delete=models.CASCADE,
+        related_name='alocacoes'
+    )
 
     regional_origem = models.ForeignKey(
-        Base,
-        related_name='transferencias_origem',
+        'Base',
         on_delete=models.CASCADE
     )
 
-    regional_destino = models.ForeignKey(
-        Base,
-        related_name='transferencias_destino',
-        on_delete=models.CASCADE
-    )
+    quantidade = models.PositiveIntegerField()
 
-    status = models.CharField(max_length=20, default='PENDENTE')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+class Transferencia(models.Model):
 
     solicitado_por = models.ForeignKey(
         User,
@@ -243,9 +260,39 @@ class Transferencia(models.Model):
         related_name='transferencias_recebidas'
     )
 
+    alocacao = models.ForeignKey(
+        AlocacaoSolicitacaoItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    equipamento = models.ForeignKey(
+        Equipamento,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
+    regional_origem = models.ForeignKey(
+        Base,
+        on_delete=models.CASCADE,
+        related_name='transferencias_origem'
+    )
+
+    regional_destino = models.ForeignKey(
+        Base,
+        on_delete=models.CASCADE,
+        related_name='transferencias_destino'
+    )
+
+    status = models.CharField(
+        max_length=20,
+        default='PENDENTE'
+    )
+
     data_envio = models.DateTimeField(auto_now_add=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
-
 
 # ---------------- SICK ----------------
 class Sick(models.Model):
