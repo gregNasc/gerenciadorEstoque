@@ -137,7 +137,7 @@ class Equipamento(models.Model):
         ('BAIXA', 'Baixa'),
     ]
 
-    produto = models.ForeignKey(Produto, on_delete=models.PROTECT)
+    produto = models.ForeignKey(Produto, null=True, on_delete=models.SET_NULL)
     numero_serie = models.CharField(max_length=100, unique=True)
     patrimonio = models.CharField(max_length=100, unique=True)
     regional = models.ForeignKey(Base, on_delete=models.PROTECT)
