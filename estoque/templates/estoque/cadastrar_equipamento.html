@@ -4,26 +4,20 @@
 {% block content %}
 {% if request.user.is_authenticated %}
 <div class="container mt-4">
-
     <div class="card shadow-sm">
         <div class="card-header bg-dark text-white">
             ➕ Novo Equipamento
         </div>
-
         <div class="card-body">
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" id="formEquipamento">
                 {% csrf_token %}
-
                 <div class="row">
-
                     <!-- CATEGORIA -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Categoria</label>
                         {{ form.categoria }}
                         {% if form.categoria.errors %}
-                            <div class="text-danger small">
-                                {{ form.categoria.errors }}
-                            </div>
+                            <div class="text-danger small">{{ form.categoria.errors }}</div>
                         {% endif %}
                     </div>
 
@@ -32,145 +26,311 @@
                         <label class="form-label fw-bold">Equipamento</label>
                         {{ form.produto }}
                         {% if form.produto.errors %}
-                            <div class="text-danger small">
-                                {{ form.produto.errors }}
-                            </div>
+                            <div class="text-danger small">{{ form.produto.errors }}</div>
                         {% endif %}
                     </div>
 
-                    <!-- CAMPOS DINÂMICOS (SEM FOTO) -->
+                    <!-- DEMAIS CAMPOS -->
                     {% for field in form %}
                         {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'foto' %}
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">
-                                    {{ field.label }}
-                                </label>
+                                <label class="form-label fw-bold">{{ field.label }}</label>
                                 {{ field }}
                                 {% if field.errors %}
-                                    <div class="text-danger small">
-                                        {{ field.errors }}
-                                    </div>
+                                    <div class="text-danger small">{{ field.errors }}</div>
                                 {% endif %}
                             </div>
                         {% endif %}
                     {% endfor %}
 
-                    <!-- FOTO COM CÂMERA + PREVIEW -->
+                    <!-- FOTO + PREVIEW -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Foto</label>
-
-                        <input
-                            type="file"
-                            name="foto"
-                            id="id_foto"
-                            accept="image/*"
-                            capture="environment"
-                            class="form-control"
-                        >
-
-                        <!-- Preview -->
-                        <img id="previewImagem"
-                             src="#"
-                             alt="Preview"
-                             class="img-fluid mt-2 d-none"
-                             style="max-height: 200px; border-radius: 8px;">
-
+                        <input type="file" name="foto" id="id_foto" accept="image/*" capture="environment" class="form-control">
+                        <img id="previewImagem" src="#" alt="Preview" class="img-fluid mt-2 d-none" style="max-height: 200px; border-radius: 8px;">
                         {% if form.foto.errors %}
-                            <div class="text-danger small">
-                                {{ form.foto.errors }}
-                            </div>
+                            <div class="text-danger small">{{ form.foto.errors }}</div>
                         {% endif %}
                     </div>
-
                 </div>
 
-                <!-- BOTÃO -->
+                <!-- BOTÃO SALVAR -->
                 <div class="text-end mt-3">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" id="btnSalvarEquipamento">
                         Salvar
                     </button>
                 </div>
-
             </form>
         </div>
     </div>
+</div>
 
+<div class="modal fade" id="modalConfirmacao" tabindex="-1" aria-hidden="true" style="display:none;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">🔍 Confirme os dados</h5>
+                <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-2"><strong>Categoria:</strong> <span id="modalCategoria"></span></div>
+                    <div class="col-md-6 mb-2"><strong>Equipamento:</strong> <span id="modalProduto"></span></div>
+                    <div class="col-md-6 mb-2"><strong>Nº de Série:</strong> <span id="modalNumeroSerie"></span></div>
+                    <div class="col-md-6 mb-2"><strong>Patrimônio:</strong> <span id="modalPatrimonio"></span></div>
+                    <div class="col-md-6 mb-2"><strong>Regional:</strong> <span id="modalRegional"></span></div>
+                    <div class="col-md-6 mb-2"><strong>Responsável:</strong> <span id="modalResponsavel"></span></div>
+                    <div class="col-12 mb-2">
+                        <strong>Foto:</strong>
+                        <div id="modalFotoPreview" class="mt-1"></div>
+                        <span id="modalFotoNome" class="text-muted small"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btnFecharModal">✏️ Corrigir</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarEnvio">✅ Confirmar e Salvar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+(function() {
+    try {
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM carregado - iniciando scripts');
 
-    const categoriaSelect = document.querySelector('[name="categoria"]');
-    const produtoSelect = document.querySelector('[name="produto"]');
+            const categoriaSelect = document.querySelector('[name="categoria"]');
+            const produtoSelect = document.querySelector('[name="produto"]');
+            if (categoriaSelect && produtoSelect) {
+                const urlProdutos = "{% url 'estoque:produtos_por_categoria' %}";
+                const produtoSelecionado = produtoSelect.value;
 
-    if (!categoriaSelect || !produtoSelect) return;
-
-    const produtoSelecionado = produtoSelect.value;
-
-    const URL_PRODUTOS = "{% url 'estoque:produtos_por_categoria' %}";
-
-    const carregarProdutos = async (categoria, selectedProduto = null) => {
-        produtoSelect.innerHTML = '<option>Carregando...</option>';
-
-        try {
-            const response = await fetch(`${URL_PRODUTOS}?categoria=${categoria}`);
-            if (!response.ok) throw new Error();
-
-            const data = await response.json();
-
-            produtoSelect.innerHTML = '<option value="">Selecione</option>';
-
-            data.produtos.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = p.descricao;
-
-                if (selectedProduto && selectedProduto == p.id) {
-                    option.selected = true;
+                async function carregarProdutos(categoria, selectedId = null) {
+                    produtoSelect.innerHTML = '<option>Carregando...</option>';
+                    try {
+                        const resp = await fetch(`${urlProdutos}?categoria=${encodeURIComponent(categoria)}`);
+                        if (!resp.ok) throw new Error();
+                        const data = await resp.json();
+                        produtoSelect.innerHTML = '<option value="">Selecione</option>';
+                        data.produtos.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p.id;
+                            opt.textContent = p.descricao;
+                            if (selectedId && selectedId == p.id) opt.selected = true;
+                            produtoSelect.appendChild(opt);
+                        });
+                    } catch(e) {
+                        console.warn("Erro ao carregar produtos:", e);
+                        produtoSelect.innerHTML = '<option>Erro ao carregar</option>';
+                    }
                 }
 
-                produtoSelect.appendChild(option);
+                if (categoriaSelect.value) {
+                    carregarProdutos(categoriaSelect.value, produtoSelecionado);
+                }
+
+                categoriaSelect.addEventListener('change', function() {
+                    const cat = this.value;
+                    if (cat) {
+                        carregarProdutos(cat);
+                    } else {
+                        produtoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
+                    }
+                });
+            }
+
+            const fotoInput = document.getElementById('id_foto');
+            const previewImg = document.getElementById('previewImagem');
+            if (fotoInput && previewImg) {
+                fotoInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            previewImg.src = ev.target.result;
+                            previewImg.classList.remove('d-none');
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        previewImg.classList.add('d-none');
+                        previewImg.src = '#';
+                    }
+                });
+            }
+
+            const btnSalvar = document.getElementById('btnSalvarEquipamento');
+            const modalElement = document.getElementById('modalConfirmacao');
+            const btnFechar = document.getElementById('btnFecharModal');
+            const btnConfirmar = document.getElementById('btnConfirmarEnvio');
+            const closeButtons = document.querySelectorAll('[data-dismiss="modal"]');
+
+            // Função para abrir o modal
+            function abrirModal() {
+                if (!modalElement) return;
+                modalElement.style.display = 'block';
+                modalElement.classList.add('show');
+                document.body.classList.add('modal-open');
+                // Criar backdrop
+                let backdrop = document.querySelector('.modal-backdrop');
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    document.body.appendChild(backdrop);
+                }
+            }
+
+            function fecharModal() {
+                if (!modalElement) return;
+                modalElement.style.display = 'none';
+                modalElement.classList.remove('show');
+                document.body.classList.remove('modal-open');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
+
+            // Preenche o modal com os dados do formulário
+            function preencherModal() {
+                // Categoria
+                const catSelect = document.querySelector('[name="categoria"]');
+                const catText = catSelect?.options[catSelect.selectedIndex]?.text || '';
+                document.getElementById('modalCategoria').innerText = catText || '(não selecionada)';
+
+                // Produto
+                const prodSelect = document.querySelector('[name="produto"]');
+                const prodText = prodSelect?.options[prodSelect.selectedIndex]?.text || '';
+                document.getElementById('modalProduto').innerText = prodText || '(não selecionado)';
+
+                // Nº Série
+                const serie = document.querySelector('[name="numero_serie"]');
+                document.getElementById('modalNumeroSerie').innerText = serie?.value.trim() || '(não informado)';
+
+                // Patrimônio
+                const patrimonio = document.querySelector('[name="patrimonio"]');
+                document.getElementById('modalPatrimonio').innerText = patrimonio?.value.trim() || '(não informado)';
+
+                // Regional
+                const regSelect = document.querySelector('[name="regional"]');
+                const regText = regSelect?.options[regSelect.selectedIndex]?.text || '';
+                document.getElementById('modalRegional').innerText = regText || '(não selecionada)';
+
+                // Responsável
+                const resp = document.querySelector('[name="responsavel"]');
+                document.getElementById('modalResponsavel').innerText = resp?.value.trim() || '(não informado)';
+
+                // Foto
+                const fotoFile = fotoInput?.files[0];
+                const modalPreview = document.getElementById('modalFotoPreview');
+                const modalNome = document.getElementById('modalFotoNome');
+                if (modalPreview && modalNome) {
+                    modalPreview.innerHTML = '';
+                    if (fotoFile) {
+                        const img = document.createElement('img');
+                        img.style.maxHeight = '120px';
+                        img.style.borderRadius = '8px';
+                        img.style.border = '1px solid #ddd';
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            img.src = e.target.result;
+                            modalPreview.appendChild(img);
+                        };
+                        reader.readAsDataURL(fotoFile);
+                        modalNome.innerText = fotoFile.name;
+                    } else {
+                        modalPreview.innerHTML = '<span class="text-muted">Nenhuma foto selecionada</span>';
+                        modalNome.innerText = '';
+                    }
+                }
+            }
+
+            // Evento do botão Salvar
+            if (btnSalvar) {
+                btnSalvar.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    preencherModal();
+                    abrirModal();
+                });
+            }
+
+            if (btnFechar) {
+                btnFechar.addEventListener('click', fecharModal);
+            }
+            if (closeButtons) {
+                closeButtons.forEach(btn => {
+                    btn.addEventListener('click', fecharModal);
+                });
+            }
+            if (modalElement) {
+                modalElement.addEventListener('click', function(e) {
+                    if (e.target === modalElement) fecharModal();
+                });
+            }
+
+            // Confirmar envio
+            if (btnConfirmar) {
+                btnConfirmar.addEventListener('click', function() {
+                    document.getElementById('formEquipamento').submit();
+                });
+            }
+
+            console.log('Scripts inicializados com sucesso');
+        });
+    } catch(err) {
+        console.error('Erro no script principal:', err);
+        // Fallback: permite o envio normal do formulário sem o popup
+        const btn = document.getElementById('btnSalvarEquipamento');
+        if (btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('formEquipamento').submit();
             });
-
-        } catch {
-            produtoSelect.innerHTML = '<option>Erro ao carregar</option>';
         }
-    };
-
-    if (categoriaSelect.value) {
-        carregarProdutos(categoriaSelect.value, produtoSelecionado);
     }
-
-    categoriaSelect.addEventListener('change', () => {
-        const categoria = categoriaSelect.value;
-
-        if (categoria) {
-            carregarProdutos(categoria);
-        } else {
-            produtoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
-        }
-    });
-
-});
+})();
 </script>
 
-<script>
-document.getElementById('id_foto').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    const preview = document.getElementById('previewImagem');
-
-    if (file) {
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.classList.remove('d-none');
-        };
-
-        reader.readAsDataURL(file);
+<style>
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1050;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        outline: 0;
+        background-color: rgba(0,0,0,0.5);
     }
-});
-</script>
-
+    .modal-dialog {
+        position: relative;
+        width: auto;
+        margin: 1.75rem auto;
+        pointer-events: none;
+    }
+    .modal-content {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid rgba(0,0,0,.2);
+        border-radius: 0.3rem;
+        outline: 0;
+    }
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1040;
+        width: 100vw;
+        height: 100vh;
+        background-color: #000;
+    }
+    .modal-backdrop.fade { opacity: 0; }
+    .modal-backdrop.show { opacity: 0.5; }
+    .modal-open { overflow: hidden; }
+    .d-none { display: none !important; }
+</style>
 {% endif %}
 {% endblock %}

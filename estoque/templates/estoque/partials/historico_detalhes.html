@@ -1,8 +1,4 @@
 <div>
-    <!--button class="btn btn-secondary btn-sm mb-3" id="btnVoltarEquipamentos">
-        ← Voltar
-    </button-->
-
     <div class="row g-3">
 
         <div class="col-lg-8">
@@ -41,13 +37,6 @@
                     <div><strong>Série:</strong> {{ historico.equipamento.numero_serie }}</div>
                     <div><strong>Patrimônio:</strong> {{ historico.equipamento.patrimonio }}</div>
                     <div><strong>Status:</strong> {{ historico.equipamento.get_status_display }}</div>
-                    {% if historico.equipamento.foto %}
-                    <!--div class="mt-3 text-center">
-                        <img src="{{ historico.equipamento.foto.url }}"
-                             class="img-fluid rounded shadow"
-                             style="max-height: 250px;">
-                    </div-->
-                    {% endif %}
 
                 </div>
             </div>
@@ -65,7 +54,13 @@
                         <img src="{{ historico.equipamento.foto.url }}"
                              class="img-thumbnail"
                              style="max-height: 200px; cursor: pointer;"
-                             onclick="abrirImagem('{{ historico.equipamento.foto.url }}')">
+                             data-imagem-url="{{ historico.equipamento.foto.url }}"
+                             alt="Foto do equipamento">
+                        <div class="small text-muted mt-1">Clique para ampliar</div>
+                    </div>
+                    {% else %}
+                    <div class="mt-3 text-center text-muted">
+                        <i class="bi bi-image"></i> Sem foto cadastrada
                     </div>
                     {% endif %}
 
@@ -74,5 +69,50 @@
         </div>
 
     </div>
-
 </div>
+
+<script>
+window.abrirImagem = function(url) {
+    if (url && !url.includes('via.placeholder.com') && !url.includes('no-image')) {
+        window.open(url, '_blank');
+    } else {
+        alert('Imagem não disponível para visualização.');
+    }
+};
+
+(function() {
+    function init() {
+        const imagens = document.querySelectorAll('.img-thumbnail');
+        imagens.forEach(img => {
+            if (!img.hasAttribute('data-error-handled')) {
+                img.setAttribute('data-error-handled', 'true');
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'https://via.placeholder.com/200?text=Sem+imagem';
+                    this.style.border = '1px solid #ddd';
+                };
+                if (!img.hasAttribute('onclick')) {
+                    const url = img.getAttribute('data-imagem-url') || img.src;
+                    img.addEventListener('click', function() {
+                        window.abrirImagem(url);
+                    });
+                }
+            }
+        });
+
+        const imagensComOnclick = document.querySelectorAll('[onclick*="abrirImagem"]');
+        imagensComOnclick.forEach(img => {
+            if (!window.abrirImagem) {
+                console.warn('abrirImagem não definida, recriando');
+                window.abrirImagem = function(url) { window.open(url, '_blank'); };
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
