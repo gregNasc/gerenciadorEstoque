@@ -42,7 +42,8 @@ urlpatterns = [
     path('historico/', views.historico_view, name='historico'),
     path('historico/<int:historico_id>/', views.historico_detalhes_view, name='historico_detalhes'),
     path('historico-modal/<int:equipamento_id>/', views.historico_equipamento_modal, name='historico_modal'),
-    path('historico/exportar/', views.exportar_historico_csv, name='exportar_historico_csv'),
+    path('historico/exportar/excel/', views.exportar_historico_excel, name='exportar_historico_excel'),
+    path('historico/exportar/pdf/', views.exportar_historico_pdf, name='exportar_historico_pdf'),
 
 
     # ---------------- TRANSFERÊNCIAS ----------------

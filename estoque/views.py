@@ -1,9 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
-from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.cache import cache_page
-import csv
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from openpyxl import Workbook
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
@@ -21,6 +21,7 @@ from .utils import EstoqueService
 from .security import secure_queryset
 from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
 import json
+import re
 from collections import defaultdict
 
 
@@ -912,32 +913,115 @@ def historico_detalhes_view(request, historico_id):
     })
 
 @login_required
-@role_required('admin', 'gestor')
-def exportar_historico_csv(request):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="historico_equipamentos.csv"'
+@role_required('admin')
+def exportar_historico_excel(request):
 
-    writer = csv.writer(response)
-    writer.writerow([
-        'Data', 'Equipamento', 'Número de Série', 'Patrimônio',
-        'Tipo de Ação', 'Usuário', 'Detalhes'
-    ])
+    regional_id = request.GET.get('regional')
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Histórico de Equipamentos"
+
+    headers = [
+        'Data',
+        'Regional',
+        'Equipamento',
+        'Número de Série',
+        'Patrimônio',
+        'Tipo de Ação',
+        'Usuário',
+        'Detalhes'
+    ]
+    ws.append(headers)
 
     historicos = Historico.objects.select_related(
-        'equipamento', 'equipamento__produto', 'usuario'
+        'equipamento',
+        'equipamento__produto',
+        'usuario',
+        'equipamento__regional'
     ).order_by('-data')
 
+    # filtro por regional
+    regional_nome = "TODAS"
+
+    if regional_id:
+        historicos = historicos.filter(equipamento__regional_id=regional_id)
+
+        regional_nome = (
+            historicos.first().equipamento.regional.nome
+            if historicos.exists()
+            else "SEM_DADOS"
+        )
+
     for h in historicos:
-        writer.writerow([
+        ws.append([
             h.data.strftime('%d/%m/%Y %H:%M'),
+            getattr(h.equipamento.regional, "nome", "N/A"),
             h.equipamento.produto.descricao,
             h.equipamento.numero_serie,
             h.equipamento.patrimonio,
             h.get_tipo_acao_display(),
-            h.usuario.username if h.usuario else 'Sistema',
-            str(h.detalhes)[:100]  # Limitar tamanho
+            h.usuario.username if h.usuario else "Sistema",
+            str(h.detalhes)[:200],
         ])
 
+    filename = f"historico_equipamentos_{regional_nome}.xlsx".replace(" ", "_")
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+
+    wb.save(response)
+    return response
+
+@login_required
+@role_required('admin')
+def exportar_historico_pdf(request):
+
+    regional_id = request.GET.get('regional')
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="historico_equipamentos.pdf"'
+
+    doc = SimpleDocTemplate(response)
+
+    historicos = Historico.objects.select_related(
+        'equipamento',
+        'equipamento__produto',
+        'usuario',
+        'equipamento__regional'
+    ).order_by('-data')
+
+    # 🔥 FILTRO AQUI TAMBÉM
+    if regional_id:
+        historicos = historicos.filter(equipamento__regional_id=regional_id)
+
+    data = [[
+        "Data", "Regional", "Equipamento", "Serial", "Patrimônio", "Ação", "Usuário"
+    ]]
+
+    for h in historicos:
+        data.append([
+            h.data.strftime('%d/%m/%Y %H:%M'),
+            getattr(h.equipamento.regional, "nome", "N/A"),
+            h.equipamento.produto.descricao,
+            h.equipamento.numero_serie,
+            h.equipamento.patrimonio,
+            h.get_tipo_acao_display(),
+            h.usuario.username if h.usuario else "Sistema",
+        ])
+
+    table = Table(data)
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+    ]))
+
+    doc.build([table])
     return response
 
 @login_required
@@ -1583,7 +1667,8 @@ def equipamentos_por_regional(request, produto_id, regional_id):
                 'id': e.id,
                 'numero_serie': e.numero_serie,
                 'patrimonio': e.patrimonio,
-                'status': e.status
+                'status': e.status,
+                'foto': e.foto.url if e.foto else None
             }
             for e in equipamentos
         ],
