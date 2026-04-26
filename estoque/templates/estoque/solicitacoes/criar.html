@@ -1,10 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<h3>Nova Solicitação de Equipamentos</h3>
+
+<hr>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label>Tipo de Equipamento</label>
+        <select name="categoria" class="form-select" required>
+            <option value="">Selecione...</option>
+            <option value="Coletores">Coletores</option>
+            <option value="Impressoras">Impressoras</option>
+            <option value="Notebooks">Notebooks</option>
+            <option value="Routers">Routers</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Quantidade</label>
+        <input type="number"
+               name="quantidade"
+               min="1"
+               class="form-control"
+               required>
+    </div>
+
+    <div class="mb-3">
+        <label>Motivo da solicitação</label>
+        <textarea name="motivo"
+                  class="form-control"
+                  rows="4"
+                  required></textarea>
+    </div>
+
+    <button class="btn btn-primary">
+        Enviar Solicitação
+    </button>
+
+</form>
+
+
+{% endblock %}

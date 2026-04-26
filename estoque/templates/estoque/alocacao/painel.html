@@ -1,10 +1,238 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Alocação da Solicitação #{{ solicitacao.id }}</h3>
+
+    <a href="{% url 'estoque:caixa_solicitacoes' %}" class="btn btn-outline-secondary btn-sm">
+        ← Voltar
+    </a>
+</div>
+
+<hr>
+
+<form method="post">
+    {% csrf_token %}
+
+    <!-- ===================== ITENS SOLICITADOS ===================== -->
+    <h5 class="mb-3">Itens solicitados</h5>
+
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Equipamento</th>
+                    <th>Solicitante</th>
+                    <th>Solicitado</th>
+                    <th>Pendente</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for item in itens %}
+                    <tr>
+                        <td><strong>{{ item.categoria }}</strong></td>
+
+                        <td>
+                            <span class="badge bg-primary">
+                                {{ solicitacao.regional_solicitante.nome }}
+                            </span>
+                        </td>
+
+                        <td>{{ item.quantidade }}</td>
+
+                        <td>
+                            <span class="badge bg-warning text-dark">
+                                {{ item.pendente }}
+                            </span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <hr>
+
+    <!-- ===================== ESTOQUE ===================== -->
+    <h5 class="mb-2">Alocação por regional</h5>
+
+    <p class="text-muted mb-4">
+        Selecione de qual regional e modelo os equipamentos serão enviados.
+    </p>
+
+    {% for item in itens %}
+        <div class="card mb-4 shadow-sm"
+             data-item-id="{{ item.id }}"
+             data-pendente="{{ item.pendente }}">
+
+            <!-- HEADER DO ITEM -->
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+
+                <div>
+                    <strong>{{ item.categoria }}</strong>
+
+                    <div class="small mt-1">
+                        <span class="text-muted">Solicitante:</span>
+                        <span class="badge bg-primary ms-1">
+                            {{ solicitacao.regional_solicitante.nome }}
+                        </span>
+                    </div>
+
+                    <div class="small text-muted mt-1">
+                        Alocado:
+                        <span class="fw-semibold alocado" data-item-id="{{ item.id }}">0</span>
+                        / {{ item.pendente }}
+                    </div>
+                </div>
+
+                <span class="badge bg-warning text-dark">
+                    Pendente: {{ item.pendente }}
+                </span>
+            </div>
+
+            <!-- REGIONAIS -->
+            <div class="card-body">
+                <div class="row g-3">
+
+                    {% for r in item.regionais %}
+                        <div class="col-md-4">
+
+                            <div class="card h-100 shadow-sm border-0
+                                {% if r.sugerido %}
+                                    border border-success
+                                {% endif %}
+                                {% if r.regional == regional_solicitante.nome %}
+                                    border border-primary
+                                {% endif %}
+                            "
+                            {% if r.sugerido %}
+                                data-sugerido="true"
+                            {% endif %}
+                            >
+
+                                <!-- HEADER REGIONAL -->
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+
+                                    <div class="d-flex align-items-center gap-2">
+                                        <strong>{{ r.regional }}</strong>
+
+                                        {% if r.sugerido %}
+                                            <span class="badge bg-success">
+                                                Sugerido
+                                            </span>
+                                        {% endif %}
+
+                                        {% if r.regional == regional_solicitante.nome %}
+                                            <span class="badge bg-primary">
+                                                Destino
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <span class="badge bg-secondary">
+                                        {{ r.total }}
+                                    </span>
+                                </div>
+
+                                <!-- MODELOS -->
+                                <div class="card-body">
+
+                                    {% for m in r.modelos %}
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+
+                                            <div class="pe-2">
+                                                <small class="fw-semibold d-block">
+                                                    {{ m.produto }}
+                                                </small>
+
+                                                <span class="text-muted small">
+                                                    Disponível: {{ m.disponivel }}
+                                                </span>
+                                            </div>
+
+                                            <div style="width: 80px;">
+                                                <input
+                                                    type="number"
+                                                    name="alocacao_{{ item.id }}_{{ r.regional_id }}_{{ m.produto_id }}"
+                                                    min="0"
+                                                    max="{{ m.disponivel }}"
+                                                    class="form-control form-control-sm input-alocacao"
+                                                    data-item-id="{{ item.id }}"
+                                                >
+                                            </div>
+
+                                        </div>
+                                    {% empty %}
+                                        <div class="text-muted small text-center">
+                                            Sem estoque
+                                        </div>
+                                    {% endfor %}
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+
+        </div>
+    {% endfor %}
+
+    <!-- SUBMIT -->
+    <div class="d-flex justify-content-end mt-3">
+        <button type="submit" class="btn btn-success" id="btnSubmit">
+            Gerar Transferências
+        </button>
+    </div>
+
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const inputs = document.querySelectorAll('.input-alocacao');
+    const btn = document.getElementById('btnSubmit');
+
+    function validar() {
+        let valido = true;
+        const soma = {};
+
+        inputs.forEach(input => {
+            const itemId = input.dataset.itemId;
+            const valor = parseInt(input.value) || 0;
+
+            if (!soma[itemId]) soma[itemId] = 0;
+            soma[itemId] += valor;
+        });
+
+        Object.keys(soma).forEach(itemId => {
+            const card = document.querySelector(`[data-item-id="${itemId}"]`);
+            const pendente = parseInt(card.dataset.pendente);
+            const total = soma[itemId];
+
+            // Atualiza label
+            const label = document.querySelector(`.alocado[data-item-id="${itemId}"]`);
+            if (label) label.innerText = total;
+
+            if (total > pendente) {
+                valido = false;
+                card.classList.add('border-danger');
+            } else {
+                card.classList.remove('border-danger');
+            }
+        });
+
+        btn.disabled = !valido;
+    }
+
+    inputs.forEach(i => i.addEventListener('input', validar));
+
+});
+</script>
+
+{% endblock %}

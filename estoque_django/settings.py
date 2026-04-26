@@ -23,8 +23,8 @@ print(BASE_DIR)
 SECRET_KEY = os.getenv('SECRET_KEY', 'unsafe-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = True
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = True
+#DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
 
@@ -45,7 +45,7 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'estoque',
+            'NAME': 'estoque_render_dump',
             'USER': 'postgres',
             'PASSWORD': 'admininventory',
             'HOST': 'localhost',

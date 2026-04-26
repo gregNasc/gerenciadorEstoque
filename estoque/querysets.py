@@ -18,4 +18,3 @@ def filtrar_por_empresa(queryset, empresa):
     if any(f.name == "regional" for f in model._meta.get_fields()):
         return queryset.filter(regional__empresa=empresa)
 
-    return queryset  # fallback seguro
