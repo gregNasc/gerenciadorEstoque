@@ -1,0 +1,72 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<h3>Caixa de Solicitações</h3>
+
+<hr>
+
+<h5>Pendentes</h5>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Produto</th>
+            <th>Quantidade</th>
+            <th>Regional</th>
+            <th>Data</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for s in pendentes %}
+        <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.produto.descricao }}</td>
+            <td>{{ s.quantidade }}</td>
+            <td>{{ s.regional_solicitante.nome }}</td>
+            <td>{{ s.data_criacao }}</td>
+            <td>
+                <a href="{% url 'estoque:painel_alocacao' s.id %}"
+                   class="btn btn-sm btn-primary">
+                    Analisar
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center text-muted">
+                Nenhuma solicitação pendente
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<hr>
+
+<h5>Aprovadas</h5>
+
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Produto</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for s in aprovadas %}
+        <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.produto.descricao }}</td>
+            <td>{{ s.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
