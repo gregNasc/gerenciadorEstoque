@@ -17,6 +17,7 @@
 <body>
 
 {% if request.user.is_authenticated %}
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container-fluid">
 
@@ -30,63 +31,69 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
 
-            {% with perfil=request.user.perfil %}
+            {% with perfil=request.user.perfil url_name=request.resolver_match.url_name %}
+
             <ul class="navbar-nav ms-auto">
 
                 <!-- ESTOQUE -->
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'estoque' %}active{% endif %}"
+                    <a class="nav-link {% if url_name == 'estoque' %}active{% endif %}"
                        href="{% url 'estoque:estoque' %}">
                         <i class="bi bi-grid"></i> Estoque
                     </a>
                 </li>
 
-                <!-- CAIXA DE SOLICITAÇÕES -->
-                {% if perfil.role == 'admin' %}
-                <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'caixa_solicitacoes' %}active{% endif %}"
-                       href="{% url 'estoque:caixa_solicitacoes' %}">
-                        <i class="bi bi-inbox"></i> Caixa
-                    </a>
-                </li>
-                {% endif %}
-
-                <!-- SOLICITAR -->
-                {% comment %}
+                <!-- SOLICITAÇÕES -->
                 {% if perfil.role == 'gestor' %}
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'criar_solicitacao' %}active{% endif %}"
+                    <a class="nav-link {% if url_name == 'criar_solicitacao' %}active{% endif %}"
                        href="{% url 'estoque:criar_solicitacao' %}">
                         <i class="bi bi-plus-circle"></i> Solicitar
                     </a>
                 </li>
                 {% endif %}
-                {% endcomment %}
+
+                <!-- CAIXA -->
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <li class="nav-item">
+                    <a class="nav-link position-relative {% if url_name == 'caixa_solicitacoes' %}active{% endif %}"
+                       href="{% url 'estoque:caixa_solicitacoes' %}">
+                        <i class="bi bi-inbox"></i> Caixa
+                        {% if notificacoes_nao_lidas > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ notificacoes_nao_lidas }}
+                        </span>
+                        {% endif %}
+
+
+                    </a>
+                </li>
+                {% endif %}
 
                 <!-- TRANSFERÊNCIAS -->
                 {% if perfil.role == 'admin' %}
                 <li class="nav-item">
-                    <a class="nav-link {% if 'transferencia' in request.resolver_match.url_name %}active{% endif %}"
+                    <a class="nav-link {% if 'transferencia' in url_name %}active{% endif %}"
                        href="{% url 'estoque:lista_transferencias' %}">
                         <i class="bi bi-arrow-left-right"></i> Transferências
                     </a>
                 </li>
                 {% endif %}
 
-                <!--  SICK -->
+                <!-- SICK -->
                 {% if perfil.role == 'admin' %}
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'sick' %}active{% endif %}"
+                    <a class="nav-link {% if url_name == 'sick' %}active{% endif %}"
                        href="{% url 'estoque:sick' %}">
                         <i class="bi bi-exclamation-triangle"></i> SICK
                     </a>
                 </li>
                 {% endif %}
 
-                <!-- CADASTROS (ADMIN) -->
+                <!-- CADASTROS -->
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'cadastrar_equipamento' %}active{% endif %}"
+                    <a class="nav-link {% if url_name == 'cadastrar_equipamento' %}active{% endif %}"
                        href="{% url 'estoque:cadastrar_equipamento' %}">
                         <i class="bi bi-plus-square"></i> Equipamento
                     </a>
@@ -95,7 +102,7 @@
 
                 {% if perfil.role == 'admin' %}
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'cadastrar_usuario' %}active{% endif %}"
+                    <a class="nav-link {% if url_name == 'cadastrar_usuario' %}active{% endif %}"
                        href="{% url 'estoque:cadastrar_usuario' %}">
                         <i class="bi bi-person-add"></i> Usuários
                     </a>
@@ -113,19 +120,20 @@
                 <li class="nav-item">
                     <form method="post" action="{% url 'estoque:logout' %}" style="display:inline;">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-link nav-link text-danger"
-                                style="border: none; background: none;">
+                        <button type="submit" class="btn btn-link nav-link text-danger border-0 bg-transparent">
                             <i class="bi bi-box-arrow-right"></i> Sair
                         </button>
                     </form>
                 </li>
 
             </ul>
+
             {% endwith %}
 
         </div>
     </div>
 </nav>
+
 {% endif %}
 
 <main class="container">
@@ -144,15 +152,15 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Auto-submit para selects com a classe .auto-submit
-        document.querySelectorAll('.auto-submit').forEach(function(select) {
-            select.addEventListener('change', function() {
-                this.form.submit();
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.auto-submit').forEach(function(select) {
+        select.addEventListener('change', function() {
+            this.form.submit();
         });
     });
+});
 </script>
 
 {% block extra_js %}{% endblock %}

@@ -196,10 +196,12 @@ class Solicitacao(models.Model):
         related_name='origens'
     )
 
-    data_criacao = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
     data_aprovacao = models.DateTimeField(null=True, blank=True)
 
 class SolicitacaoItem(models.Model):
+    class Meta:
+        db_table = 'estoque_itemsolicitacao'
 
     CATEGORIAS = [
         ('Coletores', 'Coletores'),
@@ -245,54 +247,59 @@ class AlocacaoSolicitacaoItem(models.Model):
 
 class Transferencia(models.Model):
 
-    solicitado_por = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='transferencias_solicitadas'
-    )
+    alocacao = models.ForeignKey(AlocacaoSolicitacaoItem,on_delete=models.SET_NULL, null=True, blank=True)
 
-    recebido_por = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='transferencias_recebidas'
-    )
+    solicitado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
-    alocacao = models.ForeignKey(
-        AlocacaoSolicitacaoItem,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
+    regional_origem = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='origem')
+    regional_destino = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='destino')
 
-    equipamento = models.ForeignKey(
-        Equipamento,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
+    status = models.CharField(max_length=20, default='RASCUNHO')
 
-    regional_origem = models.ForeignKey(
-        Base,
-        on_delete=models.CASCADE,
-        related_name='transferencias_origem'
-    )
-
-    regional_destino = models.ForeignKey(
-        Base,
-        on_delete=models.CASCADE,
-        related_name='transferencias_destino'
-    )
-
-    status = models.CharField(
-        max_length=20,
-        default='PENDENTE'
-    )
-
-    data_envio = models.DateTimeField(auto_now_add=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_envio = models.DateTimeField(null=True, blank=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
+
+class TransferenciaItem(models.Model):
+
+    transferencia = models.ForeignKey(
+        Transferencia,
+        on_delete=models.CASCADE,
+        related_name='itens'
+    )
+
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+
+    quantidade = models.PositiveIntegerField()
+
+    equipamentos = models.ManyToManyField(Equipamento, blank=True)
+
+class Notificacao(models.Model):
+
+    TIPOS = [
+        ('SOLICITACAO', 'Solicitação'),
+        ('TRANSFERENCIA', 'Transferência'),
+    ]
+
+    EVENTOS = [
+        ('CRIADA', 'Criada'),
+        ('APROVADA', 'Aprovada'),
+        ('REJEITADA', 'Rejeitada'),
+        ('EM_TRANSFERENCIA', 'Em transferência'),
+        ('RECEBIDA', 'Recebida'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    evento = models.CharField(max_length=30, choices=EVENTOS)
+
+    mensagem = models.CharField(max_length=255)
+
+    lida = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    link = models.CharField(max_length=255, null=True, blank=True)
 
 # ---------------- SICK ----------------
 class Sick(models.Model):

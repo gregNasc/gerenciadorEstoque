@@ -131,35 +131,31 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
 # ================== TRANSFERÊNCIA ==================
 @admin.register(Transferencia)
 class TransferenciaAdmin(admin.ModelAdmin):
+        list_display = (
+            'id',
+            'regional_origem',
+            'regional_destino',
+            'status',
+            'solicitado_por',
+            'data_envio',
+            'data_recebimento',
+        )
 
-    list_display = (
-        'id',
-        'equipamento',
-        'regional_origem',
-        'regional_destino',
-        'status',
-        'solicitado_por',
-        'recebido_por',
-        'data_envio',
-        'data_recebimento',
-    )
+        list_filter = (
+            'status',
+            'regional_origem',
+            'regional_destino',
+        )
 
-    list_filter = (
-        'status',
-        'regional_origem',
-        'regional_destino',
-    )
-
-    readonly_fields = (
-        'equipamento',
-        'regional_origem',
-        'regional_destino',
-        'status',
-        'solicitado_por',
-        'recebido_por',
-        'data_envio',
-        'data_recebimento',
-    )
+        readonly_fields = (
+            'regional_origem',
+            'regional_destino',
+            'status',
+            'solicitado_por',
+            #'recebido_por',
+            'data_envio',
+            'data_recebimento',
+        )
 
 
 # ================== SICK ==================

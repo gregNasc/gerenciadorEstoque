@@ -1096,6 +1096,8 @@ def painel_alocacao(request, solicitacao_id):
     # ===================== POST =====================
     if request.method == 'POST':
 
+        alocacoes = []
+
         for key, value in request.POST.items():
             if key.startswith('alocacao_') and value:
 
@@ -1105,43 +1107,16 @@ def painel_alocacao(request, solicitacao_id):
                 if quantidade <= 0:
                     continue
 
-                item = SolicitacaoItem.objects.get(id=item_id)
+                alocacoes.append({
+                    'item_id': item_id,
+                    'regional_id': regional_id,
+                    'produto_id': produto_id,
+                    'quantidade': quantidade
+                })
 
-                alocacao = AlocacaoSolicitacaoItem.objects.create(
-                    item=item,
-                    regional_origem_id=regional_id,
-                    quantidade=quantidade
-                )
+        request.session['alocacoes_transferencia'] = alocacoes
 
-                equipamentos = Equipamento.objects.filter(
-                    produto_id=produto_id,
-                    regional_id=regional_id,
-                    status='ATIVO'
-                )[:quantidade]
-
-                if equipamentos.count() < quantidade:
-                    continue
-
-                for eq in equipamentos:
-                    Transferencia.objects.create(
-                        solicitado_por=request.user,
-                        equipamento=eq,
-                        regional_origem_id=regional_id,
-                        regional_destino=solicitacao.regional_solicitante,
-                        alocacao=alocacao,
-                        status='PENDENTE'
-                    )
-
-                    eq.status = 'EM_TRANSFERENCIA'
-                    eq.save()
-
-                item.atendido += quantidade
-                item.save()
-
-        solicitacao.status = 'EM_TRANSFERENCIA'
-        solicitacao.save()
-
-        return redirect('estoque:caixa_solicitacoes')
+        return redirect('estoque:transferencia_criar')
 
     # ===================== GET =====================
     estoque = get_estoque_por_produto()
@@ -1190,6 +1165,123 @@ def painel_alocacao(request, solicitacao_id):
     })
 
 @login_required
+@role_required('admin')
+def transferencia_criar(request):
+
+    alocacoes = request.session.get('alocacoes_transferencia', [])
+
+    bases = Base.objects.in_bulk()
+    produtos = Produto.objects.in_bulk()
+
+    if request.method == 'POST':
+
+        transferencias = []
+
+        for a in alocacoes:
+
+            regional_id = int(a['regional_id'])
+            produto_id = int(a['produto_id'])
+            quantidade = int(a['quantidade'])
+
+            transferencias.append({
+                'regional_origem_id': regional_id,
+                'regional_destino_id': request.POST.get('destino'),
+                'produto_id': produto_id,
+                'quantidade': quantidade
+            })
+
+        for t in transferencias:
+            Transferencia.objects.create(
+                regional_origem_id=t['regional_origem_id'],
+                regional_destino_id=t['regional_destino_id'],
+                solicitado_por=request.user,
+                status='PENDENTE'
+            )
+
+        # limpa sessão
+        request.session['alocacoes_transferencia'] = []
+
+        return redirect('estoque:lista_transferencias')
+
+    agrupado = {}
+
+    for a in alocacoes:
+
+        key = f"{a['regional_id']}"
+
+        if key not in agrupado:
+            agrupado[key] = {
+                'regional_id': a['regional_id'],
+                'regional_nome': bases[int(a['regional_id'])].nome if int(a['regional_id']) in bases else 'Desconhecida',
+                'itens': []
+            }
+
+        agrupado[key]['itens'].append({
+            'produto_nome': produtos[int(a['produto_id'])].descricao if int(a['produto_id']) in produtos else 'Desconhecido',
+            'quantidade': a['quantidade']
+        })
+
+    return render(request, 'estoque/transferencia/criar.html', {
+        'alocacoes': agrupado.values(),
+        'bases': Base.objects.all()
+    })
+
+@login_required
+def alocar_solicitacao(request, solicitacao_id):
+    solicitacao = get_object_or_404(
+        Solicitacao.objects.prefetch_related('itens'),
+        id=solicitacao_id
+    )
+
+    bases = Base.objects.all()
+
+    if request.method == 'POST':
+        with transaction.atomic():
+
+            for item in solicitacao.itens.all():
+                origem_id = request.POST.get(f'origem_{item.id}')
+                qtd = request.POST.get(f'qtd_{item.id}')
+
+                if not origem_id or not qtd:
+                    continue
+
+                qtd = int(qtd)
+
+                if qtd <= 0:
+                    continue
+
+                origem = Base.objects.get(id=origem_id)
+
+                # cria alocação
+                alocacao = AlocacaoSolicitacaoItem.objects.create(
+                    item=item,
+                    regional_origem=origem,
+                    quantidade=qtd
+                )
+
+                # cria transferência
+                Transferencia.objects.create(
+                    alocacao=alocacao,
+                    regional_origem=origem,
+                    regional_destino=solicitacao.regional_solicitante,
+                    solicitado_por=request.user
+                )
+
+                # atualiza atendido
+                item.atendido += qtd
+                item.save()
+
+            solicitacao.status = 'EM_TRANSFERENCIA'
+            solicitacao.save()
+
+        return redirect('estoque:caixa_solicitacoes')
+
+    return render(request, 'estoque/alocacao_solicitacao.html', {
+        'solicitacao': solicitacao,
+        'bases': bases
+    })
+
+@login_required
 def dashboard_gestor(request):
 
     from .services.estoque_service import get_estoque_por_produto
@@ -1211,15 +1303,30 @@ def dashboard_gestor(request):
     })
 
 @login_required
-@role_required('admin')
+@role_required('admin', 'gestor')
 def caixa_solicitacoes(request):
 
-    solicitacoes = Solicitacao.objects.filter(status='PENDENTE')
+    perfil = request.user.perfil
 
-    solicitacoes = solicitacoes.order_by('-data_criacao')
+    qs = Solicitacao.objects.select_related(
+        'criado_por',
+        'regional_solicitante',
+        'regional_origem'
+    ).filter(
+        status='PENDENTE'
+    )
+
+    if perfil.role == 'gestor':
+        qs = qs.filter(
+            Q(regional_solicitante__in=perfil.regionais.all()) |
+            Q(regional_origem__in=perfil.regionais.all())
+        )
+
+    qs = qs.order_by('-criado_em')
 
     return render(request, 'estoque/solicitacoes/caixa.html', {
-        'solicitacoes': solicitacoes
+        'solicitacoes': qs,
+        'notificacoes_nao_lidas': qs.count()
     })
 #@login_required
 #@role_required('admin')
@@ -1241,6 +1348,18 @@ def caixa_solicitacoes(request):
 
 
 # ----------------- TRANSFERÊNCIA  -----------------
+
+def caixa_transferencias(request):
+
+    perfil = request.user.perfil
+
+    transferencias = Transferencia.objects.filter(
+        regional_destino__in=perfil.regionais.all()
+    ).order_by('-id')
+
+    return render(request, 'estoque/caixa_transferencias.html', {
+        'transferencias': transferencias
+    })
 
 @login_required
 @role_required('admin', 'gestor')

@@ -48,9 +48,11 @@ urlpatterns = [
 
     # ---------------- TRANSFERÊNCIAS ----------------
     path('transferencias/', lista_transferencias, name='lista_transferencias'),
+    path('transferencias/criar/', views.transferencia_criar, name='transferencia_criar'),
     path('transferir-em-lote/', views.transferir_em_lote, name='transferir_em_lote'),
     path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),
     path('receber-transferencia/<int:transferencia_id>/', views.receber_transferencia, name='receber_transferencia'),
+
 
 
     # ---------------- SOLICITAÇÕES ----------------

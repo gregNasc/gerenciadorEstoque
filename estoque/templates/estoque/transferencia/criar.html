@@ -1,51 +1,54 @@
 {% extends 'estoque/base.html' %}
 
 {% block content %}
+
 <h3>Nova Transferência</h3>
 
 <form method="post">
     {% csrf_token %}
 
-    <div class="row">
-        <div class="col-md-6">
-            <label>Origem</label>
-            {{ form.origem }}
-        </div>
-
+    <div class="row mb-3">
         <div class="col-md-6">
             <label>Destino</label>
-            {{ form.destino }}
+            <select name="destino" class="form-control">
+                {% for base in bases %}
+                    <option value="{{ base.id }}">{{ base.nome }}</option>
+                {% endfor %}
+            </select>
         </div>
     </div>
 
     <hr>
 
-    <h5>Itens</h5>
+    <h5>Itens selecionados</h5>
 
-    {{ formset.management_form }}
+    {% for grupo in alocacoes %}
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Equipamento</th>
-                <th>Quantidade</th>
-                <th></th>
-            </tr>
-        </thead>
+        <div class="card mb-3">
 
-        <tbody>
-            {% for form in formset %}
-            <tr>
-                <td>{{ form.equipamento }}</td>
-                <td>{{ form.quantidade }}</td>
-                <td></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            <div class="card-header">
+                <strong>Origem:</strong> {{ grupo.regional_nome }}
+            </div>
+
+            <div class="card-body">
+
+                {% for item in grupo.itens %}
+                    <p>
+                        <strong>Produto:</strong> {{ item.produto_nome }} <br>
+                        <strong>Quantidade:</strong> {{ item.quantidade }}
+                    </p>
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    {% endfor %}
 
     <button class="btn btn-success">
         Salvar Transferência
     </button>
+
 </form>
+
 {% endblock %}

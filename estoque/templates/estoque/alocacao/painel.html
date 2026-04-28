@@ -23,8 +23,8 @@
             <thead class="table-light">
                 <tr>
                     <th>Equipamento</th>
-                    <th>Solicitante</th>
                     <th>Solicitado</th>
+                    <th>Solicitante</th>
                     <th>Pendente</th>
                 </tr>
             </thead>
@@ -33,13 +33,6 @@
                 {% for item in itens %}
                     <tr>
                         <td><strong>{{ item.categoria }}</strong></td>
-
-                        <td>
-                            <span class="badge bg-primary">
-                                {{ solicitacao.regional_solicitante.nome }}
-                            </span>
-                        </td>
-
                         <td>{{ item.quantidade }}</td>
 
                         <td>
@@ -47,6 +40,13 @@
                                 {{ item.pendente }}
                             </span>
                         </td>
+
+                        <td>
+                            <span class="badge bg-primary">
+                                {{ solicitacao.regional_solicitante.nome }}
+                            </span>
+                        </td>
+
                     </tr>
                 {% endfor %}
             </tbody>
