@@ -260,12 +260,12 @@ class Transferencia(models.Model):
         related_name='transferencias_recebidas'
     )
 
-    alocacao = models.ForeignKey(
-        AlocacaoSolicitacaoItem,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
+#    alocacao = models.ForeignKey(
+#        AlocacaoSolicitacaoItem,
+#        on_delete=models.SET_NULL,
+#        null=True,
+#        blank=True
+#    )
 
     equipamento = models.ForeignKey(
         Equipamento,
