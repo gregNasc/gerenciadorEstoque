@@ -1216,7 +1216,7 @@ def caixa_solicitacoes(request):
 
     solicitacoes = Solicitacao.objects.filter(status='PENDENTE')
 
-    solicitacoes = solicitacoes.order_by('-data_criacao')
+    solicitacoes = solicitacoes.order_by('-criado_em')
 
     return render(request, 'estoque/solicitacoes/caixa.html', {
         'solicitacoes': solicitacoes
@@ -1228,7 +1228,7 @@ def caixa_solicitacoes(request):
 #        Solicitacao.objects
 #        .select_related('criado_por', 'regional_solicitante')
 #        .prefetch_related('itens__produto')
-#        .order_by('-data_criacao')
+#        .order_by('-criado_em')
 #    )
 
 #    pendentes = solicitacoes.filter(status='PENDENTE')

@@ -52,7 +52,7 @@
                 {% endif %}
 
                 <!-- SOLICITAR -->
-                {% comment %}
+
                 {% if perfil.role == 'gestor' %}
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'criar_solicitacao' %}active{% endif %}"
@@ -61,7 +61,6 @@
                     </a>
                 </li>
                 {% endif %}
-                {% endcomment %}
 
                 <!-- TRANSFERÊNCIAS -->
                 {% if perfil.role == 'admin' %}

@@ -195,7 +195,8 @@ class Solicitacao(models.Model):
         related_name='origens'
     )
 
-    data_criacao = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+#   data_criacao = models.DateTimeField(auto_now_add=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
     data_aprovacao = models.DateTimeField(null=True, blank=True)
 
 class SolicitacaoItem(models.Model):
@@ -215,12 +216,13 @@ class SolicitacaoItem(models.Model):
         #blank=True
     )
 
-    categoria = models.CharField(
-        max_length=50,
-        choices=CATEGORIAS,
-        db_index=True
-    )
+#    categoria = models.CharField(
+#        max_length=50,
+#        choices=CATEGORIAS,
+#        db_index=True
+#    )
 
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
     atendido = models.PositiveIntegerField(default=0)
 
@@ -261,18 +263,18 @@ class Transferencia(models.Model):
         related_name='transferencias_recebidas'
     )
 
-#    alocacao = models.ForeignKey(
-#        AlocacaoSolicitacaoItem,
-#        on_delete=models.SET_NULL,
-#        null=True,
-#        blank=True
-#    )
+    alocacao = models.ForeignKey(
+        AlocacaoSolicitacaoItem,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
 
     equipamento = models.ForeignKey(
         Equipamento,
         on_delete=models.CASCADE,
-        null=False,
-        blank=False
+        null=True,
+        blank=True
     )
 
     regional_origem = models.ForeignKey(
@@ -301,11 +303,11 @@ class Transferencia(models.Model):
 
     data_envio = models.DateTimeField(auto_now_add=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
-    alocacao_id = models.BigIntegerField(
-        blank=True,
-        null=True,
-        db_index=True
-    )
+#   alocacao_id = models.BigIntegerField(
+#        blank=True,
+#        null=True,
+#        db_index=True
+#    )
 
     solicitacao = models.ForeignKey(
         Solicitacao,
@@ -314,6 +316,10 @@ class Transferencia(models.Model):
         null=True,
         blank=True
     )
+
+    def clean(self):
+        if self.equipamento and self.equipamento.status != 'ATIVO':
+            raise ValidationError("Equipamento não pode ser transferido.")
 
 # ---------------- SICK ----------------
 class Sick(models.Model):
