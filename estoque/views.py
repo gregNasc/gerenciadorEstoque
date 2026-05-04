@@ -1621,18 +1621,16 @@ def lista_transferencias(request):
     perfil = request.user.perfil
 
     qs = Transferencia.objects.select_related(
-        'equipamento',
-        'equipamento__produto',
+        'alocacao',
         'regional_origem',
         'regional_destino',
-        'solicitado_por',
-        'recebido_por'
-    ).order_by('-data_envio')  # ← corrigido
+        'solicitado_por'
+    ).order_by('-data_envio')
 
     if perfil.role != 'admin':
         qs = qs.filter(
-            Q(regional_destino__in=perfil.regionais_ids) |
-            Q(regional_origem=perfil.regionais.first())  # cuidado: veja nota abaixo
+            Q(regional_destino__in=perfil.regionais.all()) |
+            Q(regional_origem__in=perfil.regionais.all())
         )
 
     hoje = timezone.now().date()
