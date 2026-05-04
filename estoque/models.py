@@ -151,13 +151,12 @@ class Equipamento(models.Model):
     qr_code = models.ImageField(upload_to="qrcodes/", null=True, blank=True)
 
     def __str__(self):
-        return f"{self.numero_serie} - {self.produto.descricao}"
+        produto_desc = self.produto.descricao if self.produto else "Sem produto"
+        return f"{self.numero_serie} - {produto_desc}"
 
     def save(self, *args, **kwargs):
         if not self.codigo:
-            ultimo = Equipamento.objects.order_by('-id').first()
-            proximo = (ultimo.id + 1) if ultimo else 1
-            self.codigo = f"EQP-{proximo:06d}"
+            self.codigo = f"EQP-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
 
@@ -209,9 +208,11 @@ class SolicitacaoItem(models.Model):
     ]
 
     solicitacao = models.ForeignKey(
-        'Solicitacao',
+        Solicitacao,
         on_delete=models.CASCADE,
-        related_name='itens'
+        related_name='itens',
+        #null=True,
+        #blank=True
     )
 
     categoria = models.CharField(
@@ -270,8 +271,8 @@ class Transferencia(models.Model):
     equipamento = models.ForeignKey(
         Equipamento,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True
+        null=False,
+        blank=False
     )
 
     regional_origem = models.ForeignKey(
@@ -286,13 +287,33 @@ class Transferencia(models.Model):
         related_name='transferencias_destino'
     )
 
+    STATUS = [
+        ('PENDENTE', 'Pendente'),
+        ('ENVIADO', 'Enviado'),
+        ('RECEBIDO', 'Recebido'),
+    ]
+
     status = models.CharField(
         max_length=20,
+        choices=STATUS,
         default='PENDENTE'
     )
 
     data_envio = models.DateTimeField(auto_now_add=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
+    alocacao_id = models.BigIntegerField(
+        blank=True,
+        null=True,
+        db_index=True
+    )
+
+    solicitacao = models.ForeignKey(
+        Solicitacao,
+        on_delete=models.CASCADE,
+        related_name='transferencias',
+        null=True,
+        blank=True
+    )
 
 # ---------------- SICK ----------------
 class Sick(models.Model):
