@@ -1,7 +1,20 @@
+# Python
 __pycache__/
 *.pyc
-*.sqlite3
+
+# Virtualenv
+.venv/
+
+# Environment variables
 .env
+
+# Database local
+*.sqlite3
+
+# Static / media
 media/
 staticfiles/
-.venv/
+
+# OS / lixo
+.DS_Store
+Thumbs.db

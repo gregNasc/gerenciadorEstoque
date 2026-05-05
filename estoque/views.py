@@ -1361,6 +1361,19 @@ def caixa_transferencias(request):
         'transferencias': transferencias
     })
 
+def notificar_transferencia(usuario, transferencia, evento):
+    Notificacao.objects.get_or_create(
+        usuario=usuario,
+        transferencia=transferencia,
+        tipo='TRANSFERENCIA',
+        evento=evento,
+        defaults={
+            'mensagem': f"Transferência {evento.lower()}",
+            'link': f"/transferencias/{transferencia.id}/"
+        }
+    )
+
+
 @login_required
 @role_required('admin', 'gestor')
 def pode_transferir(equipamento):
@@ -1369,7 +1382,7 @@ def pode_transferir(equipamento):
 
     if Transferencia.objects.filter(
         equipamento=equipamento,
-        status='PENDENTE'
+        status__in=['SOLICITADO', 'PENDENTE', 'ENVIADO']
     ).exists():
         return False, 'PENDENTE'
 
@@ -1437,10 +1450,14 @@ def criar_solicitacao(request):
     # --- GET ---
     return render(request, 'estoque/solicitacoes/criar.html')
 
-def iniciar_transferencia(destino, origem, user, alocacao):
-    return Transferencia.objects.create(
+def iniciar_transferencia(equipamento, destino, user, alocacao=None):
+    if equipamento.status != 'ATIVO':
+        raise ValueError("Equipamento não disponível")
+
+    transferencia = Transferencia.objects.create(
+        equipamento=equipamento,
         alocacao=alocacao,
-        regional_origem=origem,
+        regional_origem=equipamento.regional,
         regional_destino=destino,
         solicitado_por=user,
         status='PENDENTE'
@@ -1559,7 +1576,7 @@ def enviar_transferencia(transferencia, equipamentos_ids, user):
         equipamento.status = 'TRANSFERENCIA'
         equipamento.save(update_fields=['status'])
 
-    transferencia.status = 'PROCESSADO'
+    #transferencia.status = 'PROCESSADO'
     transferencia.save()
 
 @login_required
@@ -1661,7 +1678,7 @@ def receber_transferencia(request, transferencia_id):
     if request.method == 'POST':
         with transaction.atomic():
             transferencia = Transferencia.objects.select_for_update().get(id=transferencia.id)
-            finalizar_transferencia(transferencia, request.user)
+            transferencia.receber(transferencia, request.user)
 
         messages.success(request, "Transferência recebida.")
         return redirect('estoque:index')
@@ -1686,7 +1703,7 @@ def receber_transferencia_lote(request, solicitacao_id):
 
             for tid in ids:
                 t = Transferencia.objects.select_for_update().get(id=tid)
-                finalizar_transferencia(t, request.user)
+                transferencia.receber(t, request.user)
 
     return render(request, 'estoque/receber_lote.html', {
         'transferencias': transferencias
@@ -1745,8 +1762,8 @@ def lista_transferencias(request):
         'regional_origem',
         'regional_destino',
         'solicitado_por',
-        'recebido_por'
-    ).order_by('-data_envio')  # ← corrigido
+#        'recebido_por'
+    ).order_by('-data_envio')
 
     if perfil.role != 'admin':
         qs = qs.filter(

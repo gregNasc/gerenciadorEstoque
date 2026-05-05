@@ -71,7 +71,6 @@
                 {% endif %}
 
                 <!-- TRANSFERÊNCIAS -->
-                {% comment %}
                 {% if perfil.role == 'admin' %}
                 <li class="nav-item">
                     <a class="nav-link {% if 'transferencia' in url_name %}active{% endif %}"
@@ -80,7 +79,6 @@
                     </a>
                 </li>
                 {% endif %}
-                {% endcomment %}
 
                 <!-- SICK -->
                 {% if perfil.role == 'admin' %}

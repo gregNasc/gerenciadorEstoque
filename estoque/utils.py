@@ -46,12 +46,12 @@ def qs_historico(request):
     if not perfil:
         return qs.none()
 
-    bases = perfil.bases.all()
+    bases = perfil.regionais.all()
 
     if not bases.exists():
         return qs.none()
 
-    return qs.filter(equipamento__base__in=bases)
+    return qs.filter(equipamento__regional__in=bases)
 
 
 def qs_bases(request):

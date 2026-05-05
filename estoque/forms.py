@@ -135,7 +135,7 @@ class TransferenciaForm(forms.ModelForm):
 
         if Transferencia.objects.filter(
             equipamento=self.equipamento,
-            status='PENDENTE'
+            status__in=['SOLICITADO', 'PENDENTE', 'ENVIADO']
         ).exists():
             raise ValidationError("Já existe uma transferência pendente.")
 
@@ -147,13 +147,16 @@ class TransferenciaForm(forms.ModelForm):
         obj.equipamento = self.equipamento
         obj.regional_origem = self.equipamento.regional
         obj.solicitado_por = self.user
-        obj.solicitacao = None  # será vinculado no fluxo automático depois
 
         if commit:
             obj.save()
 
-        return obj
+            if obj.itens.exists():
+                for item in obj.itens.all():
+                    if obj.equipamento not in item.equipamentos.all():
+                        item.equipamentos.add(obj.equipamento)
 
+        return obj
 
 # ================= SICK =================
 class SickForm(forms.ModelForm):

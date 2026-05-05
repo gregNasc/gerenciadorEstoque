@@ -246,6 +246,20 @@ class AlocacaoSolicitacaoItem(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
 class Transferencia(models.Model):
+    STATUS = [
+        ('SOLICITADO', 'Solicitado'),
+        ('PENDENTE', 'Pendente'),
+        ('ENVIADO', 'Enviado'),
+        ('RECEBIDO', 'Recebido'),
+        ('CANCELADO', 'Cancelado'),
+    ]
+
+    equipamento = models.ForeignKey(
+        Equipamento,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
 
     alocacao = models.ForeignKey(AlocacaoSolicitacaoItem,on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -254,11 +268,27 @@ class Transferencia(models.Model):
     regional_origem = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='origem')
     regional_destino = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='destino')
 
-    status = models.CharField(max_length=20, default='RASCUNHO')
+    status = models.CharField(max_length=20, choices=STATUS, default='SOLICITADO')
 
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_envio = models.DateTimeField(null=True, blank=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
+
+    def enviar(self):
+        if self.status != 'PENDENTE':
+            raise ValueError("Só pode enviar se estiver pendente")
+
+        self.status = 'ENVIADO'
+        self.data_envio = timezone.now()
+        self.save()
+
+    def receber(self):
+        if self.status != 'ENVIADO':
+            raise ValueError("Só pode receber se estiver enviado")
+
+        self.status = 'RECEBIDO'
+        self.data_recebimento = timezone.now()
+        self.save()
 
 class TransferenciaItem(models.Model):
 
@@ -289,7 +319,26 @@ class Notificacao(models.Model):
         ('RECEBIDA', 'Recebida'),
     ]
 
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    transferencia = models.ForeignKey(
+        Transferencia,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+
+    solicitacao = models.ForeignKey(
+        Solicitacao,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
     tipo = models.CharField(max_length=20, choices=TIPOS)
     evento = models.CharField(max_length=30, choices=EVENTOS)
@@ -301,6 +350,54 @@ class Notificacao(models.Model):
 
     link = models.CharField(max_length=255, null=True, blank=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['usuario', 'tipo', 'evento', 'transferencia', 'solicitacao'],
+                name='unique_notificacao_evento_transferencia'
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.transferencia:
+            existente = Notificacao.objects.filter(
+                usuario=self.usuario,
+                tipo=self.tipo,
+                evento=self.evento,
+                transferencia=self.transferencia
+            ).first()
+
+            if existente:
+                return existente
+
+        super().save(*args, **kwargs)
+
+class PedidoTransferencia(models.Model):
+
+    solicitacao = models.ForeignKey(Solicitacao, on_delete=models.CASCADE)
+
+    regional_origem = models.ForeignKey(
+        Base,
+        on_delete=models.CASCADE,
+        related_name='pedidos_origem'
+    )
+
+    regional_destino = models.ForeignKey(
+        Base,
+        on_delete=models.CASCADE,
+        related_name='pedidos_destino'
+    )
+
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    status = models.CharField(max_length=20, default='ABERTO')
+
+class PedidoItem(models.Model):
+
+    pedido = models.ForeignKey(PedidoTransferencia, related_name='itens', on_delete=models.CASCADE)
+
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    quantidade = models.IntegerField()
 # ---------------- SICK ----------------
 class Sick(models.Model):
     equipamento = models.OneToOneField(Equipamento, on_delete=models.CASCADE, related_name='sick')
