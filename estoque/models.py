@@ -223,7 +223,10 @@ class SolicitacaoItem(models.Model):
     )
 
     quantidade = models.PositiveIntegerField()
-    atendido = models.PositiveIntegerField(default=0)
+    atendido = models.PositiveIntegerField(
+        default=0,
+        db_column="quantidade_atendida"
+    )
 
     @property
     def pendente(self):

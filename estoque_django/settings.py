@@ -52,8 +52,8 @@ else:
             'PORT': '5432',
         }
     }
-print("DATABASE_URL =", os.environ.get("DATABASE_URL"))
-# Application definition
+
+print("DATABASE_URL =", DATABASE_URL)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
