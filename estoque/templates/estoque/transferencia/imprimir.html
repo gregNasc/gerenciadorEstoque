@@ -3,8 +3,8 @@
 {% block content %}
 <h3>Protocolo: {{ transferencia.protocolo }}</h3>
 
-<p>Origem: {{ transferencia.origem }}</p>
-<p>Destino: {{ transferencia.destino }}</p>
+<p><strong>Origem:</strong> {{ transferencia.regional_origem.nome }}</p>
+<p><strong>Destino:</strong> {{ transferencia.regional_destino.nome }}</p>
 
 <hr>
 

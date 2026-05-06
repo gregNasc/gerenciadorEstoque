@@ -275,9 +275,25 @@ class Transferencia(models.Model):
         if self.status != 'PENDENTE':
             raise ValueError("Só pode enviar se estiver pendente")
 
-        self.status = 'ENVIADO'
+        self.status = 'EM_TRANSITO'
         self.data_envio = timezone.now()
         self.save()
+
+        usuarios = User.objects.filter(
+            perfil__regionais=self.regional_destino
+        )
+
+        for user in usuarios:
+            Notificacao.objects.get_or_create(
+                usuario=user,
+                transferencia=self,
+                tipo='TRANSFERENCIA',
+                evento='EM_TRANSFERENCIA',
+                defaults={
+                    'mensagem': f"Nova transferência recebida de {self.regional_origem.nome}",
+                    'link': f"/transferencias/{self.id}/"
+                }
+            )
 
     def receber(self):
         if self.status != 'ENVIADO':
@@ -398,6 +414,8 @@ class PedidoItem(models.Model):
 
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
     quantidade = models.IntegerField()
+
+
 # ---------------- SICK ----------------
 class Sick(models.Model):
     equipamento = models.OneToOneField(Equipamento, on_delete=models.CASCADE, related_name='sick')
@@ -409,6 +427,7 @@ class Sick(models.Model):
     resolvido_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     ativo = models.BooleanField(default=True, db_index=True)
     descricao = models.TextField(null=True, blank=True)
+
 
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):

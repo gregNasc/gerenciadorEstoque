@@ -52,6 +52,7 @@ urlpatterns = [
     path('transferir-em-lote/', views.transferir_em_lote, name='transferir_em_lote'),
     path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),
     path('receber-transferencia/<int:transferencia_id>/', views.receber_transferencia, name='receber_transferencia'),
+    path('transferencias/<int:id>/', views.transferencia_detalhe, name='transferencia_detalhe'),
 
 
 

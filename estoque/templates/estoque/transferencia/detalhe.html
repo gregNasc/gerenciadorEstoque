@@ -1,10 +1,11 @@
 {% extends 'estoque/base.html' %}
 
 {% block content %}
-<h3>Transferência {{ transferencia.protocolo }}</h3>
 
-<p><strong>Origem:</strong> {{ transferencia.origem }}</p>
-<p><strong>Destino:</strong> {{ transferencia.destino }}</p>
+<h3>Transferência #{{ transferencia.id }}</h3>
+
+<p><strong>Origem:</strong> {{ transferencia.regional_origem.nome }}</p>
+<p><strong>Destino:</strong> {{ transferencia.regional_destino.nome }}</p>
 <p><strong>Status:</strong> {{ transferencia.status }}</p>
 
 <hr>
@@ -13,17 +14,23 @@
     <thead>
         <tr>
             <th>Equipamento</th>
-            <th>Quantidade</th>
         </tr>
     </thead>
 
     <tbody>
         {% for item in itens %}
         <tr>
-            <td>{{ item.equipamento }}</td>
-            <td>{{ item.quantidade }}</td>
+            <td>
+                {{ item.equipamento.produto.descricao }}<br>
+                <small>{{ item.equipamento.numero_serie }}</small>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td>Nenhum item na transferência</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+
 {% endblock %}

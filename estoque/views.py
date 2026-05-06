@@ -7,7 +7,7 @@ from openpyxl import Workbook
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
-from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem,AlocacaoSolicitacaoItem) #Regional
+from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem) #Regional
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.http import JsonResponse
@@ -1175,38 +1175,52 @@ def transferencia_criar(request):
 
     if request.method == 'POST':
 
-        transferencias = []
-
         for a in alocacoes:
 
-            regional_id = int(a['regional_id'])
+            regional_origem_id = int(a['regional_id'])
             produto_id = int(a['produto_id'])
             quantidade = int(a['quantidade'])
+            destino_id = int(request.POST.get('destino'))
 
-            transferencias.append({
-                'regional_origem_id': regional_id,
-                'regional_destino_id': request.POST.get('destino'),
-                'produto_id': produto_id,
-                'quantidade': quantidade
-            })
-
-        for t in transferencias:
-            Transferencia.objects.create(
-                regional_origem_id=t['regional_origem_id'],
-                regional_destino_id=t['regional_destino_id'],
+            # cria transferência vinculada à solicitação (se quiser evoluir depois)
+            transferencia = Transferencia.objects.create(
+                regional_origem_id=regional_origem_id,
+                regional_destino_id=destino_id,
                 solicitado_por=request.user,
                 status='PENDENTE'
             )
 
-        # limpa sessão
+            #  pega equipamentos reais
+            equipamentos = Equipamento.objects.filter(
+                base_id=regional_origem_id,
+                produto_id=produto_id,
+                status='DISPONIVEL'
+            )[:quantidade]
+
+            if equipamentos.count() < quantidade:
+                continue  # depois podemos tratar melhor
+
+            #  cria itens corretamente
+            for eq in equipamentos:
+                TransferenciaItem.objects.create(
+                    transferencia=transferencia,
+                    equipamento=eq
+                )
+
+                eq.status = 'EM_TRANSITO'
+                eq.save(update_fields=['status'])
+
+            #  dispara envio + notificação
+            transferencia.enviar()
+
         request.session['alocacoes_transferencia'] = []
 
         return redirect('estoque:lista_transferencias')
 
+    # GET (mantém igual)
     agrupado = {}
 
     for a in alocacoes:
-
         key = f"{a['regional_id']}"
 
         if key not in agrupado:
@@ -1313,7 +1327,7 @@ def caixa_solicitacoes(request):
         'regional_solicitante',
         'regional_origem'
     ).filter(
-        status='PENDENTE'
+    status__in=['PENDENTE', 'EM_TRANSFERENCIA']
     )
 
     if perfil.role == 'gestor':
@@ -1372,7 +1386,6 @@ def notificar_transferencia(usuario, transferencia, evento):
             'link': f"/transferencias/{transferencia.id}/"
         }
     )
-
 
 @login_required
 @role_required('admin', 'gestor')
@@ -1578,6 +1591,27 @@ def enviar_transferencia(transferencia, equipamentos_ids, user):
 
     #transferencia.status = 'PROCESSADO'
     transferencia.save()
+
+@login_required
+def transferencia_detalhe(request, id):
+
+    transferencia = get_object_or_404(
+        Transferencia.objects.select_related(
+            'regional_origem',
+            'regional_destino',
+            'solicitado_por'
+        ),
+        id=id
+    )
+
+    itens = TransferenciaItem.objects.select_related(
+        'equipamento'
+    ).filter(transferencia=transferencia)
+
+    return render(request, 'estoque/transferencia/detalhe.html', {
+        'transferencia': transferencia,
+        'itens': itens
+    })
 
 @login_required
 @require_POST
