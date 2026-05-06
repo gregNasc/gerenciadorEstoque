@@ -1787,8 +1787,9 @@ def lista_transferencias(request):
                 t.regional_destino.id in perfil.regionais_ids
             )
         )
+        data_envio = t.data_envio.date() if t.data_envio else hoje
         base = t.data_recebimento.date() if t.data_recebimento else hoje
-        t.dias = (base - t.data_envio.date()).days  # ← corrigido
+        t.dias = (base - data_envio).days
 
     return render(request, 'estoque/transferencia/listar.html', {
         'transferencias': qs
