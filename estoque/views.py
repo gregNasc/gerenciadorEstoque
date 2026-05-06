@@ -1756,14 +1756,19 @@ def lista_transferencias(request):
 
     perfil = request.user.perfil
 
-    qs = Transferencia.objects.select_related(
-        'equipamento',
-        'equipamento__produto',
-        'regional_origem',
-        'regional_destino',
-        'solicitado_por',
-#        'recebido_por'
-    ).order_by('-data_envio')
+    qs = (
+        Transferencia.objects
+        .select_related(
+            'regional_origem',
+            'regional_destino',
+            'solicitado_por',
+        )
+        .prefetch_related(
+            'itens__equipamento',
+            'itens__equipamento__produto'
+        )
+        .order_by('-data_envio')
+    )
 
     if perfil.role != 'admin':
         qs = qs.filter(
