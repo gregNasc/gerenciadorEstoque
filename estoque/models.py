@@ -225,7 +225,8 @@ class SolicitacaoItem(models.Model):
     quantidade = models.PositiveIntegerField()
     atendido = models.PositiveIntegerField(
         default=0,
-        db_column="quantidade_atendida"
+        db_column="quantidade_atendida",
+        db_index=True
     )
 
     @property
@@ -250,19 +251,12 @@ class AlocacaoSolicitacaoItem(models.Model):
 
 class Transferencia(models.Model):
     STATUS = [
-        ('SOLICITADO', 'Solicitado'),
         ('PENDENTE', 'Pendente'),
-        ('ENVIADO', 'Enviado'),
-        ('RECEBIDO', 'Recebido'),
-        ('CANCELADO', 'Cancelado'),
+        ('EM_TRANSITO', 'Em trânsito'),
+        ('CONCLUIDA', 'Concluída'),
     ]
 
-    equipamento = models.ForeignKey(
-        Equipamento,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL
-    )
+#    equipamento = models.ForeignKey(Equipamento, null=True, blank=True, on_delete=models.SET_NULL)
 
     alocacao = models.ForeignKey(AlocacaoSolicitacaoItem,on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -271,7 +265,7 @@ class Transferencia(models.Model):
     regional_origem = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='origem')
     regional_destino = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='destino')
 
-    status = models.CharField(max_length=20, choices=STATUS, default='SOLICITADO')
+    status = models.CharField(max_length=20, choices=STATUS, default='PENDENTE')
 
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_envio = models.DateTimeField(null=True, blank=True)
@@ -301,11 +295,14 @@ class TransferenciaItem(models.Model):
         related_name='itens'
     )
 
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    equipamento = models.ForeignKey(
+        Equipamento,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
-    quantidade = models.PositiveIntegerField()
-
-    equipamentos = models.ManyToManyField(Equipamento, blank=True)
+    status = models.CharField(max_length=20, default='SELECIONADO')
 
 class Notificacao(models.Model):
 
