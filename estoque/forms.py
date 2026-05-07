@@ -22,7 +22,6 @@ class ProdutoForm(forms.ModelForm):
             raise ValidationError("Já existe um produto com esse código.")
         return codigo
 
-
 # ================= EQUIPAMENTO =================
 class EquipamentoForm(forms.ModelForm):
 
@@ -99,7 +98,6 @@ class EquipamentoForm(forms.ModelForm):
         if Equipamento.objects.filter(patrimonio=patrimonio).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Patrimônio já cadastrado.")
         return patrimonio
-
 
 # ================= TRANSFERÊNCIA =================
 class TransferenciaForm(forms.ModelForm):

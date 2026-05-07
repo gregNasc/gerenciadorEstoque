@@ -19,7 +19,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .utils import EstoqueService
 from .security import secure_queryset
-from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
+#from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
 import json
 import re
 from collections import defaultdict
@@ -38,6 +38,12 @@ def index(request):
     categoria = request.GET.get('categoria')
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
+    inventory_id = request.GET.get('inventory')
+
+    if inventory_id and inventory_id.isdigit():
+        equipamentos = equipamentos.filter(
+            regional__empresa_id=inventory_id
+        )
 
     if categoria:
         equipamentos = equipamentos.filter(produto__categoria=categoria)
@@ -160,7 +166,15 @@ def index(request):
     if categoria:
         produtos_lista = produtos_lista.filter(categoria=categoria)
 
-    regionais_select = Base.objects.all().order_by('nome')
+    regionais_select = Base.objects.all()
+
+    if inventory_id and inventory_id.isdigit():
+        regionais_select = regionais_select.filter(
+            empresa_id=inventory_id
+        )
+
+    regionais_select = regionais_select.order_by('nome')
+    empresas = Empresa.objects.all().order_by('nome')
 
     context = {
         'produtos_na_categoria': produtos_na_categoria,
@@ -170,6 +184,8 @@ def index(request):
         'regionais': regionais_select,
         'filtro_produto_id': produto_id,
         'filtro_regional_id': regional_id,
+        'empresas': empresas,
+        'filtro_inventory_id': inventory_id,
     }
 
     return render(request, 'estoque/index.html', context)
@@ -703,6 +719,7 @@ def sick_view(request):
     perfil = request.user.perfil
 
     if request.method == 'POST':
+
         sick_id = request.POST.get('sick_id')
         acao = request.POST.get('acao')
 
@@ -713,57 +730,162 @@ def sick_view(request):
                 id=sick_id
             )
 
-            if not perfil.is_admin and (
-                not perfil.regionais or
+            # Validação de permissão
+            if (
+                not perfil.is_admin and
                 sick.equipamento.regional_id not in perfil.regionais_ids
             ):
                 messages.error(request, "Sem permissão.")
                 return redirect('estoque:sick')
 
+            # Resolve o SICK
             sick.data_resolucao = timezone.now()
             sick.ativo = False
             sick.resolvido_por = request.user
+
             sick.save(update_fields=[
                 'data_resolucao',
                 'ativo',
                 'resolvido_por'
             ])
 
+            # Atualiza status do equipamento
             equipamento = sick.equipamento
             equipamento.status = 'ATIVO'
+
             equipamento.save(update_fields=['status'])
 
-            messages.success(request, "SICK resolvido com sucesso.")
+            # Histórico
+            Historico.objects.create(
+                equipamento=equipamento,
+                tipo_acao='SICK_RESOLVIDO',
+                usuario=request.user,
+                detalhes={
+                    'sick_id': sick.id
+                }
+            )
+
+            messages.success(
+                request,
+                "SICK resolvido com sucesso."
+            )
 
         return redirect('estoque:sick')
 
     qs = Sick.objects.select_related(
         'equipamento',
         'equipamento__produto',
+        'equipamento__regional',
         'resolvido_por'
     )
 
+    # Escopo por regional
     if perfil.is_admin:
+
         sicks = qs
+
     else:
-        if not perfil.regionais:
+
+        if not perfil.regionais.exists():
+
             sicks = qs.none()
+
         else:
+
             sicks = qs.filter(
                 equipamento__regional=perfil.regionais
             )
 
+    status_filter = request.GET.get('status', 'todos')
+    produto_filter = request.GET.get('produto', '')
+    categoria_filter = request.GET.get('categoria', '')
+    regional_filter = request.GET.get('regional', '')
+
+    # Status
+    if status_filter == 'pendentes':
+
+        sicks = sicks.filter(
+            data_resolucao__isnull=True
+        )
+
+    elif status_filter == 'resolvidos':
+
+        sicks = sicks.filter(
+            data_resolucao__isnull=False
+        )
+
+    # Categoria
+    if categoria_filter:
+        sicks = sicks.filter(
+            equipamento__produto__categoria=categoria_filter
+        )
+
+    # Produto / Equipamento
+    if produto_filter:
+        sicks = sicks.filter(
+            equipamento__produto_id=produto_filter
+        )
+
+    # Regional
+    if regional_filter:
+        sicks = sicks.filter(
+            equipamento__regional_id=regional_filter
+        )
+
+    # Ordenação
     sicks = sicks.order_by('-data_ocorrencia')
 
-    total_pendentes = sicks.filter(data_resolucao__isnull=True).count()
-    total_resolvidos = sicks.filter(data_resolucao__isnull=False).count()
 
-    return render(request, 'estoque/sick.html', {
+    total_pendentes = sicks.filter(
+        data_resolucao__isnull=True
+    ).count()
+
+    total_resolvidos = sicks.filter(
+        data_resolucao__isnull=False
+    ).count()
+
+    categorias = Produto.objects.values_list(
+        'categoria',
+        flat=True
+    ).distinct().order_by('categoria')
+
+    produtos_lista = Produto.objects.filter(
+        equipamento__sick__in=sicks
+    ).distinct().order_by('descricao')
+
+    # Regionais disponíveis conforme permissão
+    if perfil.is_admin:
+        regionais = Base.objects.all().order_by('nome')
+    else:
+        regionais = perfil.regionais.all().order_by('nome')
+
+    context = {
+
         'sicks': sicks,
+
+        # Cards
         'total_sick': total_pendentes,
         'total_pendentes': total_pendentes,
         'total_resolvidos': total_resolvidos,
-    })
+
+        # Filtros atuais
+        'status_filter': status_filter,
+        'produto_filter': produto_filter,
+        'categoria_filter': categoria_filter,
+        'regional_filter': regional_filter,
+        'produtos_lista': produtos_lista,
+
+        # Dados dos filtros
+        'categorias': categorias,
+        'produtos_lista': produtos_lista,
+        'regionais': regionais,
+    }
+
+    return render(
+        request,
+        'estoque/sick.html',
+        context
+    )
 
 @login_required
 @role_required('admin', 'gestor', 'operador')

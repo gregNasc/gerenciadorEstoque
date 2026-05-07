@@ -120,7 +120,6 @@ class Produto(models.Model):
     def __str__(self):
         return self.descricao
 
-
 # ---------------- EQUIPAMENTO ----------------
 class Equipamento(models.Model):
     class Meta:
@@ -159,7 +158,6 @@ class Equipamento(models.Model):
             proximo = (ultimo.id + 1) if ultimo else 1
             self.codigo = f"EQP-{proximo:06d}"
         super().save(*args, **kwargs)
-
 
 # ---------------- TRANSFERENCIA ----------------
 class Solicitacao(models.Model):
@@ -415,7 +413,6 @@ class PedidoItem(models.Model):
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
     quantidade = models.IntegerField()
 
-
 # ---------------- SICK ----------------
 class Sick(models.Model):
     equipamento = models.OneToOneField(Equipamento, on_delete=models.CASCADE, related_name='sick')
@@ -428,6 +425,12 @@ class Sick(models.Model):
     ativo = models.BooleanField(default=True, db_index=True)
     descricao = models.TextField(null=True, blank=True)
 
+class StatusEquipamento(models.TextChoices):
+    ATIVO = 'ATIVO', 'Ativo'
+    SICK = 'SICK', 'SICK'
+    MANUTENCAO = 'MANUTENCAO', 'Manutenção'
+    SUCATA= 'SUCATA', 'Sucata'
+    INATIVO = 'INATIVO', 'Inativo'
 
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):
@@ -444,14 +447,12 @@ class Historico(models.Model):
     detalhes = models.JSONField(blank=True, null=True)
     data = models.DateTimeField(auto_now_add=True, db_index=True)
 
-
 # ---------------- DESCRICAO ----------------
 class Descricao(models.Model):
     descricao = models.CharField(max_length=255)
 
     def __str__(self):
         return self.descricao
-
 
 # ---------------- ALERTA ----------------
 class Alerta(models.Model):

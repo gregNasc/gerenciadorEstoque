@@ -14,7 +14,7 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body bg-light">
             <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small text-secondary fw-semibold mb-1">Categoria</label>
                     <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todas</option>
@@ -25,7 +25,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small text-secondary fw-semibold mb-1">Equipamento</label>
                     <select name="produto" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todos</option>
@@ -38,7 +38,30 @@
                     </select>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Inventory
+                    </label>
+
+                    <select name="inventory"
+                            class="form-select form-select-sm bg-white auto-submit">
+
+                        <option value="">Todos</option>
+
+                        {% for empresa in empresas %}
+                            <option value="{{ empresa.id }}"
+                                {% if filtro_inventory_id == empresa.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+
+                                {{ empresa.nome }}
+
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
                     <label class="form-label small text-secondary fw-semibold mb-1">Regional</label>
                     <select name="regional" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todas</option>

@@ -62,48 +62,151 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body bg-light p-3">
-            <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Status</label>
-                    <select name="status" class="form-select form-select-sm bg-white auto-submit">
-                        <option value="todos" {% if status_filter == 'todos' %}selected{% endif %}>Todos</option>
-                        <option value="pendentes" {% if status_filter == 'pendentes' %}selected{% endif %}>Pendentes</option>
-                        <option value="resolvidos" {% if status_filter == 'resolvidos' %}selected{% endif %}>Resolvidos</option>
-                    </select>
-                </div>
 
-                <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Categoria</label>
-                    <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
-                        <option value="">Todas as categorias</option>
-                        {% for cat in categorias %}
-                            <option value="{{ cat }}" {% if categoria_filter == cat %}selected{% endif %}>
-                                {{ cat }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+        <div class="card shadow-sm border-0 mb-4">
+           <div class="card-body bg-light">
 
-                <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Equipamento</label>
-                    <select name="equipamento" class="form-select form-select-sm bg-white auto-submit">
-                        <option value="">Todos os equipamentos</option>
-                        {% for eq in equipamentos %}
-                            <option value="{{ eq.id }}" {% if equipamento_filter == eq.id|stringformat:"s" %}selected{% endif %}>
-                                {{ eq.produto.descricao }} - {{ eq.numero_serie }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
+              <form method="get" class="row g-3 align-items-end">
 
-                <div class="col-md-3 text-end">
-                    <a href="{% url 'estoque:sick' %}" class="btn btn-outline-secondary btn-sm px-3">Limpar filtros</a>
-                </div>
-            </form>
-        </div>
+            <!-- Categoria -->
+            <div class="col-md-3">
+                <label class="form-label small text-secondary fw-semibold mb-1">
+                    Categoria
+                </label>
+
+                <select name="categoria"
+                        class="form-select form-select-sm bg-white auto-submit">
+
+                    <option value="">Todas</option>
+
+                    <option value="Coletores"
+                        {% if request.GET.categoria == "Coletores" %}
+                            selected
+                        {% endif %}>
+                        Coletores
+                    </option>
+
+                    <option value="Impressoras"
+                        {% if request.GET.categoria == "Impressoras" %}
+                            selected
+                        {% endif %}>
+                        Impressoras
+                    </option>
+
+                    <option value="Notebooks"
+                        {% if request.GET.categoria == "Notebooks" %}
+                            selected
+                        {% endif %}>
+                        Notebooks
+                    </option>
+
+                    <option value="Routers"
+                        {% if request.GET.categoria == "Routers" %}
+                            selected
+                        {% endif %}>
+                        Routers
+                    </option>
+
+                </select>
+            </div>
+
+            <!-- Equipamento -->
+            <div class="col-md-3">
+                <label class="form-label small text-secondary fw-semibold mb-1">
+                    Equipamento
+                </label>
+
+                <select name="produto"
+                        class="form-select form-select-sm bg-white auto-submit">
+
+                    <option value="">Todos</option>
+
+                    {% for p in produtos_lista %}
+                        <option value="{{ p.id }}"
+                            {% if request.GET.produto == p.id|stringformat:"s" %}
+                                selected
+                            {% endif %}>
+
+                            {{ p.descricao }}
+
+                        </option>
+                    {% endfor %}
+
+                </select>
+            </div>
+
+            <!-- Regional -->
+            <div class="col-md-3">
+                <label class="form-label small text-secondary fw-semibold mb-1">
+                    Regional
+                </label>
+
+                <select name="regional"
+                        class="form-select form-select-sm bg-white auto-submit">
+
+                    <option value="">Todas</option>
+
+                    {% for r in regionais %}
+                        <option value="{{ r.id }}"
+                            {% if request.GET.regional == r.id|stringformat:"s" %}
+                                selected
+                            {% endif %}>
+
+                            {{ r.nome }}
+
+                        </option>
+                    {% endfor %}
+
+                </select>
+            </div>
+
+            <!-- Status -->
+            <div class="col-md-3">
+                <label class="form-label small text-secondary fw-semibold mb-1">
+                    Status
+                </label>
+
+                <select name="status"
+                        class="form-select form-select-sm bg-white auto-submit">
+
+                    <option value="todos"
+                        {% if request.GET.status == "todos" %}
+                            selected
+                        {% endif %}>
+                        Todos
+                    </option>
+
+                    <option value="pendentes"
+                        {% if request.GET.status == "pendentes" %}
+                            selected
+                        {% endif %}>
+                        Pendentes
+                    </option>
+
+                    <option value="resolvidos"
+                        {% if request.GET.status == "resolvidos" %}
+                            selected
+                        {% endif %}>
+                        Resolvidos
+                    </option>
+
+                </select>
+            </div>
+
+            <!-- Botão limpar -->
+            <div class="col-12 text-end">
+                <a href="{% url 'estoque:sick' %}"
+                   class="btn btn-outline-secondary btn-sm px-3">
+
+                    Limpar filtros
+
+                </a>
+            </div>
+
+        </form>
+
     </div>
+</div>
 
     <!-- Tabela -->
     <div class="card border-0 shadow-sm">
@@ -116,7 +219,7 @@
                             <th class="py-3">Série</th>
                             <th class="py-3">Patrimônio</th>
                             <th class="py-3">Categoria</th>
-                            <th class="py-3">Motivo</th>
+                            <th class="py-3">Regional</th>
                             <th class="py-3">Ocorrência</th>
                             <th class="py-3">Previsão Retorno</th>
                             <th class="py-3">Status</th>
@@ -130,21 +233,15 @@
                             <td><code class="small">{{ sick.equipamento.numero_serie }}</code></td>
                             <td class="text-secondary">{{ sick.equipamento.patrimonio }}</td>
                             <td>{{ sick.categoria }}</td>
-                            <td style="max-width: 250px;">
-                                {% if sick.motivo %}
-                                    <small class="text-secondary">
-                                        {{ sick.motivo|truncatechars:60 }}
-                                        {% if sick.motivo|length > 60 %}
-                                            <a href="#" class="text-decoration-none small"
-                                               data-bs-toggle="modal"
-                                               data-bs-target="#motivoModal{{ sick.id }}">
-                                                Ver mais
-                                            </a>
-                                        {% endif %}
-                                    </small>
+                            <td>
+                                {% if sick.equipamento.regional %}
+                                    <span class="fw-semibold">
+                                        {{ sick.equipamento.regional.nome }}
+                                    </span>
                                 {% else %}
                                     <span class="text-secondary">—</span>
                                 {% endif %}
+                            </td>
 
                                 <!-- Modal Motivo -->
                                 {% if sick.motivo and sick.motivo|length > 60 %}
