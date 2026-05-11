@@ -414,10 +414,17 @@ class PedidoItem(models.Model):
     quantidade = models.IntegerField()
 
 # ---------------- SICK ----------------
+class StatusEquipamento(models.TextChoices):
+    ATIVO = 'ATIVO', 'Ativo'
+    SICK = 'SICK', 'SICK'
+    MANUTENCAO = 'MANUTENCAO', 'Manutenção'
+    SUCATA= 'SUCATA', 'Sucata'
+    INATIVO = 'INATIVO', 'Inativo'
+
 class Sick(models.Model):
     equipamento = models.OneToOneField(Equipamento, on_delete=models.CASCADE, related_name='sick')
     categoria = models.CharField(max_length=100)
-    motivo = models.TextField()
+    motivo = models.TextField(blank=True, null=True)
     previsao_retorno = models.DateField(null=True, blank=True)
     data_ocorrencia = models.DateTimeField(auto_now_add=True, db_index=True)
     data_resolucao = models.DateTimeField(null=True, blank=True)
@@ -425,12 +432,8 @@ class Sick(models.Model):
     ativo = models.BooleanField(default=True, db_index=True)
     descricao = models.TextField(null=True, blank=True)
 
-class StatusEquipamento(models.TextChoices):
-    ATIVO = 'ATIVO', 'Ativo'
-    SICK = 'SICK', 'SICK'
-    MANUTENCAO = 'MANUTENCAO', 'Manutenção'
-    SUCATA= 'SUCATA', 'Sucata'
-    INATIVO = 'INATIVO', 'Inativo'
+    status_final = models.CharField(max_length=20, choices=StatusEquipamento.choices, null=True, blank=True)
+    observacao_resolucao = models.TextField(null=True, blank=True)
 
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):

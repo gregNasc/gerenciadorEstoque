@@ -7,7 +7,9 @@ from openpyxl import Workbook
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
-from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem) #Regional
+from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil,
+                     Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem,
+                     StatusEquipamento) #Regional
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.http import JsonResponse
@@ -721,37 +723,63 @@ def sick_view(request):
     if request.method == 'POST':
 
         sick_id = request.POST.get('sick_id')
-        acao = request.POST.get('acao')
+        #acao = request.POST.get('acao')
+        novo_status = request.POST.get('novo_status')
 
-        if acao == 'resolver' and sick_id:
+        motivo_manutencao = request.POST.get("motivo_manutencao")
+        previsao_retorno = request.POST.get("previsao_retorno")
+
+        if sick_id and novo_status:
 
             sick = get_object_or_404(
                 Sick.objects.select_related('equipamento'),
                 id=sick_id
             )
 
-            # Validação de permissão
+            # Permissão
             if (
-                not perfil.is_admin and
-                sick.equipamento.regional_id not in perfil.regionais_ids
+                    not perfil.is_admin and
+                    sick.equipamento.regional_id not in perfil.regionais_ids
             ):
                 messages.error(request, "Sem permissão.")
                 return redirect('estoque:sick')
 
-            # Resolve o SICK
-            sick.data_resolucao = timezone.now()
-            sick.ativo = False
-            sick.resolvido_por = request.user
+            status_permitidos = [
+                'ATIVO',
+                'MANUTENCAO',
+                'SUCATA',
+                'INATIVO'
+            ]
 
-            sick.save(update_fields=[
-                'data_resolucao',
-                'ativo',
-                'resolvido_por'
-            ])
+            if novo_status not in status_permitidos:
+                messages.error(request, "Status inválido.")
+                return redirect('estoque:sick')
 
-            # Atualiza status do equipamento
+            # Dados extras da manutenção
+            if novo_status == 'MANUTENCAO':
+                sick.motivo = motivo_manutencao
+                sick.previsao_retorno = previsao_retorno
+
+            # Finaliza apenas quando realmente encerrado
+            if novo_status in ['ATIVO', 'INATIVO', 'SUCATA']:
+
+                sick.data_resolucao = timezone.now()
+                sick.ativo = False
+                sick.resolvido_por = request.user
+
+            # Manutenção continua pendente
+            elif novo_status == 'MANUTENCAO':
+
+                sick.ativo = True
+                sick.data_resolucao = None
+
+            sick.status_final = novo_status
+
+            sick.save()
+
+            # Atualiza equipamento
             equipamento = sick.equipamento
-            equipamento.status = 'ATIVO'
+            equipamento.status = novo_status
 
             equipamento.save(update_fields=['status'])
 
@@ -761,16 +789,19 @@ def sick_view(request):
                 tipo_acao='SICK_RESOLVIDO',
                 usuario=request.user,
                 detalhes={
-                    'sick_id': sick.id
+                    'sick_id': sick.id,
+                    'status_final': novo_status,
+                    'motivo_manutencao': motivo_manutencao,
+                    'previsao_retorno': previsao_retorno,
                 }
             )
 
             messages.success(
                 request,
-                "SICK resolvido com sucesso."
+                f"Equipamento enviado para {novo_status}."
             )
 
-        return redirect('estoque:sick')
+            return redirect('estoque:sick')
 
     qs = Sick.objects.select_related(
         'equipamento',
@@ -803,13 +834,22 @@ def sick_view(request):
 
     # Status
     if status_filter == 'pendentes':
-
         sicks = sicks.filter(
-            data_resolucao__isnull=True
+            ativo=True,
+            status_final__isnull=True
+        )
+
+    elif status_filter == 'manutencao':
+        sicks = sicks.filter(
+            status_final='MANUTENCAO'
+        )
+
+    elif status_filter == 'inativos':
+        sicks = sicks.filter(
+            status_final='INATIVO'
         )
 
     elif status_filter == 'resolvidos':
-
         sicks = sicks.filter(
             data_resolucao__isnull=False
         )
@@ -835,13 +875,12 @@ def sick_view(request):
     # Ordenação
     sicks = sicks.order_by('-data_ocorrencia')
 
-
     total_pendentes = sicks.filter(
-        data_resolucao__isnull=True
+        ativo=True
     ).count()
 
     total_resolvidos = sicks.filter(
-        data_resolucao__isnull=False
+        ativo=False
     ).count()
 
     categorias = Produto.objects.values_list(

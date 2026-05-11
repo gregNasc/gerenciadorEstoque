@@ -22,9 +22,7 @@
                             <span class="text-secondary small text-uppercase fw-semibold">Total SICK</span>
                             <h2 class="fw-bold mb-0 mt-1">{{ total_sick }}</h2>
                         </div>
-                        <div class="text-secondary opacity-50">
-                            <i class="bi bi-exclamation-triangle fs-4"></i>
-                        </div>
+                        <div class="text-secondary opacity-50"><i class="bi bi-exclamation-triangle fs-4"></i></div>
                     </div>
                 </div>
             </div>
@@ -37,9 +35,7 @@
                             <span class="text-secondary small text-uppercase fw-semibold">Pendentes</span>
                             <h2 class="fw-bold mb-0 mt-1" style="color: #c5221f;">{{ total_pendentes }}</h2>
                         </div>
-                        <div class="text-secondary opacity-50">
-                            <i class="bi bi-clock-history fs-4"></i>
-                        </div>
+                        <div class="text-secondary opacity-50"><i class="bi bi-clock-history fs-4"></i></div>
                     </div>
                 </div>
             </div>
@@ -52,161 +48,62 @@
                             <span class="text-secondary small text-uppercase fw-semibold">Resolvidos</span>
                             <h2 class="fw-bold mb-0 mt-1" style="color: #137333;">{{ total_resolvidos }}</h2>
                         </div>
-                        <div class="text-secondary opacity-50">
-                            <i class="bi bi-check-circle fs-4"></i>
-                        </div>
+                        <div class="text-secondary opacity-50"><i class="bi bi-check-circle fs-4"></i></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Filtros -->
-
-        <div class="card shadow-sm border-0 mb-4">
-           <div class="card-body bg-light">
-
-              <form method="get" class="row g-3 align-items-end">
-
-            <!-- Categoria -->
-            <div class="col-md-3">
-                <label class="form-label small text-secondary fw-semibold mb-1">
-                    Categoria
-                </label>
-
-                <select name="categoria"
-                        class="form-select form-select-sm bg-white auto-submit">
-
-                    <option value="">Todas</option>
-
-                    <option value="Coletores"
-                        {% if request.GET.categoria == "Coletores" %}
-                            selected
-                        {% endif %}>
-                        Coletores
-                    </option>
-
-                    <option value="Impressoras"
-                        {% if request.GET.categoria == "Impressoras" %}
-                            selected
-                        {% endif %}>
-                        Impressoras
-                    </option>
-
-                    <option value="Notebooks"
-                        {% if request.GET.categoria == "Notebooks" %}
-                            selected
-                        {% endif %}>
-                        Notebooks
-                    </option>
-
-                    <option value="Routers"
-                        {% if request.GET.categoria == "Routers" %}
-                            selected
-                        {% endif %}>
-                        Routers
-                    </option>
-
-                </select>
-            </div>
-
-            <!-- Equipamento -->
-            <div class="col-md-3">
-                <label class="form-label small text-secondary fw-semibold mb-1">
-                    Equipamento
-                </label>
-
-                <select name="produto"
-                        class="form-select form-select-sm bg-white auto-submit">
-
-                    <option value="">Todos</option>
-
-                    {% for p in produtos_lista %}
-                        <option value="{{ p.id }}"
-                            {% if request.GET.produto == p.id|stringformat:"s" %}
-                                selected
-                            {% endif %}>
-
-                            {{ p.descricao }}
-
-                        </option>
-                    {% endfor %}
-
-                </select>
-            </div>
-
-            <!-- Regional -->
-            <div class="col-md-3">
-                <label class="form-label small text-secondary fw-semibold mb-1">
-                    Regional
-                </label>
-
-                <select name="regional"
-                        class="form-select form-select-sm bg-white auto-submit">
-
-                    <option value="">Todas</option>
-
-                    {% for r in regionais %}
-                        <option value="{{ r.id }}"
-                            {% if request.GET.regional == r.id|stringformat:"s" %}
-                                selected
-                            {% endif %}>
-
-                            {{ r.nome }}
-
-                        </option>
-                    {% endfor %}
-
-                </select>
-            </div>
-
-            <!-- Status -->
-            <div class="col-md-3">
-                <label class="form-label small text-secondary fw-semibold mb-1">
-                    Status
-                </label>
-
-                <select name="status"
-                        class="form-select form-select-sm bg-white auto-submit">
-
-                    <option value="todos"
-                        {% if request.GET.status == "todos" %}
-                            selected
-                        {% endif %}>
-                        Todos
-                    </option>
-
-                    <option value="pendentes"
-                        {% if request.GET.status == "pendentes" %}
-                            selected
-                        {% endif %}>
-                        Pendentes
-                    </option>
-
-                    <option value="resolvidos"
-                        {% if request.GET.status == "resolvidos" %}
-                            selected
-                        {% endif %}>
-                        Resolvidos
-                    </option>
-
-                </select>
-            </div>
-
-            <!-- Botão limpar -->
-            <div class="col-12 text-end">
-                <a href="{% url 'estoque:sick' %}"
-                   class="btn btn-outline-secondary btn-sm px-3">
-
-                    Limpar filtros
-
-                </a>
-            </div>
-
-        </form>
-
+    <!-- Filtros (mantido igual ao original) -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body bg-light">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Categoria</label>
+                    <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todas</option>
+                        <option value="Coletores" {% if request.GET.categoria == "Coletores" %}selected{% endif %}>Coletores</option>
+                        <option value="Impressoras" {% if request.GET.categoria == "Impressoras" %}selected{% endif %}>Impressoras</option>
+                        <option value="Notebooks" {% if request.GET.categoria == "Notebooks" %}selected{% endif %}>Notebooks</option>
+                        <option value="Routers" {% if request.GET.categoria == "Routers" %}selected{% endif %}>Routers</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Equipamento</label>
+                    <select name="produto" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todos</option>
+                        {% for p in produtos_lista %}
+                        <option value="{{ p.id }}" {% if request.GET.produto|stringformat:"s" == p.id|stringformat:"s" %}selected{% endif %}>{{ p.descricao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Regional</label>
+                    <select name="regional" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todas</option>
+                        {% for r in regionais %}
+                        <option value="{{ r.id }}" {% if request.GET.regional|stringformat:"s" == r.id|stringformat:"s" %}selected{% endif %}>{{ r.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">Situação</label>
+                    <select name="status" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="todos" {% if request.GET.status == "todos" %}selected{% endif %}>Todos</option>
+                        <option value="pendentes" {% if request.GET.status == "pendentes" %}selected{% endif %}>Pendentes</option>
+                        <option value="manutencao" {% if request.GET.status == "manutencao" %}selected{% endif %}>Manutenção</option>
+                        <option value="inativos" {% if request.GET.status == "inativos" %}selected{% endif %}>Inativos</option>
+                        <option value="resolvidos" {% if request.GET.status == "resolvidos" %}selected{% endif %}>Resolvidos</option>
+                        <!--option value="sucata" {% if request.GET.status == "sucata" %}selected{% endif %}>Sucata</option-->
+                    </select>
+                </div>
+                <div class="col-12 text-end">
+                    <a href="{% url 'estoque:sick' %}" class="btn btn-outline-secondary btn-sm px-3">Limpar filtros</a>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
     <!-- Tabela -->
     <div class="card border-0 shadow-sm">
@@ -233,80 +130,77 @@
                             <td><code class="small">{{ sick.equipamento.numero_serie }}</code></td>
                             <td class="text-secondary">{{ sick.equipamento.patrimonio }}</td>
                             <td>{{ sick.categoria }}</td>
-                            <td>
-                                {% if sick.equipamento.regional %}
-                                    <span class="fw-semibold">
-                                        {{ sick.equipamento.regional.nome }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-secondary">—</span>
-                                {% endif %}
-                            </td>
-
-                                <!-- Modal Motivo -->
-                                {% if sick.motivo and sick.motivo|length > 60 %}
-                                <div class="modal fade" id="motivoModal{{ sick.id }}" tabindex="-1">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content border-0 shadow-lg">
-                                            <div class="modal-header bg-light border-0">
-                                                <h6 class="modal-title fw-semibold">Motivo do SICK</h6>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p class="mb-0">{{ sick.motivo }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endif %}
-                            </td>
+                            <td>{% if sick.equipamento.regional %}<span class="fw-semibold">{{ sick.equipamento.regional.nome }}</span>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
                             <td class="text-secondary small">{{ sick.data_ocorrencia|date:"d/m/Y H:i" }}</td>
-                            <td>
+                            <td class="text-secondary small">
                                 {% if sick.previsao_retorno %}
-                                    <span class="small">{{ sick.previsao_retorno|date:"d/m/Y" }}</span>
+                                    {{ sick.previsao_retorno|date:"d/m/Y" }}
                                 {% else %}
                                     <span class="text-secondary small">—</span>
                                 {% endif %}
                             </td>
+                            <!-- STATUS CORRIGIDO -->
                             <td>
-                                {% if sick.data_resolucao %}
-                                    <!-- Status RESOLVIDO -->
-                                    <span class="badge" style="background-color: #e6f4ea; color: #137333; padding: 4px 8px;">
-                                        <i class="bi bi-check-circle-fill me-1" style="font-size: 0.7rem;"></i>Resolvido
+                                {% if sick.status_final == 'MANUTENCAO' %}
+                                    <span class="badge" style="background-color: #fff3e0; color: #e67e22; padding: 4px 8px;">
+                                        <i class="bi bi-tools me-1"></i> Manutenção
                                     </span>
-                                    <div class="small text-secondary mt-1">
-                                        {{ sick.data_resolucao|date:"d/m/Y H:i" }}
+                                    {% if sick.previsao_retorno %}
+                                        <div class="small text-secondary mt-1">Previsão: {{ sick.previsao_retorno|date:"d/m/Y" }}</div>
+                                    {% endif %}
+                                {% elif sick.status_final == 'INATIVO' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-ban me-1"></i> Inativo
+                                    </span>
+                                {% elif sick.status_final == 'SUCATA' %}
+                                    <span class="badge bg-dark">
+                                        <i class="bi bi-trash me-1"></i> Sucata
+                                    </span>
+                                {% elif sick.data_resolucao %}
+                                    <span class="badge" style="background-color: #e6f4ea; color: #137333; padding: 4px 8px;">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Resolvido
+                                    </span>
+                                    <div class="small text-secondary mt-1">{{ sick.data_resolucao|date:"d/m/Y H:i" }}</div>
+                                {% else %}
+                                    <span class="badge" style="background-color: #fce8e6; color: #c5221f; padding: 4px 8px;">
+                                        <i class="bi bi-exclamation-circle-fill me-1"></i> Pendente
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center" style="min-width: 220px;">
+                                {% if not sick.data_resolucao or sick.status_final == 'MANUTENCAO' %}
+                                    <div class="d-grid gap-2">
+                                        <!-- Resolver - só aparece se não estiver resolvido e não for manutenção? Melhor manter sempre para pendentes e manutenção -->
+                                        <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('Retornar equipamento para ATIVO?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="sick_id" value="{{ sick.id }}">
+                                            <button type="submit" name="novo_status" value="ATIVO" class="btn btn-outline-success btn-sm w-100">
+                                                <i class="bi bi-check-circle me-1"></i> Resolver
+                                            </button>
+                                        </form>
+                                        <!-- Manutenção (abre modal) -->
+                                        <button type="button"
+                                                class="btn btn-outline-warning btn-sm w-100 btn-manutencao"
+                                                data-sick-id="{{ sick.id }}"
+                                                data-equipamento="{{ sick.equipamento.produto.descricao }} - {{ sick.equipamento.numero_serie }}">
+                                            <i class="bi bi-tools me-1"></i> Manutenção
+                                        </button>
+                                        <!-- Inativo -->
+                                        <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('Inativar equipamento?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="sick_id" value="{{ sick.id }}">
+                                            <button type="submit" name="novo_status" value="INATIVO" class="btn btn-outline-danger btn-sm w-100">
+                                                <i class="bi bi-trash me-1"></i> Inativar
+                                            </button>
+                                        </form>
                                     </div>
                                 {% else %}
-                                    <!-- Status PENDENTE -->
-                                    <span class="badge" style="background-color: #fce8e6; color: #c5221f; padding: 4px 8px;">
-                                        <i class="bi bi-exclamation-circle-fill me-1" style="font-size: 0.7rem;"></i>Pendente
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if not sick.data_resolucao %}
-                                <form method="post" action="{% url 'estoque:sick' %}" class="d-inline">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="sick_id" value="{{ sick.id }}">
-                                    <input type="hidden" name="acao" value="resolver">
-                                    <button type="submit" class="btn btn-sm btn-outline-success px-3"
-                                            onclick="return confirm('Confirmar resolução deste SICK?')">
-                                        <i class="bi bi-check-lg me-1"></i>Resolver
-                                    </button>
-                                </form>
-                                {% else %}
-                                    <span class="text-secondary small">—</span>
+                                    <span class="text-secondary small">Finalizado</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="9" class="text-center text-secondary py-5">
-                                <i class="bi bi-inbox fs-2"></i>
-                                <p class="mt-2 mb-0">Nenhum equipamento SICK encontrado</p>
-                            </td>
-                        </tr>
+                        <tr><td colspan="9" class="text-center text-secondary py-5"><i class="bi bi-inbox fs-2"></i><p class="mt-2 mb-0">Nenhum equipamento SICK encontrado</p></td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -314,80 +208,113 @@
         </div>
     </div>
 
+    <!-- Paginação (se existir) -->
     {% if is_paginated %}
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link text-secondary" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                        ← Anterior
-                    </a>
-                </li>
+                <li class="page-item"><a class="page-link text-secondary" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">← Anterior</a></li>
             {% endif %}
-
             {% for num in page_obj.paginator.page_range %}
                 <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                    <a class="page-link {% if page_obj.number == num %}bg-secondary border-secondary{% else %}text-secondary{% endif %}"
-                       href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                        {{ num }}
-                    </a>
+                    <a class="page-link {% if page_obj.number == num %}bg-secondary border-secondary{% else %}text-secondary{% endif %}" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
                 </li>
             {% endfor %}
-
             {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link text-secondary" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                        Próximo →
-                    </a>
-                </li>
+                <li class="page-item"><a class="page-link text-secondary" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próximo →</a></li>
             {% endif %}
         </ul>
     </nav>
     {% endif %}
 </div>
 
-
 <style>
-    /* Estilos personalizados para badges */
-    .badge {
-        font-weight: 500;
-        font-size: 0.75rem;
-        border-radius: 4px;
-    }
-
-    .table > :not(caption) > * > * {
-        border-bottom-color: #e9ecef;
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-
-    .page-link {
-        color: #5f6368;
-        border-color: #e9ecef;
-    }
-
-    .page-link:hover {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
-        color: #3c4043;
-    }
-
-    .page-item.active .page-link {
-        background-color: #5f6368;
-        border-color: #5f6368;
-    }
+    .badge { font-weight: 500; font-size: 0.75rem; border-radius: 4px; }
+    .table > :not(caption) > * > * { border-bottom-color: #e9ecef; }
+    .table-hover tbody tr:hover { background-color: #f8f9fa; }
+    .page-link { color: #5f6368; border-color: #e9ecef; }
+    .page-link:hover { background-color: #f8f9fa; border-color: #dee2e6; color: #3c4043; }
+    .page-item.active .page-link { background-color: #5f6368; border-color: #5f6368; }
+    .modal-content { border-radius: 16px; }
 </style>
 
-<!-- Auto-submit para filtros -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Auto-submit dos filtros
     document.querySelectorAll('.auto-submit').forEach(select => {
         select.addEventListener('change', () => {
             select.closest('form').submit();
         });
     });
+
+    // Criação dinâmica do modal de manutenção
+    function createModal(sickId, equipamentoInfo) {
+        const oldModal = document.getElementById('dynamicManutencaoModal');
+        if (oldModal) oldModal.remove();
+
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal fade';
+        modalDiv.id = 'dynamicManutencaoModal';
+        modalDiv.tabIndex = -1;
+        modalDiv.setAttribute('data-bs-backdrop', 'static');
+
+        modalDiv.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <form method="post" action="{% url 'estoque:sick' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="sick_id" value="${sickId}">
+                        <input type="hidden" name="novo_status" value="MANUTENCAO">
+                        <div class="modal-header border-0">
+                            <div>
+                                <h5 class="modal-title fw-bold">Enviar para Manutenção</h5>
+                                <small class="text-secondary">${escapeHtml(equipamentoInfo)}</small>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Motivo da manutenção *</label>
+                                <textarea name="motivo_manutencao" class="form-control" rows="3" required placeholder="Descreva o problema ou motivo da manutenção..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Previsão de retorno *</label>
+                                <input type="date" name="previsao_retorno" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-dark">Enviar para manutenção</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modalDiv);
+        const modal = new bootstrap.Modal(modalDiv);
+        modal.show();
+        modalDiv.addEventListener('hidden.bs.modal', () => modalDiv.remove());
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    document.querySelectorAll('.btn-manutencao').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const sickId = btn.getAttribute('data-sick-id');
+            const equipamento = btn.getAttribute('data-equipamento');
+            createModal(sickId, equipamento);
+        });
+    });
 });
 </script>
-{% endif %}{% endblock %}
+{% endif %}
+{% endblock %}
