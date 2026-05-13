@@ -1,5 +1,6 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Transferências{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Transferências" %}{% endblock %}
 
 {% block content %}
 {% if request.user.is_authenticated %}
@@ -7,7 +8,7 @@
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0">🚚 Transferências</h4>
+        <h4 class="mb-0">{% trans "🚚 Transferências" %}</h4>
         <span class="badge bg-secondary">
             {{ transferencias|length }} registros
         </span>
@@ -17,9 +18,9 @@
     <form method="get" class="row g-3 mb-4">
 
         <div class="col-md-2">
-            <label>Status</label>
+            <label>{% trans "Status" %}</label>
             <select name="status" class="form-select">
-                <option value="">Todos</option>
+                <option value="">{% trans "Todos" %}</option>
                 {% for cod, nome in status_choices %}
                     <option value="{{ cod }}" {% if filtros.status == cod %}selected{% endif %}>
                         {{ nome }}
@@ -29,9 +30,9 @@
         </div>
 
         <div class="col-md-2">
-            <label>Origem</label>
+            <label>{% trans "Origem" %}</label>
             <select name="origem" class="form-select">
-                <option value="">Todas</option>
+                <option value="">{% trans "Todas" %}</option>
                 {% for base in bases %}
                     <option value="{{ base.id }}" {% if filtros.origem == base.id|stringformat:"s" %}selected{% endif %}>
                         {{ base.nome }}
@@ -41,9 +42,9 @@
         </div>
 
         <div class="col-md-2">
-            <label>Destino</label>
+            <label>{% trans "Destino" %}</label>
             <select name="destino" class="form-select">
-                <option value="">Todos</option>
+                <option value="">{% trans "Todos" %}</option>
                 {% for base in bases %}
                     <option value="{{ base.id }}" {% if filtros.destino == base.id|stringformat:"s" %}selected{% endif %}>
                         {{ base.nome }}
@@ -53,17 +54,17 @@
         </div>
 
         <div class="col-md-2">
-            <label>Data início</label>
+            <label>{% trans "Data início" %}</label>
             <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" class="form-control">
         </div>
 
         <div class="col-md-2">
-            <label>Data fim</label>
+            <label>{% trans "Data fim" %}</label>
             <input type="date" name="data_fim" value="{{ filtros.data_fim }}" class="form-control">
         </div>
 
         <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-primary w-100">Filtrar</button>
+            <button class="btn btn-primary w-100">{% trans "Filtrar" %}</button>
         </div>
 
     </form>
@@ -75,14 +76,14 @@
 
                 <thead class="table-dark">
                     <tr>
-                        <th>Protocolo</th>
-                        <th>Equipamento</th>
-                        <th>Origem → Destino</th>
-                        <th>Status</th>
-                        <th>Dias</th>
-                        <th>Solicitado por</th>
-                        <th>Data</th>
-                        <th class="text-center">Ações</th>
+                        <th>{% trans "Protocolo" %}</th>
+                        <th>{% trans "Equipamento" %}</th>
+                        <th>{% trans "Origem → Destino" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Dias" %}</th>
+                        <th>{% trans "Solicitado por" %}</th>
+                        <th>{% trans "Data" %}</th>
+                        <th class="text-center">{% trans "Ações" %}</th>
                     </tr>
                 </thead>
 
@@ -141,15 +142,15 @@
                             <form method="post" action="{% url 'estoque:receber_transferencia' t.id %}">
                                 {% csrf_token %}
                                 <button class="btn btn-sm btn-success">
-                                    ✔ Receber
+                                    {% trans "✔ Receber" %}
                                 </button>
                             </form>
 
                         {% elif t.status == 'RECEBIDO' %}
-                            <span class="text-success small">✔ Concluído</span>
+                            <span class="text-success small">{% trans "✔ Concluído" %}</span>
 
                         {% elif t.status == 'CANCELADO' %}
-                            <span class="text-danger small">✖ Cancelado</span>
+                            <span class="text-danger small">{% trans "✖ Cancelado" %}</span>
 
                         {% else %}
                             <span class="text-muted small">--</span>
@@ -160,7 +161,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="8" class="text-center py-4 text-muted">
-                            Nenhuma transferência encontrada
+                            {% trans "Nenhuma transferência encontrada" %}
                         </td>
                     </tr>
                     {% endfor %}

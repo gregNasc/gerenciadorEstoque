@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
+from django.utils.translation import gettext_lazy as _
+
 
 # ---------------- BASE ----------------
 class Empresa(models.Model):
@@ -25,6 +27,16 @@ class Base(models.Model):
         return f"{self.nome} ({self.empresa.nome})"
 
 class Perfil(models.Model):
+
+    class Idioma(models.TextChoices):
+        PT_BR = "pt-br", "Português"
+        ES = "es", "Español"
+
+    idioma = models.CharField(
+        max_length=10,
+        choices=Idioma.choices,
+        default=Idioma.PT_BR
+    )
 
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
@@ -73,10 +85,13 @@ class Perfil(models.Model):
 
     # -------- SAVE --------
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
         if self.is_admin:
             self.empresa = None
+
+        super().save(*args, **kwargs)
+
+        if self.is_admin:
             self.regionais.clear()
 
     # -------- PERMISSÕES --------
@@ -104,10 +119,10 @@ class Perfil(models.Model):
 class Produto(models.Model):
 
     CATEGORIAS = [
-        ('Coletores', 'Coletores'),
-        ('Impressoras', 'Impressoras'),
-        ('Notebooks', 'Notebooks'),
-        ('Routers', 'Routers'),
+        ('Coletores', _('Coletores')),
+        ('Impressoras', _('Impressoras')),
+        ('Notebooks', _('Notebooks')),
+        ('Routers', _('Routers')),
     ]
 
     codigo = models.CharField(max_length=50, unique=True)
@@ -129,11 +144,11 @@ class Equipamento(models.Model):
             models.Index(fields=['data_cadastro']),
         ]
     STATUS_CHOICES = [
-        ('ATIVO', 'Ativo'),
-        ('TRANSFERENCIA', 'Em Transferência'),
-        ('MANUTENCAO', 'Manutenção'),
-        ('SICK', 'Sick'),
-        ('BAIXA', 'Baixa'),
+        ('ATIVO', _('Ativo')),
+        ('TRANSFERENCIA', _('Em Transferência')),
+        ('MANUTENCAO', _('Manutenção')),
+        ('SICK', _('Sick')),
+        ('BAIXA', _('Baixa')),
     ]
 
     produto = models.ForeignKey(Produto, null=True, on_delete=models.SET_NULL)
@@ -162,11 +177,11 @@ class Equipamento(models.Model):
 # ---------------- TRANSFERENCIA ----------------
 class Solicitacao(models.Model):
     STATUS = [
-        ('PENDENTE', 'Pendente'),
-        ('APROVADO', 'Aprovado'),
-        ('REJEITADO', 'Rejeitado'),
-        ('EM_TRANSFERENCIA', 'Em Transferência'),
-        ('FINALIZADO', 'Finalizado'),
+        ('PENDENTE', _('Pendente')),
+        ('APROVADO', _('Aprovado')),
+        ('REJEITADO', _('Rejeitado')),
+        ('EM_TRANSFERENCIA', _('Em Transferência')),
+        ('FINALIZADO', _('Finalizado')),
     ]
 
     #produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
@@ -202,10 +217,10 @@ class SolicitacaoItem(models.Model):
         db_table = 'estoque_itemsolicitacao'
 
     CATEGORIAS = [
-        ('Coletores', 'Coletores'),
-        ('Impressoras', 'Impressoras'),
-        ('Notebooks', 'Notebooks'),
-        ('Routers', 'Routers'),
+        ('Coletores', _('Coletores')),
+        ('Impressoras', _('Impressoras')),
+        ('Notebooks', _('Notebooks')),
+        ('Routers', _('Routers')),
     ]
 
     solicitacao = models.ForeignKey(
@@ -249,9 +264,9 @@ class AlocacaoSolicitacaoItem(models.Model):
 
 class Transferencia(models.Model):
     STATUS = [
-        ('PENDENTE', 'Pendente'),
-        ('EM_TRANSITO', 'Em trânsito'),
-        ('CONCLUIDA', 'Concluída'),
+        ('PENDENTE', _('Pendente')),
+        ('EM_TRANSITO', _('Em trânsito')),
+        ('CONCLUIDA', _('Concluída')),
     ]
 
 #    equipamento = models.ForeignKey(Equipamento, null=True, blank=True, on_delete=models.SET_NULL)
@@ -321,16 +336,16 @@ class TransferenciaItem(models.Model):
 class Notificacao(models.Model):
 
     TIPOS = [
-        ('SOLICITACAO', 'Solicitação'),
-        ('TRANSFERENCIA', 'Transferência'),
+        ('SOLICITACAO', _('Solicitação')),
+        ('TRANSFERENCIA', _('Transferência')),
     ]
 
     EVENTOS = [
-        ('CRIADA', 'Criada'),
-        ('APROVADA', 'Aprovada'),
-        ('REJEITADA', 'Rejeitada'),
-        ('EM_TRANSFERENCIA', 'Em transferência'),
-        ('RECEBIDA', 'Recebida'),
+        ('CRIADA', _('Criada')),
+        ('APROVADA', _('Aprovada')),
+        ('REJEITADA', _('Rejeitada')),
+        ('EM_TRANSFERENCIA', _('Em transferência')),
+        ('RECEBIDA', _('Recebida')),
     ]
 
     transferencia = models.ForeignKey(
@@ -415,11 +430,11 @@ class PedidoItem(models.Model):
 
 # ---------------- SICK ----------------
 class StatusEquipamento(models.TextChoices):
-    ATIVO = 'ATIVO', 'Ativo'
-    SICK = 'SICK', 'SICK'
-    MANUTENCAO = 'MANUTENCAO', 'Manutenção'
-    SUCATA= 'SUCATA', 'Sucata'
-    INATIVO = 'INATIVO', 'Inativo'
+    ATIVO = 'ATIVO', _('Ativo')
+    SICK = 'SICK', _('SICK')
+    MANUTENCAO = 'MANUTENCAO', _('Manutenção')
+    SUCATA= 'SUCATA', _('Sucata')
+    INATIVO = 'INATIVO', _('Inativo')
 
 class Sick(models.Model):
     equipamento = models.OneToOneField(Equipamento, on_delete=models.CASCADE, related_name='sick')
@@ -438,10 +453,10 @@ class Sick(models.Model):
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):
     TIPO_ACOES = [
-        ('CRIACAO', 'Criação'),
-        ('TRANSFERENCIA', 'Transferência'),
-        ('STATUS', 'Mudança de Status'),
-        ('EDICAO', 'Edição'),
+        ('CRIACAO', _('Criação')),
+        ('TRANSFERENCIA', _('Transferência')),
+        ('STATUS', _('Mudança de Status')),
+        ('EDICAO', _('Edição')),
     ]
 
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE)

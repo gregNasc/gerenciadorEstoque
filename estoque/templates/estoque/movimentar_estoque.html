@@ -1,13 +1,14 @@
 {% extends "estoque/base.html" %}
-{% block title %}Solicitar Transferência{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Solicitar Transferência" %}{% endblock %}
 
 {% block content %}
 <div class="container py-3">
 
-    <h3>Solicitar Transferência</h3>
+    <h3>{% trans "Solicitar Transferência" %}</h3>
 
-    <p><strong>Equipamento:</strong> {{ equipamento.produto.nome }}</p>
-    <p><strong>Regional Atual:</strong> {{ equipamento.regional.nome }}</p>
+    <p><strong>{% trans "Equipamento:" %}</strong> {{ equipamento.produto.nome }}</p>
+    <p><strong>{% trans "Regional Atual:" %}</strong> {{ equipamento.regional.nome }}</p>
 
     <form method="post">
         {% csrf_token %}

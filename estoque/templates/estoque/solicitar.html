@@ -1,33 +1,34 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
-<h3>Solicitar Equipamento</h3>
+<h3>{% trans "Solicitar Equipamento" %}</h3>
 
 <form method="post">
     {% csrf_token %}
 
     <div class="mb-3">
-        <label>Tipo de equipamento necessário</label>
+        <label>{% trans "Tipo de equipamento necessário" %}</label>
         <select name="tipo" class="form-control" required>
-            <option value="COLETOR">Coletor</option>
-            <option value="IMPRESSORA">Impressora</option>
-            <option value="NOTEBOOK">Notebook</option>
-            <option value="ROUTER">Router</option>
+            <option value="COLETOR">{% trans "Coletor" %}</option>
+            <option value="IMPRESSORA">{% trans "Impressora" %}</option>
+            <option value="NOTEBOOK">{% trans "Notebook" %}</option>
+            <option value="ROUTER">{% trans "Router" %}</option>
         </select>
     </div>
 
     <div class="mb-3">
-        <label>Quantidade</label>
+        <label>{% trans "Quantidade" %}</label>
         <input type="number" name="quantidade" class="form-control">
     </div>
 
     <div class="mb-3">
-        <label>Motivo</label>
+        <label>{% trans "Motivo" %}</label>
         <textarea name="motivo" class="form-control"></textarea>
     </div>
 
     <button class="btn btn-primary">
-        Enviar Solicitação
+        {% trans "Enviar Solicitação" %}
     </button>
 </form>
 

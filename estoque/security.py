@@ -14,30 +14,26 @@ def validar_empresa_objeto(obj, empresa):
 
 def secure_queryset(qs, user, campo_empresa='regional__empresa', campo_regional='regional'):
     perfil = getattr(user, 'perfil', None)
-
-    # Usuário sem perfil → sem acesso
     if not perfil:
         return qs.none()
 
-    # Admin → acesso total
     if perfil.is_admin:
         return qs
 
-    # Sem empresa → bloqueia
     if not perfil.empresa:
         return qs.none()
 
-    # Filtra pela empresa
+    # Filtro por empresa
     qs = qs.filter(**{campo_empresa: perfil.empresa})
 
-    # Gestor / Operador → precisam ter regionais vinculadas
-    if perfil.is_gestor or perfil.is_operador:
-        regionais = perfil.regionais.all()
+    role = getattr(perfil, 'role', '')
 
-        if not regionais.exists():
+    if role == 'gestor' or role == 'operador':
+        regionais_ids = list(perfil.regionais.values_list('id', flat=True))
+        if not regionais_ids:
             return qs.none()
+        # Aplica filtro pelas regionais
+        qs = qs.filter(**{f"{campo_regional}__id__in": regionais_ids})
+        return qs
 
-        return qs.filter(**{f"{campo_regional}__in": regionais})
-
-    # Qualquer outro caso → bloqueia
     return qs.none()

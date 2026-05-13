@@ -1,4 +1,5 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
@@ -16,16 +17,16 @@
     {% csrf_token %}
 
     <!-- ===================== ITENS SOLICITADOS ===================== -->
-    <h5 class="mb-3">Itens solicitados</h5>
+    <h5 class="mb-3">{% trans "Itens solicitados" %}</h5>
 
     <div class="table-responsive mb-4">
         <table class="table table-bordered table-sm align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Equipamento</th>
-                    <th>Solicitado</th>
-                    <th>Solicitante</th>
-                    <th>Pendente</th>
+                    <th>{% trans "Equipamento" %}</th>
+                    <th>{% trans "Solicitado" %}</th>
+                    <th>{% trans "Solicitante" %}</th>
+                    <th>{% trans "Pendente" %}</th>
                 </tr>
             </thead>
 
@@ -56,10 +57,10 @@
     <hr>
 
     <!-- ===================== ESTOQUE ===================== -->
-    <h5 class="mb-2">Alocação por regional</h5>
+    <h5 class="mb-2">{% trans "Alocação por regional"%}</h5>
 
     <p class="text-muted mb-4">
-        Selecione de qual regional e modelo os equipamentos serão enviados.
+        {% trans "Selecione de qual regional e modelo os equipamentos serão enviados." %}
     </p>
 
     {% for item in itens %}
@@ -74,21 +75,21 @@
                     <strong>{{ item.categoria }}</strong>
 
                     <div class="small mt-1">
-                        <span class="text-muted">Solicitante:</span>
+                        <span class="text-muted">{% trans "Solicitante:" %}</span>
                         <span class="badge bg-primary ms-1">
                             {{ solicitacao.regional_solicitante.nome }}
                         </span>
                     </div>
 
                     <div class="small text-muted mt-1">
-                        Alocado:
+                        {% trans "Alocado:" %}
                         <span class="fw-semibold alocado" data-item-id="{{ item.id }}">0</span>
                         / {{ item.pendente }}
                     </div>
                 </div>
 
                 <span class="badge bg-warning text-dark">
-                    Pendente: {{ item.pendente }}
+                    {% trans "Pendente" %} {{ item.pendente }}
                 </span>
             </div>
 
@@ -120,13 +121,13 @@
 
                                         {% if r.sugerido %}
                                             <span class="badge bg-success">
-                                                Sugerido
+                                                {% trans "Sugerido" %}
                                             </span>
                                         {% endif %}
 
                                         {% if r.regional == regional_solicitante.nome %}
                                             <span class="badge bg-primary">
-                                                Destino
+                                                {% trans "Destino" %}
                                             </span>
                                         {% endif %}
                                     </div>
@@ -148,7 +149,7 @@
                                                 </small>
 
                                                 <span class="text-muted small">
-                                                    Disponível: {{ m.disponivel }}
+                                                    {% trans "Disponível:" %} {{ m.disponivel }}
                                                 </span>
                                             </div>
 
@@ -166,7 +167,7 @@
                                         </div>
                                     {% empty %}
                                         <div class="text-muted small text-center">
-                                            Sem estoque
+                                            {% trans "Sem estoque" %}
                                         </div>
                                     {% endfor %}
 

@@ -20,20 +20,36 @@ class EmpresaAdminMixin:
         if request.user.is_superuser:
             return qs
 
-        if hasattr(reques0t.user, "perfil"):
-            empresa = request.user.perfil.empresa
+        if hasattr(request.user, "perfil"):
 
+            perfil = request.user.perfil
+            empresa = perfil.empresa
+
+            # MODELS COM REGIONAL
             if hasattr(self.model, "regional"):
-                return qs.filter(regional__empresa=empresa)
 
+                if perfil.is_admin:
+                    return qs
+
+                return qs.filter(
+                    regional__in=perfil.regionais.all()
+                )
+
+            # BASE
             if self.model.__name__ == "Base":
                 return qs.filter(empresa=empresa)
 
+            # TRANSFERÊNCIAS
             if self.model.__name__ == "Transferencia":
-                return qs.filter(regional_origem__empresa=empresa)
+                return qs.filter(
+                    regional_origem__in=perfil.regionais.all()
+                )
 
+            # HISTÓRICO
             if self.model.__name__ == "Historico":
-                return qs.filter(equipamento__regional__empresa=empresa)
+                return qs.filter(
+                    equipamento__regional__in=perfil.regionais.all()
+                )
 
         return qs.none()
 
@@ -48,6 +64,13 @@ class EmpresaAdminMixin:
                 kwargs["queryset"] = Base.objects.filter(empresa=empresa)
 
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+@admin.register(Base)
+class BaseAdmin(EmpresaAdminMixin, admin.ModelAdmin):
+    list_display = ('id', 'nome', 'empresa')
+    list_filter = ('empresa',)
+    search_fields = ('nome',)
+    ordering = ('empresa', 'nome')
 
 
 # ================== PRODUTO ==================

@@ -1,12 +1,13 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Cadastrar Equipamento{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Cadastrar Equipamento" %}{% endblock %}
 
 {% block content %}
 {% if request.user.is_authenticated %}
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-dark text-white">
-            ➕ Novo Equipamento
+            {% trans "➕ Novo Equipamento" %}
         </div>
         <div class="card-body">
             <form method="post" enctype="multipart/form-data" id="formEquipamento">
@@ -14,7 +15,7 @@
                 <div class="row">
                     <!-- CATEGORIA -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Categoria</label>
+                        <label class="form-label fw-bold">{% trans "Categoria" %}</label>
                         {{ form.categoria }}
                         {% if form.categoria.errors %}
                             <div class="text-danger small">{{ form.categoria.errors }}</div>
@@ -23,7 +24,7 @@
 
                     <!-- PRODUTO -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Equipamento</label>
+                        <label class="form-label fw-bold">{% trans "Equipamento" %}</label>
                         {{ form.produto }}
                         {% if form.produto.errors %}
                             <div class="text-danger small">{{ form.produto.errors }}</div>
@@ -57,7 +58,7 @@
                 <!-- BOTÃO SALVAR -->
                 <div class="text-end mt-3">
                     <button type="button" class="btn btn-primary" id="btnSalvarEquipamento">
-                        Salvar
+                        {% trans "Salvar" %}
                     </button>
                 </div>
             </form>
@@ -69,17 +70,17 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">🔍 Confirme os dados</h5>
+                <h5 class="modal-title">{% trans "🔍 Confirme os dados" %}</h5>
                 <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
-                    <div class="col-md-6 mb-2"><strong>Categoria:</strong> <span id="modalCategoria"></span></div>
-                    <div class="col-md-6 mb-2"><strong>Equipamento:</strong> <span id="modalProduto"></span></div>
-                    <div class="col-md-6 mb-2"><strong>Nº de Série:</strong> <span id="modalNumeroSerie"></span></div>
-                    <div class="col-md-6 mb-2"><strong>Patrimônio:</strong> <span id="modalPatrimonio"></span></div>
-                    <div class="col-md-6 mb-2"><strong>Regional:</strong> <span id="modalRegional"></span></div>
-                    <div class="col-md-6 mb-2"><strong>Responsável:</strong> <span id="modalResponsavel"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Categoria:" %}</strong> <span id="modalCategoria"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Equipamento:" %}</strong> <span id="modalProduto"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Nº de Série:" %}</strong> <span id="modalNumeroSerie"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Patrimônio:" %}</strong> <span id="modalPatrimonio"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Regional:" %}</strong> <span id="modalRegional"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Responsável:" %}</strong> <span id="modalResponsavel"></span></div>
                     <div class="col-12 mb-2">
                         <strong>Foto:</strong>
                         <div id="modalFotoPreview" class="mt-1"></div>
@@ -88,8 +89,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="btnFecharModal">✏️ Corrigir</button>
-                <button type="button" class="btn btn-success" id="btnConfirmarEnvio">✅ Confirmar e Salvar</button>
+                <button type="button" class="btn btn-secondary" id="btnFecharModal">{% trans "✏️ Corrigir" %}</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarEnvio">{% trans "✅ Confirmar e Salvar" %}</button>
             </div>
         </div>
     </div>

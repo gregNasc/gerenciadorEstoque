@@ -1,14 +1,15 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Histórico de Movimentações{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Histórico de Movimentações" %}{% endblock %}
 
 {% block content %}
 <div class="container py-3">
 
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0">📜 Histórico de Movimentações</h4>
+        <h4 class="mb-0">{% trans "📜 Histórico de Movimentações" %}</h4>
         <a href="{% url 'estoque:exportar_historico_csv' %}" class="btn btn-success btn-sm">
-            <i class="bi bi-download"></i> Exportar CSV
+            <i class="bi bi-download"></i> {% trans "Exportar CSV" %}
         </a>
     </div>
 
@@ -17,7 +18,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm text-center">
                 <div class="card-body">
-                    <h6 class="mb-1 text-muted">Total de Registros</h6>
+                    <h6 class="mb-1 text-muted">{% trans "Total de Registros" %}</h6>
                     <h3 class="fw-bold text-primary mb-0">
                         {{ total_registros }}
                     </h3>
@@ -47,9 +48,9 @@
             <form method="get" class="row g-3 align-items-end">
 
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">Tipo de Ação</label>
+                    <label class="form-label fw-bold">{% trans "Tipo de Ação" %}</label>
                     <select name="tipo_acao" class="form-select">
-                        <option value="">Todos</option>
+                        <option value="">{% trans "Todos" %}</option>
                         {% for codigo, nome in tipos_acao %}
                             <option value="{{ codigo }}"
                                 {% if filtros.tipo_acao == codigo %}selected{% endif %}>
@@ -60,7 +61,7 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">Equipamento</label>
+                    <label class="form-label fw-bold">{% trans "Equipamento" %}</label>
                     <input type="text"
                            name="equipamento"
                            class="form-control"
@@ -69,7 +70,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label fw-bold">Data Início</label>
+                    <label class="form-label fw-bold">{% trans "Data Início" %}</label>
                     <input type="date"
                            name="data_inicio"
                            class="form-control"
@@ -77,7 +78,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label fw-bold">Data Fim</label>
+                    <label class="form-label fw-bold">{% trans "Data Fim" %}</label>
                     <input type="date"
                            name="data_fim"
                            class="form-control"
@@ -102,19 +103,19 @@
     <!-- Tabela -->
     <div class="card shadow-sm">
         <div class="card-header">
-            <strong>Registros</strong>
+            <strong>{% trans "Registros" %}</strong>
         </div>
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th>Data/Hora</th>
-                        <th>Equipamento</th>
-                        <th>Ação</th>
-                        <th>Usuário</th>
-                        <th>Resumo</th>
-                        <th class="text-end">Ações</th>
+                        <th>{% trans "Data/Hora" %}</th>
+                        <th>{% trans "Equipamento" %}</th>
+                        <th>{% trans "Ação" %}</th>
+                        <th>{% trans "Usuário" %}</th>
+                        <th>{% trans "Resumo" %}</th>
+                        <th class="text-end">{% trans "Ações" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,14 +166,14 @@
                         <td class="text-end">
                             <a href="{% url 'estoque:historico_detalhes' historico.id %}"
                                class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-eye"></i> Detalhes
+                                <i class="bi bi-eye"></i> {% trans "Detalhes" %}
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="6" class="text-center text-muted py-4">
-                            Nenhum registro encontrado com os filtros aplicados.
+                            {% trans "Nenhum registro encontrado com os filtros aplicados." %}
                         </td>
                     </tr>
                     {% endfor %}

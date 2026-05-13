@@ -1,11 +1,12 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h3 class="mb-0">Caixa de Solicitações</h3>
-        <small class="text-muted">Solicitações aguardando alocação</small>
+        <h3 class="mb-0">{% trans "Caixa de Solicitações" %}</h3>
+        <small class="text-muted">{% trans "Solicitações aguardando alocação" %}</small>
     </div>
 </div>
 
@@ -34,7 +35,7 @@
 
                     <!-- ITENS -->
                     <div class="mb-3">
-                        <small class="text-muted d-block mb-1">Itens solicitados</small>
+                        <small class="text-muted d-block mb-1">{% trans "Itens solicitados" %}</small>
 
                         {% for item in s.itens.all %}
                             <div class="d-flex justify-content-between small mb-1">
@@ -55,7 +56,7 @@
                 <div class="card-footer bg-white border-0">
                     <a href="{% url 'estoque:painel_alocacao' s.id %}"
                        class="btn btn-sm btn-success w-100">
-                        Analisar Solicitação
+                        {% trans "Analisar Solicitação" %}
                     </a>
                 </div>
 

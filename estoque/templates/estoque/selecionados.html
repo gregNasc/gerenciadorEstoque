@@ -1,14 +1,15 @@
 {% extends "estoque/base.html" %}
-{% block title %}Produtos Selecionados{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Produtos Selecionados" %}{% endblock %}
 
 {% block content %}
-<h2>Produtos Selecionados</h2>
+<h2>{% trans "Produtos Selecionados" %}</h2>
 
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>Regional</th>
-            <th>Descrição</th>
+            <th>{% trans "Regional" %}</th>
+            <th>{% trans "Descrição" %}</th>
         </tr>
     </thead>
     <tbody>
@@ -21,5 +22,5 @@
     </tbody>
 </table>
 
-<a href="{% url 'estoque:estoque' %}" class="btn btn-secondary">Voltar ao Estoque</a>
+<a href="{% url 'estoque:estoque' %}" class="btn btn-secondary">{% trans "Voltar ao Estoque" %}</a>
 {% endblock %}

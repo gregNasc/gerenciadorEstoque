@@ -31,6 +31,7 @@ from collections import defaultdict
 @login_required
 #@cache_page(60 * 5)
 def index(request):
+    perfil = request.user.perfil
     equipamentos = secure_queryset(
         Equipamento.objects.select_related('regional', 'produto'),
         request.user
@@ -53,7 +54,11 @@ def index(request):
     if produto_id and produto_id.isdigit():
         equipamentos = equipamentos.filter(produto_id=produto_id)
 
+    regional_id = request.GET.get('regional')
     if regional_id and regional_id.isdigit():
+        if not perfil.is_admin and not perfil.regionais.filter(id=regional_id).exists():
+            messages.error(request, "Acesso negado a esta regional.")
+            return redirect('estoque:index')
         equipamentos = equipamentos.filter(regional_id=regional_id)
 
     # ================================
@@ -287,17 +292,17 @@ def detalhes_regional_api(request, regional_id):
 @login_required
 @role_required('admin', 'gestor')
 def api_regionais_produto(request, produto_id):
+    qs = secure_queryset(
+        Equipamento.objects.filter(produto_id=produto_id),
+        request.user
+    )
     dados = (
-        Equipamento.objects
-        .filter(produto_id=produto_id)
+        qs
         .values('regional__id', 'regional__nome')
         .annotate(total=Count('id'))
         .order_by('regional__nome')
     )
-
-    return JsonResponse({
-        'regionais': list(dados)
-    })
+    return JsonResponse({'regionais': list(dados)})
 
 @login_required
 @role_required('admin', 'gestor')
@@ -596,10 +601,7 @@ def detalhes_produto_view(request, produto_id, regional_id):
                 messages.error(request, "Sem permissão.")
                 return redirect(request.path)
 
-            equipamento = get_object_or_404(
-                base_qs,
-                id=request.POST.get('equipamento_id')
-            )
+            equipamento = get_object_or_404(Equipamento, id=equipamento_id)
 
             equipamento.status = 'SICK'
             equipamento.save()
@@ -1990,9 +1992,16 @@ def lista_transferencias(request):
         'transferencias': qs
     })
 
+
 @login_required
 @role_required('admin', 'gestor')
 def equipamentos_por_regional(request, produto_id, regional_id):
+    perfil = request.user.perfil
+
+    # Verifica se o usuário tem permissão para a regional solicitada
+    if not perfil.is_admin and not perfil.regionais.filter(id=regional_id).exists():
+        return JsonResponse({'erro': 'Acesso negado a esta regional'}, status=403)
+
     equipamentos = Equipamento.objects.filter(
         produto_id=produto_id,
         regional_id=regional_id
@@ -2013,5 +2022,4 @@ def equipamentos_por_regional(request, produto_id, regional_id):
             Base.objects.exclude(id=regional_id).values('id', 'nome')
         )
     }
-
     return JsonResponse(data)

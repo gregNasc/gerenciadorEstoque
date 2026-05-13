@@ -1,19 +1,20 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
-<h3>Transferência #{{ transferencia.id }}</h3>
+<h3>{% trans "Transferência #" %}{{ transferencia.id }}</h3>
 
-<p><strong>Origem:</strong> {{ transferencia.regional_origem.nome }}</p>
-<p><strong>Destino:</strong> {{ transferencia.regional_destino.nome }}</p>
-<p><strong>Status:</strong> {{ transferencia.status }}</p>
+<p><strong>{% trans "Origem:" %}</strong> {{ transferencia.regional_origem.nome }}</p>
+<p><strong>{% trans "Destino:" %}</strong> {{ transferencia.regional_destino.nome }}</p>
+<p><strong>{% trans "Status:" %}</strong> {{ transferencia.status }}</p>
 
 <hr>
 
 <table class="table">
     <thead>
         <tr>
-            <th>Equipamento</th>
+            <th>{% trans "Equipamento" %}</th>
         </tr>
     </thead>
 
@@ -27,7 +28,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td>Nenhum item na transferência</td>
+            <td>{% trans "Nenhum item na transferência" %}</td>
         </tr>
         {% endfor %}
     </tbody>

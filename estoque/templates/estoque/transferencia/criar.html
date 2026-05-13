@@ -1,15 +1,16 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
-<h3>Nova Transferência</h3>
+<h3>{% trans "Nova Transferência" %}</h3>
 
 <form method="post">
     {% csrf_token %}
 
     <div class="row mb-3">
         <div class="col-md-6">
-            <label>Destino</label>
+            <label>{% trans "Destino" %}</label>
             <select name="destino" class="form-control">
                 {% for base in bases %}
                     <option value="{{ base.id }}">{{ base.nome }}</option>
@@ -27,15 +28,15 @@
         <div class="card mb-3">
 
             <div class="card-header">
-                <strong>Origem:</strong> {{ grupo.regional_nome }}
+                <strong>{% trans "Origem:" %}</strong> {{ grupo.regional_nome }}
             </div>
 
             <div class="card-body">
 
                 {% for item in grupo.itens %}
                     <p>
-                        <strong>Produto:</strong> {{ item.produto_nome }} <br>
-                        <strong>Quantidade:</strong> {{ item.quantidade }}
+                        <strong>{% trans "Produto:" %}</strong> {{ item.produto_nome }} <br>
+                        <strong>{% trans "Quantidade:" %}</strong> {{ item.quantidade }}
                     </p>
                 {% endfor %}
 
@@ -46,7 +47,7 @@
     {% endfor %}
 
     <button class="btn btn-success">
-        Salvar Transferência
+        {% trans "Salvar Transferência" %}
     </button>
 
 </form>

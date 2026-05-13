@@ -1,13 +1,14 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Dashboard | Estoque{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Dashboard | Estoque" %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4">
 
     <!-- Título -->
     <div class="border-bottom pb-3 mb-4">
-        <h1 class="h3 mb-0 fw-semibold">Dashboard de Ativos</h1>
-        <p class="text-secondary small mt-1">Visão geral dos equipamentos</p>
+        <h1 class="h3 mb-0 fw-semibold">{% trans "Dashboard de Ativos" %}</h1>
+        <p class="text-secondary small mt-1">{% trans "Visão geral dos equipamentos" %}</p>
     </div>
 
     <!-- Filtros -->
@@ -15,18 +16,18 @@
         <div class="card-body bg-light">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Categoria</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Categoria" %}</label>
                     <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todas</option>
-                        <option value="Coletores" {% if request.GET.categoria == "Coletores" %}selected{% endif %}>Coletores</option>
-                        <option value="Impressoras" {% if request.GET.categoria == "Impressoras" %}selected{% endif %}>Impressoras</option>
-                        <option value="Notebooks" {% if request.GET.categoria == "Notebooks" %}selected{% endif %}>Notebooks</option>
-                        <option value="Routers" {% if request.GET.categoria == "Routers" %}selected{% endif %}>Routers</option>
+                        <option value="Coletores" {% if request.GET.categoria == "Coletores" %}selected{% endif %}>{% trans "Coletores" %}</option>
+                        <option value="Impressoras" {% if request.GET.categoria == "Impressoras" %}selected{% endif %}>{% trans "Impressoras" %}</option>
+                        <option value="Notebooks" {% if request.GET.categoria == "Notebooks" %}selected{% endif %}>{% trans "Notebooks" %}</option>
+                        <option value="Routers" {% if request.GET.categoria == "Routers" %}selected{% endif %}>{% trans "Routers" %}</option>
                     </select>
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Equipamento</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Equipamento" %}</label>
                     <select name="produto" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todos</option>
                         {% for p in produtos_lista %}
@@ -62,9 +63,9 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Regional</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Regional" %}</label>
                     <select name="regional" class="form-select form-select-sm bg-white auto-submit">
-                        <option value="">Todas</option>
+                        <option value="">{% trans "Todas" %}</option>
                         {% for r in regionais %}
                             <option value="{{ r.id }}"
                             {% if request.GET.regional == r.id|stringformat:"s" %}selected{% endif %}>
@@ -80,7 +81,7 @@
     <!-- Alerta de consistência -->
     <div class="alert alert-secondary alert-dismissible fade show mb-4" role="alert" id="consistencyAlert" style="display: none;">
         <i class="bi bi-cloud-check fs-6 me-2"></i>
-        <strong>Dados sincronizados!</strong> Todas as informações estão consistentes em tempo real.
+        <strong>{% trans "Dados sincronizados!" %}</strong>{% trans "Todas as informações estão consistentes em tempo real." %}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
@@ -108,11 +109,11 @@
                 </div>
                 <hr class="my-2">
                 <div class="d-flex justify-content-between small">
-                    <span class="text-secondary">Ativos</span>
+                    <span class="text-secondary">{% trans "Ativos" %}</span>
                     <strong class="text-success">{{ item.ativos }}</strong>
                 </div>
                 <div class="d-flex justify-content-between small">
-                    <span class="text-secondary">Em Manutenção</span>
+                    <span class="text-secondary">{% trans "Em Manutenção" %}</span>
                     <strong class="text-danger">{{ item.sick }}</strong>
                 </div>
             </div>
@@ -120,7 +121,7 @@
     </div>
     {% empty %}
     <div class="col-12">
-        <div class="alert alert-info text-center">Nenhum equipamento encontrado.</div>
+        <div class="alert alert-info text-center">{% trans "Nenhum equipamento encontrado." %}</div>
     </div>
     {% endfor %}
 </div>
@@ -151,19 +152,34 @@
                         </div>
                         {% empty %}
                         <div class="text-secondary small text-center py-2">
-                            Nenhum equipamento desta categoria na regional
+                            {% trans "Nenhum equipamento desta categoria na regional" %}
                         </div>
                         {% endfor %}
                     {% else %}
-                        <!-- Exibe as quatro categorias resumidas (original) -->
+                        <!-- Exibe as quatro categorias resumidas -->
                         {% for tipo, dados in r.produtos.items %}
                         <div class="d-flex justify-content-between align-items-center mb-2 small">
+
                             <span class="text-secondary">
-                                {% if tipo == "Coletores" %}<i class="bi bi-upc-scan me-1"></i>
-                                {% elif tipo == "Impressoras" %}<i class="bi bi-printer me-1"></i>
-                                {% elif tipo == "Notebooks" %}<i class="bi bi-laptop me-1"></i>
-                                {% else %}<i class="bi bi-wifi me-1"></i>{% endif %}
-                                {{ tipo }}
+
+                                {% if tipo == "Coletores" %}
+                                    <i class="bi bi-upc-scan me-1"></i>
+                                    {% trans "Coletores" %}
+
+                                {% elif tipo == "Impressoras" %}
+                                    <i class="bi bi-printer me-1"></i>
+                                    {% trans "Impressoras" %}
+
+                                {% elif tipo == "Notebooks" %}
+                                    <i class="bi bi-laptop me-1"></i>
+                                    {% trans "Notebooks" %}
+
+                                {% else %}
+                                    <i class="bi bi-wifi me-1"></i>
+                                    {% trans "Routers" %}
+
+                                {% endif %}
+
                             </span>
                             <div>
                                 <span class="text-success me-2">{{ dados.ativos }}</span>
@@ -175,20 +191,20 @@
 
                     <hr class="my-2">
                     <div class="d-flex justify-content-between small mb-1">
-                        <span class="text-secondary">Total</span>
+                        <span class="text-secondary">{% trans "Total" %}</span>
                         <strong>{{ r.total }}</strong>
                     </div>
                     <div class="d-flex justify-content-between small mb-1">
-                        <span class="text-secondary">Em Operação</span>
+                        <span class="text-secondary">{% trans "Em Operação" %}</span>
                         <strong class="text-success">{{ r.ativos }}</strong>
                     </div>
                     <div class="d-flex justify-content-between small mb-2">
-                        <span class="text-secondary">Em Manutenção</span>
+                        <span class="text-secondary">{% trans "Em Manutenção" %}</span>
                         <strong class="text-danger">{{ r.sick }}</strong>
                     </div>
 
                     <!-- Barra de disponibilidade com cores dinâmicas -->
-                    <div class="small text-secondary mb-1">Disponibilidade: {{ r.disponibilidade }}%</div>
+                    <div class="small text-secondary mb-1">{% trans "Disponibilidade:" %} {{ r.disponibilidade }}%</div>
                     <div class="progress" style="height: 3px;">
                         <div class="progress-bar
                             {% if r.disponibilidade >= 80 %}bg-success
@@ -202,7 +218,7 @@
 
                     <div class="text-center mt-3">
                         <small class="text-secondary">
-                            <i class="bi bi-chevron-right"></i> Ver detalhes
+                            <i class="bi bi-chevron-right"></i> {% trans "Ver detalhes" %}
                         </small>
                     </div>
                 </div>
@@ -216,7 +232,7 @@
     <div id="modal" class="modal hidden">
         <div class="modal-content card border-0 shadow-lg" style="max-width: 90%; width: 1000px;">
             <div class="modal-header bg-light border-0 px-4 py-3">
-                <h5 id="modal-title" class="fw-semibold mb-0">Detalhes da Regional</h5>
+                <h5 id="modal-title" class="fw-semibold mb-0">{% trans "Detalhes da Regional" %}</h5>
                 <button class="btn-close" id="closeModal"></button>
             </div>
             <div id="modal-body" class="modal-body p-4"></div>

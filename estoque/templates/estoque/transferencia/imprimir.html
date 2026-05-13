@@ -1,10 +1,11 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 <h3>Protocolo: {{ transferencia.protocolo }}</h3>
 
-<p><strong>Origem:</strong> {{ transferencia.regional_origem.nome }}</p>
-<p><strong>Destino:</strong> {{ transferencia.regional_destino.nome }}</p>
+<p><strong>{% trans "Origem:" %}</strong> {{ transferencia.regional_origem.nome }}</p>
+<p><strong>{% trans "Destino:" %}</strong> {{ transferencia.regional_destino.nome }}</p>
 
 <hr>
 

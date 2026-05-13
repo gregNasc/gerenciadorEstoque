@@ -1,5 +1,6 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Estoque{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Estoque" %}{% endblock %}
 
 {% block content %}
 {% if request.user.is_authenticated %}
@@ -10,8 +11,8 @@
 
         <!-- HEADER -->
         <div class="card-header bg-white border-0 pt-4 pb-0">
-            <h2 class="h4 fw-semibold mb-0">📋 Estoque Geral</h2>
-            <p class="text-secondary small mt-1">Gestão de equipamentos por regional</p>
+            <h2 class="h4 fw-semibold mb-0">{% trans "📋 Estoque Geral" %}</h2>
+            <p class="text-secondary small mt-1">{% trans "Gestão de equipamentos por regional" %}</p>
         </div>
 
         <div class="card-body">
@@ -19,14 +20,14 @@
             <!-- RELATÓRIOS ADMIN -->
             {% if request.user.perfil.role == 'admin' %}
             <div class="bg-light p-3 rounded mb-4 border">
-                <h6 class="fw-semibold mb-3">📊 Relatórios Administrativos</h6>
+                <h6 class="fw-semibold mb-3">{% trans "📊 Relatórios Administrativos" %}</h6>
 
                 <form method="get" class="row g-3 align-items-end">
 
                     <div class="col-auto">
-                        <label class="form-label small mb-1">Regional</label>
+                        <label class="form-label small mb-1">{% trans "Regional" %}</label>
                         <select name="regional" class="form-select form-select-sm" style="width:200px;">
-                            <option value="">Todas as regionais</option>
+                            <option value="">{% trans "Todas as regionais" %}</option>
                             {% for r in regionais %}
                                 <option value="{{ r.id }}"
                                     {% if regional_selecionada == r.id|stringformat:"s" %}selected{% endif %}>
@@ -55,13 +56,13 @@
 
                     <div class="col-auto">
                         <label class="form-label small text-secondary fw-semibold mb-1">
-                            Regional
+                            {% trans "Regional" %}
                         </label>
 
                         <select name="regional"
                                 class="form-select form-select-sm"
                                 style="width:200px;">
-                            <option value="">Todas</option>
+                            <option value="">{% trans "Todas" %}</option>
                             {% for r in regionais %}
                                 <option value="{{ r.id }}"
                                     {% if regional_selecionada == r.id|stringformat:"s" %}selected{% endif %}>
@@ -73,7 +74,7 @@
 
                     <div class="col-auto">
                         <button type="submit" class="btn btn-secondary btn-sm px-4">
-                            Aplicar
+                            {% trans "Aplicar" %}
                         </button>
                     </div>
 
@@ -87,12 +88,12 @@
                     <thead class="table-light">
                         <tr class="small text-secondary">
                             <th>Descrição</th>
-                            <th class="text-center">Total</th>
-                            <th class="text-center">Ativos</th>
-                            <th class="text-center">Sick</th>
-                            <th class="text-center">Transferência</th>
+                            <th class="text-center">{% trans "Total" %}</th>
+                            <th class="text-center">{% trans "Ativos" %}</th>
+                            <th class="text-center">{% trans "Sick" %}</th>
+                            <th class="text-center">{% trans "Transferência" %}</th>
                             <!--th class="text-center">Manutenção</th-->
-                            <th class="text-center">Disponibilidade</th>
+                            <th class="text-center">{% trans "Disponibilidade" %}</th>
                         </tr>
                     </thead>
 
@@ -140,7 +141,7 @@
 <div id="modal" class="modal hidden">
     <div class="modal-content card border-0 shadow-lg" style="max-width:900px;">
         <div class="modal-header bg-light px-4 py-3 border-0">
-            <h5 id="modal-title" class="fw-semibold mb-0">Detalhes</h5>
+            <h5 id="modal-title" class="fw-semibold mb-0">{% trans "Detalhes" %}</h5>
             <button class="btn-close" id="closeModal"></button>
         </div>
         <div id="modal-body" class="p-4"></div>
