@@ -23,6 +23,14 @@ class Base(models.Model):
     )
     nome = models.CharField(max_length=100)
 
+    grupo_regional = models.ForeignKey(
+        'GrupoRegional',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='bases'
+    )
+
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"
 
@@ -114,6 +122,28 @@ class Perfil(models.Model):
     @property
     def pode_marcar_sick(self):
         return self.is_admin or self.is_gestor or self.is_operador
+
+class GrupoRegional(models.Model):
+
+    nome = models.CharField(
+        max_length=100,
+        unique=True
+    )
+
+    gestor_principal = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='grupos_regionais'
+    )
+
+    ativo = models.BooleanField(default=True)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
 
 # ---------------- PRODUTO ----------------
 class Produto(models.Model):
@@ -267,6 +297,7 @@ class Transferencia(models.Model):
         ('PENDENTE', _('Pendente')),
         ('EM_TRANSITO', _('Em trânsito')),
         ('CONCLUIDA', _('Concluída')),
+        ('CANCELADA', _('Cancelada')),
     ]
 
 #    equipamento = models.ForeignKey(Equipamento, null=True, blank=True, on_delete=models.SET_NULL)

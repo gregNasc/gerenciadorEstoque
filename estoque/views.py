@@ -763,17 +763,22 @@ def sick_view(request):
                 sick.previsao_retorno = previsao_retorno
 
             # Finaliza apenas quando realmente encerrado
-            if novo_status in ['ATIVO', 'INATIVO', 'SUCATA']:
+            if novo_status == 'ATIVO':
 
                 sick.data_resolucao = timezone.now()
                 sick.ativo = False
                 sick.resolvido_por = request.user
 
-            # Manutenção continua pendente
-            elif novo_status == 'MANUTENCAO':
+            else:
 
                 sick.ativo = True
                 sick.data_resolucao = None
+
+            # Manutenção continua pendente
+            #elif novo_status == 'MANUTENCAO':
+
+            #    sick.ativo = True
+            #    sick.data_resolucao = None
 
             sick.status_final = novo_status
 
@@ -853,7 +858,7 @@ def sick_view(request):
 
     elif status_filter == 'resolvidos':
         sicks = sicks.filter(
-            data_resolucao__isnull=False
+            status_final='ATIVO'
         )
 
     # Categoria
@@ -877,8 +882,23 @@ def sick_view(request):
     # Ordenação
     sicks = sicks.order_by('-data_ocorrencia')
 
+    # Remove SICKs realmente resolvidos
+    if status_filter != 'resolvidos':
+        sicks = sicks.exclude(
+            status_final='ATIVO'
+        )
+
     total_pendentes = sicks.filter(
-        ativo=True
+        ativo=True,
+        status_final__isnull=True
+    ).count()
+
+    total_manutencao = sicks.filter(
+        status_final='MANUTENCAO'
+    ).count()
+
+    total_inativos = sicks.filter(
+        status_final='INATIVO'
     ).count()
 
     total_resolvidos = sicks.filter(
@@ -908,6 +928,8 @@ def sick_view(request):
         'total_sick': total_pendentes,
         'total_pendentes': total_pendentes,
         'total_resolvidos': total_resolvidos,
+        'total_manutencao': total_manutencao,
+        'total_inativos': total_inativos,
 
         # Filtros atuais
         'status_filter': status_filter,
