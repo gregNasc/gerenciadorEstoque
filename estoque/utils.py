@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from .models import Equipamento, Historico, Base
 from django.db.models import Count, Q, Sum, F
+from django.utils.translation import gettext_lazy as _
 from django.db.models.functions import Coalesce
 from datetime import date
 
@@ -92,10 +93,10 @@ class EstoqueService:
     @classmethod
     def get_kpis_por_regional(cls, queryset, regionais_lista):
         produtos_especificos = [
-            {'nome': 'Coletores', 'filtro': 'Coletor'},
-            {'nome': 'Impressoras', 'filtro': 'Impressora'},
-            {'nome': 'Notebooks', 'filtro': 'Notebook'},
-            {'nome': 'Routers', 'filtro': 'Router'},
+            {'nome': _('Coletores'), 'filtro': 'Coletores'},
+            {'nome': _('Impressoras'), 'filtro': 'Impressoras'},
+            {'nome': _('Notebooks'), 'filtro': 'Notebooks'},
+            {'nome': _('Routers'), 'filtro': 'Routers'},
         ]
 
         kpis_regionais = []

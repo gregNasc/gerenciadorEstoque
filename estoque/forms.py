@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Produto, Equipamento, Transferencia, Sick, Base
 from estoque.models import Base
+from django.utils.translation import gettext_lazy as _
 
 # ================= PRODUTO =================
 class ProdutoForm(forms.ModelForm):
@@ -27,11 +28,11 @@ class EquipamentoForm(forms.ModelForm):
 
     categoria = forms.ChoiceField(
         choices=[
-            ('', 'Selecione'),
-            ('Coletores', 'Coletores'),
-            ('Impressoras', 'Impressoras'),
-            ('Notebooks', 'Notebooks'),
-            ('Routers', 'Routers'),
+            ('', _('Selecione')),
+            ('Coletores', _('Coletores')),
+            ('Impressoras', _('Impressoras')),
+            ('Notebooks', _('Notebooks')),
+            ('Routers', _('Routers')),
         ],
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'})

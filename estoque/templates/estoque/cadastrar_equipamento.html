@@ -239,7 +239,7 @@
                         reader.readAsDataURL(fotoFile);
                         modalNome.innerText = fotoFile.name;
                     } else {
-                        modalPreview.innerHTML = '<span class="text-muted">Nenhuma foto selecionada</span>';
+                        modalPreview.innerHTML = '<span class="text-muted">{% trans "Nenhuma foto selecionada" %}</span>';
                         modalNome.innerText = '';
                     }
                 }
