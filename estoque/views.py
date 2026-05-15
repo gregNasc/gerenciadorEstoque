@@ -25,6 +25,7 @@ from .security import secure_queryset
 import json
 import re
 from collections import defaultdict
+from .services.estoque_service import get_estoque_por_produto
 
 
 # ----------------- DASHBOARD -----------------
@@ -1310,33 +1311,31 @@ def busca_avancada(request):
 @login_required
 @role_required('admin')
 def painel_alocacao(request, solicitacao_id):
-    from .services.estoque_service import get_estoque_por_produto
 
     solicitacao = Solicitacao.objects.prefetch_related('itens').get(id=solicitacao_id)
     itens = solicitacao.itens.all()
 
     # ===================== POST =====================
     if request.method == 'POST':
-
         alocacoes = []
 
         for key, value in request.POST.items():
             if key.startswith('alocacao_') and value:
-
                 _, item_id, regional_id, produto_id = key.split('_')
                 quantidade = int(value)
-
                 if quantidade <= 0:
                     continue
-
                 alocacoes.append({
                     'item_id': item_id,
                     'regional_id': regional_id,
                     'produto_id': produto_id,
-                    'quantidade': quantidade
+                    'quantidade': quantidade,
                 })
 
+        # Guarda na sessão
         request.session['alocacoes_transferencia'] = alocacoes
+        request.session['destino_transferencia_id'] = solicitacao.regional_solicitante_id
+        request.session['solicitacao_id'] = solicitacao.id
 
         return redirect('estoque:transferencia_criar')
 
@@ -1361,23 +1360,17 @@ def painel_alocacao(request, solicitacao_id):
                             'modelos': []
                         }
 
-                    # Soma total da regional
                     regionais_agrupados[rid]['total'] += reg['total']
-
                     regionais_agrupados[rid]['modelos'].append({
                         'produto_id': produto_id,
                         'produto': dados.get('produto'),
                         'disponivel': reg['total']
                     })
 
-        item.regionais = sorted(
-            regionais_agrupados.values(),
-            key=lambda x: x['regional']
-        )
+        item.regionais = sorted(regionais_agrupados.values(), key=lambda x: x['regional'])
 
         if item.regionais:
             melhor = max(item.regionais, key=lambda r: r['total'])
-
             for r in item.regionais:
                 r['sugerido'] = (r['regional_id'] == melhor['regional_id'])
 
@@ -1389,77 +1382,113 @@ def painel_alocacao(request, solicitacao_id):
 @login_required
 @role_required('admin')
 def transferencia_criar(request):
-
     alocacoes = request.session.get('alocacoes_transferencia', [])
+    destino_id = request.session.get('destino_transferencia_id')
+    solicitacao_id = request.session.get('solicitacao_id')
 
-    bases = Base.objects.in_bulk()
-    produtos = Produto.objects.in_bulk()
+    # Validações iniciais
+    if not alocacoes:
+        messages.error(request, "Nenhuma alocação pendente.")
+        return redirect('estoque:painel_alocacao', solicitacao_id=solicitacao_id)
 
-    if request.method == 'POST':
+    if not destino_id:
+        messages.error(request, "Destino não identificado. Refazer alocação.")
+        return redirect('estoque:painel_alocacao', solicitacao_id=solicitacao_id)
 
-        for a in alocacoes:
+    # GET
+    if request.method != 'POST':
+        return render_resumo_alocacao(request, alocacoes, destino_id, solicitacao_id)
 
-            regional_origem_id = int(a['regional_id'])
-            produto_id = int(a['produto_id'])
-            quantidade = int(a['quantidade'])
-            destino_id = int(request.POST.get('destino'))
+    # POST
+    from django.db import transaction
+    from collections import defaultdict
 
-            # cria transferência vinculada à solicitação (se quiser evoluir depois)
-            transferencia = Transferencia.objects.create(
-                regional_origem_id=regional_origem_id,
-                regional_destino_id=destino_id,
-                solicitado_por=request.user,
-                status='PENDENTE'
-            )
+    try:
+        with transaction.atomic():
+            # Agrupa alocações por regional de origem
+            alocacoes_por_origem = defaultdict(list)
+            for a in alocacoes:
+                alocacoes_por_origem[int(a['regional_id'])].append(a)
 
-            #  pega equipamentos reais
-            equipamentos = Equipamento.objects.filter(
-                base_id=regional_origem_id,
-                produto_id=produto_id,
-                status='DISPONIVEL'
-            )[:quantidade]
+            transferencias_criadas = 0
 
-            if equipamentos.count() < quantidade:
-                continue  # depois podemos tratar melhor
-
-            #  cria itens corretamente
-            for eq in equipamentos:
-                TransferenciaItem.objects.create(
-                    transferencia=transferencia,
-                    equipamento=eq
+            for origem_id, itens_origem in alocacoes_por_origem.items():
+                transferencia = Transferencia.objects.create(
+                    regional_origem_id=origem_id,
+                    regional_destino_id=destino_id,
+                    solicitado_por=request.user,
+                    status='PENDENTE'
                 )
 
-                eq.status = 'EM_TRANSITO'
-                eq.save(update_fields=['status'])
+                for item in itens_origem:
+                    produto_id = int(item['produto_id'])
+                    quantidade = int(item['quantidade'])
 
-            #  dispara envio + notificação
-            transferencia.enviar()
+                    equipamentos = Equipamento.objects.filter(
+                        regional_id=origem_id,
+                        produto_id=produto_id,
+                        status='ATIVO'
+                    )[:quantidade]
 
-        request.session['alocacoes_transferencia'] = []
+                    if equipamentos.count() < quantidade:
+                        raise ValueError(
+                            f"Estoque insuficiente: produto {produto_id} na origem {origem_id} "
+                            f"(solicitado {quantidade}, disponível {equipamentos.count()})"
+                        )
 
-        return redirect('estoque:lista_transferencias')
+                    for eq in equipamentos:
+                        TransferenciaItem.objects.create(
+                            transferencia=transferencia,
+                            equipamento=eq
+                        )
+                        eq.status = 'EM_TRANSITO'
+                        eq.save(update_fields=['status'])
 
-    # GET (mantém igual)
+                transferencias_criadas += 1
+
+            #Atualiza o status da solicitação
+            if solicitacao_id:
+                rows_updated = Solicitacao.objects.filter(id=solicitacao_id).update(status='ATENDIDA')
+                print(f"DEBUG: Solicitação {solicitacao_id} atualizada para ATENDIDA. Linhas: {rows_updated}")
+            else:
+                print("DEBUG: solicitacao_id é None - não foi possível atualizar")
+
+            # Limpa a sessão
+            request.session.pop('alocacoes_transferencia', None)
+            request.session.pop('destino_transferencia_id', None)
+            request.session.pop('solicitacao_id', None)
+
+            messages.success(request, f"Transferência{'' if transferencias_criadas == 1 else 's'} criada{'' if transferencias_criadas == 1 else 's'} com sucesso.")
+            return redirect('estoque:lista_transferencias')
+
+    except Exception as e:
+        print(f"DEBUG: Erro na criação - {str(e)}")
+        messages.error(request, f"Erro ao criar transferência: {str(e)}")
+        return redirect('estoque:transferencia_criar')
+
+def render_resumo_alocacao(request, alocacoes, destino_id, solicitacao_id):
+    bases = Base.objects.in_bulk()
+    produtos = Produto.objects.in_bulk()
+    destino = Base.objects.filter(id=destino_id).first()
+
     agrupado = {}
-
     for a in alocacoes:
-        key = f"{a['regional_id']}"
-
+        key = a['regional_id']
         if key not in agrupado:
             agrupado[key] = {
-                'regional_id': a['regional_id'],
-                'regional_nome': bases[int(a['regional_id'])].nome if int(a['regional_id']) in bases else 'Desconhecida',
+                'regional_id': key,
+                'regional_nome': bases.get(int(key), Base()).nome,
                 'itens': []
             }
-
         agrupado[key]['itens'].append({
-            'produto_nome': produtos[int(a['produto_id'])].descricao if int(a['produto_id']) in produtos else 'Desconhecido',
+            'produto_nome': produtos.get(int(a['produto_id']), Produto()).descricao,
             'quantidade': a['quantidade']
         })
 
     return render(request, 'estoque/transferencia/criar.html', {
         'alocacoes': agrupado.values(),
-        'bases': Base.objects.all()
+        'destino': destino,
+        'solicitacao_id': solicitacao_id,
     })
 
 @login_required
@@ -1549,7 +1578,7 @@ def caixa_solicitacoes(request):
         'regional_solicitante',
         'regional_origem'
     ).filter(
-    status__in=['PENDENTE', 'EM_TRANSFERENCIA']
+    status__in=['PENDENTE']
     )
 
     if perfil.role == 'gestor':
@@ -1914,35 +1943,51 @@ def solicitar_transferencia_lote(request):
 @role_required('gestor', 'operador', 'admin')
 def receber_transferencia(request, transferencia_id):
     transferencia = get_object_or_404(
-        secure_queryset(
-            Transferencia.objects.select_related('equipamento'),
-            request.user,
-            'equipamento__regional__empresa'
+        Transferencia.objects.select_related(
+            'regional_origem',
+            'regional_destino',
+            'solicitado_por'
+        ).prefetch_related(
+            'itens__equipamento__produto'
         ),
         id=transferencia_id
     )
+
     perfil = request.user.perfil
 
     if perfil.role != 'admin' and not perfil.regionais.filter(id=transferencia.regional_destino.id).exists():
-        messages.error(request, "Sem permissão.")
-        return redirect('estoque:index')
+        messages.error(request, "Sem permissão para receber esta transferência.")
+        return redirect('estoque:lista_transferencias')
 
     if transferencia.status != 'PENDENTE':
-        messages.error(request, "Transferência inválida.")
+        messages.error(request, "Esta transferência não pode ser recebida (status inválido).")
         return redirect('estoque:lista_transferencias')
 
     if request.method == 'POST':
         with transaction.atomic():
-            transferencia = Transferencia.objects.select_for_update().get(id=transferencia.id)
-            transferencia.receber(transferencia, request.user)
+            # Atualiza cada equipamento
+            for item in transferencia.itens.all():
+                equipamento = item.equipamento
+                equipamento.regional = transferencia.regional_destino
+                equipamento.status = 'ATIVO'
+                equipamento.save(update_fields=['regional', 'status'])
 
-        messages.success(request, "Transferência recebida.")
-        return redirect('estoque:index')
+            # Atualiza a transferência
+            transferencia.status = 'RECEBIDO'
+            transferencia.recebido_por = request.user
+            transferencia.data_recebimento = timezone.now()
+            transferencia.save()
 
+            # Historico.objects.create(...)
+
+        messages.success(request, f"Transferência #{transferencia.id} recebida com sucesso.")
+        return redirect('estoque:lista_transferencias')
+
+    # GET: exibe página de confirmação
     return render(request, 'estoque/receber_transferencia.html', {
-        'transferencia': transferencia
+        'transferencia': transferencia,
+        'itens': transferencia.itens.all(),
     })
-
 @login_required
 def receber_transferencia_lote(request, solicitacao_id):
 
@@ -2035,6 +2080,23 @@ def lista_transferencias(request):
     hoje = timezone.now().date()
     qs = list(qs)
 
+    total_pendentes = sum(
+        1 for t in qs if t.status == 'PENDENTE'
+    )
+
+    total_em_transito = sum(
+        1 for t in qs if t.status == 'EM_TRANSITO'
+    )
+
+    total_concluidas = sum(
+        1 for t in qs
+        if t.status in ['CONCLUIDA', 'RECEBIDO']
+    )
+
+    total_canceladas = sum(
+        1 for t in qs if t.status == 'CANCELADO'
+    )
+
     for t in qs:
         t.pode_receber = (
             t.status == 'PENDENTE' and
@@ -2048,7 +2110,14 @@ def lista_transferencias(request):
         t.dias = (base - data_envio).days
 
     return render(request, 'estoque/transferencia/listar.html', {
-        'transferencias': qs
+
+        'transferencias': qs,
+
+        'total_pendentes': total_pendentes,
+        'total_em_transito': total_em_transito,
+        'total_concluidas': total_concluidas,
+        'total_canceladas': total_canceladas,
+
     })
 
 

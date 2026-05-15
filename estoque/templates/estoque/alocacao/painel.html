@@ -3,17 +3,17 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Alocação da Solicitação #{{ solicitacao.id }}</h3>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h3 class="mb-0">{% trans "Alocação da Solicitação" %} #{{ solicitacao.id }}</h3>
 
     <a href="{% url 'estoque:caixa_solicitacoes' %}" class="btn btn-outline-secondary btn-sm">
-        ← Voltar
+        ← {% trans "Voltar" %}
     </a>
 </div>
 
 <hr>
 
-<form method="post">
+<form method="post" novalidate>
     {% csrf_token %}
 
     <!-- ===================== ITENS SOLICITADOS ===================== -->
@@ -29,26 +29,18 @@
                     <th>{% trans "Pendente" %}</th>
                 </tr>
             </thead>
-
             <tbody>
                 {% for item in itens %}
-                    <tr>
-                        <td><strong>{{ item.categoria }}</strong></td>
-                        <td>{{ item.quantidade }}</td>
-
-                        <td>
-                            <span class="badge bg-primary">
-                                {{ solicitacao.regional_solicitante.nome }}
-                            </span>
-                        </td>
-
-                        <td>
-                            <span class="badge bg-warning text-dark">
-                                {{ item.pendente }}
-                            </span>
-                        </td>
-
-                    </tr>
+                <tr>
+                    <td><strong>{{ item.categoria }}</strong></td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>
+                        <span class="badge bg-primary">{{ solicitacao.regional_solicitante.nome }}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-warning text-dark">{{ item.pendente }}</span>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -56,183 +48,226 @@
 
     <hr>
 
-    <!-- ===================== ESTOQUE ===================== -->
-    <h5 class="mb-2">{% trans "Alocação por regional"%}</h5>
-
-    <p class="text-muted mb-4">
-        {% trans "Selecione de qual regional e modelo os equipamentos serão enviados." %}
-    </p>
+    <!-- ===================== ALOCAÇÃO POR REGIONAL ===================== -->
+    <h5 class="mb-2">{% trans "Alocação por regional" %}</h5>
+    <p class="text-muted mb-4">{% trans "Selecione de qual regional e modelo os equipamentos serão enviados." %}</p>
 
     {% for item in itens %}
         <div class="card mb-4 shadow-sm"
              data-item-id="{{ item.id }}"
-             data-pendente="{{ item.pendente }}">
+             data-pendente="{{ item.pendente }}"
+             id="item-card-{{ item.id }}">
 
             <!-- HEADER DO ITEM -->
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-
+            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <strong>{{ item.categoria }}</strong>
-
                     <div class="small mt-1">
                         <span class="text-muted">{% trans "Solicitante:" %}</span>
-                        <span class="badge bg-primary ms-1">
-                            {{ solicitacao.regional_solicitante.nome }}
-                        </span>
+                        <span class="badge bg-primary ms-1">{{ solicitacao.regional_solicitante.nome }}</span>
                     </div>
-
                     <div class="small text-muted mt-1">
                         {% trans "Alocado:" %}
-                        <span class="fw-semibold alocado" data-item-id="{{ item.id }}">0</span>
+                        <span class="fw-semibold alocado-count" data-item-id="{{ item.id }}">0</span>
                         / {{ item.pendente }}
                     </div>
                 </div>
+                <span class="badge bg-warning text-dark">{% trans "Pendente" %} {{ item.pendente }}</span>
+            </div>
 
-                <span class="badge bg-warning text-dark">
-                    {% trans "Pendente" %} {{ item.pendente }}
-                </span>
+            <!-- BARRA DE PROGRESSO (ALOCAÇÃO PARCIAL) -->
+            <div class="progress rounded-0" style="height: 4px;">
+                <div class="progress-bar bg-success" role="progressbar"
+                     id="progress-{{ item.id }}" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
 
             <!-- REGIONAIS -->
             <div class="card-body">
                 <div class="row g-3">
-
                     {% for r in item.regionais %}
                         <div class="col-md-4">
-
                             <div class="card h-100 shadow-sm border-0
-                                {% if r.sugerido %}
-                                    border border-success
-                                {% endif %}
-                                {% if r.regional == regional_solicitante.nome %}
-                                    border border-primary
-                                {% endif %}
-                            "
-                            {% if r.sugerido %}
-                                data-sugerido="true"
-                            {% endif %}
-                            >
+                                {% if r.sugerido %}border border-success{% endif %}
+                                {% if r.regional == regional_solicitante.nome %}border border-primary{% endif %}"
+                                {% if r.sugerido %}data-sugerido="true"{% endif %}>
 
                                 <!-- HEADER REGIONAL -->
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-
-                                    <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
                                         <strong>{{ r.regional }}</strong>
-
                                         {% if r.sugerido %}
-                                            <span class="badge bg-success">
-                                                {% trans "Sugerido" %}
-                                            </span>
+                                            <span class="badge bg-success">{% trans "Sugerido" %}</span>
                                         {% endif %}
-
                                         {% if r.regional == regional_solicitante.nome %}
-                                            <span class="badge bg-primary">
-                                                {% trans "Destino" %}
-                                            </span>
+                                            <span class="badge bg-primary">{% trans "Destino" %}</span>
                                         {% endif %}
                                     </div>
-
-                                    <span class="badge bg-secondary">
-                                        {{ r.total }}
-                                    </span>
+                                    <span class="badge bg-secondary">{{ r.total }}</span>
                                 </div>
 
                                 <!-- MODELOS -->
                                 <div class="card-body">
-
                                     {% for m in r.modelos %}
                                         <div class="d-flex justify-content-between align-items-center mb-3">
-
                                             <div class="pe-2">
-                                                <small class="fw-semibold d-block">
-                                                    {{ m.produto }}
-                                                </small>
-
-                                                <span class="text-muted small">
-                                                    {% trans "Disponível:" %} {{ m.disponivel }}
-                                                </span>
+                                                <small class="fw-semibold d-block">{{ m.produto }}</small>
+                                                <span class="text-muted small">{% trans "Disponível:" %} {{ m.disponivel }}</span>
                                             </div>
-
-                                            <div style="width: 80px;">
-                                                <input
-                                                    type="number"
-                                                    name="alocacao_{{ item.id }}_{{ r.regional_id }}_{{ m.produto_id }}"
-                                                    min="0"
-                                                    max="{{ m.disponivel }}"
-                                                    class="form-control form-control-sm input-alocacao"
-                                                    data-item-id="{{ item.id }}"
-                                                >
+                                            <div style="width: 90px;">
+                                                <input type="number"
+                                                       name="alocacao_{{ item.id }}_{{ r.regional_id }}_{{ m.produto_id }}"
+                                                       min="0"
+                                                       max="{{ m.disponivel }}"
+                                                       step="1"
+                                                       class="form-control form-control-sm input-alocacao"
+                                                       data-item-id="{{ item.id }}"
+                                                       data-max-disponivel="{{ m.disponivel }}"
+                                                       aria-label="{% trans 'Quantidade a alocar' %}">
                                             </div>
-
                                         </div>
                                     {% empty %}
-                                        <div class="text-muted small text-center">
-                                            {% trans "Sem estoque" %}
-                                        </div>
+                                        <div class="text-muted small text-center">{% trans "Sem estoque nesta regional" %}</div>
                                     {% endfor %}
-
                                 </div>
-
                             </div>
-
                         </div>
                     {% endfor %}
-
                 </div>
             </div>
 
+            <!-- MENSAGEM DE ERRO/VALIDAÇÃO DO ITEM -->
+            <div class="card-footer bg-white small text-danger d-none" id="error-{{ item.id }}">
+                {% trans "A quantidade alocada excede o pendente ou é inválida." %}
+            </div>
         </div>
     {% endfor %}
 
-    <!-- SUBMIT -->
-    <div class="d-flex justify-content-end mt-3">
-        <button type="submit" class="btn btn-success" id="btnSubmit">
-            Gerar Transferências
+    <!-- BOTÕES DE AÇÃO -->
+    <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary" id="btnResetAll">
+            {% trans "Limpar todas as alocações" %}
+        </button>
+        <button type="submit" class="btn btn-success" id="btnSubmit" disabled>
+            {% trans "Gerar Transferências" %}
         </button>
     </div>
-
 </form>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-
     const inputs = document.querySelectorAll('.input-alocacao');
-    const btn = document.getElementById('btnSubmit');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const btnResetAll = document.getElementById('btnResetAll');
 
-    function validar() {
-        let valido = true;
-        const soma = {};
+    // Atualiza a contagem "alocado" e a barra de progresso para um item específico
+    function updateItemStatus(itemId) {
+        const itemInputs = document.querySelectorAll(`.input-alocacao[data-item-id="${itemId}"]`);
+        const pendenteElem = document.querySelector(`.card[data-item-id="${itemId}"]`);
+        if (!pendenteElem) return;
 
-        inputs.forEach(input => {
-            const itemId = input.dataset.itemId;
-            const valor = parseInt(input.value) || 0;
+        const pendente = parseInt(pendenteElem.dataset.pendente) || 0;
+        let totalAlocado = 0;
 
-            if (!soma[itemId]) soma[itemId] = 0;
-            soma[itemId] += valor;
-        });
-
-        Object.keys(soma).forEach(itemId => {
-            const card = document.querySelector(`[data-item-id="${itemId}"]`);
-            const pendente = parseInt(card.dataset.pendente);
-            const total = soma[itemId];
-
-            // Atualiza label
-            const label = document.querySelector(`.alocado[data-item-id="${itemId}"]`);
-            if (label) label.innerText = total;
-
-            if (total > pendente) {
-                valido = false;
-                card.classList.add('border-danger');
-            } else {
-                card.classList.remove('border-danger');
+        itemInputs.forEach(input => {
+            let val = parseInt(input.value);
+            if (isNaN(val)) val = 0;
+            // Garantir que não ultrapasse o máximo disponível (segurança extra)
+            const maxDisponivel = parseInt(input.getAttribute('max')) || 0;
+            if (val > maxDisponivel) {
+                val = maxDisponivel;
+                input.value = val;
             }
+            totalAlocado += val;
         });
 
-        btn.disabled = !valido;
+        // Atualiza texto "Alocado"
+        const alocadoSpan = document.querySelector(`.alocado-count[data-item-id="${itemId}"]`);
+        if (alocadoSpan) alocadoSpan.innerText = totalAlocado;
+
+        // Atualiza barra de progresso
+        const progressBar = document.getElementById(`progress-${itemId}`);
+        if (progressBar) {
+            const percent = (pendente > 0) ? (totalAlocado / pendente) * 100 : 0;
+            progressBar.style.width = `${Math.min(percent, 100)}%`;
+            progressBar.setAttribute('aria-valuenow', Math.min(percent, 100));
+            // Muda a cor da barra se estiver cheia
+            if (totalAlocado >= pendente && pendente > 0) {
+                progressBar.classList.remove('bg-success');
+                progressBar.classList.add('bg-info');
+            } else {
+                progressBar.classList.remove('bg-info');
+                progressBar.classList.add('bg-success');
+            }
+        }
+
+        // Marca o card como erro se ultrapassar pendente
+        const errorDiv = document.getElementById(`error-${itemId}`);
+        if (totalAlocado > pendente) {
+            pendenteElem.classList.add('border-danger');
+            if (errorDiv) errorDiv.classList.remove('d-none');
+        } else {
+            pendenteElem.classList.remove('border-danger');
+            if (errorDiv) errorDiv.classList.add('d-none');
+        }
+
+        return { totalAlocado, pendente };
     }
 
-    inputs.forEach(i => i.addEventListener('input', validar));
+    // Valida global e habilita/desabilita botão submit
+    function validateAll() {
+        let allValid = true;
+        const itemsCards = document.querySelectorAll('.card[data-item-id]');
 
+        itemsCards.forEach(card => {
+            const itemId = card.dataset.itemId;
+            const { totalAlocado, pendente } = updateItemStatus(itemId);
+            if (totalAlocado > pendente) allValid = false;
+        });
+
+        btnSubmit.disabled = !allValid;
+    }
+
+    // Limpa todos os inputs de alocação
+    function resetAllAllocations() {
+        inputs.forEach(input => {
+            input.value = '';
+        });
+        validateAll();
+    }
+
+    // Evento de entrada em cada input
+    inputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            let val = parseInt(this.value);
+            const maxVal = parseInt(this.getAttribute('max')) || 0;
+            const minVal = parseInt(this.getAttribute('min')) || 0;
+
+            if (isNaN(val)) val = minVal;
+            if (val > maxVal) val = maxVal;
+            if (val < minVal) val = minVal;
+
+            this.value = val;
+            validateAll();
+        });
+
+        // Previne entrada de valores negativos via seta
+        input.addEventListener('change', function() {
+            let val = parseInt(this.value);
+            const maxVal = parseInt(this.getAttribute('max')) || 0;
+            if (isNaN(val)) val = 0;
+            if (val > maxVal) val = maxVal;
+            this.value = val;
+            validateAll();
+        });
+    });
+
+    // Reset all button
+    if (btnResetAll) {
+        btnResetAll.addEventListener('click', resetAllAllocations);
+    }
+
+    // Validação inicial
+    validateAll();
 });
 </script>
 
