@@ -191,7 +191,7 @@
                             </td>
                             <!-- Ações -->
                             <td class="text-center" style="min-width: 220px;">
-                                {% if not sick.data_resolucao or sick.status_final == 'MANUTENCAO' %}
+                                {% if sick.ativo %}
                                     <div class="d-grid gap-2">
                                         <!-- Resolver -->
                                         <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('{% trans "Retornar equipamento para ATIVO?" %}');">

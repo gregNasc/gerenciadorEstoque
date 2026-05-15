@@ -763,13 +763,13 @@ def sick_view(request):
                 sick.previsao_retorno = previsao_retorno
 
             # Finaliza apenas quando realmente encerrado
-            if novo_status == 'ATIVO':
+            if novo_status in ['ATIVO', 'INATIVO', 'SUCATA']:
 
                 sick.data_resolucao = timezone.now()
                 sick.ativo = False
                 sick.resolvido_por = request.user
 
-            else:
+            elif novo_status == 'MANUTENCAO':
 
                 sick.ativo = True
                 sick.data_resolucao = None
