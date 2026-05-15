@@ -882,9 +882,16 @@ def sick_view(request):
     # Ordenação
     sicks = sicks.order_by('-data_ocorrencia')
 
-    # =====================================================
-    # TOTAIS (ANTES DE ESCONDER DA TABELA)
-    # =====================================================
+    # Histórico do equipamento
+    for sick in sicks:
+        sick.historico_completo = sick.equipamento.sicks.all().order_by(
+            '-data_ocorrencia'
+        )
+
+        sick.ultimo_sick = sick.equipamento.sicks.order_by(
+            '-data_ocorrencia'
+        ).first()
+
 
     total_pendentes = sicks.filter(
         ativo=True,
@@ -915,7 +922,7 @@ def sick_view(request):
     ).distinct().order_by('categoria')
 
     produtos_lista = Produto.objects.filter(
-        equipamento__sick__in=sicks
+        equipamento__sicks__in=sicks
     ).distinct().order_by('descricao')
 
     # Regionais disponíveis conforme permissão
@@ -1027,6 +1034,32 @@ def marcar_sick_ajax(request, equipamento_id):
         )
 
     return JsonResponse({'sucesso': True})
+
+@login_required
+def detalhes_sick(request, sick_id):
+
+    sick = get_object_or_404(
+        Sick.objects.select_related(
+            'equipamento',
+            'equipamento__produto',
+            'equipamento__regional',
+            'resolvido_por'
+        ),
+        id=sick_id
+    )
+
+    historicos = Historico.objects.filter(
+        equipamento=sick.equipamento
+    ).order_by('-data')
+
+    return render(
+        request,
+        'estoque/partials/modal_historico_sick.html',
+        {
+            'sick': sick,
+            'historicos': historicos
+        }
+    )
 
 # ----------------- HISTÓRICO -----------------
 @login_required

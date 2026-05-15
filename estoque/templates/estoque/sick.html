@@ -62,13 +62,12 @@
                             <span class="text-secondary small text-uppercase fw-semibold">{% trans "Resolvidos" %}</span>
                             <h2 class="fw-bold mb-0 mt-1 text-success">{{ total_resolvidos }}</h2>
                         </div>
-
                         <div class="text-success opacity-50"><i class="bi bi-check2-circle fs-4"></i></div>
                     </div>
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 
     <!-- Filtros -->
     <div class="card shadow-sm border-0 mb-4">
@@ -110,7 +109,6 @@
                         <option value="manutencao" {% if request.GET.status == "manutencao" %}selected{% endif %}>{% trans "Manutenção" %}</option>
                         <option value="inativos" {% if request.GET.status == "inativos" %}selected{% endif %}>{% trans "Inativos" %}</option>
                         <option value="resolvidos" {% if request.GET.status == "resolvidos" %}selected{% endif %}>{% trans "Resolvidos" %}</option>
-                        <!--option value="sucata" {% if request.GET.status == "sucata" %}selected{% endif %}>Sucata</option-->
                     </select>
                 </div>
                 <div class="col-12 text-end">
@@ -127,6 +125,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr class="small text-secondary">
+                            <th class="py-3 px-2" style="width: 40px;"></th> <!-- Botão expandir -->
                             <th class="py-3 px-3">{% trans "Equipamento" %}</th>
                             <th class="py-3">{% trans "Nº Série" %}</th>
                             <th class="py-3">{% trans "Patrimônio" %}</th>
@@ -136,11 +135,19 @@
                             <th class="py-3">{% trans "Previsão Retorno" %}</th>
                             <th class="py-3">{% trans "Status" %}</th>
                             <th class="py-3 text-center">{% trans "Ações" %}</th>
-                        </tr>
+                         </tr>
                     </thead>
                     <tbody>
                         {% for sick in sicks %}
+                        <!-- Linha principal -->
                         <tr>
+                            <td class="text-center">
+                                <button type="button"
+                                        class="btn btn-sm btn-light border btn-expandir"
+                                        data-target="historico-{{ sick.id }}">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </td>
                             <td class="px-3 fw-semibold">{{ sick.equipamento.produto.descricao }}</td>
                             <td><code class="small">{{ sick.equipamento.numero_serie }}</code></td>
                             <td class="text-secondary">{{ sick.equipamento.patrimonio }}</td>
@@ -154,7 +161,7 @@
                                     <span class="text-secondary small">—</span>
                                 {% endif %}
                             </td>
-                            <!-- STATUS -->
+                            <!-- Status -->
                             <td>
                                 {% if sick.status_final == 'MANUTENCAO' %}
                                     <span class="badge" style="background-color: #fff3e0; color: #e67e22; padding: 4px 8px;">
@@ -182,10 +189,11 @@
                                     </span>
                                 {% endif %}
                             </td>
+                            <!-- Ações -->
                             <td class="text-center" style="min-width: 220px;">
                                 {% if not sick.data_resolucao or sick.status_final == 'MANUTENCAO' %}
                                     <div class="d-grid gap-2">
-                                        <!-- Resolver  -->
+                                        <!-- Resolver -->
                                         <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('{% trans "Retornar equipamento para ATIVO?" %}');">
                                             {% csrf_token %}
                                             <input type="hidden" name="sick_id" value="{{ sick.id }}">
@@ -193,14 +201,14 @@
                                                 <i class="bi bi-check-circle me-1"></i> {% trans "Resolver" %}
                                             </button>
                                         </form>
-                                        <!-- Manutenção -->
+                                        <!-- Manutenção (modal) -->
                                         <button type="button"
                                                 class="btn btn-outline-warning btn-sm w-100 btn-manutencao"
                                                 data-sick-id="{{ sick.id }}"
                                                 data-equipamento="{{ sick.equipamento.produto.descricao }} - {{ sick.equipamento.numero_serie }}">
                                             <i class="bi bi-tools me-1"></i> {% trans "Manutenção" %}
                                         </button>
-                                        <!-- Inativo -->
+                                        <!-- Inativar -->
                                         <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('Inativar equipamento?');">
                                             {% csrf_token %}
                                             <input type="hidden" name="sick_id" value="{{ sick.id }}">
@@ -214,8 +222,75 @@
                                 {% endif %}
                             </td>
                         </tr>
+
+                        <!-- Linha expansível com histórico -->
+                        <tr id="historico-{{ sick.id }}" class="d-none historico-row">
+                            <td colspan="10" class="bg-light p-4">
+                                <div class="row g-4">
+                                    <!-- Ocorrência Atual -->
+                                    <div class="col-lg-6">
+                                        <div class="card border-0 shadow-sm h-100">
+                                            <div class="card-header bg-white">
+                                                <h6 class="fw-semibold mb-0">
+                                                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                                                    Ocorrência Atual
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                {% if sick.motivo %}
+                                                <div class="mb-3">
+                                                    <small class="text-secondary d-block mb-1">Motivo do SICK</small>
+                                                    <div class="border rounded p-3 bg-light">{{ sick.motivo }}</div>
+                                                </div>
+                                                {% endif %}
+                                                {% if sick.motivo_manutencao %}
+                                                <div>
+                                                    <small class="text-secondary d-block mb-1">Motivo da manutenção</small>
+                                                    <div class="border rounded p-3 bg-light">{{ sick.motivo_manutencao }}</div>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Histórico do equipamento -->
+                                    <div class="col-lg-6">
+                                        <div class="card border-0 shadow-sm h-100">
+                                            <div class="card-header bg-white">
+                                                <h6 class="fw-semibold mb-0">
+                                                    <i class="bi bi-clock-history text-primary me-2"></i>
+                                                    Histórico do Equipamento
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                {% for historico in sick.equipamento.sicks.all %}
+                                                <div class="border-start border-3 ps-3 pb-3 mb-3">
+                                                    <div class="fw-semibold">{{ historico.data_ocorrencia|date:"d/m/Y H:i" }}</div>
+                                                    {% if historico.motivo %}
+                                                    <div class="small text-secondary mt-1">{{ historico.motivo }}</div>
+                                                    {% endif %}
+                                                    {% if historico.data_resolucao %}
+                                                    <div class="small text-success mt-1">Resolvido em: {{ historico.data_resolucao|date:"d/m/Y H:i" }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                {% empty %}
+                                                <div class="text-center text-secondary py-4">
+                                                    <i class="bi bi-inbox fs-3"></i>
+                                                    <p class="mt-2 mb-0">Nenhum histórico encontrado</p>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
                         {% empty %}
-                        <tr><td colspan="9" class="text-center text-secondary py-5"><i class="bi bi-inbox fs-2"></i><p class="mt-2 mb-0">{% trans "Nenhum equipamento SICK encontrado"%}</p></td></tr>
+                        <tr>
+                            <td colspan="10" class="text-center text-secondary py-5">
+                                <i class="bi bi-inbox fs-2"></i>
+                                <p class="mt-2 mb-0">{% trans "Nenhum equipamento SICK encontrado" %}</p>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -223,7 +298,7 @@
         </div>
     </div>
 
-    <!-- Paginação  -->
+    <!-- Paginação -->
     {% if is_paginated %}
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
@@ -251,6 +326,22 @@
     .page-link:hover { background-color: #f8f9fa; border-color: #dee2e6; color: #3c4043; }
     .page-item.active .page-link { background-color: #5f6368; border-color: #5f6368; }
     .modal-content { border-radius: 16px; }
+
+    /* Estilos para o botão expansível */
+    .btn-expandir {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+    }
+    .btn-expandir i {
+        transition: transform .2s ease;
+    }
+    .btn-expandir.active i {
+        transform: rotate(180deg);
+    }
+    .historico-row td {
+        border-top: 0 !important;
+    }
 </style>
 
 <script>
@@ -262,7 +353,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Criação dinâmica do modal de manutenção
+    // Expansão do histórico
+    document.querySelectorAll('.btn-expandir').forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.getAttribute('data-target');
+            const row = document.getElementById(targetId);
+            if (row) {
+                row.classList.toggle('d-none');
+                button.classList.toggle('active');
+            }
+        });
+    });
+
+    // Modal dinâmico para manutenção
     function createModal(sickId, equipamentoInfo) {
         const oldModal = document.getElementById('dynamicManutencaoModal');
         if (oldModal) oldModal.remove();
@@ -331,5 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
+
 {% endif %}
 {% endblock %}

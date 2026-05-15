@@ -468,7 +468,7 @@ class StatusEquipamento(models.TextChoices):
     INATIVO = 'INATIVO', _('Inativo')
 
 class Sick(models.Model):
-    equipamento = models.OneToOneField(Equipamento, on_delete=models.CASCADE, related_name='sick')
+    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='sicks')
     categoria = models.CharField(max_length=100)
     motivo = models.TextField(blank=True, null=True)
     previsao_retorno = models.DateField(null=True, blank=True)
