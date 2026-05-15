@@ -73,7 +73,13 @@ urlpatterns = [
     path('estoque/api/kpis/', views.api_kpis_json, name='api_kpis_json'),
     path('regionais/json/', views.lista_regionais_json, name='lista_regionais_json'),
 
-
+    # ---------------- MENSAGENS ----------------
+    path('mensagens/', views.caixa_mensagens, name='caixa_mensagens'),
+    path('mensagens/enviar/', views.enviar_mensagem, name='enviar_mensagem'),
+    path('mensagens/<int:destino_id>/', views.visualizar_mensagem, name='visualizar_mensagem'),
+    path('comunicados/', views.caixa_comunicados, name='caixa_comunicados'),
+    path('comunicados/novo/', views.criar_comunicado, name='criar_comunicado'),
+    path('comunicados/<int:comunicado_id>/', views.detalhe_comunicado, name='detalhe_comunicado'),
     # ---------------- PASSWORD RESET ----------------
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='registration/password_reset_form.html',

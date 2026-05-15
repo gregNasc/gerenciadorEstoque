@@ -1306,8 +1306,331 @@ def busca_avancada(request):
         'tipo_busca': tipo_busca
     })
 
+# ----------------- MENSAGENS  -----------------
+from .models import (
+    Mensagem,
+    MensagemDestino,
+    MensagemArquivo,
+    Empresa,
+)
 
-# ----------------- ANÁLISES  -----------------
+@login_required
+@role_required('admin')
+def enviar_mensagem(request):
+
+    empresas = Empresa.objects.all()
+    usuarios = User.objects.select_related('perfil').order_by('username')
+
+    if request.method == 'POST':
+
+        titulo = request.POST.get('titulo')
+        conteudo = request.POST.get('conteudo')
+
+        enviar_para_todos = request.POST.get('todos') == 'on'
+
+        empresa_id = request.POST.get('empresa')
+        usuario_id = request.POST.get('usuario')
+
+        arquivos = request.FILES.getlist('arquivos')
+
+        if not titulo or not conteudo:
+            messages.error(request, 'Preencha título e mensagem.')
+            return redirect('estoque:enviar_mensagem')
+
+        with transaction.atomic():
+
+            mensagem = Mensagem.objects.create(
+                titulo=titulo,
+                conteudo=conteudo,
+                enviado_por=request.user,
+                enviado_em=timezone.now()
+            )
+
+            destinatarios = User.objects.none()
+
+            # TODOS
+            if enviar_para_todos:
+
+                destinatarios = User.objects.filter(
+                    is_active=True
+                )
+
+            # EMPRESA
+            elif empresa_id:
+
+                destinatarios = User.objects.filter(
+                    perfil__empresa_id=empresa_id,
+                    is_active=True
+                )
+
+            # USUÁRIO ESPECÍFICO
+            elif usuario_id:
+
+                destinatarios = User.objects.filter(
+                    id=usuario_id,
+                    is_active=True
+                )
+
+            else:
+
+                messages.error(
+                    request,
+                    'Selecione um destino.'
+                )
+
+                return redirect('estoque:enviar_mensagem')
+
+            # DESTINOS
+            for usuario in destinatarios.distinct():
+
+                MensagemDestino.objects.create(
+                    mensagem=mensagem,
+                    usuario=usuario
+                )
+
+            # ANEXOS
+            for arquivo in arquivos:
+
+                MensagemArquivo.objects.create(
+                    mensagem=mensagem,
+                    arquivo=arquivo,
+                    nome_original=arquivo.name
+                )
+
+        messages.success(
+            request,
+            'Mensagem enviada com sucesso.'
+        )
+
+        return redirect('estoque:caixa_mensagens')
+
+    return render(request, 'estoque/mensagens/enviar.html', {
+        'empresas': empresas,
+        'usuarios': usuarios,
+    })
+
+@login_required
+def caixa_mensagens(request):
+
+    mensagens = (
+        MensagemDestino.objects
+        .select_related(
+            'mensagem',
+            'mensagem__enviado_por'
+        )
+        .prefetch_related(
+            'mensagem__arquivos'
+        )
+        .filter(usuario=request.user)
+        .order_by('-mensagem__enviado_em')
+    )
+
+    nao_lidas = mensagens.filter(lido=False).count()
+
+    return render(request, 'estoque/mensagens/caixa.html', {
+        'mensagens': mensagens,
+        'nao_lidas': nao_lidas,
+    })
+
+@login_required
+def visualizar_mensagem(request, destino_id):
+
+    destino = get_object_or_404(
+        MensagemDestino.objects.select_related(
+            'mensagem',
+            'mensagem__enviado_por'
+        ).prefetch_related(
+            'mensagem__arquivos'
+        ),
+        id=destino_id,
+        usuario=request.user
+    )
+
+    if not destino.lido:
+
+        destino.lido = True
+        destino.data_leitura = timezone.now()
+        destino.save(
+            update_fields=[
+                'lido',
+                'data_leitura'
+            ]
+        )
+
+    return render(
+        request,
+        'estoque/mensagens/detalhe.html',
+        {
+            'destino': destino,
+            'mensagem': destino.mensagem,
+        }
+    )
+
+@login_required
+@role_required('admin')
+def criar_comunicado(request):
+
+    empresas = Empresa.objects.all()
+
+    usuarios = (
+        User.objects
+        .select_related('perfil')
+        .order_by('username')
+    )
+
+    if request.method == 'POST':
+
+        titulo = request.POST.get('titulo')
+        mensagem = request.POST.get('mensagem')
+        tipo = request.POST.get('tipo')
+
+        empresa_id = request.POST.get('empresa')
+
+        usuarios_ids = request.POST.getlist('usuarios')
+
+        enviar_para_todos = (
+            request.POST.get('todos') == 'on'
+        )
+
+        arquivos = request.FILES.getlist('arquivos')
+
+        if not titulo or not mensagem:
+
+            messages.error(
+                request,
+                'Preencha todos os campos.'
+            )
+
+            return redirect('estoque:criar_comunicado')
+
+        with transaction.atomic():
+
+            comunicado = Comunicado.objects.create(
+                titulo=titulo,
+                mensagem=mensagem,
+                tipo=tipo,
+                criado_por=request.user,
+                enviar_para_todos=enviar_para_todos,
+                empresa_id=empresa_id or None
+            )
+
+            # DESTINATÁRIOS
+            if enviar_para_todos:
+
+                usuarios_destino = User.objects.filter(
+                    is_active=True
+                )
+
+                comunicado.usuarios.add(
+                    *usuarios_destino
+                )
+
+            elif empresa_id:
+
+                usuarios_empresa = User.objects.filter(
+                    perfil__empresa_id=empresa_id,
+                    is_active=True
+                )
+
+                comunicado.usuarios.add(
+                    *usuarios_empresa
+                )
+
+            elif usuarios_ids:
+
+                comunicado.usuarios.add(
+                    *User.objects.filter(
+                        id__in=usuarios_ids
+                    )
+                )
+
+            # ANEXOS
+            for arquivo in arquivos:
+
+                ComunicadoArquivo.objects.create(
+                    comunicado=comunicado,
+                    arquivo=arquivo
+                )
+
+        messages.success(
+            request,
+            'Comunicado enviado.'
+        )
+
+        return redirect(
+            'estoque:caixa_comunicados'
+        )
+
+    return render(
+        request,
+        'estoque/comunicados/criar.html',
+        {
+            'empresas': empresas,
+            'usuarios': usuarios,
+            'tipos': Comunicado.TIPOS
+        }
+    )
+
+@login_required
+def caixa_comunicados(request):
+
+    comunicados = (
+        Comunicado.objects
+        .prefetch_related('arquivos')
+        .filter(
+            ativo=True,
+            usuarios=request.user
+        )
+        .distinct()
+        .order_by('-criado_em')
+    )
+
+    leituras = set(
+        ComunicadoLeitura.objects.filter(
+            usuario=request.user
+        ).values_list(
+            'comunicado_id',
+            flat=True
+        )
+    )
+
+    for c in comunicados:
+
+        c.lido = c.id in leituras
+
+    return render(
+        request,
+        'estoque/comunicados/caixa.html',
+        {
+            'comunicados': comunicados
+        }
+    )
+
+@login_required
+def detalhe_comunicado(request, comunicado_id):
+
+    comunicado = get_object_or_404(
+        Comunicado.objects.prefetch_related(
+            'arquivos'
+        ),
+        id=comunicado_id,
+        usuarios=request.user
+    )
+
+    ComunicadoLeitura.objects.get_or_create(
+        comunicado=comunicado,
+        usuario=request.user
+    )
+
+    return render(
+        request,
+        'estoque/comunicados/detalhe.html',
+        {
+            'comunicado': comunicado
+        }
+    )
+
+# ----------------- TRANSFERÊNCIAS  -----------------
 @login_required
 @role_required('admin')
 def painel_alocacao(request, solicitacao_id):

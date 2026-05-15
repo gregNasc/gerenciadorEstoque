@@ -510,6 +510,127 @@ class Alerta(models.Model):
     mensagem = models.TextField()
     resolvido = models.BooleanField(default=False)
 
+# ---------------- MENSAGENS ----------------
+class Comunicado(models.Model):
+
+    TIPOS = [
+        ('INFO', 'Informativo'),
+        ('URGENTE', 'Urgente'),
+        ('MANUTENCAO', 'Manutenção'),
+        ('OPERACIONAL', 'Operacional'),
+    ]
+
+    titulo = models.CharField(max_length=150)
+
+    mensagem = models.TextField()
+
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPOS,
+        default='INFO'
+    )
+
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
+    enviar_para_todos = models.BooleanField(default=False)
+
+    usuarios = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='comunicados'
+    )
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    ativo = models.BooleanField(default=True)
+
+class ComunicadoArquivo(models.Model):
+
+    comunicado = models.ForeignKey(
+        Comunicado,
+        on_delete=models.CASCADE,
+        related_name='arquivos'
+    )
+
+    arquivo = models.FileField(
+        upload_to='comunicados/'
+    )
+
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+class ComunicadoLeitura(models.Model):
+
+    comunicado = models.ForeignKey(
+        Comunicado,
+        on_delete=models.CASCADE
+    )
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    lido_em = models.DateTimeField(auto_now_add=True)
+
+class Mensagem(models.Model):
+
+    titulo = models.CharField(max_length=200)
+
+    conteudo = models.TextField()
+
+    enviado_por = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+class MensagemDestino(models.Model):
+
+    mensagem = models.ForeignKey(
+        Mensagem,
+        related_name='destinos',
+        on_delete=models.CASCADE
+    )
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    lido = models.BooleanField(default=False)
+
+    data_leitura = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+class MensagemArquivo(models.Model):
+
+    mensagem = models.ForeignKey(
+        Mensagem,
+        related_name='arquivos',
+        on_delete=models.CASCADE
+    )
+
+    arquivo = models.FileField(
+        upload_to='mensagens/'
+    )
+
+    nome_original = models.CharField(
+        max_length=255
+    )
+
 @receiver([post_save, post_delete], sender=Equipamento)
 def limpar_cache_estoque(sender, instance, **kwargs):
     cache_keys = [
