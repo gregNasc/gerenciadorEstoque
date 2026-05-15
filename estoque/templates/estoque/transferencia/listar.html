@@ -3,74 +3,312 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">{% trans "Transferências" %}</h3>
+<div class="container-fluid px-4">
+
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">
+                {% trans "Transferências" %}
+            </h2>
+
+            <p class="text-muted mb-0">
+                {% trans "Acompanhe movimentações entre bases e regionais." %}
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+
+            <div class="card border-0 shadow-sm px-3 py-2">
+                <small class="text-muted d-block">
+                    {% trans "Total" %}
+                </small>
+
+                <strong class="fs-5">
+                    {{ transferencias|length }}
+                </strong>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- CARD PRINCIPAL -->
+    <div class="card border-0 shadow-sm">
+
+        <!-- TOPO -->
+        <div class="card-header bg-white border-0 py-3">
+
+            <div class="row g-3 align-items-center">
+
+                <div class="col-md-5">
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="filtroTransferencia"
+                        placeholder="{% trans 'Pesquisar transferência...' %}"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <select class="form-select" id="filtroStatus">
+                        <option value="">
+                            {% trans "Todos os status" %}
+                        </option>
+
+                        <option value="PENDENTE">
+                            {% trans "Pendente" %}
+                        </option>
+
+                        <option value="EM_TRANSITO">
+                            {% trans "Em trânsito" %}
+                        </option>
+
+                        <option value="CONCLUIDA">
+                            {% trans "Concluída" %}
+                        </option>
+
+                        <option value="CANCELADO">
+                            {% trans "Cancelado" %}
+                        </option>
+                    </select>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TABELA -->
+        <div class="table-responsive">
+
+            <table class="table align-middle mb-0" id="tabelaTransferencias">
+
+                <thead class="table-light">
+
+                    <tr>
+                        <th>{% trans "Transferência" %}</th>
+                        <th>{% trans "Origem" %}</th>
+                        <th>{% trans "Destino" %}</th>
+                        <th>{% trans "Itens" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Prazo" %}</th>
+                        <th class="text-end">{% trans "Ações" %}</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for t in transferencias %}
+
+                    <tr class="linha-transferencia">
+
+                        <!-- INFO -->
+                        <td style="min-width: 260px;">
+
+                            <div class="fw-semibold">
+                                #{{ t.id }}
+                            </div>
+
+                            <small class="text-muted d-block">
+                                {{ t.data_envio|date:"d/m/Y H:i" }}
+                            </small>
+
+                            <small class="text-muted">
+                                {{ t.solicitado_por }}
+                            </small>
+
+                        </td>
+
+                        <!-- ORIGEM -->
+                        <td>
+                            <div class="fw-medium">
+                                {{ t.regional_origem.nome }}
+                            </div>
+                        </td>
+
+                        <!-- DESTINO -->
+                        <td>
+                            <span class="badge rounded-pill text-bg-primary px-3 py-2">
+                                {{ t.regional_destino.nome }}
+                            </span>
+                        </td>
+
+                        <!-- ITENS -->
+                        <td style="min-width: 280px;">
+
+                            {% for item in t.itens.all %}
+
+                                <div class="border rounded p-2 mb-2 small bg-light-subtle">
+
+                                    <div class="fw-semibold">
+                                        {{ item.equipamento.produto.descricao }}
+                                    </div>
+
+                                    <div class="text-muted">
+                                        {{ item.equipamento.numero_serie }}
+                                    </div>
+
+                                </div>
+
+                            {% empty %}
+
+                                <span class="text-muted small">
+                                    {% trans "Sem itens" %}
+                                </span>
+
+                            {% endfor %}
+
+                        </td>
+
+                        <!-- STATUS -->
+                        <td>
+
+                            {% if t.status == 'PENDENTE' %}
+                                <span class="badge rounded-pill bg-warning text-dark px-3 py-2">
+                                    {% trans "Pendente" %}
+                                </span>
+
+                            {% elif t.status == 'EM_TRANSITO' %}
+                                <span class="badge rounded-pill bg-info px-3 py-2">
+                                    {% trans "Em trânsito" %}
+                                </span>
+
+                            {% elif t.status == 'CONCLUIDA' %}
+                                <span class="badge rounded-pill bg-success px-3 py-2">
+                                    {% trans "Concluída" %}
+                                </span>
+
+                            {% elif t.status == 'CANCELADO' %}
+                                <span class="badge rounded-pill bg-danger px-3 py-2">
+                                    {% trans "Cancelada" %}
+                                </span>
+
+                            {% else %}
+                                <span class="badge rounded-pill bg-secondary px-3 py-2">
+                                    {{ t.status }}
+                                </span>
+                            {% endif %}
+
+                        </td>
+
+                        <!-- DIAS -->
+                        <td>
+
+                            {% if t.status == 'CONCLUIDA' %}
+                                <span class="text-success fw-semibold">
+                                    {{ t.dias }} {% trans "dias" %}
+                                </span>
+                            {% else %}
+                                <span class="text-warning fw-semibold">
+                                    {{ t.dias }} {% trans "dias" %}
+                                </span>
+                            {% endif %}
+
+                        </td>
+
+                        <!-- AÇÕES -->
+                        <td class="text-end">
+
+                            <div class="d-flex justify-content-end gap-2 flex-wrap">
+
+                                <a href="{% url 'estoque:transferencia_detalhe' t.id %}"
+                                   class="btn btn-sm btn-outline-secondary">
+
+                                    <i class="bi bi-eye"></i>
+
+                                    {% trans "Detalhes" %}
+                                </a>
+
+                                {% if t.pode_receber %}
+
+                                <a href="{% url 'estoque:receber_transferencia' t.id %}"
+                                   class="btn btn-sm btn-success">
+
+                                    <i class="bi bi-box-arrow-in-down"></i>
+
+                                    {% trans "Receber" %}
+                                </a>
+
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="7" class="text-center py-5">
+
+                            <div class="d-flex flex-column align-items-center">
+
+                                <i class="bi bi-truck fs-1 text-muted mb-3"></i>
+
+                                <h5 class="fw-semibold">
+                                    {% trans "Nenhuma transferência encontrada" %}
+                                </h5>
+
+                                <p class="text-muted mb-0">
+                                    {% trans "As transferências aparecerão aqui quando forem criadas." %}
+                                </p>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
 </div>
 
-<hr>
+<!-- FILTRO -->
+<script>
 
-<div class="table-responsive">
-    <table class="table table-hover align-middle">
-        <thead class="table-light">
-            <tr>
-                <th>{% trans "Equipamento" %}</th>
-                <th>{% trans "Origem" %}</th>
-                <th>{% trans "Destino" %}</th>
-                <th>{% trans "Status" %}</th>
-                <th>{% trans "Data" %}</th>
-                <th></th>
-            </tr>
-        </thead>
+document.addEventListener('DOMContentLoaded', function () {
 
-        <tbody>
-            {% for t in transferencias %}
-            <tr>
-                <td>
-                    <strong>{{ t.equipamento.produto.descricao }}</strong><br>
-                    <small class="text-muted">
-                        {{ t.equipamento.numero_serie }}
-                    </small>
-                </td>
+    const busca = document.getElementById('filtroTransferencia');
+    const status = document.getElementById('filtroStatus');
 
-                <td>{{ t.regional_origem.nome }}</td>
+    function aplicarFiltro() {
 
-                <td>
-                    <span class="badge bg-primary">
-                        {{ t.regional_destino.nome }}
-                    </span>
-                </td>
+        const termo = busca.value.toLowerCase();
+        const statusSelecionado = status.value.toLowerCase();
 
-                <td>
-                    <span class="badge
-                        {% if t.status == 'PENDENTE' %}bg-warning text-dark
-                        {% elif t.status == 'ENVIADO' %}bg-info
-                        {% elif t.status == 'RECEBIDO' %}bg-success
-                        {% else %}bg-secondary
-                        {% endif %}
-                    ">
-                        {{ t.status }}
-                    </span>
-                </td>
+        document.querySelectorAll('.linha-transferencia').forEach(function (linha) {
 
-                <td>
-                    {{ t.data_envio|date:"d/m/Y H:i" }}
-                </td>
+            const texto = linha.innerText.toLowerCase();
 
-                <td>
-                    <a href="{% url 'estoque:transferencia_detalhe' t.id %}" class="btn btn-sm btn-outline-secondary">
-                        {% trans "Ver" %}
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="text-center text-muted">
-                    {% trans "Nenhuma transferência encontrada" %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+            const bateTexto = texto.includes(termo);
+
+            const bateStatus = !statusSelecionado || texto.includes(statusSelecionado);
+
+            linha.style.display = (bateTexto && bateStatus)
+                ? ''
+                : 'none';
+
+        });
+
+    }
+
+    busca.addEventListener('keyup', aplicarFiltro);
+    status.addEventListener('change', aplicarFiltro);
+
+});
+
+</script>
 
 {% endblock %}
