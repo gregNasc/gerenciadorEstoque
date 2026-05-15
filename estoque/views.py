@@ -882,11 +882,9 @@ def sick_view(request):
     # Ordenação
     sicks = sicks.order_by('-data_ocorrencia')
 
-    # Remove SICKs realmente resolvidos
-    if status_filter != 'resolvidos':
-        sicks = sicks.exclude(
-            status_final='ATIVO'
-        )
+    # =====================================================
+    # TOTAIS (ANTES DE ESCONDER DA TABELA)
+    # =====================================================
 
     total_pendentes = sicks.filter(
         ativo=True,
@@ -902,9 +900,15 @@ def sick_view(request):
     ).count()
 
     total_resolvidos = sicks.filter(
-        ativo=False
+        status_final='ATIVO'
     ).count()
 
+    if status_filter == 'todos':
+        sicks = sicks.exclude(
+            status_final='INATIVO'
+        ).exclude(
+            status_final='ATIVO'
+        )
     categorias = Produto.objects.values_list(
         'categoria',
         flat=True
