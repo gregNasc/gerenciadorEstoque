@@ -7,11 +7,13 @@ from openpyxl import Workbook
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
-from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil,
-                     Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem,
-                     StatusEquipamento) #Regional
+from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
+from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, MensagemDestino, MensagemArquivo, Empresa,)
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
+from django.utils.dateparse import parse_date
+from django.utils import timezone
+from datetime import datetime, time
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
@@ -1307,19 +1309,17 @@ def busca_avancada(request):
     })
 
 # ----------------- MENSAGENS  -----------------
-from .models import (
-    Mensagem,
-    MensagemDestino,
-    MensagemArquivo,
-    Empresa,
-)
-
 @login_required
 @role_required('admin')
 def enviar_mensagem(request):
 
     empresas = Empresa.objects.all()
-    usuarios = User.objects.select_related('perfil').order_by('username')
+
+    usuarios = User.objects.select_related(
+        'perfil'
+    ).order_by('username')
+
+    regionais = Base.objects.all().order_by('nome')
 
     if request.method == 'POST':
 
@@ -1331,10 +1331,17 @@ def enviar_mensagem(request):
         empresa_id = request.POST.get('empresa')
         usuario_id = request.POST.get('usuario')
 
+        regionais_ids = request.POST.getlist('regionais')
+
         arquivos = request.FILES.getlist('arquivos')
 
         if not titulo or not conteudo:
-            messages.error(request, 'Preencha título e mensagem.')
+
+            messages.error(
+                request,
+                'Preencha título e mensagem.'
+            )
+
             return redirect('estoque:enviar_mensagem')
 
         with transaction.atomic():
@@ -1342,8 +1349,7 @@ def enviar_mensagem(request):
             mensagem = Mensagem.objects.create(
                 titulo=titulo,
                 conteudo=conteudo,
-                enviado_por=request.user,
-                enviado_em=timezone.now()
+                enviado_por=request.user
             )
 
             destinatarios = User.objects.none()
@@ -1355,13 +1361,25 @@ def enviar_mensagem(request):
                     is_active=True
                 )
 
-            # EMPRESA
-            elif empresa_id:
+                if empresa_id:
+
+                    destinatarios = destinatarios.filter(
+                        perfil__empresa_id=empresa_id
+                    )
+
+            # REGIONAIS
+            elif regionais_ids:
 
                 destinatarios = User.objects.filter(
-                    perfil__empresa_id=empresa_id,
+                    perfil__regionais__id__in=regionais_ids,
                     is_active=True
                 )
+
+                if empresa_id:
+
+                    destinatarios = destinatarios.filter(
+                        perfil__empresa_id=empresa_id
+                    )
 
             # USUÁRIO ESPECÍFICO
             elif usuario_id:
@@ -1380,8 +1398,11 @@ def enviar_mensagem(request):
 
                 return redirect('estoque:enviar_mensagem')
 
+            # REMOVE DUPLICADOS
+            destinatarios = destinatarios.distinct()
+
             # DESTINOS
-            for usuario in destinatarios.distinct():
+            for usuario in destinatarios:
 
                 MensagemDestino.objects.create(
                     mensagem=mensagem,
@@ -1407,6 +1428,7 @@ def enviar_mensagem(request):
     return render(request, 'estoque/mensagens/enviar.html', {
         'empresas': empresas,
         'usuarios': usuarios,
+        'regionais': regionais,
     })
 
 @login_required
@@ -1470,14 +1492,6 @@ def visualizar_mensagem(request, destino_id):
 @role_required('admin')
 def criar_comunicado(request):
 
-    empresas = Empresa.objects.all()
-
-    usuarios = (
-        User.objects
-        .select_related('perfil')
-        .order_by('username')
-    )
-
     if request.method == 'POST':
 
         titulo = request.POST.get('titulo')
@@ -1486,87 +1500,105 @@ def criar_comunicado(request):
 
         empresa_id = request.POST.get('empresa')
 
-        usuarios_ids = request.POST.getlist('usuarios')
-
         enviar_para_todos = (
-            request.POST.get('todos') == 'on'
+            request.POST.get('enviar_para_todos') == 'on'
         )
 
-        arquivos = request.FILES.getlist('arquivos')
+        regionais_ids = request.POST.getlist('regionais')
 
-        if not titulo or not mensagem:
+        expira_em = request.POST.get('expira_em')
 
-            messages.error(
-                request,
-                'Preencha todos os campos.'
+        data_expiracao = None
+
+        if expira_em:
+
+            try:
+
+                data = parse_date(expira_em)
+
+                if not data:
+                    raise ValueError()
+
+                data_expiracao = timezone.make_aware(
+                    datetime.combine(data, time.max)
+                )
+
+            except Exception:
+
+                messages.error(
+                    request,
+                    'Data de expiração inválida.'
+                )
+
+                return redirect('estoque:criar_comunicado')
+
+        comunicado = Comunicado.objects.create(
+            titulo=titulo,
+            mensagem=mensagem,
+            tipo=tipo,
+            criado_por=request.user,
+            empresa_id=empresa_id if empresa_id else None,
+            enviar_para_todos=enviar_para_todos,
+            expira_em=data_expiracao
+        )
+
+        if enviar_para_todos:
+
+            usuarios = User.objects.filter(
+                is_active=True
             )
 
-            return redirect('estoque:criar_comunicado')
+            if empresa_id:
 
-        with transaction.atomic():
+                usuarios = usuarios.filter(
+                    perfil__empresa_id=empresa_id
+                )
 
-            comunicado = Comunicado.objects.create(
-                titulo=titulo,
-                mensagem=mensagem,
-                tipo=tipo,
-                criado_por=request.user,
-                enviar_para_todos=enviar_para_todos,
-                empresa_id=empresa_id or None
+            comunicado.usuarios.set(
+                usuarios.distinct()
             )
 
-            # DESTINATÁRIOS
-            if enviar_para_todos:
+        elif regionais_ids:
 
-                usuarios_destino = User.objects.filter(
-                    is_active=True
+            usuarios = User.objects.filter(
+                perfil__regionais__id__in=regionais_ids,
+                is_active=True
+            )
+
+            if empresa_id:
+
+                usuarios = usuarios.filter(
+                    perfil__empresa_id=empresa_id
                 )
 
-                comunicado.usuarios.add(
-                    *usuarios_destino
-                )
+            comunicado.usuarios.set(
+                usuarios.distinct()
+            )
 
-            elif empresa_id:
+        for arquivo in request.FILES.getlist('arquivos'):
 
-                usuarios_empresa = User.objects.filter(
-                    perfil__empresa_id=empresa_id,
-                    is_active=True
-                )
-
-                comunicado.usuarios.add(
-                    *usuarios_empresa
-                )
-
-            elif usuarios_ids:
-
-                comunicado.usuarios.add(
-                    *User.objects.filter(
-                        id__in=usuarios_ids
-                    )
-                )
-
-            # ANEXOS
-            for arquivo in arquivos:
-
-                ComunicadoArquivo.objects.create(
-                    comunicado=comunicado,
-                    arquivo=arquivo
-                )
+            ComunicadoArquivo.objects.create(
+                comunicado=comunicado,
+                arquivo=arquivo
+            )
 
         messages.success(
             request,
-            'Comunicado enviado.'
+            'Comunicado enviado com sucesso.'
         )
 
-        return redirect(
-            'estoque:caixa_comunicados'
-        )
+        return redirect('estoque:caixa_comunicados')
+
+    empresas = Empresa.objects.all().order_by('nome')
+
+    regionais = Base.objects.all().order_by('nome')
 
     return render(
         request,
         'estoque/comunicados/criar.html',
         {
             'empresas': empresas,
-            'usuarios': usuarios,
+            'regionais': regionais,
             'tipos': Comunicado.TIPOS
         }
     )
@@ -1576,27 +1608,23 @@ def caixa_comunicados(request):
 
     comunicados = (
         Comunicado.objects
-        .prefetch_related('arquivos')
         .filter(
-            ativo=True,
-            usuarios=request.user
+            ativo=True
         )
-        .distinct()
-        .order_by('-criado_em')
-    )
-
-    leituras = set(
-        ComunicadoLeitura.objects.filter(
-            usuario=request.user
-        ).values_list(
-            'comunicado_id',
-            flat=True
+        .exclude(
+            comunicadooculto__usuario=request.user
         )
     )
 
-    for c in comunicados:
+    comunicados = comunicados.filter(
+        Q(expira_em__isnull=True) |
+        Q(expira_em__gt=timezone.now())
+    )
 
-        c.lido = c.id in leituras
+    comunicados = comunicados.filter(
+        Q(enviar_para_todos=True) |
+        Q(usuarios=request.user)
+    ).distinct().order_by('-criado_em')
 
     return render(
         request,
@@ -1607,14 +1635,43 @@ def caixa_comunicados(request):
     )
 
 @login_required
-def detalhe_comunicado(request, comunicado_id):
+@require_POST
+def ocultar_comunicado(request, comunicado_id):
 
     comunicado = get_object_or_404(
-        Comunicado.objects.prefetch_related(
-            'arquivos'
-        ),
-        id=comunicado_id,
-        usuarios=request.user
+        Comunicado,
+        id=comunicado_id
+    )
+
+    if not comunicado.permitir_limpar:
+        messages.error(request, 'Este comunicado não pode ser removido.')
+        return redirect('estoque:caixa_comunicados')
+
+    ComunicadoOculto.objects.get_or_create(
+        comunicado=comunicado,
+        usuario=request.user
+    )
+
+    messages.success(request, 'Comunicado removido da sua caixa.')
+
+    return redirect('estoque:caixa_comunicados')
+
+@login_required
+def detalhe_comunicado(request, comunicado_id):
+
+    perfil = request.user.perfil
+
+    comunicado = get_object_or_404(
+
+        Comunicado.objects.filter(
+
+            Q(enviar_para_todos=True) |
+            Q(usuarios=request.user) |
+            Q(empresa=perfil.empresa)
+
+        ).distinct(),
+
+        id=comunicado_id
     )
 
     ComunicadoLeitura.objects.get_or_create(
@@ -1629,6 +1686,32 @@ def detalhe_comunicado(request, comunicado_id):
             'comunicado': comunicado
         }
     )
+
+@login_required
+def caixa_alertas(request):
+
+    alertas = request.user.alertas.all()
+
+    return render(request, 'estoque/alertas/caixa.html', {
+        'alertas': alertas
+    })
+
+@login_required
+def ler_alerta(request, alerta_id):
+
+    alerta = get_object_or_404(
+        Alerta,
+        id=alerta_id,
+        usuario=request.user
+    )
+
+    alerta.lido = True
+    alerta.save(update_fields=['lido'])
+
+    if alerta.link:
+        return redirect(alerta.link)
+
+    return redirect('estoque:caixa_alertas')
 
 # ----------------- TRANSFERÊNCIAS  -----------------
 @login_required
@@ -2306,7 +2389,7 @@ def receber_transferencia(request, transferencia_id):
         messages.success(request, f"Transferência #{transferencia.id} recebida com sucesso.")
         return redirect('estoque:lista_transferencias')
 
-    # GET: exibe página de confirmação
+    # GET
     return render(request, 'estoque/receber_transferencia.html', {
         'transferencia': transferencia,
         'itens': transferencia.itens.all(),

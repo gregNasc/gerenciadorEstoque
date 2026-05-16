@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-13 18:54-0300\n"
-"PO-Revision-Date: 2026-05-13 16:07-0300\n"
+"POT-Creation-Date: 2026-05-16 01:14-0300\n"
+"PO-Revision-Date: 2026-05-16 10:00-0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: es <LL@li.org>\n"
+"Language-Team: Spanish <es@li.org>\n"
 "Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -18,141 +18,165 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: .\estoque\forms.py:31
-#, fuzzy
-#| msgid "Selecionar"
 msgid "Selecione"
-msgstr "Seleccionar"
+msgstr "Seleccione"
 
-#: .\estoque\forms.py:32 .\estoque\models.py:122 .\estoque\models.py:220
+#: .\estoque\forms.py:32 .\estoque\models.py:153 .\estoque\models.py:251
 #: .\estoque\templates\estoque\index.html:22
 #: .\estoque\templates\estoque\index.html:167
-#: .\estoque\templates\estoque\sick.html:67 .\estoque\utils.py:96
+#: .\estoque\templates\estoque\sick.html:80 .\estoque\utils.py:96
 msgid "Coletores"
 msgstr "Colectores"
 
-#: .\estoque\forms.py:33 .\estoque\models.py:123 .\estoque\models.py:221
+#: .\estoque\forms.py:33 .\estoque\models.py:154 .\estoque\models.py:252
 #: .\estoque\templates\estoque\index.html:23
 #: .\estoque\templates\estoque\index.html:171
-#: .\estoque\templates\estoque\sick.html:68 .\estoque\utils.py:97
+#: .\estoque\templates\estoque\sick.html:81 .\estoque\utils.py:97
 msgid "Impressoras"
 msgstr "Impresoras"
 
-#: .\estoque\forms.py:34 .\estoque\models.py:124 .\estoque\models.py:222
+#: .\estoque\forms.py:34 .\estoque\models.py:155 .\estoque\models.py:253
 #: .\estoque\templates\estoque\index.html:24
 #: .\estoque\templates\estoque\index.html:175
-#: .\estoque\templates\estoque\sick.html:69 .\estoque\utils.py:98
+#: .\estoque\templates\estoque\sick.html:82 .\estoque\utils.py:98
 msgid "Notebooks"
 msgstr "Portátiles"
 
-#: .\estoque\forms.py:35 .\estoque\models.py:125 .\estoque\models.py:223
+#: .\estoque\forms.py:35 .\estoque\models.py:156 .\estoque\models.py:254
 #: .\estoque\templates\estoque\index.html:25
 #: .\estoque\templates\estoque\index.html:179
-#: .\estoque\templates\estoque\sick.html:70 .\estoque\utils.py:99
+#: .\estoque\templates\estoque\sick.html:83 .\estoque\utils.py:99
 msgid "Routers"
 msgstr "Routers"
 
-#: .\estoque\models.py:147 .\estoque\models.py:433
+#: .\estoque\models.py:178 .\estoque\models.py:465
 msgid "Ativo"
 msgstr "Activo"
 
-#: .\estoque\models.py:148 .\estoque\models.py:183
+#: .\estoque\models.py:179 .\estoque\models.py:214
 msgid "Em Transferência"
 msgstr "En Transferencia"
 
-#: .\estoque\models.py:149 .\estoque\models.py:435
-#: .\estoque\templates\estoque\sick.html:96
-#: .\estoque\templates\estoque\sick.html:147
-#: .\estoque\templates\estoque\sick.html:187
+#: .\estoque\models.py:180 .\estoque\models.py:467
+#: .\estoque\templates\estoque\comunicados\detalhe.html:50
+#: .\estoque\templates\estoque\sick.html:109
+#: .\estoque\templates\estoque\sick.html:168
+#: .\estoque\templates\estoque\sick.html:209
 msgid "Manutenção"
 msgstr "Mantenimiento"
 
-#: .\estoque\models.py:150 .\estoque\templates\estoque\estoque.html:93
+#: .\estoque\models.py:181 .\estoque\templates\estoque\estoque.html:93
 msgid "Sick"
 msgstr "SICK"
 
-#: .\estoque\models.py:151
+#: .\estoque\models.py:182
 msgid "Baixa"
 msgstr "Baja"
 
-#: .\estoque\models.py:180 .\estoque\models.py:267
+#: .\estoque\models.py:211 .\estoque\models.py:298
 #: .\estoque\templates\estoque\alocacao\painel.html:29
-#: .\estoque\templates\estoque\alocacao\painel.html:92
-#: .\estoque\templates\estoque\sick.html:167
+#: .\estoque\templates\estoque\alocacao\painel.html:75
+#: .\estoque\templates\estoque\sick.html:188
+#: .\estoque\templates\estoque\transferencia\listar.html:86
+#: .\estoque\templates\estoque\transferencia\listar.html:249
 msgid "Pendente"
 msgstr "Pendiente"
 
-#: .\estoque\models.py:181
+#: .\estoque\models.py:212
 msgid "Aprovado"
 msgstr "Aprobado"
 
-#: .\estoque\models.py:182
+#: .\estoque\models.py:213
 msgid "Rejeitado"
 msgstr "Rechazado"
 
-#: .\estoque\models.py:184 .\estoque\templates\estoque\sick.html:199
+#: .\estoque\models.py:215 .\estoque\templates\estoque\sick.html:221
 msgid "Finalizado"
 msgstr "Finalizado"
 
-#: .\estoque\models.py:268
+#: .\estoque\models.py:299
+#: .\estoque\templates\estoque\transferencia\listar.html:90
+#: .\estoque\templates\estoque\transferencia\listar.html:256
 msgid "Em trânsito"
 msgstr "En tránsito"
 
-#: .\estoque\models.py:269
+#: .\estoque\models.py:300
+#: .\estoque\templates\estoque\transferencia\listar.html:94
+#: .\estoque\templates\estoque\transferencia\listar.html:263
 msgid "Concluída"
 msgstr "Concluida"
 
-#: .\estoque\models.py:339
+#: .\estoque\models.py:301
+#: .\estoque\templates\estoque\transferencia\listar.html:98
+#: .\estoque\templates\estoque\transferencia\listar.html:270
+msgid "Cancelada"
+msgstr "Cancelada"
+
+#: .\estoque\models.py:371
 msgid "Solicitação"
 msgstr "Solicitud"
 
-#: .\estoque\models.py:340 .\estoque\models.py:457
+#: .\estoque\models.py:372 .\estoque\models.py:489
 #: .\estoque\templates\estoque\estoque.html:94
+#: .\estoque\templates\estoque\transferencia\detalhe.html:12
+#: .\estoque\templates\estoque\transferencia\listar.html:117
 msgid "Transferência"
 msgstr "Transferencia"
 
-#: .\estoque\models.py:344
+#: .\estoque\models.py:376
 msgid "Criada"
 msgstr "Creada"
 
-#: .\estoque\models.py:345
+#: .\estoque\models.py:377
 msgid "Aprovada"
 msgstr "Aprobada"
 
-#: .\estoque\models.py:346
+#: .\estoque\models.py:378
 msgid "Rejeitada"
 msgstr "Rechazada"
 
-#: .\estoque\models.py:347
+#: .\estoque\models.py:379
 msgid "Em transferência"
 msgstr "En transferencia"
 
-#: .\estoque\models.py:348
+#: .\estoque\models.py:380
 msgid "Recebida"
 msgstr "Recibida"
 
-#: .\estoque\models.py:434 .\estoque\templates\estoque\base.html:89
+#: .\estoque\models.py:466 .\estoque\templates\estoque\base.html:105
 msgid "SICK"
 msgstr "SICK"
 
-#: .\estoque\models.py:436 .\estoque\templates\estoque\sick.html:158
+#: .\estoque\models.py:468 .\estoque\templates\estoque\sick.html:179
 msgid "Sucata"
 msgstr "Chatarra"
 
-#: .\estoque\models.py:437 .\estoque\templates\estoque\sick.html:154
+#: .\estoque\models.py:469 .\estoque\templates\estoque\sick.html:175
 msgid "Inativo"
 msgstr "Inactivo"
 
-#: .\estoque\models.py:456
+#: .\estoque\models.py:488
 msgid "Criação"
 msgstr "Creación"
 
-#: .\estoque\models.py:458
+#: .\estoque\models.py:490
 msgid "Mudança de Status"
 msgstr "Cambio de Estado"
 
-#: .\estoque\models.py:459
+#: .\estoque\models.py:491
 msgid "Edição"
 msgstr "Edición"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:7
+msgid "Alocação da Solicitação"
+msgstr "Asignación de la Solicitud"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:10
+#: .\estoque\templates\estoque\comunicados\detalhe.html:13
+#: .\estoque\templates\estoque\receber_transferencia.html:9
+#: .\estoque\templates\estoque\transferencia\detalhe.html:24
+msgid "Voltar"
+msgstr "Volver"
 
 #: .\estoque\templates\estoque\alocacao\painel.html:20
 #: .\estoque\templates\estoque\solicitacoes\caixa.html:38
@@ -160,16 +184,15 @@ msgid "Itens solicitados"
 msgstr "Ítems solicitados"
 
 #: .\estoque\templates\estoque\alocacao\painel.html:26
-#: .\estoque\templates\estoque\base.html:99
+#: .\estoque\templates\estoque\base.html:115
 #: .\estoque\templates\estoque\cadastrar_equipamento.html:27
 #: .\estoque\templates\estoque\historico.html:64
 #: .\estoque\templates\estoque\historico.html:114
 #: .\estoque\templates\estoque\index.html:30
 #: .\estoque\templates\estoque\lista_transferencias.html:80
-#: .\estoque\templates\estoque\sick.html:74
-#: .\estoque\templates\estoque\sick.html:116
-#: .\estoque\templates\estoque\transferencia\detalhe.html:17
-#: .\estoque\templates\estoque\transferencia\listar.html:16
+#: .\estoque\templates\estoque\receber_transferencia.html:45
+#: .\estoque\templates\estoque\sick.html:87
+#: .\estoque\templates\estoque\sick.html:129
 msgid "Equipamento"
 msgstr "Equipo"
 
@@ -181,40 +204,58 @@ msgstr "Solicitado"
 msgid "Solicitante"
 msgstr "Solicitante"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:60
+#: .\estoque\templates\estoque\alocacao\painel.html:52
 msgid "Alocação por regional"
 msgstr "Asignación por regional"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:63
+#: .\estoque\templates\estoque\alocacao\painel.html:53
 msgid "Selecione de qual regional e modelo os equipamentos serão enviados."
 msgstr "Seleccione desde qué regional y modelo se enviarán los equipos."
 
-#: .\estoque\templates\estoque\alocacao\painel.html:78
+#: .\estoque\templates\estoque\alocacao\painel.html:66
 msgid "Solicitante:"
 msgstr "Solicitante:"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:85
+#: .\estoque\templates\estoque\alocacao\painel.html:70
 msgid "Alocado:"
 msgstr "Asignado:"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:124
+#: .\estoque\templates\estoque\alocacao\painel.html:99
 msgid "Sugerido"
 msgstr "Sugerido"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:130
+#: .\estoque\templates\estoque\alocacao\painel.html:102
 #: .\estoque\templates\estoque\lista_transferencias.html:45
 #: .\estoque\templates\estoque\transferencia\criar.html:13
-#: .\estoque\templates\estoque\transferencia\listar.html:18
+#: .\estoque\templates\estoque\transferencia\detalhe.html:69
+#: .\estoque\templates\estoque\transferencia\listar.html:119
+#: .\estoque\templates\estoque\transferencia\listar.html:201
 msgid "Destino"
 msgstr "Destino"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:152
+#: .\estoque\templates\estoque\alocacao\painel.html:114
 msgid "Disponível:"
 msgstr "Disponible:"
 
-#: .\estoque\templates\estoque\alocacao\painel.html:170
-msgid "Sem estoque"
-msgstr "Sin stock"
+#: .\estoque\templates\estoque\alocacao\painel.html:125
+msgid "Quantidade a alocar"
+msgstr "Cantidad a asignar"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:129
+msgid "Sem estoque nesta regional"
+msgstr "Sin stock en esta regional"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:140
+msgid "A quantidade alocada excede o pendente ou é inválida."
+msgstr "La cantidad asignada excede la pendiente o es inválida."
+
+#: .\estoque\templates\estoque\alocacao\painel.html:148
+msgid "Limpar todas as alocações"
+msgstr "Limpiar todas las asignaciones"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:151
+msgid "Gerar Transferências"
+msgstr "Generar Transferencias"
 
 #: .\estoque\templates\estoque\base.html:9
 #: .\estoque\templates\registration\login.html:209
@@ -235,21 +276,30 @@ msgstr "Inventario"
 msgid "Solicitar"
 msgstr "Solicitar"
 
-#: .\estoque\templates\estoque\base.html:62
+#: .\estoque\templates\estoque\base.html:60
+#: .\estoque\templates\estoque\comunicados\caixa.html:11
+msgid "Comunicados"
+msgstr "Comunicados"
+
+#: .\estoque\templates\estoque\base.html:68
+msgid "Enviar Comunicado"
+msgstr "Enviar Comunicado"
+
+#: .\estoque\templates\estoque\base.html:78
 msgid "Caixa de Mensagens"
 msgstr "Buzón de Mensajes"
 
-#: .\estoque\templates\estoque\base.html:79
+#: .\estoque\templates\estoque\base.html:95
 #: .\estoque\templates\estoque\lista_transferencias.html:3
-#: .\estoque\templates\estoque\transferencia\listar.html:7
+#: .\estoque\templates\estoque\transferencia\listar.html:13
 msgid "Transferências"
 msgstr "Transferencias"
 
-#: .\estoque\templates\estoque\base.html:108
+#: .\estoque\templates\estoque\base.html:124
 msgid "Usuários"
 msgstr "Usuarios"
 
-#: .\estoque\templates\estoque\base.html:125
+#: .\estoque\templates\estoque\base.html:141
 msgid "Sair"
 msgstr "Salir"
 
@@ -263,8 +313,8 @@ msgstr "➕ Nuevo Equipo"
 
 #: .\estoque\templates\estoque\cadastrar_equipamento.html:18
 #: .\estoque\templates\estoque\index.html:19
-#: .\estoque\templates\estoque\sick.html:64
-#: .\estoque\templates\estoque\sick.html:119
+#: .\estoque\templates\estoque\sick.html:77
+#: .\estoque\templates\estoque\sick.html:132
 msgid "Categoria"
 msgstr "Categoría"
 
@@ -378,6 +428,7 @@ msgid "👑 Administrador - Acesso total ao sistema"
 msgstr "👑 Administrador - Acceso total al sistema"
 
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:121
+#: .\estoque\templates\estoque\comunicados\criar.html:98
 msgid "Regionais"
 msgstr "Regionales"
 
@@ -401,6 +452,75 @@ msgstr "Crear Usuario"
 msgid "Voltar ao Dashboard"
 msgstr "Volver al Panel"
 
+#: .\estoque\templates\estoque\comunicados\caixa.html:15
+msgid "Mensagens e avisos do sistema"
+msgstr "Mensajes y avisos del sistema"
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:38
+msgid "Novo"
+msgstr "Nuevo"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:11
+msgid "Novo Comunicado"
+msgstr "Nuevo Comunicado"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:22
+msgid "Título"
+msgstr "Título"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:30
+msgid "Mensagem"
+msgstr "Mensaje"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:41
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:18
+msgid "Tipo"
+msgstr "Tipo"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:66
+msgid "Enviar para todos"
+msgstr "Enviar a todos"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:73
+msgid "Empresa"
+msgstr "Empresa"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:122
+msgid "Expira em"
+msgstr "Expira el"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:144
+msgid "Usuário pode remover da caixa"
+msgstr "El usuario puede eliminar del buzón"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:154
+msgid "Usuários vinculados às regionais selecionadas receberão o comunicado."
+msgstr "Los usuarios vinculados a las regionales seleccionadas recibirán el comunicado."
+
+#: .\estoque\templates\estoque\comunicados\criar.html:173
+msgid "Anexo"
+msgstr "Adjunto"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:184
+msgid "Enviar comunicado"
+msgstr "Enviar comunicado"
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:45
+msgid "Urgente"
+msgstr "Urgente"
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:55
+msgid "Operacional"
+msgstr "Operacional"
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:60
+msgid "Informativo"
+msgstr "Informativo"
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:79
+msgid "Anexos"
+msgstr "Adjuntos"
+
 #: .\estoque\templates\estoque\detalhes_produto.html:3
 msgid "Detalhes do Item"
 msgstr "Detalles del Ítem"
@@ -414,7 +534,9 @@ msgid "Selecionar"
 msgstr "Seleccionar"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:31
-#: .\estoque\templates\estoque\sick.html:118
+#: .\estoque\templates\estoque\receber_transferencia.html:47
+#: .\estoque\templates\estoque\sick.html:131
+#: .\estoque\templates\estoque\transferencia\detalhe.html:195
 msgid "Patrimônio"
 msgstr "Patrimonio"
 
@@ -430,15 +552,18 @@ msgstr "Cant"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:34
 #: .\estoque\templates\estoque\lista_transferencias.html:33
-#: .\estoque\templates\estoque\transferencia\listar.html:17
+#: .\estoque\templates\estoque\transferencia\detalhe.html:44
+#: .\estoque\templates\estoque\transferencia\listar.html:118
+#: .\estoque\templates\estoque\transferencia\listar.html:178
 msgid "Origem"
 msgstr "Origen"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:35
 #: .\estoque\templates\estoque\lista_transferencias.html:21
 #: .\estoque\templates\estoque\lista_transferencias.html:82
-#: .\estoque\templates\estoque\sick.html:123
-#: .\estoque\templates\estoque\transferencia\listar.html:19
+#: .\estoque\templates\estoque\sick.html:136
+#: .\estoque\templates\estoque\transferencia\detalhe.html:94
+#: .\estoque\templates\estoque\transferencia\listar.html:121
 msgid "Status"
 msgstr "Estado"
 
@@ -449,7 +574,8 @@ msgstr "Foto"
 #: .\estoque\templates\estoque\detalhes_produto.html:37
 #: .\estoque\templates\estoque\historico.html:118
 #: .\estoque\templates\estoque\lista_transferencias.html:86
-#: .\estoque\templates\estoque\sick.html:124
+#: .\estoque\templates\estoque\sick.html:137
+#: .\estoque\templates\estoque\transferencia\listar.html:123
 msgid "Ações"
 msgstr "Acciones"
 
@@ -487,6 +613,7 @@ msgid "Descreva o motivo do Sick"
 msgstr "Describa el motivo del SICK"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:146
+#: .\estoque\templates\estoque\receber_transferencia.html:76
 msgid "Cancelar"
 msgstr "Cancelar"
 
@@ -510,8 +637,8 @@ msgstr "📊 Informes Administrativos"
 #: .\estoque\templates\estoque\estoque.html:59
 #: .\estoque\templates\estoque\index.html:66
 #: .\estoque\templates\estoque\selecionados.html:11
-#: .\estoque\templates\estoque\sick.html:83
-#: .\estoque\templates\estoque\sick.html:120
+#: .\estoque\templates\estoque\sick.html:96
+#: .\estoque\templates\estoque\sick.html:133
 msgid "Regional"
 msgstr "Regional"
 
@@ -522,8 +649,8 @@ msgstr "Todas las regionales"
 #: .\estoque\templates\estoque\estoque.html:65
 #: .\estoque\templates\estoque\index.html:68
 #: .\estoque\templates\estoque\lista_transferencias.html:35
-#: .\estoque\templates\estoque\sick.html:66
-#: .\estoque\templates\estoque\sick.html:85
+#: .\estoque\templates\estoque\sick.html:79
+#: .\estoque\templates\estoque\sick.html:98
 msgid "Todas"
 msgstr "Todas"
 
@@ -533,6 +660,7 @@ msgstr "Aplicar"
 
 #: .\estoque\templates\estoque\estoque.html:91
 #: .\estoque\templates\estoque\index.html:194
+#: .\estoque\templates\estoque\transferencia\listar.html:27
 msgid "Total"
 msgstr "Total"
 
@@ -574,8 +702,8 @@ msgstr "Tipo de Acción"
 #: .\estoque\templates\estoque\historico.html:53
 #: .\estoque\templates\estoque\lista_transferencias.html:23
 #: .\estoque\templates\estoque\lista_transferencias.html:47
-#: .\estoque\templates\estoque\sick.html:76
-#: .\estoque\templates\estoque\sick.html:94
+#: .\estoque\templates\estoque\sick.html:89
+#: .\estoque\templates\estoque\sick.html:107
 msgid "Todos"
 msgstr "Todos"
 
@@ -677,11 +805,11 @@ msgid "Dias"
 msgstr "Días"
 
 #: .\estoque\templates\estoque\lista_transferencias.html:84
+#: .\estoque\templates\estoque\transferencia\detalhe.html:131
 msgid "Solicitado por"
 msgstr "Solicitado por"
 
 #: .\estoque\templates\estoque\lista_transferencias.html:85
-#: .\estoque\templates\estoque\transferencia\listar.html:20
 msgid "Data"
 msgstr "Fecha"
 
@@ -698,7 +826,7 @@ msgid "✖ Cancelado"
 msgstr "✖ Cancelado"
 
 #: .\estoque\templates\estoque\lista_transferencias.html:164
-#: .\estoque\templates\estoque\transferencia\listar.html:68
+#: .\estoque\templates\estoque\transferencia\listar.html:346
 msgid "Nenhuma transferência encontrada"
 msgstr "Ninguna transferencia encontrada"
 
@@ -719,16 +847,12 @@ msgstr "Información del Registro"
 msgid "Data / Hora"
 msgstr "Fecha / Hora"
 
-#: .\estoque\templates\estoque\partials\historico_detalhes.html:18
-msgid "Tipo"
-msgstr "Tipo"
-
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:35
 msgid "📦 Equipamento"
 msgstr "📦 Equipo"
 
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:37
-#: .\estoque\templates\estoque\transferencia\criar.html:38
+#: .\estoque\templates\estoque\transferencia\criar.html:41
 msgid "Produto:"
 msgstr "Producto:"
 
@@ -737,7 +861,7 @@ msgid "Nº Série:"
 msgstr "Nº Serie:"
 
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:40
-#: .\estoque\templates\estoque\transferencia\detalhe.html:10
+#: .\estoque\templates\estoque\receber_transferencia.html:27
 msgid "Status:"
 msgstr "Estado:"
 
@@ -748,6 +872,59 @@ msgstr "Haga clic para ampliar"
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:64
 msgid "Sem foto cadastrada"
 msgstr "Sin foto registrada"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:7
+msgid "Receber Transferência"
+msgstr "Recibir Transferencia"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:17
+msgid "Informações da Transferência"
+msgstr "Información de la Transferencia"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:22
+#: .\estoque\templates\estoque\transferencia\criar.html:34
+#: .\estoque\templates\estoque\transferencia\imprimir.html:7
+msgid "Origem:"
+msgstr "Origen:"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:23
+#: .\estoque\templates\estoque\transferencia\imprimir.html:8
+msgid "Destino:"
+msgstr "Destino:"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:24
+msgid "Solicitado por:"
+msgstr "Solicitado por:"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:30
+msgid "Data de envio:"
+msgstr "Fecha de envío:"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:38
+msgid "Itens da Transferência"
+msgstr "Ítems de la Transferencia"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:46
+#: .\estoque\templates\estoque\sick.html:130
+msgid "Nº Série"
+msgstr "Nº Serie"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:48
+#: .\estoque\templates\estoque\transferencia\detalhe.html:193
+msgid "Produto"
+msgstr "Producto"
+
+#: .\estoque\templates\estoque\receber_transferencia.html:61
+msgid "Nenhum item encontrado."
+msgstr "Ningún ítem encontrado."
+
+#: .\estoque\templates\estoque\receber_transferencia.html:73
+msgid "Confirme o recebimento de todos os itens acima. Esta ação é irreversível."
+msgstr "Confirme la recepción de todos los ítems anteriores. Esta acción es irreversible."
+
+#: .\estoque\templates\estoque\receber_transferencia.html:77
+msgid "Confirmar Recebimento"
+msgstr "Confirmar Recepción"
 
 #: .\estoque\templates\estoque\selecionados.html:3
 #: .\estoque\templates\estoque\selecionados.html:6
@@ -775,52 +952,53 @@ msgid "Total SICK"
 msgstr "Total SICK"
 
 #: .\estoque\templates\estoque\sick.html:36
-#: .\estoque\templates\estoque\sick.html:95
-msgid "Pendentes"
-msgstr "Pendientes"
+msgid "Em manutenção"
+msgstr "En mantenimiento"
 
 #: .\estoque\templates\estoque\sick.html:49
-#: .\estoque\templates\estoque\sick.html:98
-msgid "Resolvidos"
-msgstr "Resueltos"
-
-#: .\estoque\templates\estoque\sick.html:97
+#: .\estoque\templates\estoque\sick.html:110
 msgid "Inativos"
 msgstr "Inactivos"
 
-#: .\estoque\templates\estoque\sick.html:103
+#: .\estoque\templates\estoque\sick.html:62
+#: .\estoque\templates\estoque\sick.html:111
+msgid "Resolvidos"
+msgstr "Resueltos"
+
+#: .\estoque\templates\estoque\sick.html:108
+#: .\estoque\templates\estoque\transferencia\listar.html:39
+msgid "Pendentes"
+msgstr "Pendientes"
+
+#: .\estoque\templates\estoque\sick.html:115
 msgid "Limpar Filtros"
 msgstr "Limpiar Filtros"
 
-#: .\estoque\templates\estoque\sick.html:117
-msgid "Nº Série"
-msgstr "Nº Serie"
-
-#: .\estoque\templates\estoque\sick.html:121
+#: .\estoque\templates\estoque\sick.html:134
 msgid "Ocorrência"
 msgstr "Ocurrencia"
 
-#: .\estoque\templates\estoque\sick.html:122
+#: .\estoque\templates\estoque\sick.html:135
 msgid "Previsão Retorno"
 msgstr "Previsión Retorno"
 
-#: .\estoque\templates\estoque\sick.html:162
+#: .\estoque\templates\estoque\sick.html:183
 msgid "Resolvido"
 msgstr "Resuelto"
 
-#: .\estoque\templates\estoque\sick.html:175
+#: .\estoque\templates\estoque\sick.html:197
 msgid "Retornar equipamento para ATIVO?"
 msgstr "¿Devolver equipo a ACTIVO?"
 
-#: .\estoque\templates\estoque\sick.html:179
+#: .\estoque\templates\estoque\sick.html:201
 msgid "Resolver"
 msgstr "Resolver"
 
-#: .\estoque\templates\estoque\sick.html:194
+#: .\estoque\templates\estoque\sick.html:216
 msgid "Inativar"
 msgstr "Inactivar"
 
-#: .\estoque\templates\estoque\sick.html:204
+#: .\estoque\templates\estoque\sick.html:291
 msgid "Nenhum equipamento SICK encontrado"
 msgstr "Ningún equipo SICK encontrado"
 
@@ -850,7 +1028,7 @@ msgstr "🚧 Cerrado por inventario"
 
 #: .\estoque\templates\estoque\solicitacoes\criar.html:44
 msgid "Esta funcionalidade está em desenvolvimento"
-msgstr "Esta funcionalidad se encuentra en desarrollo"
+msgstr "Esta funcionalidad está en desarrollo"
 
 #: .\estoque\templates\estoque\solicitacoes\criar.html:53
 msgid "Agradecemos pela paciência enquanto melhoramos o sistema."
@@ -900,36 +1078,90 @@ msgstr "Enviar Solicitud"
 msgid "Nova Transferência"
 msgstr "Nueva Transferencia"
 
-#: .\estoque\templates\estoque\transferencia\criar.html:31
-#: .\estoque\templates\estoque\transferencia\detalhe.html:8
-#: .\estoque\templates\estoque\transferencia\imprimir.html:7
-msgid "Origem:"
-msgstr "Origen:"
-
-#: .\estoque\templates\estoque\transferencia\criar.html:39
+#: .\estoque\templates\estoque\transferencia\criar.html:42
 msgid "Quantidade:"
 msgstr "Cantidad:"
 
-#: .\estoque\templates\estoque\transferencia\criar.html:50
+#: .\estoque\templates\estoque\transferencia\criar.html:53
 msgid "Salvar Transferência"
 msgstr "Guardar Transferencia"
 
-#: .\estoque\templates\estoque\transferencia\detalhe.html:6
-msgid "Transferência #"
-msgstr "Transferencia #"
+#: .\estoque\templates\estoque\transferencia\detalhe.html:16
+msgid "Detalhes completos da transferência"
+msgstr "Detalles completos de la transferencia"
 
-#: .\estoque\templates\estoque\transferencia\detalhe.html:9
-#: .\estoque\templates\estoque\transferencia\imprimir.html:8
-msgid "Destino:"
-msgstr "Destino:"
+#: .\estoque\templates\estoque\transferencia\detalhe.html:141
+msgid "Data de envio"
+msgstr "Fecha de envío"
 
-#: .\estoque\templates\estoque\transferencia\detalhe.html:31
-msgid "Nenhum item na transferência"
-msgstr "Ningún ítem en la transferencia"
+#: .\estoque\templates\estoque\transferencia\detalhe.html:151
+msgid "Total de itens"
+msgstr "Total de ítems"
 
-#: .\estoque\templates\estoque\transferencia\listar.html:61
-msgid "Ver"
-msgstr "Ver"
+#: .\estoque\templates\estoque\transferencia\detalhe.html:172
+msgid "Equipamentos da transferência"
+msgstr "Equipos de la transferencia"
+
+#: .\estoque\templates\estoque\transferencia\detalhe.html:176
+msgid "Lista completa dos itens enviados"
+msgstr "Lista completa de los ítems enviados"
+
+#: .\estoque\templates\estoque\transferencia\detalhe.html:181
+msgid "item(ns)"
+msgstr "ítem(s)"
+
+#: .\estoque\templates\estoque\transferencia\detalhe.html:194
+msgid "Número de Série"
+msgstr "Número de Serie"
+
+#: .\estoque\templates\estoque\transferencia\detalhe.html:196
+msgid "Status Atual"
+msgstr "Estado Actual"
+
+#: .\estoque\templates\estoque\transferencia\detalhe.html:238
+msgid "Nenhum item encontrado"
+msgstr "Ningún ítem encontrado"
+
+#: .\estoque\templates\estoque\transferencia\detalhe.html:242
+msgid "Esta transferência ainda não possui equipamentos vinculados."
+msgstr "Esta transferencia aún no tiene equipos vinculados."
+
+#: .\estoque\templates\estoque\transferencia\listar.html:17
+msgid "Acompanhe movimentações entre bases e regionais."
+msgstr "Acompañe movimientos entre bases y regionales."
+
+#: .\estoque\templates\estoque\transferencia\listar.html:70
+msgid "Pesquisar transferência, regional ou equipamento..."
+msgstr "Buscar transferencia, regional o equipo..."
+
+#: .\estoque\templates\estoque\transferencia\listar.html:82
+msgid "Todos os status"
+msgstr "Todos los estados"
+
+#: .\estoque\templates\estoque\transferencia\listar.html:120
+msgid "Itens"
+msgstr "Ítems"
+
+#: .\estoque\templates\estoque\transferencia\listar.html:122
+msgid "Prazo"
+msgstr "Plazo"
+
+#: .\estoque\templates\estoque\transferencia\listar.html:233
+msgid "outros itens"
+msgstr "otros ítems"
+
+#: .\estoque\templates\estoque\transferencia\listar.html:289
+#: .\estoque\templates\estoque\transferencia\listar.html:295
+msgid "dias"
+msgstr "días"
+
+#: .\estoque\templates\estoque\transferencia\listar.html:321
+msgid "Receber"
+msgstr "Recibir"
+
+#: .\estoque\templates\estoque\transferencia\listar.html:350
+msgid "As transferências aparecerão aqui quando forem criadas."
+msgstr "Las transferencias aparecerán aquí cuando sean creadas."
 
 #: .\estoque\templates\registration\login.html:9
 msgid "Login - Gerenciador de Estoque"
@@ -976,12 +1208,8 @@ msgid "📩 Verifique seu e-mail"
 msgstr "📩 Verifique su correo electrónico"
 
 #: .\estoque\templates\registration\password_reset_done.html:8
-msgid ""
-"Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua "
-"senha."
-msgstr ""
-"Si el correo está registrado, recibirá instrucciones para redefinir su "
-"contraseña."
+msgid "Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."
+msgstr "Si el correo está registrado, recibirá instrucciones para redefinir su contraseña."
 
 #: .\estoque\templates\registration\password_reset_done.html:12
 msgid "Voltar ao login"
@@ -998,6 +1226,3 @@ msgstr "Informe su correo electrónico para recibir el enlace de recuperación."
 #: .\estoque\templates\registration\password_reset_form.html:16
 msgid "Enviar link"
 msgstr "Enviar enlace"
-
-#~ msgid "Todas</"
-#~ msgstr "Todas</"

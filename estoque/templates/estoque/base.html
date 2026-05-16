@@ -54,16 +54,32 @@
                 </li>
                 {% endif %}
 
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'estoque:caixa_comunicados' %}">
+                        <i class="bi bi-megaphone"></i>
+                        {% trans "Comunicados" %}
+                    </a>
+                </li>
+
+                {% if request.user.perfil.role == 'admin' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'estoque:criar_comunicado' %}">
+                        <i class="bi bi-send"></i>
+                        {% trans "Enviar Comunicado" %}
+                    </a>
+                </li>
+                {% endif %}
+
                 <!-- CAIXA -->
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
-                <li class="nav-item">
+                <!--li class="nav-item">
                     <a class="nav-link position-relative {% if url_name == 'caixa_solicitacoes' %}active{% endif %}"
                        href="{% url 'estoque:caixa_solicitacoes' %}">
                         <i class="bi bi-inbox"></i> {% trans "Caixa de Mensagens" %}
                         {% if notificacoes_nao_lidas > 0 %}
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                             {{ notificacoes_nao_lidas }}
-                        </span>
+                        </span-->
                         {% endif %}
 
 

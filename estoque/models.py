@@ -554,6 +554,27 @@ class Comunicado(models.Model):
 
     ativo = models.BooleanField(default=True)
 
+    # NOVOS CAMPOS
+    expira_em = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    permitir_limpar = models.BooleanField(
+        default=True
+    )
+
+    def expirado(self):
+        from django.utils import timezone
+
+        return (
+            self.expira_em and
+            timezone.now() >= self.expira_em
+        )
+
+    def __str__(self):
+        return self.titulo
+
 class ComunicadoArquivo(models.Model):
 
     comunicado = models.ForeignKey(
@@ -581,6 +602,23 @@ class ComunicadoLeitura(models.Model):
     )
 
     lido_em = models.DateTimeField(auto_now_add=True)
+
+class ComunicadoOculto(models.Model):
+
+    comunicado = models.ForeignKey(
+        Comunicado,
+        on_delete=models.CASCADE
+    )
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    ocultado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('comunicado', 'usuario')
 
 class Mensagem(models.Model):
 

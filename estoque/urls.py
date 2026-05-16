@@ -80,6 +80,8 @@ urlpatterns = [
     path('comunicados/', views.caixa_comunicados, name='caixa_comunicados'),
     path('comunicados/novo/', views.criar_comunicado, name='criar_comunicado'),
     path('comunicados/<int:comunicado_id>/', views.detalhe_comunicado, name='detalhe_comunicado'),
+    path('comunicados/ocultar/<int:comunicado_id>/', views.ocultar_comunicado, name='ocultar_comunicado'),
+
     # ---------------- PASSWORD RESET ----------------
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='registration/password_reset_form.html',

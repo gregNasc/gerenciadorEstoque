@@ -1,0 +1,260 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+
+        <div>
+
+            <div class="d-flex align-items-center gap-2 mb-1">
+
+                <h3 class="fw-bold mb-0">
+                    {% trans "Comunicados" %}
+                </h3>
+
+                {% if comunicados_nao_lidos > 0 %}
+                <span class="badge rounded-pill bg-danger px-3 py-2">
+
+                    {{ comunicados_nao_lidos }}
+                    {% trans "novo(s)" %}
+
+                </span>
+                {% endif %}
+
+            </div>
+
+            <p class="text-muted mb-0">
+                {% trans "Mensagens, arquivos e avisos operacionais do sistema." %}
+            </p>
+
+        </div>
+
+        {% if request.user.perfil.role == 'admin' %}
+
+        <!--a href="{% url 'estoque:criar_comunicado' %}"
+           class="btn btn-dark rounded-pill px-4">
+
+            <i class="bi bi-plus-circle me-2"></i>
+            {% trans "Novo comunicado" %}
+
+        </a-->
+
+        {% endif %}
+
+    </div>
+
+    <!-- CARD -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+
+        {% if comunicados %}
+
+        <div class="list-group list-group-flush">
+
+            {% for c in comunicados %}
+
+            <div class="list-group-item border-0 border-bottom comunicado-item p-4">
+
+                <div class="d-flex align-items-start justify-content-between gap-3">
+
+                    <!-- LINK -->
+                    <a href="{% url 'estoque:detalhe_comunicado' c.id %}"
+                       class="text-decoration-none text-dark flex-grow-1">
+
+                        <div class="d-flex align-items-start gap-3">
+
+                            <!-- ICON -->
+                            <div class="comunicado-icon flex-shrink-0">
+
+                                {% if c.tipo == 'URGENTE' %}
+
+                                    <div class="icon-circle bg-danger-subtle text-danger">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                    </div>
+
+                                {% elif c.tipo == 'MANUTENCAO' %}
+
+                                    <div class="icon-circle bg-warning-subtle text-warning">
+                                        <i class="bi bi-tools"></i>
+                                    </div>
+
+                                {% elif c.tipo == 'OPERACIONAL' %}
+
+                                    <div class="icon-circle bg-primary-subtle text-primary">
+                                        <i class="bi bi-gear-fill"></i>
+                                    </div>
+
+                                {% else %}
+
+                                    <div class="icon-circle bg-secondary-subtle text-secondary">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                            <!-- INFO -->
+                            <div class="flex-grow-1 overflow-hidden">
+
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+
+                                    {% if not c.lido %}
+                                    <span class="badge bg-danger rounded-pill px-2 py-1">
+                                        {% trans "Novo" %}
+                                    </span>
+                                    {% endif %}
+
+                                    <span class="fw-semibold fs-6 text-truncate">
+                                        {{ c.titulo }}
+                                    </span>
+
+                                </div>
+
+                                <div class="small text-muted comunicado-preview">
+
+                                    {{ c.mensagem|truncatechars:180 }}
+
+                                </div>
+
+                                <div class="d-flex align-items-center flex-wrap gap-3 mt-3 small text-muted">
+
+                                    <span>
+                                        <i class="bi bi-calendar-event me-1"></i>
+                                        {{ c.criado_em|date:"d/m/Y H:i" }}
+                                    </span>
+
+                                    <span>
+                                        <i class="bi bi-person-circle me-1"></i>
+                                        {{ c.criado_por.username }}
+                                    </span>
+
+                                    {% if c.arquivos.count %}
+                                    <span>
+                                        <i class="bi bi-paperclip me-1"></i>
+                                        {{ c.arquivos.count }}
+                                        {% trans "anexo(s)" %}
+                                    </span>
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </a>
+
+                    <!-- BOTÕES -->
+                    <div class="d-flex align-items-center gap-2">
+
+                        <a href="{% url 'estoque:detalhe_comunicado' c.id %}"
+                           class="btn btn-sm btn-light border rounded-pill px-3">
+
+                            <i class="bi bi-eye me-1"></i>
+                            {% trans "Abrir" %}
+
+                        </a>
+
+                        {% if c.permitir_limpar %}
+
+                        <form method="post"
+                              action="{% url 'estoque:ocultar_comunicado' c.id %}">
+
+                            {% csrf_token %}
+
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-secondary rounded-pill">
+
+                                <i class="bi bi-x-lg"></i>
+
+                            </button>
+
+                        </form>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <!-- EMPTY -->
+        <div class="p-5 text-center">
+
+            <div class="mb-3">
+
+                <div class="empty-icon mx-auto">
+
+                    <i class="bi bi-envelope-open"></i>
+
+                </div>
+
+            </div>
+
+            <h5 class="fw-semibold mb-2">
+                {% trans "Nenhum comunicado disponível" %}
+            </h5>
+
+            <p class="text-muted mb-0">
+                {% trans "Quando novos avisos forem enviados, eles aparecerão aqui." %}
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+<style>
+
+.comunicado-item{
+    transition: all .18s ease;
+    background: #fff;
+}
+
+.comunicado-item:hover{
+    background: #fafafa;
+}
+
+.comunicado-preview{
+    line-height: 1.5;
+}
+
+.icon-circle{
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.empty-icon{
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+    background: #f1f3f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #6c757d;
+}
+
+</style>
+
+{% endblock %}
