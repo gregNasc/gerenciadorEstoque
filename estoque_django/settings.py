@@ -112,9 +112,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'estoque_django.wsgi.application'
 
-
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -189,4 +186,8 @@ EMAIL_HOST_USER = 'seu_email@gmail.com'
 EMAIL_HOST_PASSWORD = 'senha_de_app'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = '/var/data/media'
+
+import os
+
+os.makedirs(MEDIA_ROOT, exist_ok=True)
