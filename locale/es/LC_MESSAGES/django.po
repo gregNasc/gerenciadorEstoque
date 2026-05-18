@@ -3,12 +3,13 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
+#: .\estoque\templates\estoque\comunicados\criar.html:92
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-16 01:14-0300\n"
-"PO-Revision-Date: 2026-05-16 10:00-0300\n"
+"POT-Creation-Date: 2026-05-18 10:23-0300\n"
+"PO-Revision-Date: 2026-05-18 10:00-0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Spanish <es@li.org>\n"
 "Language: es\n"
@@ -58,7 +59,7 @@ msgid "Em Transferência"
 msgstr "En Transferencia"
 
 #: .\estoque\models.py:180 .\estoque\models.py:467
-#: .\estoque\templates\estoque\comunicados\detalhe.html:50
+#: .\estoque\templates\estoque\comunicados\detalhe.html:42
 #: .\estoque\templates\estoque\sick.html:109
 #: .\estoque\templates\estoque\sick.html:168
 #: .\estoque\templates\estoque\sick.html:209
@@ -172,7 +173,8 @@ msgid "Alocação da Solicitação"
 msgstr "Asignación de la Solicitud"
 
 #: .\estoque\templates\estoque\alocacao\painel.html:10
-#: .\estoque\templates\estoque\comunicados\detalhe.html:13
+#: .\estoque\templates\estoque\comunicados\criar.html:39
+#: .\estoque\templates\estoque\comunicados\detalhe.html:15
 #: .\estoque\templates\estoque\receber_transferencia.html:9
 #: .\estoque\templates\estoque\transferencia\detalhe.html:24
 msgid "Voltar"
@@ -277,7 +279,7 @@ msgid "Solicitar"
 msgstr "Solicitar"
 
 #: .\estoque\templates\estoque\base.html:60
-#: .\estoque\templates\estoque\comunicados\caixa.html:11
+#: .\estoque\templates\estoque\comunicados\caixa.html:16
 msgid "Comunicados"
 msgstr "Comunicados"
 
@@ -428,7 +430,7 @@ msgid "👑 Administrador - Acesso total ao sistema"
 msgstr "👑 Administrador - Acceso total al sistema"
 
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:121
-#: .\estoque\templates\estoque\comunicados\criar.html:98
+#: .\estoque\templates\estoque\comunicados\criar.html:276
 msgid "Regionais"
 msgstr "Regionales"
 
@@ -452,74 +454,123 @@ msgstr "Crear Usuario"
 msgid "Voltar ao Dashboard"
 msgstr "Volver al Panel"
 
-#: .\estoque\templates\estoque\comunicados\caixa.html:15
-msgid "Mensagens e avisos do sistema"
-msgstr "Mensajes y avisos del sistema"
+#: .\estoque\templates\estoque\comunicados\caixa.html:23
+msgid "novo(s)"
+msgstr "nuevo(s)"
 
-#: .\estoque\templates\estoque\comunicados\caixa.html:38
+#: .\estoque\templates\estoque\comunicados\caixa.html:31
+msgid "Mensagens, arquivos e avisos operacionais do sistema."
+msgstr "Mensajes, archivos y avisos operacionales del sistema."
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:42
+msgid "Novo comunicado"
+msgstr "Nuevo comunicado"
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:107
 msgid "Novo"
 msgstr "Nuevo"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:11
-msgid "Novo Comunicado"
-msgstr "Nuevo Comunicado"
+#: .\estoque\templates\estoque\comunicados\caixa.html:139
+msgid "anexo(s)"
+msgstr "adjunto(s)"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:22
+#: .\estoque\templates\estoque\comunicados\caixa.html:158
+msgid "Abrir"
+msgstr "Abrir"
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:206
+msgid "Nenhum comunicado disponível"
+msgstr "Ningún comunicado disponible"
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:210
+msgid "Quando novos avisos forem enviados, eles aparecerão aqui."
+msgstr "Cuando se envíen nuevos avisos, aparecerán aquí."
+
+#: .\estoque\templates\estoque\comunicados\criar.html:27
+msgid "Envie avisos, arquivos e comunicados para usuários e regionais."
+msgstr "Envíe avisos, archivos y comunicados a usuarios y regionales."
+
+#: .\estoque\templates\estoque\comunicados\criar.html:60
+msgid "Conteúdo do comunicado"
+msgstr "Contenido del comunicado"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:71
 msgid "Título"
 msgstr "Título"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:30
+#: .\estoque\templates\estoque\comunicados\criar.html:77
+msgid "Ex.: Atualização de Sistema"
+msgstr "Ej.: Actualización de Sistema"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:86
 msgid "Mensagem"
 msgstr "Mensaje"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:41
+#: .\estoque\templates\estoque\comunicados\criar.html:101
+#: .\estoque\templates\estoque\comunicados\detalhe.html:104
+msgid "Anexos"
+msgstr "Adjuntos"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:113
+msgid "Adicionar arquivos"
+msgstr "Agregar archivos"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:225
+msgid "Configurações avançadas"
+msgstr "Configuraciones avanzadas"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:236
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:18
 msgid "Tipo"
 msgstr "Tipo"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:66
-msgid "Enviar para todos"
-msgstr "Enviar a todos"
-
-#: .\estoque\templates\estoque\comunicados\criar.html:73
+#: .\estoque\templates\estoque\comunicados\criar.html:255
 msgid "Empresa"
 msgstr "Empresa"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:122
-msgid "Expira em"
-msgstr "Expira el"
+#: .\estoque\templates\estoque\comunicados\criar.html:260
+msgid "Todas as empresas"
+msgstr "Todas las empresas"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:144
-msgid "Usuário pode remover da caixa"
-msgstr "El usuario puede eliminar del buzón"
-
-#: .\estoque\templates\estoque\comunicados\criar.html:154
+#: .\estoque\templates\estoque\comunicados\criar.html:297
 msgid "Usuários vinculados às regionais selecionadas receberão o comunicado."
 msgstr "Los usuarios vinculados a las regionales seleccionadas recibirán el comunicado."
 
-#: .\estoque\templates\estoque\comunicados\criar.html:173
-msgid "Anexo"
-msgstr "Adjunto"
+#: .\estoque\templates\estoque\comunicados\criar.html:313
+msgid "Enviar para todos"
+msgstr "Enviar a todos"
 
-#: .\estoque\templates\estoque\comunicados\criar.html:184
+#: .\estoque\templates\estoque\comunicados\criar.html:321
+msgid "Expira em"
+msgstr "Expira el"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:329
+msgid "Opcional. Após esta data o comunicado será ocultado automaticamente."
+msgstr "Opcional. Después de esta fecha, el comunicado se ocultará automáticamente."
+
+#: .\estoque\templates\estoque\comunicados\criar.html:343
+msgid "Usuário pode remover da caixa"
+msgstr "El usuario puede eliminar del buzón"
+
+#: .\estoque\templates\estoque\comunicados\criar.html:355
 msgid "Enviar comunicado"
 msgstr "Enviar comunicado"
 
-#: .\estoque\templates\estoque\comunicados\detalhe.html:45
+#: .\estoque\templates\estoque\comunicados\detalhe.html:36
 msgid "Urgente"
 msgstr "Urgente"
 
-#: .\estoque\templates\estoque\comunicados\detalhe.html:55
+#: .\estoque\templates\estoque\comunicados\detalhe.html:48
 msgid "Operacional"
 msgstr "Operacional"
 
-#: .\estoque\templates\estoque\comunicados\detalhe.html:60
+#: .\estoque\templates\estoque\comunicados\detalhe.html:54
 msgid "Informativo"
 msgstr "Informativo"
 
-#: .\estoque\templates\estoque\comunicados\detalhe.html:79
-msgid "Anexos"
-msgstr "Adjuntos"
+#: .\estoque\templates\estoque\comunicados\detalhe.html:166
+msgid "Clique para abrir ou baixar"
+msgstr "Haga clic para abrir o descargar"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:3
 msgid "Detalhes do Item"
@@ -919,8 +970,11 @@ msgid "Nenhum item encontrado."
 msgstr "Ningún ítem encontrado."
 
 #: .\estoque\templates\estoque\receber_transferencia.html:73
-msgid "Confirme o recebimento de todos os itens acima. Esta ação é irreversível."
-msgstr "Confirme la recepción de todos los ítems anteriores. Esta acción es irreversible."
+msgid ""
+"Confirme o recebimento de todos os itens acima. Esta ação é irreversível."
+msgstr ""
+"Confirme la recepción de todos los ítems anteriores. Esta acción es "
+"irreversible."
 
 #: .\estoque\templates\estoque\receber_transferencia.html:77
 msgid "Confirmar Recebimento"
@@ -1208,8 +1262,12 @@ msgid "📩 Verifique seu e-mail"
 msgstr "📩 Verifique su correo electrónico"
 
 #: .\estoque\templates\registration\password_reset_done.html:8
-msgid "Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."
-msgstr "Si el correo está registrado, recibirá instrucciones para redefinir su contraseña."
+msgid ""
+"Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua "
+"senha."
+msgstr ""
+"Si el correo está registrado, recibirá instrucciones para redefinir su "
+"contraseña."
 
 #: .\estoque\templates\registration\password_reset_done.html:12
 msgid "Voltar ao login"
