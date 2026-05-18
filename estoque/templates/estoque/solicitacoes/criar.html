@@ -6,22 +6,7 @@
 <h3>{% trans "Nova Solicitação de Equipamentos" %}</h3>
 
 <hr>
-
-<form method="post">
-    {% csrf_token %}
-
-    <!--div class="mb-3">
-        <label>Tipo de Equipamento</label>
-        <select name="categoria" class="form-select" required>
-            <option value="">Selecione...</option>
-            <option value="Coletores">Coletores</option>
-            <option value="Impressoras">Impressoras</option>
-            <option value="Notebooks">Notebooks</option>
-            <option value="Routers">Routers</option>
-        </select>
-    </div-->
-
-    <div class="container mt-5 pt-5">
+<div class="container mt-5 pt-5">
     <div class="row justify-content-center">
         <div class="col-md-8 text-center">
 
@@ -121,8 +106,80 @@
     transform: translateY(-3px);
 }
 </style>
+<!--form method="post">
+    {% csrf_token %}
 
-    <!--div class="mb-3">
+    <div class="mb-3">
+        <label>Tipo de Equipamento</label>
+        <select name="categoria" class="form-select" required>
+            <option value="">Selecione...</option>
+            <option value="Coletores">Coletores</option>
+            <option value="Impressoras">Impressoras</option>
+            <option value="Notebooks">Notebooks</option>
+            <option value="Routers">Routers</option>
+        </select>
+    </div>
+
+
+<style>
+    /* Entrada suave do card */
+.fade-in-up {
+    animation: fadeInUp 0.7s ease-out both;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ícone pulsando */
+.icon-pulse {
+    animation: pulse 1.6s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0%   { transform: scale(1); opacity: 1; }
+    50%  { transform: scale(1.12); opacity: 0.75; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Loading dots */
+.loading-dots span {
+    animation: blink 1.4s infinite;
+    font-weight: bold;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+}
+
+/* Card refinado (opcional upgrade visual) */
+.maintenance-card {
+    backdrop-filter: blur(6px);
+    transition: transform 0.2s ease;
+}
+
+.maintenance-card:hover {
+    transform: translateY(-3px);
+}
+</style>
+
+    <div class="mb-3">
         <label>Quantidade</label>
         <input type="number"
                name="quantidade"
@@ -141,9 +198,9 @@
 
     <button class="btn btn-primary">
         Enviar Solicitação
-    </button-->
+    </button>
 
-</form>
+</form-->
 
 
 {% endblock %}

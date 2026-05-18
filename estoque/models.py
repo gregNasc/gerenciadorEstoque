@@ -176,7 +176,8 @@ class Equipamento(models.Model):
         ]
     STATUS_CHOICES = [
         ('ATIVO', _('Ativo')),
-        ('TRANSFERENCIA', _('Em Transferência')),
+        ('RESERVADO_TRANSFERENCIA', _('Reservado para Transferência')),
+        ('EM_TRANSITO', _('Em Trânsito')),
         ('MANUTENCAO', _('Manutenção')),
         ('SICK', _('Sick')),
         ('BAIXA', _('Baixa')),
@@ -187,7 +188,7 @@ class Equipamento(models.Model):
     patrimonio = models.CharField(max_length=100, unique=True)
     regional = models.ForeignKey(Base, on_delete=models.PROTECT)
     responsavel = models.CharField(max_length=100, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ATIVO')
+    status = models.CharField(max_length=40, choices=STATUS_CHOICES, default='ATIVO')
     data_aquisicao = models.DateField(auto_now_add=True)
     foto = models.ImageField(upload_to='equipamentos/', null=True, blank=True)
     data_cadastro = models.DateTimeField(auto_now_add=True)
@@ -221,7 +222,7 @@ class Solicitacao(models.Model):
 
     regional_solicitante = models.ForeignKey(Base, on_delete=models.CASCADE)
 
-    status = models.CharField(max_length=20, choices=STATUS, default='PENDENTE')
+    status = models.CharField(max_length=40, choices=STATUS, default='PENDENTE')
 
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
@@ -293,6 +294,29 @@ class AlocacaoSolicitacaoItem(models.Model):
 
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    equipamentos = models.ManyToManyField(
+        'Equipamento',
+        through='AlocacaoEquipamento',
+        blank=True
+    )
+
+class AlocacaoEquipamento(models.Model):
+    alocacao = models.ForeignKey(
+        AlocacaoSolicitacaoItem,
+        on_delete=models.CASCADE,
+        related_name='itens_fisicos'
+    )
+
+    equipamento = models.ForeignKey(
+        'Equipamento',
+        on_delete=models.CASCADE
+    )
+
+    selecionado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('alocacao', 'equipamento')
+
 class Transferencia(models.Model):
     STATUS = [
         ('PENDENTE', _('Pendente')),
@@ -310,7 +334,7 @@ class Transferencia(models.Model):
     regional_origem = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='origem')
     regional_destino = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='destino')
 
-    status = models.CharField(max_length=20, choices=STATUS, default='PENDENTE')
+    status = models.CharField(max_length=40, choices=STATUS, default='PENDENTE')
 
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_envio = models.DateTimeField(null=True, blank=True)
@@ -460,6 +484,38 @@ class PedidoItem(models.Model):
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
     quantidade = models.IntegerField()
 
+class TransferRequest(models.Model):
+
+    STATUS = [
+        ('ABERTO', 'Aberto'),
+        ('ENVIADO', 'Enviado para origem'),
+        ('EXECUTANDO', 'Em execução'),
+        ('FINALIZADO', 'Finalizado'),
+    ]
+
+    solicitacao = models.ForeignKey(Solicitacao, on_delete=models.CASCADE)
+
+    categoria = models.CharField(max_length=50)
+    quantidade = models.PositiveIntegerField()
+
+    regional_origem = models.ForeignKey(
+        Base,
+        related_name='requests_origem',
+        on_delete=models.CASCADE
+    )
+
+    regional_destino = models.ForeignKey(
+        Base,
+        related_name='requests_destino',
+        on_delete=models.CASCADE
+    )
+
+    status = models.CharField(max_length=20, default='ABERTO')
+
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+
 # ---------------- SICK ----------------
 class StatusEquipamento(models.TextChoices):
     ATIVO = 'ATIVO', _('Ativo')
@@ -479,7 +535,7 @@ class Sick(models.Model):
     ativo = models.BooleanField(default=True, db_index=True)
     descricao = models.TextField(null=True, blank=True)
 
-    status_final = models.CharField(max_length=20, choices=StatusEquipamento.choices, null=True, blank=True)
+    status_final = models.CharField(max_length=40, choices=StatusEquipamento.choices, null=True, blank=True)
     observacao_resolucao = models.TextField(null=True, blank=True)
 
 # ---------------- HISTORICO ----------------

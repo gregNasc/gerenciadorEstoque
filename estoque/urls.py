@@ -48,9 +48,9 @@ urlpatterns = [
 
     # ---------------- TRANSFERÊNCIAS ----------------
     path('transferencias/', lista_transferencias, name='lista_transferencias'),
-    path('transferencias/criar/', views.transferencia_criar, name='transferencia_criar'),
-    path('transferir-em-lote/', views.transferir_em_lote, name='transferir_em_lote'),
-    path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),
+#    path('transferencias/criar/', views.transferencia_criar, name='transferencia_criar'),
+#    path('transferir-em-lote/', views.transferir_em_lote, name='transferir_em_lote'),
+#    path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),
     path('receber-transferencia/<int:transferencia_id>/', views.receber_transferencia, name='receber_transferencia'),
     path('transferencias/<int:id>/', views.transferencia_detalhe, name='transferencia_detalhe'),
 
@@ -101,4 +101,7 @@ urlpatterns = [
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
         template_name='registration/password_reset_complete.html'
     ), name='password_reset_complete'),
+
+    # ---------------- EDIÇÃO ----------------
+    path('equipamento/<int:equipamento_id>/editar/', views.editar_equipamento, name='editar_equipamento'),
 ]

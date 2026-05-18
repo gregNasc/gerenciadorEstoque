@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.apps import apps
+from django.contrib.admin.sites import AlreadyRegistered
 from django.urls import reverse
 from .models import (
     Produto,
@@ -245,3 +247,11 @@ class HistoricoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
 class DescricaoAdmin(admin.ModelAdmin):
     list_display = ("descricao",)
     search_fields = ("descricao",)
+
+app_models = apps.get_app_config('estoque').get_models()
+
+for model in app_models:
+    try:
+        admin.site.register(model)
+    except AlreadyRegistered:
+        pass
