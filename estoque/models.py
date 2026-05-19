@@ -543,7 +543,7 @@ class Historico(models.Model):
     TIPO_ACOES = [
         ('CRIACAO', _('Criação')),
         ('TRANSFERENCIA', _('Transferência')),
-        ('STATUS', _('Mudança de Status')),
+        ('STATUS', _('SICK')),
         ('EDICAO', _('Edição')),
     ]
 
