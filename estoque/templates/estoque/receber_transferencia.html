@@ -3,79 +3,99 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>{% trans "Receber Transferência" %} #{{ transferencia.id }}</h3>
-    <a href="{% url 'estoque:lista_transferencias' %}" class="btn btn-outline-secondary btn-sm">
-        ← {% trans "Voltar" %}
-    </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h3 class="mb-1">
+            {% trans "Receber Transferência" %}
+            #{{ transferencia.id }}
+        </h3>
+
+        <small class="text-muted">
+            {{ transferencia.regional_origem.nome }}
+            →
+            {{ transferencia.regional_destino.nome }}
+        </small>
+
+    </div>
+
 </div>
 
-<hr>
+<div class="card shadow-sm">
 
-<div class="card mb-4">
     <div class="card-header bg-light">
-        <h5 class="mb-0">{% trans "Informações da Transferência" %}</h5>
+
+        <strong>
+            {% trans "Equipamentos enviados" %}
+        </strong>
+
     </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>{% trans "Origem:" %}</strong> {{ transferencia.regional_origem.nome }}</p>
-                <p><strong>{% trans "Destino:" %}</strong> {{ transferencia.regional_destino.nome }}</p>
-                <p><strong>{% trans "Solicitado por:" %}</strong> {{ transferencia.solicitado_por.get_full_name|default:transferencia.solicitado_por.username }}</p>
-            </div>
-            <div class="col-md-6">
-                <p><strong>{% trans "Status:" %}</strong>
-                    <span class="badge bg-warning text-dark">{{ transferencia.status }}</span>
-                </p>
-                <p><strong>{% trans "Data de envio:" %}</strong> {{ transferencia.data_envio|date:"d/m/Y H:i"|default:"-" }}</p>
-            </div>
-        </div>
+
+    <div class="table-responsive">
+
+        <table class="table table-hover align-middle mb-0">
+
+            <thead class="table-light">
+                <tr>
+                    <th>Produto</th>
+                    <th>Série</th>
+                    <th>Patrimônio</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for item in itens %}
+
+                <tr>
+
+                    <td>
+                        {{ item.equipamento.produto }}
+                    </td>
+
+                    <td>
+                        {{ item.equipamento.serial }}
+                    </td>
+
+                    <td>
+                        {{ item.equipamento.patrimonio }}
+                    </td>
+
+                    <td>
+                        <span class="badge bg-primary">
+                            {{ item.equipamento.status }}
+                        </span>
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
     </div>
+
 </div>
 
-<div class="card mb-4">
-    <div class="card-header bg-light">
-        <h5 class="mb-0">{% trans "Itens da Transferência" %}</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>{% trans "Equipamento" %}</th>
-                        <th>{% trans "Nº Série" %}</th>
-                        <th>{% trans "Patrimônio" %}</th>
-                        <th>{% trans "Produto" %}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in transferencia.itens.all %}
-                    <tr>
-                        <td>{{ item.equipamento.id }}</td>
-                        <td>{{ item.equipamento.numero_serie|default:"-" }}</td>
-                        <td>{{ item.equipamento.patrimonio|default:"-" }}</td>
-                        <td>{{ item.equipamento.produto.descricao }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center">{% trans "Nenhum item encontrado." %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<form method="post" class="mt-4">
 
-<form method="post" class="mt-3">
     {% csrf_token %}
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i> {% trans "Confirme o recebimento de todos os itens acima. Esta ação é irreversível." %}
+
+    <div class="text-end">
+
+        <button type="submit"
+                class="btn btn-success btn-lg">
+
+            {% trans "Confirmar Recebimento" %}
+
+        </button>
+
     </div>
-    <div class="d-flex justify-content-end gap-2">
-        <a href="{% url 'estoque:lista_transferencias' %}" class="btn btn-secondary">{% trans "Cancelar" %}</a>
-        <button type="submit" class="btn btn-success">{% trans "Confirmar Recebimento" %}</button>
-    </div>
+
 </form>
 
 {% endblock %}

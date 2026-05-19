@@ -53,18 +53,17 @@ urlpatterns = [
 #    path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),
     path('receber-transferencia/<int:transferencia_id>/', views.receber_transferencia, name='receber_transferencia'),
     path('transferencias/<int:id>/', views.transferencia_detalhe, name='transferencia_detalhe'),
+    path('transferencias/separacao/', views.caixa_separacao, name='caixa_separacao'),
+    path('transferencias/recebimentos/', views.caixa_transferencias, name='caixa_transferencias'),
+    path('transferencias/', views.lista_transferencias, name='lista_transferencias'),
 
 
 
     # ---------------- SOLICITAÇÕES ----------------
     path('solicitacoes/', views.caixa_solicitacoes, name='caixa_solicitacoes'),
     path('solicitacoes/criar/', views.criar_solicitacao, name='criar_solicitacao'),
-
-    path(
-        'solicitacoes/<int:solicitacao_id>/alocacao/',
-        views.painel_alocacao,
-        name='painel_alocacao'
-    ),
+    path('transferencias/separacao/', views.caixa_separacao, name='caixa_separacao'),
+    path('solicitacoes/<int:solicitacao_id>/alocacao/', views.painel_alocacao, name='painel_alocacao'),
 
 
     # ---------------- API ----------------

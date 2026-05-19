@@ -1,0 +1,118 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-1">
+            {% trans "Caixa de Separação" %}
+        </h3>
+
+        <small class="text-muted">
+            {% trans "Transferências aguardando separação de equipamentos" %}
+        </small>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>{% trans "Origem" %}</th>
+                        <th>{% trans "Destino" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Criado em" %}</th>
+                        <th class="text-end">{% trans "Ações" %}</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for transferencia in transferencias %}
+
+                    <tr>
+
+                        <td>
+                            <strong>#{{ transferencia.id }}</strong>
+                        </td>
+
+                        <td>
+                            {{ transferencia.regional_origem.nome }}
+                        </td>
+
+                        <td>
+                            {{ transferencia.regional_destino.nome }}
+                        </td>
+
+                        <td>
+
+                            {% if transferencia.status == 'PENDENTE' %}
+                                <span class="badge bg-warning text-dark">
+                                    {{ transferencia.status }}
+                                </span>
+                            {% elif transferencia.status == 'EM_TRANSITO' %}
+                                <span class="badge bg-primary">
+                                    {{ transferencia.status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">
+                                    {{ transferencia.status }}
+                                </span>
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+                            {{ transferencia.data_criacao|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td class="text-end">
+
+                            <a href="{% url 'estoque:transferencia_detalhe' transferencia.id %}"
+                               class="btn btn-sm btn-outline-primary">
+
+                                {% trans "Abrir" %}
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+
+                            <div class="mb-2">
+                                <i class="bi bi-inbox fs-1"></i>
+                            </div>
+
+                            <div class="fw-semibold">
+                                {% trans "Nenhuma transferência encontrada." %}
+                            </div>
+
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

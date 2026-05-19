@@ -70,21 +70,30 @@
                 </li>
                 {% endif %}
 
-                <!-- CAIXA -->
-                {% if perfil.role == 'admin' %}
-                <li class="nav-item">
-                    <a class="nav-link position-relative {% if url_name == 'caixa_solicitacoes' %}active{% endif %}"
-                       href="{% url 'estoque:caixa_solicitacoes' %}">
-                        <i class="bi bi-inbox"></i> {% trans "Caixa de Mensagens" %}
-                        {% if notificacoes_nao_lidas > 0 %}
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            {{ notificacoes_nao_lidas }}
-                        </span>
-                        {% endif %}
+                <!-- CAIXA DE SEPARAÇÃO -->
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <!--li class="nav-item">
+                    <a class="nav-link {% if url_name == 'caixa_separacao' %}active{% endif %}"
+                       href="{% url 'estoque:caixa_separacao' %}">
 
+                        <i class="bi bi-box-seam"></i>
+                        {% trans "Separação" %}
 
                     </a>
-                </li>
+                </li-->
+                {% endif %}
+
+                <!-- RECEBIMENTO -->
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <!--li class="nav-item">
+                    <a class="nav-link {% if url_name == 'caixa_transferencias' %}active{% endif %}"
+                       href="{% url 'estoque:caixa_transferencias' %}">
+
+                        <i class="bi bi-truck"></i>
+                        {% trans "Recebimentos" %}
+
+                    </a>
+                </li-->
                 {% endif %}
 
                 <!-- TRANSFERÊNCIAS -->
