@@ -71,7 +71,7 @@
                 {% endif %}
 
                 <!-- CAIXA -->
-                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                {% if perfil.role == 'admin' %}
                 <li class="nav-item">
                     <a class="nav-link position-relative {% if url_name == 'caixa_solicitacoes' %}active{% endif %}"
                        href="{% url 'estoque:caixa_solicitacoes' %}">
