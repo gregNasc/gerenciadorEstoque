@@ -17,20 +17,9 @@ class Empresa(models.Model):
         return self.nome
 
 class Base(models.Model):
-    empresa = models.ForeignKey(
-        Empresa,
-        on_delete=models.CASCADE,
-        related_name="bases"
-    )
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="bases")
     nome = models.CharField(max_length=100)
-
-    grupo_regional = models.ForeignKey(
-        'GrupoRegional',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='bases'
-    )
+    grupo_regional = models.ForeignKey('GrupoRegional', null=True, blank=True, on_delete=models.SET_NULL, related_name='bases')
 
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"
@@ -41,11 +30,7 @@ class Perfil(models.Model):
         PT_BR = "pt-br", "Português"
         ES = "es", "Español"
 
-    idioma = models.CharField(
-        max_length=10,
-        choices=Idioma.choices,
-        default=Idioma.PT_BR
-    )
+    idioma = models.CharField(max_length=10, choices=Idioma.choices, default=Idioma.PT_BR)
 
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
@@ -53,21 +38,8 @@ class Perfil(models.Model):
         OPERADOR = "operador", "Operador"
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="perfil")
-
-    empresa = models.ForeignKey(
-        Empresa,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="perfis"
-    )
-
-    regionais = models.ManyToManyField(
-        Base,
-        blank=True,
-        related_name="perfis"
-    )
-
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True, related_name="perfis")
+    regionais = models.ManyToManyField(Base, blank=True, related_name="perfis")
     role = models.CharField(max_length=10, choices=Role.choices)
 
     # -------- REGIONAIS --------
@@ -126,21 +98,9 @@ class Perfil(models.Model):
 
 class GrupoRegional(models.Model):
 
-    nome = models.CharField(
-        max_length=100,
-        unique=True
-    )
-
-    gestor_principal = models.ForeignKey(
-        User,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='grupos_regionais'
-    )
-
+    nome = models.CharField(max_length=100, unique=True)
+    gestor_principal = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='grupos_regionais')
     ativo = models.BooleanField(default=True)
-
     criado_em = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -160,7 +120,6 @@ class Produto(models.Model):
     descricao = models.CharField(max_length=255)
     fabricante = models.CharField(max_length=100)
     modelo = models.CharField(max_length=100)
-
     categoria = models.CharField(max_length=50, choices=CATEGORIAS, db_index=True)
 
     def __str__(self):
@@ -219,28 +178,11 @@ class Solicitacao(models.Model):
     #produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
     #quantidade = models.IntegerField()
     motivo = models.TextField()
-
     regional_solicitante = models.ForeignKey(Base, on_delete=models.CASCADE)
-
     status = models.CharField(max_length=40, choices=STATUS, default='PENDENTE')
-
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-
-    aprovado_por = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='aprovacoes'
-    )
-
-    regional_origem = models.ForeignKey(
-        Base,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='origens'
-    )
-
+    aprovado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='aprovacoes')
+    regional_origem = models.ForeignKey(Base, null=True, blank=True, on_delete=models.SET_NULL, related_name='origens')
     criado_em = models.DateTimeField(auto_now_add=True)
     data_aprovacao = models.DateTimeField(null=True, blank=True)
 
@@ -255,63 +197,25 @@ class SolicitacaoItem(models.Model):
         ('Routers', _('Routers')),
     ]
 
-    solicitacao = models.ForeignKey(
-        'Solicitacao',
-        on_delete=models.CASCADE,
-        related_name='itens'
-    )
-
-    categoria = models.CharField(
-        max_length=50,
-        choices=CATEGORIAS,
-        db_index=True
-    )
-
+    solicitacao = models.ForeignKey('Solicitacao', on_delete=models.CASCADE, related_name='itens')
+    categoria = models.CharField(max_length=50, choices=CATEGORIAS, db_index=True)
     quantidade = models.PositiveIntegerField()
-    atendido = models.PositiveIntegerField(
-        default=0,
-        db_column="quantidade_atendida",
-        db_index=True
-    )
+    atendido = models.PositiveIntegerField(default=0, db_column="quantidade_atendida", db_index=True)
 
     @property
     def pendente(self):
         return self.quantidade - self.atendido
 
 class AlocacaoSolicitacaoItem(models.Model):
-    item = models.ForeignKey(
-        SolicitacaoItem,
-        on_delete=models.CASCADE,
-        related_name='alocacoes'
-    )
-
-    regional_origem = models.ForeignKey(
-        'Base',
-        on_delete=models.CASCADE
-    )
-
+    item = models.ForeignKey(SolicitacaoItem, on_delete=models.CASCADE, related_name='alocacoes')
+    regional_origem = models.ForeignKey('Base', on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
-
     criado_em = models.DateTimeField(auto_now_add=True)
-
-    equipamentos = models.ManyToManyField(
-        'Equipamento',
-        through='AlocacaoEquipamento',
-        blank=True
-    )
+    equipamentos = models.ManyToManyField('Equipamento', through='AlocacaoEquipamento', blank=True)
 
 class AlocacaoEquipamento(models.Model):
-    alocacao = models.ForeignKey(
-        AlocacaoSolicitacaoItem,
-        on_delete=models.CASCADE,
-        related_name='itens_fisicos'
-    )
-
-    equipamento = models.ForeignKey(
-        'Equipamento',
-        on_delete=models.CASCADE
-    )
-
+    alocacao = models.ForeignKey(AlocacaoSolicitacaoItem, on_delete=models.CASCADE, related_name='itens_fisicos')
+    equipamento = models.ForeignKey('Equipamento', on_delete=models.CASCADE)
     selecionado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -326,16 +230,11 @@ class Transferencia(models.Model):
     ]
 
 #    equipamento = models.ForeignKey(Equipamento, null=True, blank=True, on_delete=models.SET_NULL)
-
     alocacao = models.ForeignKey(AlocacaoSolicitacaoItem,on_delete=models.SET_NULL, null=True, blank=True)
-
     solicitado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-
     regional_origem = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='origem')
     regional_destino = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='destino')
-
     status = models.CharField(max_length=40, choices=STATUS, default='PENDENTE')
-
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_envio = models.DateTimeField(null=True, blank=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
@@ -374,19 +273,8 @@ class Transferencia(models.Model):
 
 class TransferenciaItem(models.Model):
 
-    transferencia = models.ForeignKey(
-        Transferencia,
-        on_delete=models.CASCADE,
-        related_name='itens'
-    )
-
-    equipamento = models.ForeignKey(
-        Equipamento,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-
+    transferencia = models.ForeignKey(Transferencia, on_delete=models.CASCADE, related_name='itens')
+    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(max_length=20, default='SELECIONADO')
 
 class Notificacao(models.Model):
@@ -404,35 +292,14 @@ class Notificacao(models.Model):
         ('RECEBIDA', _('Recebida')),
     ]
 
-    transferencia = models.ForeignKey(
-        Transferencia,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE
-    )
-
-    solicitacao = models.ForeignKey(
-        Solicitacao,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL
-    )
-
-    usuario = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-
+    transferencia = models.ForeignKey(Transferencia, null=True, blank=True, on_delete=models.CASCADE)
+    solicitacao = models.ForeignKey(Solicitacao, null=True, blank=True, on_delete=models.SET_NULL)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     tipo = models.CharField(max_length=20, choices=TIPOS)
     evento = models.CharField(max_length=30, choices=EVENTOS)
-
     mensagem = models.CharField(max_length=255)
-
     lida = models.BooleanField(default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
-
     link = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
@@ -460,27 +327,14 @@ class Notificacao(models.Model):
 class PedidoTransferencia(models.Model):
 
     solicitacao = models.ForeignKey(Solicitacao, on_delete=models.CASCADE)
-
-    regional_origem = models.ForeignKey(
-        Base,
-        on_delete=models.CASCADE,
-        related_name='pedidos_origem'
-    )
-
-    regional_destino = models.ForeignKey(
-        Base,
-        on_delete=models.CASCADE,
-        related_name='pedidos_destino'
-    )
-
+    regional_origem = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='pedidos_origem')
+    regional_destino = models.ForeignKey(Base, on_delete=models.CASCADE, related_name='pedidos_destino')
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-
     status = models.CharField(max_length=20, default='ABERTO')
 
 class PedidoItem(models.Model):
 
     pedido = models.ForeignKey(PedidoTransferencia, related_name='itens', on_delete=models.CASCADE)
-
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
     quantidade = models.IntegerField()
 
@@ -494,26 +348,12 @@ class TransferRequest(models.Model):
     ]
 
     solicitacao = models.ForeignKey(Solicitacao, on_delete=models.CASCADE)
-
     categoria = models.CharField(max_length=50)
     quantidade = models.PositiveIntegerField()
-
-    regional_origem = models.ForeignKey(
-        Base,
-        related_name='requests_origem',
-        on_delete=models.CASCADE
-    )
-
-    regional_destino = models.ForeignKey(
-        Base,
-        related_name='requests_destino',
-        on_delete=models.CASCADE
-    )
-
+    regional_origem = models.ForeignKey(Base, related_name='requests_origem', on_delete=models.CASCADE)
+    regional_destino = models.ForeignKey(Base, related_name='requests_destino', on_delete=models.CASCADE)
     status = models.CharField(max_length=20, default='ABERTO')
-
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-
     criado_em = models.DateTimeField(auto_now_add=True)
 
 # ---------------- SICK ----------------
@@ -534,7 +374,6 @@ class Sick(models.Model):
     resolvido_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     ativo = models.BooleanField(default=True, db_index=True)
     descricao = models.TextField(null=True, blank=True)
-
     status_final = models.CharField(max_length=40, choices=StatusEquipamento.choices, null=True, blank=True)
     observacao_resolucao = models.TextField(null=True, blank=True)
 
@@ -577,48 +416,16 @@ class Comunicado(models.Model):
     ]
 
     titulo = models.CharField(max_length=150)
-
     mensagem = models.TextField()
-
-    tipo = models.CharField(
-        max_length=20,
-        choices=TIPOS,
-        default='INFO'
-    )
-
-    criado_por = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
-
-    empresa = models.ForeignKey(
-        Empresa,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='INFO')
+    criado_por = models.ForeignKey(User, on_delete=models.CASCADE)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
     enviar_para_todos = models.BooleanField(default=False)
-
-    usuarios = models.ManyToManyField(
-        User,
-        blank=True,
-        related_name='comunicados'
-    )
-
+    usuarios = models.ManyToManyField(User, blank=True, related_name='comunicados')
     criado_em = models.DateTimeField(auto_now_add=True)
-
     ativo = models.BooleanField(default=True)
-
-    # NOVOS CAMPOS
-    expira_em = models.DateTimeField(
-        null=True,
-        blank=True
-    )
-
-    permitir_limpar = models.BooleanField(
-        default=True
-    )
+    expira_em = models.DateTimeField(null=True, blank=True)
+    permitir_limpar = models.BooleanField(default=True)
 
     def expirado(self):
         from django.utils import timezone
@@ -633,44 +440,20 @@ class Comunicado(models.Model):
 
 class ComunicadoArquivo(models.Model):
 
-    comunicado = models.ForeignKey(
-        Comunicado,
-        on_delete=models.CASCADE,
-        related_name='arquivos'
-    )
-
-    arquivo = models.FileField(
-        upload_to='comunicados/'
-    )
-
+    comunicado = models.ForeignKey(Comunicado, on_delete=models.CASCADE, related_name='arquivos')
+    arquivo = models.FileField(upload_to='comunicados/')
     enviado_em = models.DateTimeField(auto_now_add=True)
 
 class ComunicadoLeitura(models.Model):
 
-    comunicado = models.ForeignKey(
-        Comunicado,
-        on_delete=models.CASCADE
-    )
-
-    usuario = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
-
+    comunicado = models.ForeignKey(Comunicado, on_delete=models.CASCADE)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     lido_em = models.DateTimeField(auto_now_add=True)
 
 class ComunicadoOculto(models.Model):
 
-    comunicado = models.ForeignKey(
-        Comunicado,
-        on_delete=models.CASCADE
-    )
-
-    usuario = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
-
+    comunicado = models.ForeignKey(Comunicado, on_delete=models.CASCADE)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     ocultado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -679,51 +462,22 @@ class ComunicadoOculto(models.Model):
 class Mensagem(models.Model):
 
     titulo = models.CharField(max_length=200)
-
     conteudo = models.TextField()
-
-    enviado_por = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
-
+    enviado_por = models.ForeignKey(User, on_delete=models.CASCADE)
     enviado_em = models.DateTimeField(auto_now_add=True)
 
 class MensagemDestino(models.Model):
 
-    mensagem = models.ForeignKey(
-        Mensagem,
-        related_name='destinos',
-        on_delete=models.CASCADE
-    )
-
-    usuario = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
-
+    mensagem = models.ForeignKey(Mensagem, related_name='destinos', on_delete=models.CASCADE)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     lido = models.BooleanField(default=False)
-
-    data_leitura = models.DateTimeField(
-        null=True,
-        blank=True
-    )
+    data_leitura = models.DateTimeField(null=True, blank=True)
 
 class MensagemArquivo(models.Model):
 
-    mensagem = models.ForeignKey(
-        Mensagem,
-        related_name='arquivos',
-        on_delete=models.CASCADE
-    )
-
-    arquivo = models.FileField(
-        upload_to='mensagens/'
-    )
-
-    nome_original = models.CharField(
-        max_length=255
-    )
+    mensagem = models.ForeignKey(Mensagem, related_name='arquivos', on_delete=models.CASCADE)
+    arquivo = models.FileField(upload_to='mensagens/')
+    nome_original = models.CharField(max_length=255)
 
 @receiver([post_save, post_delete], sender=Equipamento)
 def limpar_cache_estoque(sender, instance, **kwargs):

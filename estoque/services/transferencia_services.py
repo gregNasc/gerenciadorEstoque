@@ -1,8 +1,5 @@
-# estoque/services/transferencia_services.py
-
 from django.db import transaction
 from django.utils import timezone
-
 from estoque.models import (
     Equipamento,
     Transferencia,
@@ -165,10 +162,6 @@ def enviar_transferencia(transferencia, user):
         ]
     )
 
-    # -----------------------------------------------------
-    # histórico
-    # -----------------------------------------------------
-
     historicos = []
 
     for item in transferencia.itens.select_related('equipamento'):
@@ -187,10 +180,6 @@ def enviar_transferencia(transferencia, user):
         )
 
     Historico.objects.bulk_create(historicos)
-
-    # -----------------------------------------------------
-    # notificações
-    # -----------------------------------------------------
 
     usuarios_destino = (
         transferencia.regional_destino.perfis

@@ -9,12 +9,9 @@ def filtrar_por_empresa(queryset, empresa):
             Q(regional_origem__empresa=empresa) |
             Q(regional_destino__empresa=empresa)
         )
-
-    # Modelos ligados a equipamento
     if model.__name__ in ["Historico", "Sick"]:
         return queryset.filter(equipamento__regional__empresa=empresa)
 
-    # Modelos com campo regional direto
     if any(f.name == "regional" for f in model._meta.get_fields()):
         return queryset.filter(regional__empresa=empresa)
 

@@ -24,7 +24,6 @@ class EmpresaMiddleware:
                     request.empresa = perfil.empresa
 
             except DatabaseError:
-                # evita crash em cold start ou falha de conexão
                 request.empresa = None
 
         return self.get_response(request)

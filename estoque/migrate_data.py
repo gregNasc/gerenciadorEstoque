@@ -8,7 +8,7 @@ django.setup()
 
 from estoque.models import Produto, Descricao, HistoricoTransferencia, Sick
 
-# Conectar no PostgreSQL antigo (Streamlit)
+# Conectar no PostgreSQL
 conn = psycopg2.connect(
     dbname="estoque",
     user="postgres",

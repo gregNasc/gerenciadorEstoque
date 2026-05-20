@@ -1,5 +1,4 @@
 from django.db.models import Exists, OuterRef
-
 from .models import (
     Comunicado,
     ComunicadoLeitura

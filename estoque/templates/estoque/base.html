@@ -72,7 +72,7 @@
 
                 <!-- CAIXA DE SEPARAÇÃO -->
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
-                <!--li class="nav-item">
+                <li class="nav-item">
                     <a class="nav-link {% if url_name == 'caixa_separacao' %}active{% endif %}"
                        href="{% url 'estoque:caixa_separacao' %}">
 
@@ -80,12 +80,12 @@
                         {% trans "Separação" %}
 
                     </a>
-                </li-->
+                </li>
                 {% endif %}
 
                 <!-- RECEBIMENTO -->
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
-                <!--li class="nav-item">
+                <li class="nav-item">
                     <a class="nav-link {% if url_name == 'caixa_transferencias' %}active{% endif %}"
                        href="{% url 'estoque:caixa_transferencias' %}">
 
@@ -93,7 +93,7 @@
                         {% trans "Recebimentos" %}
 
                     </a>
-                </li-->
+                </li>
                 {% endif %}
 
                 <!-- TRANSFERÊNCIAS -->
