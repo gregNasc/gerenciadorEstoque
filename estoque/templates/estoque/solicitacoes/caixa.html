@@ -1,47 +1,242 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
 <div class="container mt-4">
 
-    <h3>Caixa de Separação</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
 
-    <hr>
+        <div>
+            <h3 class="mb-1">
+                {% trans "Pedidos Pendentes" %}
+            </h3>
 
-    <p>Total: {{ transferencias.count }}</p>
+            <small class="text-muted">
+                {% trans "Solicitações aguardando separação e alocação" %}
+            </small>
+        </div>
 
-    {% for transferencia in transferencias %}
+        <span class="badge bg-primary fs-6">
+            {{ solicitacoes|length }} pedido(s)
+        </span>
 
-        <div class="card mb-3">
-            <div class="card-body">
+    </div>
 
-                <h5>
-                    Transferência #{{ transferencia.id }}
-                </h5>
+    {% for solicitacao in solicitacoes %}
 
-                <p>
-                    Origem:
-                    {{ transferencia.regional_origem.nome }}
-                </p>
+    <div class="card shadow-sm mb-3 border-0">
 
-                <p>
-                    Destino:
-                    {{ transferencia.regional_destino.nome }}
-                </p>
+        <div class="card-body">
 
-                <p>
-                    Status:
-                    {{ transferencia.status }}
-                </p>
+            <div class="row align-items-center">
+
+                <!-- ID -->
+                <div class="col-md-2">
+
+                    <h5 class="mb-1">
+                        #{{ solicitacao.id }}
+                    </h5>
+
+                    <small class="text-muted">
+                        {{ solicitacao.data_criacao|date:"d/m/Y H:i" }}
+                    </small>
+
+                </div>
+
+                <!-- REGIONAL -->
+                <div class="col-md-2">
+
+                    <strong>
+                        {{ solicitacao.regional_solicitante.nome }}
+                    </strong>
+
+                    <div class="small text-muted">
+                        Regional solicitante
+                    </div>
+
+                </div>
+
+                <!-- MOTIVO -->
+                <div class="col-md-3">
+
+                    <div class="fw-semibold">
+                        {{ solicitacao.motivo|truncatechars:60 }}
+                    </div>
+
+                    <small class="text-muted">
+                        Motivo da solicitação
+                    </small>
+
+                </div>
+
+                <!-- ITENS -->
+                <div class="col-md-2">
+
+                    {% for item in solicitacao.itens.all %}
+
+                        <div class="mb-1">
+
+                            <span class="fw-semibold">
+                                {{ item.categoria }}
+                            </span>
+
+                            <span class="badge bg-warning text-dark">
+                                {{ item.pendente }}
+                            </span>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+                <!-- STATUS -->
+                <div class="col-md-1">
+
+                    <span class="badge bg-warning text-dark">
+                        {{ solicitacao.status }}
+                    </span>
+
+                </div>
+
+                <!-- AÇÕES -->
+                <div class="col-md-2 text-end d-flex gap-2 justify-content-end">
+
+                    <!-- BOTÃO DETALHES -->
+                    <button class="btn btn-outline-secondary"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#detalhes{{ solicitacao.id }}">
+
+                        <i class="bi bi-eye"></i>
+
+                    </button>
+
+                    <a href="{% url 'estoque:painel_alocacao' solicitacao.id %}"
+                       class="btn btn-success">
+
+                        <i class="bi bi-box-seam"></i>
+                        {% trans "Encaminhar" %}
+
+                    </a>
+
+                </div>
 
             </div>
+
+            <!-- DETALHES -->
+            <div class="collapse mt-4"
+                 id="detalhes{{ solicitacao.id }}">
+
+                <hr>
+
+                <div class="row">
+
+                    <div class="col-md-6">
+
+                        <h6 class="fw-bold">
+                            Motivo
+                        </h6>
+
+                        <p class="mb-3">
+                            {{ solicitacao.motivo|default:"Não informado." }}
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-6">
+
+                        <h6 class="fw-bold">
+                            Informações adicionais
+                        </h6>
+
+                        <ul class="list-group list-group-flush">
+
+                            <li class="list-group-item">
+                                <strong>Solicitante:</strong>
+                                {{ solicitacao.regional_solicitante.nome }}
+                            </li>
+
+                            <li class="list-group-item">
+                                <strong>Status:</strong>
+                                {{ solicitacao.status }}
+                            </li>
+
+                            <li class="list-group-item">
+                                <strong>Data:</strong>
+                                {{ solicitacao.criado_em|date:"d/m/Y H:i" }}
+                            </li>
+
+                        </ul>
+
+                    </div>
+
+                </div>
+
+                <div class="mt-3">
+
+                    <h6 class="fw-bold mb-3">
+                        Itens solicitados
+                    </h6>
+
+                    <div class="table-responsive">
+
+                        <table class="table table-sm table-bordered align-middle">
+
+                            <thead class="table-light">
+
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Quantidade</th>
+                                    <th>Pendente</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                {% for item in solicitacao.itens.all %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ item.categoria }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.quantidade }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.pendente }}
+                                    </td>
+
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
+
+    </div>
 
     {% empty %}
 
-        <div class="alert alert-warning">
-            Nenhuma transferência encontrada.
-        </div>
+    <div class="alert alert-warning">
+
+        {% trans "Nenhum pedido pendente." %}
+
+    </div>
 
     {% endfor %}
 

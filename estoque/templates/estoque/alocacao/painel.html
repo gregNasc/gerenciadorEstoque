@@ -235,6 +235,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // valida min/max individual
     document.querySelectorAll('.input-alocacao').forEach(input => {
 
         input.addEventListener('input', function () {
@@ -246,13 +247,62 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.value = maximo;
             }
 
-            if (valor < 0) {
+            if (valor < 0 || isNaN(valor)) {
                 this.value = 0;
             }
+
+            validarGrupo(this);
 
         });
 
     });
+
+    function validarGrupo(inputAtual) {
+
+        // encontra o card do item
+        const card = inputAtual.closest('.card.shadow-sm.mb-4');
+
+        if (!card) return;
+
+        // quantidade necessária
+        const badge = card.querySelector('.badge.bg-warning.text-dark.fs-6');
+
+        if (!badge) return;
+
+        const limite = parseInt(
+            badge.innerText.replace(/\D/g, '')
+        );
+
+        // inputs do mesmo item
+        const inputs = card.querySelectorAll('.input-alocacao');
+
+        let total = 0;
+
+        inputs.forEach(i => {
+            total += parseInt(i.value || 0);
+        });
+
+        // restante permitido
+        const restante = limite - total;
+
+        inputs.forEach(i => {
+
+            const valorAtual = parseInt(i.value || 0);
+            const maxOriginal = parseInt(i.getAttribute('max'));
+
+            const novoMax = valorAtual + restante;
+
+            i.max = Math.min(maxOriginal, novoMax);
+
+            if (total >= limite && valorAtual == 0) {
+                i.disabled = true;
+            } else {
+                i.disabled = false;
+            }
+
+        });
+
+    }
 
 });
 

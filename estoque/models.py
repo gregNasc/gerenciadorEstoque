@@ -238,6 +238,13 @@ class Transferencia(models.Model):
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_envio = models.DateTimeField(null=True, blank=True)
     data_recebimento = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    protocolo = models.CharField(max_length=50, unique=True)
+
+    def dias(self):
+        from django.utils import timezone
+        return (timezone.now() - self.created_at).days
 
     def enviar(self):
         if self.status != 'PENDENTE':

@@ -97,13 +97,14 @@
                         </td>
 
                         <!-- EQUIPAMENTO -->
+                        {% for item in t.itens.all|slice:":2" %}
                         <td>
                             <div>
                                 <strong>{{ t.equipamento.produto.descricao }}</strong><br>
                                 <small class="text-muted">S/N: {{ t.equipamento.numero_serie }}</small>
                             </div>
                         </td>
-
+                        {% endfor %}
                         <!-- ORIGEM DESTINO -->
                         <td>
                             <strong>{{ t.regional_origem.nome }}</strong>
@@ -133,7 +134,7 @@
                         <td>{{ t.solicitado_por.username }}</td>
 
                         <!-- DATA -->
-                        <td>{{ t.data_solicitacao|date:"d/m/Y H:i" }}</td>
+                        <td>{{ t.created_at|date:"d/m/Y H:i" }}</td>
 
                         <!-- AÇÕES -->
                         <td class="text-center">
