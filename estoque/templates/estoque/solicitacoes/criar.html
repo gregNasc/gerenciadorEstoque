@@ -6,7 +6,7 @@
 <h3>{% trans "Nova Solicitação de Equipamentos" %}</h3>
 
 <hr>
-<!--div class="container mt-5 pt-5">
+<div class="container mt-5 pt-5">
     <div class="row justify-content-center">
         <div class="col-md-8 text-center">
 
@@ -15,40 +15,40 @@
                 <div class="card-body p-5">
 
                     <!-- Ícone -->
-                    <!--div class="mb-4">
+                    <div class="mb-4">
                         <i class="fas fa-tools fa-4x text-warning icon-pulse"></i>
-                    </div-->
+                    </div>
 
                     <!-- Título -->
-                    <!--h1 class="display-5 fw-bold text-primary mb-3">
+                    <h1 class="display-5 fw-bold text-primary mb-3">
                         {% trans "🚧 Fechado para balanço" %}
-                    </h1-->
+                    </h1>
 
                     <!-- Texto -->
-                    <!--p class="lead text-muted mb-2">
+                    <p class="lead text-muted mb-2">
                         {% trans "Esta funcionalidade está em desenvolvimento" %}
                         <span class="loading-dots">
                             <span>.</span><span>.</span><span>.</span>
                         </span>
-                    </p-->
+                    </p>
 
-                    <!--hr class="my-4">
+                    <hr class="my-4">
 
                     <p class="text-secondary mb-4">
                         {% trans "Agradecemos pela paciência enquanto melhoramos o sistema." %}
-                    </p-->
+                    </p>
 
                     <!-- Botão -->
-                    <!--a href="{% url 'estoque:index' %}" class="btn btn-outline-primary px-4">
+                    <a href="{% url 'estoque:index' %}" class="btn btn-outline-primary px-4">
                         <i class="fas fa-arrow-left me-2"></i>{% trans "Voltar para o início" %}
-                    </a-->
+                    </a>
 
-                </div-->
-            </div-->
+                </div>
+            </div>
 
-        </div-->
-    </div-->
-</div-->
+        </div>
+    </div>
+</div>
 <style>
     /* Entrada suave do card */
 .fade-in-up {
@@ -106,7 +106,7 @@
     transform: translateY(-3px);
 }
 </style>
-<form method="post">
+<!--form method="post">
     {% csrf_token %}
 
     <div class="mb-3">
@@ -200,7 +200,7 @@
         Enviar Solicitação
     </button>
 
-</form>
+</form-->
 
 
 {% endblock %}
