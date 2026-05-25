@@ -1,0 +1,176 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}
+{% trans "Novo Empréstimo" %}
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid px-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-1">
+                {% trans "Novo Empréstimo" %}
+            </h2>
+
+            <p class="text-muted mb-0">
+                {% trans "Solicite equipamentos emprestados entre regionais" %}
+            </p>
+        </div>
+
+        <a href="{% url 'estoque:lista_emprestimos' %}"
+           class="btn btn-light border">
+            <i class="bi bi-arrow-left"></i>
+            {% trans "Voltar" %}
+        </a>
+
+    </div>
+
+    <div class="row justify-content-center">
+
+        <div class="col-xl-8">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold">
+                        {% trans "Dados do empréstimo" %}
+                    </h5>
+                </div>
+
+                <div class="card-body">
+
+                    <form method="post">
+
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+
+                            <!-- REGIONAL ORIGEM -->
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    {% trans "Regional solicitante" %}
+                                </label>
+
+                                <select
+                                    name="regional_origem"
+                                    class="form-select"
+                                    required
+                                >
+
+                                    <option value="">
+                                        {% trans "Selecione" %}
+                                    </option>
+
+                                    {% for regional in regionais_usuario %}
+
+                                    <option value="{{ regional.id }}">
+                                        {{ regional.nome }}
+                                    </option>
+
+                                    {% endfor %}
+
+                                </select>
+
+                            </div>
+
+                            <!-- REGIONAL DESTINO -->
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    {% trans "Regional que irá emprestar" %}
+                                </label>
+
+                                <select
+                                    name="regional_destino"
+                                    class="form-select"
+                                    required
+                                >
+
+                                    <option value="">
+                                        {% trans "Selecione" %}
+                                    </option>
+
+                                    {% for regional in regionais_usuario %}
+
+                                    <option value="{{ regional.id }}">
+                                        {{ regional.nome }}
+                                    </option>
+
+                                    {% endfor %}
+
+                                </select>
+
+                            </div>
+
+                            <!-- DATA -->
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    {% trans "Data prevista devolução" %}
+                                </label>
+
+                                <input
+                                    type="date"
+                                    name="data_prevista_devolucao"
+                                    class="form-control"
+                                    required
+                                >
+
+                            </div>
+
+                            <!-- MOTIVO -->
+                            <div class="col-12">
+
+                                <label class="form-label fw-semibold">
+                                    {% trans "Motivo" %}
+                                </label>
+
+                                <textarea
+                                    name="motivo"
+                                    rows="4"
+                                    class="form-control"
+                                    placeholder="{% trans 'Descreva o motivo do empréstimo...' %}"
+                                    required
+                                ></textarea>
+
+                            </div>
+
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+
+                            <a href="{% url 'estoque:lista_emprestimos' %}"
+                               class="btn btn-light border">
+                                {% trans "Cancelar" %}
+                            </a>
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+
+                                <i class="bi bi-check-circle"></i>
+
+                                {% trans "Criar solicitação" %}
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

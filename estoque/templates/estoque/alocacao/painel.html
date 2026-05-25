@@ -25,12 +25,15 @@
 
     <!-- RESUMO -->
     <div class="card shadow-sm mb-4">
+
         <div class="card-header bg-light">
             <strong>{% trans "Itens solicitados" %}</strong>
         </div>
 
         <div class="table-responsive">
+
             <table class="table table-hover align-middle mb-0">
+
                 <thead class="table-light">
                     <tr>
                         <th>{% trans "Categoria" %}</th>
@@ -40,15 +43,18 @@
                 </thead>
 
                 <tbody>
+
                     {% for item in itens %}
+
                     <tr>
+
                         <td>
                             <strong>{{ item.categoria }}</strong>
                         </td>
 
                         <td>
                             <span class="badge bg-warning text-dark">
-                                {{ item.pendente }}
+                                {{ item.pendente }} pendente(s)
                             </span>
                         </td>
 
@@ -57,17 +63,23 @@
                                 {{ solicitacao.regional_solicitante.nome }}
                             </span>
                         </td>
+
                     </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
     </div>
 
     <!-- ALOCAÇÃO -->
     {% for item in itens %}
 
-    <div class="card shadow-sm mb-4">
+    <div class="card shadow-sm mb-4 grupo-alocacao">
 
         <!-- HEADER ITEM -->
         <div class="card-header bg-white">
@@ -75,6 +87,7 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
 
                 <div>
+
                     <h5 class="mb-1">
                         {{ item.categoria }}
                     </h5>
@@ -83,12 +96,16 @@
                         {% trans "Quantidade necessária:" %}
                         <strong>{{ item.pendente }}</strong>
                     </small>
+
                 </div>
 
                 <div class="text-end">
 
-                    <div class="badge bg-warning text-dark fs-6">
+                    <div class="badge bg-warning text-dark fs-6 quantidade-item"
+                         data-limite="{{ item.pendente }}">
+
                         {{ item.pendente }} pendente(s)
+
                     </div>
 
                 </div>
@@ -142,7 +159,7 @@
                                                 {{ m.produto }}
                                             </div>
 
-                                            <div class="small text-muted mt-1">
+                                            <div class="small text-muted mt-1 d-flex flex-wrap gap-1">
 
                                                 <span class="badge bg-success">
                                                     {{ m.disponivel }} disponível
@@ -172,6 +189,7 @@
                                                    class="form-control form-control-sm input-alocacao"
                                                    min="0"
                                                    max="{{ m.disponivel }}"
+                                                   value="0"
                                                    placeholder="Qtd">
 
                                         </div>
@@ -235,74 +253,113 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // valida min/max individual
-    document.querySelectorAll('.input-alocacao').forEach(input => {
+    const grupos = document.querySelectorAll('.grupo-alocacao');
 
-        input.addEventListener('input', function () {
+    grupos.forEach(grupo => {
 
-            let valor = parseInt(this.value || 0);
-            let maximo = parseInt(this.max || 0);
-
-            if (valor > maximo) {
-                this.value = maximo;
-            }
-
-            if (valor < 0 || isNaN(valor)) {
-                this.value = 0;
-            }
-
-            validarGrupo(this);
-
-        });
-
-    });
-
-    function validarGrupo(inputAtual) {
-
-        // encontra o card do item
-        const card = inputAtual.closest('.card.shadow-sm.mb-4');
-
-        if (!card) return;
-
-        // quantidade necessária
-        const badge = card.querySelector('.badge.bg-warning.text-dark.fs-6');
+        const badge = grupo.querySelector('.quantidade-item');
 
         if (!badge) return;
 
         const limite = parseInt(
-            badge.innerText.replace(/\D/g, '')
+            badge.dataset.limite || 0
         );
 
-        // inputs do mesmo item
-        const inputs = card.querySelectorAll('.input-alocacao');
+        const inputs = grupo.querySelectorAll('.input-alocacao');
 
-        let total = 0;
-
-        inputs.forEach(i => {
-            total += parseInt(i.value || 0);
+        inputs.forEach(input => {
+            input.dataset.maxOriginal = input.max;
         });
 
-        // restante permitido
-        const restante = limite - total;
+        function atualizarGrupo() {
 
-        inputs.forEach(i => {
+            let total = 0;
 
-            const valorAtual = parseInt(i.value || 0);
-            const maxOriginal = parseInt(i.getAttribute('max'));
+            inputs.forEach(input => {
+                total += parseInt(input.value || 0);
+            });
 
-            const novoMax = valorAtual + restante;
+            const restante = limite - total;
 
-            i.max = Math.min(maxOriginal, novoMax);
+            inputs.forEach(input => {
 
-            if (total >= limite && valorAtual == 0) {
-                i.disabled = true;
-            } else {
-                i.disabled = false;
-            }
+                const valorAtual = parseInt(input.value || 0);
+
+                const maxOriginal = parseInt(
+                    input.dataset.maxOriginal || 0
+                );
+
+                const novoMax = valorAtual + restante;
+
+                input.max = Math.max(
+                    0,
+                    Math.min(maxOriginal, novoMax)
+                );
+
+                if (total >= limite && valorAtual === 0) {
+
+                    input.disabled = true;
+
+                } else {
+
+                    input.disabled = false;
+
+                }
+
+            });
+
+        }
+
+        inputs.forEach(input => {
+
+            input.addEventListener('input', function () {
+
+                let valor = parseInt(this.value || 0);
+
+                const maximo = parseInt(this.max || 0);
+
+                if (isNaN(valor) || valor < 0) {
+                    valor = 0;
+                }
+
+                if (valor > maximo) {
+                    valor = maximo;
+                }
+
+                this.value = valor;
+
+                atualizarGrupo();
+
+            });
 
         });
 
-    }
+        atualizarGrupo();
+
+    });
+
+    // RESET
+    document.querySelector('form').addEventListener('reset', () => {
+
+        setTimeout(() => {
+
+            document.querySelectorAll('.grupo-alocacao').forEach(grupo => {
+
+                const inputs = grupo.querySelectorAll('.input-alocacao');
+
+                inputs.forEach(input => {
+
+                    input.disabled = false;
+                    input.value = 0;
+                    input.max = input.dataset.maxOriginal;
+
+                });
+
+            });
+
+        }, 10);
+
+    });
 
 });
 

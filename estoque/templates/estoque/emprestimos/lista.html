@@ -1,0 +1,209 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<div class="container-fluid px-4 py-4">
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+                Empréstimos
+            </h2>
+
+            <p class="text-muted mb-0">
+                Controle de empréstimos entre regionais do mesmo grupo.
+            </p>
+
+        </div>
+
+        <a href="{% url 'estoque:criar_emprestimo' %}"
+           class="btn btn-primary px-4">
+
+            <i class="bi bi-plus-circle me-2"></i>
+            Novo empréstimo
+
+        </a>
+
+    </div>
+
+    <div class="card border-0 shadow-sm overflow-hidden">
+
+        <div class="card-header bg-white border-0 p-4">
+
+            <div class="position-relative">
+
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+
+                <input
+                    type="text"
+                    id="filtroEmprestimos"
+                    class="form-control ps-5 filtro-input"
+                    placeholder="Pesquisar protocolo, regional ou solicitante..."
+                >
+
+            </div>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+                        <th class="ps-4">Protocolo</th>
+                        <th>Origem</th>
+                        <th>Destino</th>
+                        <th>Itens</th>
+                        <th>Status</th>
+                        <th>Devolução</th>
+                        <th class="text-end pe-4">Ações</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for e in emprestimos %}
+
+                    <tr class="linha-emprestimo">
+
+                        <td class="ps-4">
+
+                            <div class="fw-bold">
+                                {{ e.protocolo }}
+                            </div>
+
+                            <small class="text-muted">
+                                {{ e.solicitado_por }}
+                            </small>
+
+                        </td>
+
+                        <td>
+                            {{ e.regional_origem.nome }}
+                        </td>
+
+                        <td>
+                            {{ e.regional_destino.nome }}
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ e.itens.count }} item{{ e.itens.count|pluralize }}
+                            </span>
+                        </td>
+
+                        <td>
+
+                            {% if e.status == 'SOLICITADO' %}
+
+                                <span class="badge bg-warning text-dark">
+                                    Solicitado
+                                </span>
+
+                            {% elif e.status == 'APROVADO' %}
+
+                                <span class="badge bg-info text-dark">
+                                    Aprovado
+                                </span>
+
+                            {% elif e.status == 'EMPRESTADO' %}
+
+                                <span class="badge bg-primary">
+                                    Emprestado
+                                </span>
+
+                            {% elif e.status == 'DEVOLVIDO' %}
+
+                                <span class="badge bg-success">
+                                    Devolvido
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-secondary">
+                                    {{ e.status }}
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            <div class="fw-semibold">
+                                {{ e.data_prevista_devolucao|date:'d/m/Y' }}
+                            </div>
+
+                        </td>
+
+                        <td class="text-end pe-4">
+
+                            <a href="{% url 'estoque:detalhe_emprestimo' e.id %}"
+                               class="btn btn-light border btn-sm">
+
+                                <i class="bi bi-eye"></i>
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="7" class="text-center py-5 text-muted">
+
+                            Nenhum empréstimo encontrado.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+
+.card {
+    border-radius: 18px;
+}
+
+.filtro-input {
+    border-radius: 12px;
+    height: 48px;
+}
+
+.table > :not(caption) > * > * {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    vertical-align: middle;
+}
+
+.btn {
+    border-radius: 12px;
+}
+
+.badge {
+    border-radius: 999px;
+    padding: 8px 12px;
+}
+
+</style>
+
+{% endblock %}

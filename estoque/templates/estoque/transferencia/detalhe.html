@@ -4,102 +4,427 @@
 
 {% if transferencia.status == 'PENDENTE' %}
 
-<div class="card shadow-sm mt-4">
+<div class="container-fluid px-4 mt-4">
 
-    <div class="card-header bg-light">
-        <strong>
-            Selecionar equipamentos
-        </strong>
-    </div>
+    <div class="card border-0 shadow-sm overflow-hidden">
 
-    <div class="card-body">
+        <!-- HEADER -->
+        <div class="card-header bg-white border-0 py-4 px-4">
 
-        <form method="post">
-            {% csrf_token %}
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
 
-            <div class="mb-3">
-                <span class="badge bg-primary">
-                    Categoria: {{ categoria }}
+                <div>
+
+                    <h4 class="fw-bold mb-1">
+                        Selecionar equipamentos
+                    </h4>
+
+                    <p class="text-muted mb-0">
+                        Escolha os equipamentos que serão enviados na transferência.
+                    </p>
+
+                </div>
+
+                <span class="badge bg-secondary fs-6 px-3 py-2">
+                    Transferência #{{ transferencia.id }}
                 </span>
 
-                <span class="badge bg-warning text-dark">
-                    Necessário: {{ quantidade_necessaria }}
-                </span>
             </div>
 
-            <div class="table-responsive">
+        </div>
 
-                <table class="table table-hover">
+        <div class="card-body p-4">
 
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Produto</th>
-                            <th>Série</th>
-                            <th>Patrimônio</th>
-                        </tr>
-                    </thead>
+            <form method="post" id="form-separacao">
 
-                    <tbody>
+                {% csrf_token %}
 
-                        {% for eq in equipamentos_disponiveis %}
+                <!-- RESUMO -->
+                <div class="row g-3 mb-4">
 
-                        <tr>
+                    <div class="col-lg-8">
 
-                            <td width="40">
-                                <input type="checkbox"
-                                       name="equipamentos"
-                                       value="{{ eq.id }}">
-                            </td>
+                        <div class="alert alert-info border-0 shadow-sm h-100 mb-0">
 
-                            <td>
-                                {{ eq.produto }}
-                            </td>
+                            <div class="fw-semibold mb-2">
+                                Solicitação de transferência
+                            </div>
 
-                            <td>
-                                {{ eq.serial }}
-                            </td>
+                            <div class="fs-5 mb-2">
 
-                            <td>
-                                {{ eq.patrimonio }}
-                            </td>
+                                {{ quantidade_necessaria }}
+                                ×
+                                <strong>{{ produto.descricao }}</strong>
 
-                        </tr>
+                            </div>
 
-                        {% empty %}
+                            <small class="text-muted">
 
-                        <tr>
-                            <td colspan="4"
-                                class="text-center text-muted py-4">
+                                Origem:
+                                <strong>{{ regional_origem.nome }}</strong>
 
-                                Nenhum equipamento disponível.
+                            </small>
 
-                            </td>
-                        </tr>
+                        </div>
 
-                        {% endfor %}
+                    </div>
 
-                    </tbody>
+                    <div class="col-lg-4">
 
-                </table>
+                        <div class="d-flex flex-column gap-3 h-100 justify-content-center">
 
-            </div>
+                            <span class="badge bg-warning text-dark fs-6 py-3">
+                                Necessário: {{ quantidade_necessaria }}
+                            </span>
 
-            <div class="text-end mt-3">
+                            <span class="badge bg-success fs-6 py-3"
+                                  id="contador-selecionados">
 
-                <button type="submit"
-                        class="btn btn-success">
+                                Selecionados: 0 / {{ quantidade_necessaria }}
 
-                    Enviar transferência
+                            </span>
 
-                </button>
+                        </div>
 
-            </div>
+                    </div>
 
-        </form>
+                </div>
+
+                <!-- FILTRO -->
+                <div class="row mb-4">
+
+                    <div class="col-lg-5">
+
+                        <div class="position-relative">
+
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+
+                            <input
+                                type="text"
+                                id="filtroEquipamentos"
+                                class="form-control ps-5 filtro-input"
+                                placeholder="Pesquisar patrimônio, série ou produto..."
+                            >
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- TABELA -->
+                <div class="table-responsive border rounded-4">
+
+                    <table class="table table-hover align-middle mb-0">
+
+                        <thead class="table-light">
+
+                            <tr>
+                                <th width="60" class="ps-4"></th>
+                                <th>Produto</th>
+                                <th>Número Série</th>
+                                <th>Patrimônio</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for eq in equipamentos_disponiveis %}
+
+                            <tr
+                                class="linha-equipamento"
+                                data-busca="
+                                    {{ eq.numero_serie }}
+                                    {{ eq.serial }}
+                                    {{ eq.patrimonio }}
+                                    {{ eq.produto.descricao }}
+                                "
+                            >
+
+                                <!-- CHECK -->
+                                <td class="ps-4">
+
+                                    <input
+                                        type="checkbox"
+                                        class="form-check-input check-equipamento"
+                                        name="equipamentos"
+                                        value="{{ eq.id }}"
+                                    >
+
+                                </td>
+
+                                <!-- PRODUTO -->
+                                <td>
+
+                                    <div class="fw-semibold">
+                                        {{ eq.produto.descricao }}
+                                    </div>
+
+                                </td>
+
+                                <!-- SÉRIE -->
+                                <td>
+
+                                    {% if eq.numero_serie %}
+
+                                        <span class="font-monospace">
+                                            {{ eq.numero_serie }}
+                                        </span>
+
+                                    {% elif eq.serial %}
+
+                                        <span class="font-monospace">
+                                            {{ eq.serial }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            Sem série
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <!-- PATRIMÔNIO -->
+                                <td>
+
+                                    {% if eq.patrimonio %}
+
+                                        <span class="font-monospace">
+                                            {{ eq.patrimonio }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            —
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="4"
+                                    class="text-center text-muted py-5">
+
+                                    <div class="d-flex flex-column align-items-center gap-2">
+
+                                        <i class="bi bi-inbox fs-1 text-secondary"></i>
+
+                                        <div class="fw-semibold">
+                                            Nenhum equipamento disponível.
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <!-- ALERTA -->
+                <div id="alerta-limite"
+                     class="alert alert-warning border-0 shadow-sm d-none mt-4">
+
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+
+                    Limite da solicitação atingido.
+
+                </div>
+
+                <!-- AÇÕES -->
+                <div class="d-flex justify-content-end mt-4">
+
+                    <button
+                        type="submit"
+                        id="btn-submit"
+                        class="btn btn-success px-4"
+                        disabled
+                    >
+
+                        <i class="bi bi-send-check me-2"></i>
+
+                        Enviar transferência
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
 
     </div>
 
 </div>
 
-{% endif %}{% endblock %}
+{% endif %}
+
+<style>
+
+.card {
+    border-radius: 18px;
+}
+
+.table > :not(caption) > * > * {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: background .15s ease;
+}
+
+.table tbody tr:hover {
+    background: #fafafa;
+}
+
+.filtro-input {
+    border-radius: 12px;
+    height: 48px;
+}
+
+.btn {
+    border-radius: 12px;
+}
+
+.badge {
+    border-radius: 12px;
+}
+
+.form-check-input {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
+</style>
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const limite = parseInt(
+        "{{ quantidade_necessaria }}"
+    );
+
+    const checks = Array.from(
+        document.querySelectorAll('.check-equipamento')
+    );
+
+    const contador = document.getElementById(
+        'contador-selecionados'
+    );
+
+    const alerta = document.getElementById(
+        'alerta-limite'
+    );
+
+    const btnSubmit = document.getElementById(
+        'btn-submit'
+    );
+
+    const filtro = document.getElementById(
+        'filtroEquipamentos'
+    );
+
+    function atualizarSelecao() {
+
+        const selecionados = checks.filter(
+            check => check.checked
+        );
+
+        const total = selecionados.length;
+
+        contador.innerText =
+            `Selecionados: ${total} / ${limite}`;
+
+        btnSubmit.disabled = total !== limite;
+
+        if (total >= limite) {
+
+            alerta.classList.remove('d-none');
+
+            checks.forEach(check => {
+
+                if (!check.checked) {
+                    check.disabled = true;
+                }
+
+            });
+
+        } else {
+
+            alerta.classList.add('d-none');
+
+            checks.forEach(check => {
+                check.disabled = false;
+            });
+
+        }
+
+    }
+
+    function aplicarFiltro() {
+
+        const termo = filtro.value
+            .toLowerCase()
+            .trim();
+
+        document
+            .querySelectorAll('.linha-equipamento')
+            .forEach(function (linha) {
+
+                const texto = (
+                    linha.dataset.busca || ''
+                ).toLowerCase();
+
+                const mostrar =
+                    !termo ||
+                    texto.includes(termo);
+
+                linha.style.display =
+                    mostrar ? '' : 'none';
+
+            });
+
+    }
+
+    checks.forEach(check => {
+
+        check.addEventListener(
+            'change',
+            atualizarSelecao
+        );
+
+    });
+
+    filtro.addEventListener(
+        'keyup',
+        aplicarFiltro
+    );
+
+    atualizarSelecao();
+
+});
+
+</script>
+
+{% endblock %}

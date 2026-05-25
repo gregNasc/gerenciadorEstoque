@@ -1,101 +1,377 @@
 {% extends 'estoque/base.html' %}
-{% load i18n %}
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid px-4 py-4">
 
-    <div>
+    <div class="card border-0 shadow-sm">
 
-        <h3 class="mb-1">
-            {% trans "Receber Transferência" %}
-            #{{ transferencia.id }}
-        </h3>
+        <!-- HEADER -->
+        <div class="card-header bg-white border-0 py-4 px-4">
 
-        <small class="text-muted">
-            {{ transferencia.regional_origem.nome }}
-            →
-            {{ transferencia.regional_destino.nome }}
-        </small>
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+
+                <div>
+
+                    <h3 class="fw-bold mb-1">
+                        Conferência da transferência
+                    </h3>
+
+                    <p class="text-muted mb-0">
+                        Valide os equipamentos recebidos antes de concluir a transferência.
+                    </p>
+
+                </div>
+
+                <span class="badge bg-primary fs-6 px-3 py-2">
+                    Transferência #{{ transferencia.id }}
+                </span>
+
+            </div>
+
+        </div>
+
+        <div class="card-body p-4">
+
+            <form method="post">
+
+                {% csrf_token %}
+
+                <!-- RESUMO -->
+                <div class="row g-3 mb-4">
+
+                    <div class="col-lg-4">
+
+                        <div class="info-card">
+
+                            <small class="text-muted d-block mb-1">
+                                Origem
+                            </small>
+
+                            <div class="fw-semibold">
+                                {{ transferencia.regional_origem.nome }}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-lg-4">
+
+                        <div class="info-card">
+
+                            <small class="text-muted d-block mb-1">
+                                Destino
+                            </small>
+
+                            <div class="fw-semibold">
+                                {{ transferencia.regional_destino.nome }}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-lg-4">
+
+                        <div class="info-card">
+
+                            <small class="text-muted d-block mb-1">
+                                Total de itens
+                            </small>
+
+                            <div class="fw-semibold">
+                                {{ transferencia.itens.count }}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- ALERTA -->
+                <div class="alert alert-warning border-0 shadow-sm mb-4">
+
+                    <div class="fw-semibold mb-1">
+                        Atenção na conferência
+                    </div>
+
+                    <small>
+                        Marque apenas os equipamentos realmente recebidos.
+                        Caso exista divergência, deixe o item desmarcado.
+                    </small>
+
+                </div>
+
+                <!-- TABELA -->
+                <div class="table-responsive border rounded-4">
+
+                    <table class="table table-hover align-middle mb-0">
+
+                        <thead class="table-light">
+
+                            <tr>
+                                <th width="70" class="ps-4">
+                                    Recebido
+                                </th>
+
+                                <th>
+                                    Produto
+                                </th>
+
+                                <th>
+                                    Número Série
+                                </th>
+
+                                <th>
+                                    Patrimônio
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for item in transferencia.itens.all %}
+
+                            <tr class="linha-item">
+
+                                <!-- CHECK -->
+                                <td class="ps-4">
+
+                                    <div class="form-check form-switch">
+
+                                        <input
+                                            class="form-check-input check-recebido"
+                                            type="checkbox"
+                                            name="itens_recebidos"
+                                            value="{{ item.id }}"
+                                            id="item{{ item.id }}"
+                                            checked
+                                        >
+
+                                    </div>
+
+                                </td>
+
+                                <!-- PRODUTO -->
+                                <td>
+
+                                    <div class="fw-semibold">
+                                        {{ item.equipamento.produto.descricao }}
+                                    </div>
+
+                                </td>
+
+                                <!-- SÉRIE -->
+                                <td>
+
+                                    {% if item.equipamento.numero_serie %}
+
+                                        <span class="font-monospace">
+                                            {{ item.equipamento.numero_serie }}
+                                        </span>
+
+                                    {% elif item.equipamento.serial %}
+
+                                        <span class="font-monospace">
+                                            {{ item.equipamento.serial }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            Sem série
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <!-- PATRIMÔNIO -->
+                                <td>
+
+                                    {% if item.equipamento.patrimonio %}
+
+                                        <span class="font-monospace">
+                                            {{ item.equipamento.patrimonio }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            —
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <!-- STATUS -->
+                                <td>
+
+                                    <span class="badge status-item bg-success-subtle text-success"
+                                          id="status-{{ item.id }}">
+
+                                        <i class="bi bi-check-circle me-1"></i>
+
+                                        Confirmado
+
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <!-- OBSERVAÇÃO -->
+                <div class="mt-4">
+
+                    <label class="form-label fw-semibold">
+                        Observações da conferência
+                    </label>
+
+                    <textarea
+                        name="observacao_recebimento"
+                        rows="4"
+                        class="form-control"
+                        placeholder="Descreva divergências, itens ausentes, avarias ou outras informações relevantes..."
+                    ></textarea>
+
+                </div>
+
+                <!-- AÇÕES -->
+                <div class="d-flex justify-content-end gap-2 mt-4">
+
+                    <a href="{% url 'estoque:transferencia_detalhe' transferencia.id %}"
+                       class="btn btn-light border">
+
+                        Cancelar
+
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-success px-4">
+
+                        <i class="bi bi-check2-circle me-2"></i>
+
+                        Finalizar recebimento
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
 
     </div>
 
 </div>
 
-<div class="card shadow-sm">
+<style>
 
-    <div class="card-header bg-light">
+.card {
+    border-radius: 18px;
+}
 
-        <strong>
-            {% trans "Equipamentos enviados" %}
-        </strong>
+.info-card {
+    border: 1px solid #ececec;
+    border-radius: 16px;
+    padding: 18px;
+    background: #fafafa;
+    height: 100%;
+}
 
-    </div>
+.table > :not(caption) > * > * {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    vertical-align: middle;
+}
 
-    <div class="table-responsive">
+.table tbody tr {
+    transition: background .15s ease;
+}
 
-        <table class="table table-hover align-middle mb-0">
+.table tbody tr:hover {
+    background: #fafafa;
+}
 
-            <thead class="table-light">
-                <tr>
-                    <th>Produto</th>
-                    <th>Série</th>
-                    <th>Patrimônio</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
+.form-control {
+    border-radius: 12px;
+}
 
-            <tbody>
+.btn {
+    border-radius: 12px;
+}
 
-                {% for item in itens %}
+.badge {
+    border-radius: 999px;
+    padding: 8px 12px;
+}
 
-                <tr>
+.form-check-input {
+    cursor: pointer;
+    width: 2.5rem;
+    height: 1.3rem;
+}
 
-                    <td>
-                        {{ item.equipamento.produto }}
-                    </td>
+</style>
 
-                    <td>
-                        {{ item.equipamento.serial }}
-                    </td>
+<script>
 
-                    <td>
-                        {{ item.equipamento.patrimonio }}
-                    </td>
+document.addEventListener('DOMContentLoaded', function () {
 
-                    <td>
-                        <span class="badge bg-primary">
-                            {{ item.equipamento.status }}
-                        </span>
-                    </td>
+    const checks = document.querySelectorAll(
+        '.check-recebido'
+    );
 
-                </tr>
+    checks.forEach(function (check) {
 
-                {% endfor %}
+        check.addEventListener('change', function () {
 
-            </tbody>
+            const itemId = this.value;
 
-        </table>
+            const badge = document.getElementById(
+                `status-${itemId}`
+            );
 
-    </div>
+            if (this.checked) {
 
-</div>
+                badge.className =
+                    'badge status-item bg-success-subtle text-success';
 
-<form method="post" class="mt-4">
+                badge.innerHTML =
+                    '<i class="bi bi-check-circle me-1"></i> Confirmado';
 
-    {% csrf_token %}
+            } else {
 
-    <div class="text-end">
+                badge.className =
+                    'badge status-item bg-danger-subtle text-danger';
 
-        <button type="submit"
-                class="btn btn-success btn-lg">
+                badge.innerHTML =
+                    '<i class="bi bi-x-circle me-1"></i> Divergência';
 
-            {% trans "Confirmar Recebimento" %}
+            }
 
-        </button>
+        });
 
-    </div>
+    });
 
-</form>
+});
+
+</script>
 
 {% endblock %}

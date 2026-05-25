@@ -81,6 +81,16 @@ urlpatterns = [
     path('comunicados/<int:comunicado_id>/', views.detalhe_comunicado, name='detalhe_comunicado'),
     path('comunicados/ocultar/<int:comunicado_id>/', views.ocultar_comunicado, name='ocultar_comunicado'),
 
+    # ---------------- EMPRÉSTIMO --------------------
+    path('emprestimos/', views.lista_emprestimos, name='lista_emprestimos'),
+    path('emprestimos/novo/', views.criar_emprestimo, name='criar_emprestimo'),
+    path('emprestimos/<int:emprestimo_id>/', views.detalhe_emprestimo, name='detalhe_emprestimo'),
+    path('emprestimos/<int:emprestimo_id>/aprovar/', views.aprovar_emprestimo, name='aprovar_emprestimo'),
+    path('emprestimos/<int:emprestimo_id>/itens/', views.adicionar_itens_emprestimo, name='adicionar_itens_emprestimo'),
+    path('emprestimos/<int:emprestimo_id>/receber/', views.receber_emprestimo, name='receber_emprestimo'),
+    path('emprestimos/<int:emprestimo_id>/devolver/', views.devolver_emprestimo, name='devolver_emprestimo'),
+
+
     # ---------------- PASSWORD RESET ----------------
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='registration/password_reset_form.html',

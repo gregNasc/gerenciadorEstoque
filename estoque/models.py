@@ -103,6 +103,11 @@ class GrupoRegional(models.Model):
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Grupo Regional'
+        verbose_name_plural = 'Grupos Regionais'
+        ordering = ['nome']
+
     def __str__(self):
         return self.nome
 
@@ -165,6 +170,59 @@ class Equipamento(models.Model):
             self.codigo = f"EQP-{proximo:06d}"
         super().save(*args, **kwargs)
 
+# ---------------- EMPRÉSTIMO ----------------
+class Emprestimo(models.Model):
+
+    STATUS = (
+        ('SOLICITADO', 'Solicitado'),
+        ('APROVADO', 'Aprovado'),
+        ('EM_TRANSITO', 'Em trânsito'),
+        ('EMPRESTADO', 'Emprestado'),
+        ('DEVOLVIDO', 'Devolvido'),
+        ('CANCELADO', 'Cancelado'),
+    )
+
+    protocolo = models.CharField(max_length=20, unique=True)
+    grupo = models.ForeignKey(GrupoRegional, on_delete=models.PROTECT)
+    regional_origem = models.ForeignKey(Base, related_name='emprestimos_saida', on_delete=models.PROTECT)
+    regional_destino = models.ForeignKey(Base, related_name='emprestimos_entrada', on_delete=models.PROTECT)
+    solicitado_por = models.ForeignKey(User, on_delete=models.PROTECT)
+    aprovado_por = models.ForeignKey(User, null=True, blank=True, related_name='emprestimos_aprovados', on_delete=models.SET_NULL)
+    motivo = models.TextField()
+    data_emprestimo = models.DateField()
+    data_prevista_devolucao = models.DateField()
+    data_devolucao = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='SOLICITADO')
+    confirmado_recebimento = models.BooleanField(default=False)
+    confirmado_devolucao = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return self.protocolo
+
+class ItemEmprestimo(models.Model):
+
+    STATUS = (
+        ('PENDENTE', 'Pendente'),
+        ('RECEBIDO', 'Recebido'),
+        ('DEVOLVIDO', 'Devolvido'),
+        ('DIVERGENCIA', 'Divergência'),
+    )
+
+    emprestimo = models.ForeignKey(Emprestimo, related_name='itens', on_delete=models.CASCADE)
+    equipamento = models.ForeignKey(Equipamento, on_delete=models.PROTECT)
+    status = models.CharField(max_length=20, choices=STATUS, default='PENDENTE')
+    observacao = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    quantidade = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f'{self.emprestimo} - {self.equipamento}'
+
 # ---------------- TRANSFERENCIA ----------------
 class Solicitacao(models.Model):
     STATUS = [
@@ -212,6 +270,7 @@ class AlocacaoSolicitacaoItem(models.Model):
     quantidade = models.PositiveIntegerField()
     criado_em = models.DateTimeField(auto_now_add=True)
     equipamentos = models.ManyToManyField('Equipamento', through='AlocacaoEquipamento', blank=True)
+    produto = models.ForeignKey('Produto', on_delete=models.CASCADE)
 
 class AlocacaoEquipamento(models.Model):
     alocacao = models.ForeignKey(AlocacaoSolicitacaoItem, on_delete=models.CASCADE, related_name='itens_fisicos')

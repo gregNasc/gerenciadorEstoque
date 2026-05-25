@@ -72,7 +72,7 @@
 
                 <!-- CAIXA DE MENSAGENS -->
                 {% if perfil.role == 'admin'%}
-                <!--li class="nav-item">
+                <li class="nav-item">
                     <a class="nav-link {% if url_name == 'caixa_solicitacoes' %}active{% endif %}"
                        href="{% url 'estoque:caixa_solicitacoes' %}">
 
@@ -80,7 +80,7 @@
                         {% trans "Pedidos" %}
 
                     </a>
-                </li-->
+                </li>
                 {% endif %}
 
                 <!-- CAIXA DE SEPARAÇÃO -->
@@ -115,6 +115,17 @@
                     <a class="nav-link {% if 'transferencia' in url_name %}active{% endif %}"
                        href="{% url 'estoque:lista_transferencias' %}">
                         <i class="bi bi-arrow-left-right"></i> {% trans "Transferências" %}
+                    </a>
+                </li-->
+                {% endif %}
+
+                <!-- EMPRÉSTIMOS -->
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <!--li class="nav-item">
+                    <a class="nav-link {% if 'emprestimo' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'estoque:lista_emprestimos' %}">
+                        <i class="bi bi-cart-plus"></i>
+                        {% trans "Empréstimos" %}
                     </a>
                 </li-->
                 {% endif %}

@@ -1,0 +1,297 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<div class="container-fluid px-4 py-4">
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body p-4">
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+
+                <div>
+
+                    <h2 class="fw-bold mb-1">
+                        {{ emprestimo.protocolo }}
+                    </h2>
+
+                    <p class="text-muted mb-0">
+                        {{ emprestimo.regional_origem.nome }}
+                        →
+                        {{ emprestimo.regional_destino.nome }}
+                    </p>
+
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+
+                    {% if emprestimo.status == 'SOLICITADO' %}
+
+                    <a href="{% url 'estoque:aprovar_emprestimo' emprestimo.id %}"
+                       class="btn btn-success">
+
+                        Aprovar
+
+                    </a>
+
+                    {% endif %}
+
+                    {% if emprestimo.status == 'APROVADO' %}
+
+                    <a href="{% url 'estoque:adicionar_itens_emprestimo' emprestimo.id %}"
+                       class="btn btn-primary">
+
+                        Adicionar itens
+
+                    </a>
+
+                    {% endif %}
+
+                    {% if emprestimo.status == 'EM_TRANSITO' %}
+
+                    <a href="{% url 'estoque:receber_emprestimo' emprestimo.id %}"
+                       class="btn btn-success">
+
+                        Confirmar recebimento
+
+                    </a>
+
+                    {% endif %}
+
+                    {% if emprestimo.status == 'EMPRESTADO' %}
+
+                    <a href="{% url 'estoque:devolver_emprestimo' emprestimo.id %}"
+                       class="btn btn-warning text-dark">
+
+                        Confirmar devolução
+
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-3">
+
+            <div class="info-card">
+
+                <small class="text-muted d-block mb-1">
+                    Solicitante
+                </small>
+
+                <div class="fw-semibold">
+                    {{ emprestimo.solicitado_por }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3">
+
+            <div class="info-card">
+
+                <small class="text-muted d-block mb-1">
+                    Empréstimo
+                </small>
+
+                <div class="fw-semibold">
+                    {{ emprestimo.data_emprestimo|date:'d/m/Y' }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3">
+
+            <div class="info-card">
+
+                <small class="text-muted d-block mb-1">
+                    Devolução prevista
+                </small>
+
+                <div class="fw-semibold">
+                    {{ emprestimo.data_prevista_devolucao|date:'d/m/Y' }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3">
+
+            <div class="info-card">
+
+                <small class="text-muted d-block mb-1">
+                    Status
+                </small>
+
+                <div class="fw-semibold">
+                    {{ emprestimo.get_status_display }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-header bg-white border-0 py-3 px-4">
+
+            <h5 class="fw-bold mb-0">
+                Motivo
+            </h5>
+
+        </div>
+
+        <div class="card-body px-4 pb-4 pt-0">
+
+            {{ emprestimo.motivo }}
+
+        </div>
+
+    </div>
+
+    <div class="card border-0 shadow-sm overflow-hidden">
+
+        <div class="card-header bg-white border-0 py-3 px-4">
+
+            <h5 class="fw-bold mb-0">
+                Equipamentos
+            </h5>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+                        <th class="ps-4">Produto</th>
+                        <th>Série</th>
+                        <th>Patrimônio</th>
+                        <th>Status</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for item in emprestimo.itens.all %}
+
+                    <tr>
+
+                        <td class="ps-4">
+                            {{ item.equipamento.produto.descricao }}
+                        </td>
+
+                        <td>
+                            {{ item.equipamento.numero_serie }}
+                        </td>
+
+                        <td>
+                            {{ item.equipamento.patrimonio }}
+                        </td>
+
+                        <td>
+
+                            {% if item.status == 'RECEBIDO' %}
+
+                                <span class="badge bg-success">
+                                    Recebido
+                                </span>
+
+                            {% elif item.status == 'DIVERGENCIA' %}
+
+                                <span class="badge bg-danger">
+                                    Divergência
+                                </span>
+
+                            {% elif item.status == 'DEVOLVIDO' %}
+
+                                <span class="badge bg-primary">
+                                    Devolvido
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-warning text-dark">
+                                    Pendente
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="4" class="text-center py-5 text-muted">
+
+                            Nenhum item adicionado.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+
+.card {
+    border-radius: 18px;
+}
+
+.info-card {
+    border: 1px solid #ececec;
+    border-radius: 16px;
+    padding: 18px;
+    background: #fafafa;
+    height: 100%;
+}
+
+.table > :not(caption) > * > * {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    vertical-align: middle;
+}
+
+.btn {
+    border-radius: 12px;
+}
+
+.badge {
+    border-radius: 999px;
+    padding: 8px 12px;
+}
+
+</style>
+
+{% endblock %}
