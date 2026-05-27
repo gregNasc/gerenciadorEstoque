@@ -341,14 +341,27 @@
                                                 <div>
 
                                                     <div class="fw-semibold">
-                                                        {{ leitura.usuario.username }}
+                                                        {{ leitura.usuario.get_full_name|default:leitura.usuario.username }}
                                                     </div>
 
-                                                    <small class="text-muted">
+                                                    <div class="small text-muted">
 
-                                                        {{ leitura.usuario.get_full_name }}
+                                                        <div>
+                                                            <i class="bi bi-person"></i>
+                                                            @{{ leitura.usuario.username }}
+                                                        </div>
 
-                                                    </small>
+                                                        {% if leitura.usuario.perfil.regionais.all %}
+                                                        <div>
+                                                            <i class="bi bi-geo-alt"></i>
+
+                                                            {% for regional in leitura.usuario.perfil.regionais.all %}
+                                                                {{ regional.nome }}{% if not forloop.last %}, {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                        {% endif %}
+
+                                                    </div>
 
                                                 </div>
 
@@ -411,16 +424,27 @@
                                         <div class="list-group-item border-0 py-3 px-4">
 
                                             <div class="fw-semibold">
-
-                                                {{ usuario.username }}
-
+                                                {{ usuario.get_full_name|default:usuario.username }}
                                             </div>
 
-                                            <small class="text-muted">
+                                            <div class="small text-muted">
 
-                                                {{ usuario.get_full_name }}
+                                                <div>
+                                                    <i class="bi bi-person"></i>
+                                                    @{{ usuario.username }}
+                                                </div>
 
-                                            </small>
+                                                {% if usuario.perfil.regionais.all %}
+                                                <div>
+                                                    <i class="bi bi-geo-alt"></i>
+
+                                                    {% for regional in usuario.perfil.regionais.all %}
+                                                        {{ regional.nome }}{% if not forloop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+
+                                            </div>
 
                                         </div>
 

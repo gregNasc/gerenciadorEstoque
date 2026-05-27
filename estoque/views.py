@@ -1780,7 +1780,8 @@ def detalhe_comunicado(request, comunicado_id):
 
         # LEITURAS
         leituras = comunicado.leituras.select_related(
-            'usuario'
+            'usuario',
+            'usuario__perfil'
         ).order_by('-lido_em')
 
         usuarios_leram_ids = leituras.values_list(
@@ -1791,7 +1792,9 @@ def detalhe_comunicado(request, comunicado_id):
         total_lidos = leituras.count()
 
         # NÃO LERAM
-        usuarios_nao_leram = destinatarios.exclude(
+        usuarios_nao_leram = destinatarios.select_related(
+            'perfil'
+        ).exclude(
             id__in=usuarios_leram_ids
         )
 
