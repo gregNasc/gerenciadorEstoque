@@ -591,7 +591,7 @@ def estoque_view(request):
 
             em_transito=Count(
                 'id',
-                filter=Q(status='EM_TRANSITO')
+                filter=Q(status__in=status_em_transito)
             ),
 
             inativos=Count(
@@ -599,7 +599,6 @@ def estoque_view(request):
                 filter=Q(status='INATIVO')
             ),
         )
-
         .order_by('produto__descricao')
     )
 
@@ -607,10 +606,7 @@ def estoque_view(request):
 
     for item in produtos_agrupados:
 
-        inativos = (
-            item['total']
-            - item['ativos']
-        )
+        inativos = item['inativos']
 
         disponibilidade = 0
 

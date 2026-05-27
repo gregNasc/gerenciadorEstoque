@@ -229,155 +229,414 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Elementos do DOM
+
+    // =========================
+    // ELEMENTOS
+    // =========================
+
     const modalEl = document.getElementById('modal');
     const modalBody = document.getElementById('modal-body');
     const modalTitle = document.getElementById('modal-title');
     const closeBtn = document.getElementById('closeModal');
     const backBtn = document.getElementById('modalBackBtn');
 
-    // Estado da navegação no modal (pilha)
-    let navigationStack = []; // cada item: { type, title, data, context }
+    // =========================
+    // CONFIGURAÇÕES
+    // =========================
 
-    // Funções auxiliares
-    const openModal = () => modalEl.classList.remove('hidden');
-    const closeModal = () => {
-        modalEl.classList.add('hidden');
-        navigationStack = [];
-        backBtn.style.display = 'none';
-        modalTitle.innerText = '{% trans "Detalhes" %}';
-        modalBody.innerHTML = '<div class="text-center py-5">{% trans "Carregando..." %}</div>';
+    const STATUS_BLOQUEADOS_SICK = [
+        'INATIVO',
+        'SICK',
+        'PENDENTE',
+        'ENVIADO',
+        'EM_TRANSITO',
+        'AGUARDANDO_RECEBIMENTO',
+        'TRANSFERENCIA'
+    ];
+
+    // =========================
+    // ESTADO
+    // =========================
+
+    let navigationStack = [];
+
+    // =========================
+    // HELPERS
+    // =========================
+
+    const escapeHtml = (str = '') => {
+        return String(str).replace(/[&<>]/g, (m) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+        }[m]));
     };
 
-    const setLoading = (show = true) => {
-        if (show) {
-            modalBody.innerHTML = `<div class="text-center py-5"><div class="loading-spinner"></div><p class="mt-2">${'{% trans "Carregando..." %}'}</p></div>`;
-        }
-    };
-
-    const showError = (msg) => {
-        modalBody.innerHTML = `<div class="alert alert-danger m-3">${msg}</div><button class="btn btn-sm btn-secondary mt-2" id="modalRetryBtn">{% trans "Tentar novamente" %}</button>`;
-        const retryBtn = document.getElementById('modalRetryBtn');
-        if (retryBtn) retryBtn.addEventListener('click', () => {
-            if (navigationStack.length) {
-                const last = navigationStack[navigationStack.length-1];
-                if (last.type === 'regionais') loadRegionais(last.context.produtoId, last.context.produtoNome);
-                else if (last.type === 'equipamentos') loadEquipamentos(last.context.produtoId, last.context.regionalId, last.context.regionalNome);
-                else if (last.type === 'historico') loadHistorico(last.context.equipamentoId, last.context.produtoId, last.context.regionalId, last.context.produtoNome);
-            }
-        });
-    };
-
-    // CSRF token
     const getCSRFToken = () => {
-        const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+        const cookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='));
+
         return cookie ? cookie.split('=')[1] : '';
     };
 
-    // Funções de API (com tratamento de erro)
-    const api = {
-        regionais: async (produtoId) => {
-            const resp = await fetch(`/api/produto/${produtoId}/regionais/`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp.json();
-        },
-        equipamentos: async (produtoId, regionalId) => {
-            const resp = await fetch(`/equipamentos-por-regional/${produtoId}/${regionalId}/`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp.json();
-        },
-        historico: async (equipamentoId) => {
-            const resp = await fetch(`/historico-modal/${equipamentoId}/`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp.text();
-        },
-        marcarSick: async (equipamentoId) => {
-            const resp = await fetch(`/marcar-sick/${equipamentoId}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCSRFToken() }
+    const openModal = () => {
+        modalEl.classList.remove('hidden');
+    };
+
+    const resetModal = () => {
+        modalTitle.innerText = '{% trans "Detalhes" %}';
+
+        modalBody.innerHTML = `
+            <div class="text-center py-5">
+                {% trans "Carregando..." %}
+            </div>
+        `;
+
+        backBtn.style.display = 'none';
+    };
+
+    const closeModal = () => {
+        modalEl.classList.add('hidden');
+        navigationStack = [];
+        resetModal();
+    };
+
+    const setLoading = () => {
+        modalBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="loading-spinner"></div>
+                <p class="mt-2">
+                    {% trans "Carregando..." %}
+                </p>
+            </div>
+        `;
+    };
+
+    const pushToStack = (type, title, context) => {
+
+        const last = navigationStack[navigationStack.length - 1];
+
+        const isSamePage =
+            last &&
+            last.type === type &&
+            JSON.stringify(last.context) === JSON.stringify(context);
+
+        if (!isSamePage) {
+            navigationStack.push({
+                type,
+                title,
+                context
             });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return resp;
+        }
+
+        modalTitle.innerText = title;
+
+        backBtn.style.display =
+            navigationStack.length > 1
+                ? 'inline-block'
+                : 'none';
+    };
+
+    const navigateTo = (page) => {
+
+        if (!page) {
+            closeModal();
+            return;
+        }
+
+        const { type, context } = page;
+
+        switch (type) {
+
+            case 'regionais':
+                loadRegionais(
+                    context.produtoId,
+                    context.produtoNome
+                );
+                break;
+
+            case 'equipamentos':
+                loadEquipamentos(
+                    context.produtoId,
+                    context.regionalId,
+                    context.regionalNome
+                );
+                break;
+
+            case 'historico':
+                loadHistorico(
+                    context.equipamentoId,
+                    context.produtoId,
+                    context.regionalId,
+                    context.produtoNome
+                );
+                break;
+
+            default:
+                closeModal();
         }
     };
 
-    // Função para atualizar a pilha e exibir o botão voltar
-    function pushToStack(type, title, context) {
-        navigationStack.push({ type, title, context });
-        backBtn.style.display = navigationStack.length > 0 ? 'inline-block' : 'none';
-        modalTitle.innerText = title;
-    }
+    const popStack = () => {
 
-    function popStack() {
         if (navigationStack.length <= 1) {
             closeModal();
             return;
         }
-        navigationStack.pop(); // remove o atual
-        const previous = navigationStack[navigationStack.length-1];
-        modalTitle.innerText = previous.title;
-        // Recarrega a tela anterior de acordo com o tipo
-        if (previous.type === 'regionais') {
-            loadRegionais(previous.context.produtoId, previous.context.produtoNome);
-        } else if (previous.type === 'equipamentos') {
-            loadEquipamentos(previous.context.produtoId, previous.context.regionalId, previous.context.regionalNome);
-        } else if (previous.type === 'historico') {
-            loadHistorico(previous.context.equipamentoId, previous.context.produtoId, previous.context.regionalId, previous.context.produtoNome);
-        }
-    }
 
-    // Carregar regionais (primeiro nível)
-    async function loadRegionais(produtoId, produtoNome) {
-        setLoading(true);
-        try {
-            const data = await api.regionais(produtoId);
-            let html = `<div class="row g-3">`;
-            if (data.regionais && data.regionais.length) {
-                data.regionais.forEach(r => {
-                    html += `
-                        <div class="col-md-6">
-                            <div class="regional-card" data-id="${r.regional__id}" data-nome="${r.regional__nome}">
-                                <div class="fw-semibold">${escapeHtml(r.regional__nome)}</div>
-                                <div class="small text-secondary mt-2">Total: ${r.total || 0}</div>
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                html = `<div class="alert alert-info">{% trans "Nenhuma regional encontrada para este produto." %}</div>`;
+        navigationStack.pop();
+
+        const previous =
+            navigationStack[navigationStack.length - 1];
+
+        navigateTo(previous);
+    };
+
+    const showError = (message) => {
+
+        modalBody.innerHTML = `
+            <div class="alert alert-danger m-3">
+                ${message}
+            </div>
+
+            <div class="px-3 pb-3">
+                <button
+                    class="btn btn-sm btn-secondary"
+                    id="modalRetryBtn">
+                    {% trans "Tentar novamente" %}
+                </button>
+            </div>
+        `;
+
+        const retryBtn =
+            document.getElementById('modalRetryBtn');
+
+        if (!retryBtn) return;
+
+        retryBtn.addEventListener('click', () => {
+
+            const current =
+                navigationStack[navigationStack.length - 1];
+
+            navigateTo(current);
+        });
+    };
+
+    // =========================
+    // API
+    // =========================
+
+    const api = {
+
+        async request(url, options = {}) {
+
+            const response = await fetch(url, options);
+
+            if (!response.ok) {
+
+                let errorMessage =
+                    `HTTP ${response.status}`;
+
+                try {
+
+                    const data = await response.json();
+
+                    if (data.erro) {
+                        errorMessage = data.erro;
+                    }
+
+                } catch (_) {}
+
+                throw new Error(errorMessage);
             }
-            html += `</div>`;
+
+            return response;
+        },
+
+        async regionais(produtoId) {
+
+            const response = await this.request(
+                `/api/produto/${produtoId}/regionais/`
+            );
+
+            return response.json();
+        },
+
+        async equipamentos(produtoId, regionalId) {
+
+            const response = await this.request(
+                `/equipamentos-por-regional/${produtoId}/${regionalId}/`
+            );
+
+            return response.json();
+        },
+
+        async historico(equipamentoId) {
+
+            const response = await this.request(
+                `/historico-modal/${equipamentoId}/`
+            );
+
+            return response.text();
+        },
+
+        async marcarSick(equipamentoId) {
+
+            return this.request(
+                `/marcar-sick/${equipamentoId}/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                }
+            );
+        }
+    };
+
+    // =========================
+    // REGIONAIS
+    // =========================
+
+    async function loadRegionais(
+        produtoId,
+        produtoNome
+    ) {
+
+        setLoading();
+
+        try {
+
+            const data =
+                await api.regionais(produtoId);
+
+            pushToStack(
+                'regionais',
+                produtoNome,
+                {
+                    produtoId,
+                    produtoNome
+                }
+            );
+
+            if (!data.regionais?.length) {
+
+                modalBody.innerHTML = `
+                    <div class="alert alert-info">
+                        {% trans "Nenhuma regional encontrada para este produto." %}
+                    </div>
+                `;
+
+                return;
+            }
+
+            let html = '<div class="row g-3">';
+
+            data.regionais.forEach((regional) => {
+
+                html += `
+                    <div class="col-md-6">
+
+                        <div
+                            class="regional-card"
+                            data-id="${regional.regional__id}"
+                            data-nome="${escapeHtml(regional.regional__nome)}">
+
+                            <div class="fw-semibold">
+                                ${escapeHtml(regional.regional__nome)}
+                            </div>
+
+                            <div class="small text-secondary mt-2">
+                                Total: ${regional.total || 0}
+                            </div>
+
+                        </div>
+
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
             modalBody.innerHTML = html;
 
-            // Atualiza pilha e título
-            pushToStack('regionais', produtoNome, { produtoId, produtoNome });
+            document
+                .querySelectorAll('.regional-card')
+                .forEach((card) => {
 
-            // Eventos nos cards
-            document.querySelectorAll('.regional-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const regId = card.dataset.id;
-                    const regNome = card.dataset.nome;
-                    loadEquipamentos(produtoId, regId, regNome);
+                    card.addEventListener('click', () => {
+
+                        loadEquipamentos(
+                            produtoId,
+                            card.dataset.id,
+                            card.dataset.nome
+                        );
+                    });
                 });
-            });
-        } catch (err) {
-            console.error(err);
-            showError(`{% trans "Erro ao carregar regionais:" %} ${err.message}`);
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                `{% trans "Erro ao carregar regionais:" %} ${error.message}`
+            );
         }
     }
 
-    // Carregar equipamentos (segundo nível)
-    async function loadEquipamentos(produtoId, regionalId, regionalNome) {
-        setLoading(true);
+    // =========================
+    // EQUIPAMENTOS
+    // =========================
+
+    async function loadEquipamentos(
+        produtoId,
+        regionalId,
+        regionalNome
+    ) {
+
+        setLoading();
+
         try {
-            const data = await api.equipamentos(produtoId, regionalId);
+
+            const data =
+                await api.equipamentos(
+                    produtoId,
+                    regionalId
+                );
+
+            const produtoNome =
+                navigationStack[0]?.context?.produtoNome || '';
+
+            pushToStack(
+                'equipamentos',
+                `${produtoNome} - ${regionalNome}`,
+                {
+                    produtoId,
+                    regionalId,
+                    regionalNome,
+                    produtoNome
+                }
+            );
+
             let html = `
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0 fw-semibold">${escapeHtml(regionalNome)}</h6>
-                    <span class="badge bg-secondary">${data.equipamentos.length} {% trans "equipamento(s)" %}</span>
+
+                    <h6 class="mb-0 fw-semibold">
+                        ${escapeHtml(regionalNome)}
+                    </h6>
+
+                    <span class="badge bg-secondary">
+                        ${data.equipamentos.length}
+                        {% trans "equipamento(s)" %}
+                    </span>
+
                 </div>
+
                 <div class="table-responsive">
+
                     <table class="table table-hover align-middle">
+
                         <thead class="table-light">
                             <tr>
                                 <th width="40"></th>
@@ -387,128 +646,248 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <th width="100"></th>
                             </tr>
                         </thead>
+
                         <tbody>
             `;
-            data.equipamentos.forEach(eq => {
+
+            data.equipamentos.forEach((eq) => {
+
+                const podeMarcarSick =
+                    !STATUS_BLOQUEADOS_SICK.includes(eq.status);
+
                 html += `
-                    <tr class="eq-row" data-id="${eq.id}">
-                        <td><input type="checkbox" value="${eq.id}"></td>
-                        <td class="text-nowrap fw-semibold">${escapeHtml(eq.numero_serie || '-')}</td>
-                        <td class="text-nowrap">${escapeHtml(eq.patrimonio || '-')}</td>
-                        <td><span class="badge bg-light text-dark border">${escapeHtml(eq.status)}</span></td>
+                    <tr
+                        class="eq-row"
+                        data-id="${eq.id}">
+
                         <td>
-                            ${eq.status !== 'SICK' ? `<button class="btn btn-sm btn-outline-danger btn-sick" data-id="${eq.id}" data-serie="${escapeHtml(eq.numero_serie)}">SICK</button>` : ''}
+                            <input
+                                type="checkbox"
+                                value="${eq.id}">
                         </td>
+
+                        <td class="text-nowrap fw-semibold">
+                            ${escapeHtml(eq.numero_serie || '-')}
+                        </td>
+
+                        <td class="text-nowrap">
+                            ${escapeHtml(eq.patrimonio || '-')}
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                ${escapeHtml(eq.status)}
+                            </span>
+                        </td>
+
+                        <td>
+                            ${podeMarcarSick
+                                ? `
+                                    <button
+                                        class="btn btn-sm btn-outline-danger btn-sick"
+                                        data-id="${eq.id}"
+                                        data-serie="${escapeHtml(eq.numero_serie)}">
+
+                                        SICK
+
+                                    </button>
+                                `
+                                : ''
+                            }
+                        </td>
+
                     </tr>
                 `;
             });
-            html += `</tbody></table></div>`;
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
             modalBody.innerHTML = html;
 
-            // Atualiza título e pilha (usando nome do produto + regional)
-            const produtoNomeOriginal = navigationStack.length ? navigationStack[0].title : '';
-            const titulo = `${produtoNomeOriginal} - ${regionalNome}`;
-            pushToStack('equipamentos', titulo, { produtoId, regionalId, regionalNome, produtoNome: produtoNomeOriginal });
+            // Histórico
+            document
+                .querySelectorAll('.eq-row')
+                .forEach((row) => {
 
-            // Evento de clique na linha (abrir histórico)
-            document.querySelectorAll('.eq-row').forEach(row => {
-                row.addEventListener('click', (e) => {
-                    if (e.target.closest('button') || e.target.type === 'checkbox') return;
-                    const eqId = row.dataset.id;
-                    loadHistorico(eqId, produtoId, regionalId, produtoNomeOriginal);
-                });
-            });
+                    row.addEventListener('click', (e) => {
 
-            // Botões SICK
-            document.querySelectorAll('.btn-sick').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const eqId = btn.dataset.id;
-                    const serie = btn.dataset.serie;
-                    if (!confirm(`{% trans "Marcar" %} ${serie} {% trans "como SICK?" %}`)) return;
-                    try {
-                        await api.marcarSick(eqId);
-                        loadEquipamentos(produtoId, regionalId, regionalNome);
-                    } catch (err) {
-                        alert(`{% trans "Erro ao marcar SICK:" %} ${err.message}`);
-                    }
+                        if (
+                            e.target.closest('button') ||
+                            e.target.type === 'checkbox'
+                        ) {
+                            return;
+                        }
+
+                        loadHistorico(
+                            row.dataset.id,
+                            produtoId,
+                            regionalId,
+                            produtoNome
+                        );
+                    });
                 });
-            });
-        } catch (err) {
-            console.error(err);
-            showError(`{% trans "Erro ao carregar equipamentos:" %} ${err.message}`);
+
+            // SICK
+            document
+                .querySelectorAll('.btn-sick')
+                .forEach((button) => {
+
+                    button.addEventListener('click', async (e) => {
+
+                        e.stopPropagation();
+
+                        const equipamentoId =
+                            button.dataset.id;
+
+                        const serie =
+                            button.dataset.serie;
+
+                        const confirmacao = confirm(
+                            `{% trans "Marcar" %} ${serie} {% trans "como SICK?" %}`
+                        );
+
+                        if (!confirmacao) return;
+
+                        try {
+
+                            await api.marcarSick(
+                                equipamentoId
+                            );
+
+                            await loadEquipamentos(
+                                produtoId,
+                                regionalId,
+                                regionalNome
+                            );
+
+                        } catch (error) {
+
+                            console.error(error);
+
+                            alert(error.message);
+                        }
+                    });
+                });
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                `{% trans "Erro ao carregar equipamentos:" %} ${error.message}`
+            );
         }
     }
 
-    // Carregar histórico (terceiro nível)
-    async function loadHistorico(equipamentoId, produtoId, regionalId, produtoNome) {
-        setLoading(true);
+    // =========================
+    // HISTÓRICO
+    // =========================
+
+    async function loadHistorico(
+        equipamentoId,
+        produtoId,
+        regionalId,
+        produtoNome
+    ) {
+
+        setLoading();
+
         try {
-            const htmlContent = await api.historico(equipamentoId);
-            let html = `<div>${htmlContent}</div>
-                        <div class="mt-3">
-                            <button id="historyBackBtn" class="btn btn-sm btn-secondary">← {% trans "Voltar para equipamentos" %}</button>
-                        </div>`;
-            modalBody.innerHTML = html;
 
-            // Atualiza pilha e título
-            const titulo = `${produtoNome} - {% trans "Histórico do equipamento" %}`;
-            pushToStack('historico', titulo, { equipamentoId, produtoId, regionalId, produtoNome });
+            const htmlContent =
+                await api.historico(equipamentoId);
 
-            // Botão "Voltar para equipamentos"
-            const histBackBtn = document.getElementById('historyBackBtn');
-            if (histBackBtn) {
-                histBackBtn.addEventListener('click', () => {
-                    // Remove o nível atual e recarrega equipamentos
-                    navigationStack.pop();
-                    const previous = navigationStack[navigationStack.length-1];
-                    if (previous && previous.type === 'equipamentos') {
-                        modalTitle.innerText = previous.title;
-                        loadEquipamentos(previous.context.produtoId, previous.context.regionalId, previous.context.regionalNome);
-                    } else {
-                        // fallback
-                        closeModal();
-                    }
-                });
-            }
-        } catch (err) {
-            console.error(err);
-            showError(`{% trans "Erro ao carregar histórico:" %} ${err.message}`);
+            pushToStack(
+                'historico',
+                `${produtoNome} - {% trans "Histórico do equipamento" %}`,
+                {
+                    equipamentoId,
+                    produtoId,
+                    regionalId,
+                    produtoNome
+                }
+            );
+
+            modalBody.innerHTML = `
+                <div>
+                    ${htmlContent}
+                </div>
+
+                <div class="mt-3">
+
+                    <button
+                        id="historyBackBtn"
+                        class="btn btn-sm btn-secondary">
+
+                        ← {% trans "Voltar para equipamentos" %}
+
+                    </button>
+
+                </div>
+            `;
+
+            document
+                .getElementById('historyBackBtn')
+                ?.addEventListener('click', popStack);
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                `{% trans "Erro ao carregar histórico:" %} ${error.message}`
+            );
         }
     }
 
-    // Função para escapar HTML
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
+    // =========================
+    // EVENTOS
+    // =========================
+
+    document
+        .querySelectorAll('.row-click')
+        .forEach((row) => {
+
+            row.addEventListener('click', () => {
+
+                const produtoId =
+                    row.dataset.id;
+
+                const produtoNome =
+                    row.dataset.nome;
+
+                if (!produtoId) return;
+
+                navigationStack = [];
+
+                openModal();
+
+                loadRegionais(
+                    produtoId,
+                    produtoNome
+                );
+            });
         });
-    }
 
-    // Eventos principais: clique nas linhas da tabela principal
-    document.querySelectorAll('.row-click').forEach(row => {
-        row.addEventListener('click', () => {
-            const produtoId = row.dataset.id;
-            const produtoNome = row.dataset.nome;
-            if (!produtoId) return;
-            // Reseta a pilha e carrega regionais
-            navigationStack = [];
-            backBtn.style.display = 'none';
-            openModal();
-            loadRegionais(produtoId, produtoNome);
-        });
-    });
+    closeBtn.addEventListener(
+        'click',
+        closeModal
+    );
 
-    // Fechar modal
-    closeBtn.addEventListener('click', closeModal);
-    backBtn.addEventListener('click', () => popStack());
+    backBtn.addEventListener(
+        'click',
+        popStack
+    );
 
-    // Fechar ao clicar fora do modal (backdrop)
     modalEl.addEventListener('click', (e) => {
-        if (e.target === modalEl) closeModal();
+
+        if (e.target === modalEl) {
+            closeModal();
+        }
     });
 });
 </script>
