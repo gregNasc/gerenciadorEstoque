@@ -1723,6 +1723,104 @@ def caixa_comunicados(request):
     )
 
 @login_required
+def detalhe_comunicado(request, comunicado_id):
+
+    perfil = request.user.perfil
+
+    comunicado = get_object_or_404(
+
+        Comunicado.objects.prefetch_related(
+            'leituras__usuario',
+            'usuarios'
+        ).filter(
+
+            Q(enviar_para_todos=True) |
+            Q(usuarios=request.user) |
+            Q(empresa=perfil.empresa)
+
+        ).distinct(),
+
+        id=comunicado_id
+    )
+
+    # REGISTRA LEITURA
+    ComunicadoLeitura.objects.get_or_create(
+        comunicado=comunicado,
+        usuario=request.user
+    )
+
+   # ANALYTICS (ADMIN)
+    leituras = []
+    usuarios_nao_leram = []
+
+    total_enviados = 0
+    total_lidos = 0
+    percentual_lido = 0
+
+    if perfil.role == 'admin':
+
+        # DESTINATÁRIOS
+        if comunicado.enviar_para_todos:
+
+            destinatarios = User.objects.filter(
+                is_active=True
+            )
+
+            if comunicado.empresa:
+
+                destinatarios = destinatarios.filter(
+                    perfil__empresa=comunicado.empresa
+                )
+
+        else:
+
+            destinatarios = comunicado.usuarios.all()
+
+        total_enviados = destinatarios.count()
+
+        # LEITURAS
+        leituras = comunicado.leituras.select_related(
+            'usuario'
+        ).order_by('-lido_em')
+
+        usuarios_leram_ids = leituras.values_list(
+            'usuario_id',
+            flat=True
+        )
+
+        total_lidos = leituras.count()
+
+        # NÃO LERAM
+        usuarios_nao_leram = destinatarios.exclude(
+            id__in=usuarios_leram_ids
+        )
+
+        # PERCENTUAL
+        if total_enviados > 0:
+
+            percentual_lido = int(
+                (total_lidos / total_enviados) * 100
+            )
+
+    return render(
+        request,
+        'estoque/comunicados/detalhe.html',
+        {
+            'comunicado': comunicado,
+
+            'leituras': leituras,
+
+            'usuarios_nao_leram': usuarios_nao_leram,
+
+            'total_enviados': total_enviados,
+
+            'total_lidos': total_lidos,
+
+            'percentual_lido': percentual_lido,
+        }
+    )
+
+@login_required
 @require_POST
 def ocultar_comunicado(request, comunicado_id):
 
@@ -1744,36 +1842,6 @@ def ocultar_comunicado(request, comunicado_id):
 
     return redirect('estoque:caixa_comunicados')
 
-@login_required
-def detalhe_comunicado(request, comunicado_id):
-
-    perfil = request.user.perfil
-
-    comunicado = get_object_or_404(
-
-        Comunicado.objects.filter(
-
-            Q(enviar_para_todos=True) |
-            Q(usuarios=request.user) |
-            Q(empresa=perfil.empresa)
-
-        ).distinct(),
-
-        id=comunicado_id
-    )
-
-    ComunicadoLeitura.objects.get_or_create(
-        comunicado=comunicado,
-        usuario=request.user
-    )
-
-    return render(
-        request,
-        'estoque/comunicados/detalhe.html',
-        {
-            'comunicado': comunicado
-        }
-    )
 
 @login_required
 def caixa_alertas(request):

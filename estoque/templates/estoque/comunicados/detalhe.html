@@ -21,59 +21,73 @@
     <!-- CARD -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
 
-        <!-- HEADER -->
         <div class="card-body p-4 p-lg-5">
 
-            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-4">
+            <!-- HEADER -->
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3 mb-4">
 
-                <div>
+                <div class="flex-grow-1">
 
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                    <!-- BADGE -->
+                    <div class="mb-3">
 
                         {% if comunicado.tipo == 'URGENTE' %}
+
                             <span class="badge bg-danger px-3 py-2 rounded-pill">
                                 <i class="bi bi-exclamation-triangle-fill me-1"></i>
                                 {% trans "Urgente" %}
                             </span>
 
                         {% elif comunicado.tipo == 'MANUTENCAO' %}
+
                             <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">
                                 <i class="bi bi-tools me-1"></i>
                                 {% trans "Manutenção" %}
                             </span>
 
                         {% elif comunicado.tipo == 'OPERACIONAL' %}
+
                             <span class="badge bg-primary px-3 py-2 rounded-pill">
                                 <i class="bi bi-gear-fill me-1"></i>
                                 {% trans "Operacional" %}
                             </span>
 
                         {% else %}
+
                             <span class="badge bg-secondary px-3 py-2 rounded-pill">
                                 <i class="bi bi-info-circle-fill me-1"></i>
                                 {% trans "Informativo" %}
                             </span>
+
                         {% endif %}
 
                     </div>
 
-                    <h2 class="fw-bold mb-2">
+                    <!-- TÍTULO -->
+                    <h2 class="fw-bold mb-3">
                         {{ comunicado.titulo }}
                     </h2>
 
-                    <div class="text-muted small d-flex flex-wrap gap-2 align-items-center">
+                    <!-- META -->
+                    <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
 
                         <span>
                             <i class="bi bi-calendar-event me-1"></i>
                             {{ comunicado.criado_em|date:"d/m/Y H:i" }}
                         </span>
 
-                        <span>•</span>
-
                         <span>
                             <i class="bi bi-person-circle me-1"></i>
                             {{ comunicado.criado_por.username }}
                         </span>
+
+                        {% if comunicado.expira_em %}
+                        <span>
+                            <i class="bi bi-clock-history me-1"></i>
+                            {% trans "Expira em" %}:
+                            {{ comunicado.expira_em|date:"d/m/Y" }}
+                        </span>
+                        {% endif %}
 
                     </div>
 
@@ -81,8 +95,90 @@
 
             </div>
 
+            <!-- ESTATÍSTICAS ADMIN -->
+            {% if request.user.perfil.role == 'admin' %}
+
+            <div class="row g-3 mb-4">
+
+                <div class="col-md-4">
+
+                    <div class="card border-0 bg-light rounded-4 h-100">
+
+                        <div class="card-body">
+
+                            <div class="text-muted small mb-2">
+                                {% trans "Total enviados" %}
+                            </div>
+
+                            <div class="fs-3 fw-bold">
+                                {{ total_enviados }}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card border-0 bg-light rounded-4 h-100">
+
+                        <div class="card-body">
+
+                            <div class="text-muted small mb-2">
+                                {% trans "Total lidos" %}
+                            </div>
+
+                            <div class="fs-3 fw-bold text-success">
+                                {{ total_lidos }}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card border-0 bg-light rounded-4 h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+
+                                <span class="text-muted small">
+                                    {% trans "Leitura" %}
+                                </span>
+
+                                <span class="fw-semibold">
+                                    {{ percentual_lido }}%
+                                </span>
+
+                            </div>
+
+                            <div class="progress rounded-pill"
+                                 style="height: 10px;">
+
+                                <div class="progress-bar"
+                                     role="progressbar"
+                                     style="width: {{ percentual_lido }}%;"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
             <!-- MENSAGEM -->
-            <div class="bg-light rounded-4 p-4 border mt-4">
+            <div class="bg-light border rounded-4 p-4">
 
                 <div class="lh-lg comunicado-texto">
 
@@ -97,15 +193,20 @@
 
             <div class="mt-5">
 
-                <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
 
                     <h5 class="fw-bold mb-0">
+
                         <i class="bi bi-paperclip me-2"></i>
                         {% trans "Anexos" %}
+
                     </h5>
 
                     <span class="text-muted small">
-                        {{ comunicado.arquivos.count }} arquivo{{ comunicado.arquivos.count|pluralize }}
+
+                        {{ comunicado.arquivos.count }}
+                        arquivo{{ comunicado.arquivos.count|pluralize }}
+
                     </span>
 
                 </div>
@@ -127,27 +228,33 @@
                                 <div class="card-body d-flex align-items-center gap-3">
 
                                     <!-- ÍCONE -->
-                                    <div class="anexo-icon flex-shrink-0">
+                                    <div class="flex-shrink-0">
 
                                         {% if '.pdf' in nome %}
+
                                             <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png"
                                                  width="48">
 
                                         {% elif '.xlsx' in nome or '.xls' in nome or '.csv' in nome %}
+
                                             <img src="https://cdn-icons-png.flaticon.com/512/732/732220.png"
                                                  width="48">
 
                                         {% elif '.zip' in nome or '.rar' in nome %}
+
                                             <img src="https://cdn-icons-png.flaticon.com/512/2306/2306183.png"
                                                  width="48">
 
                                         {% elif '.txt' in nome %}
+
                                             <img src="https://cdn-icons-png.flaticon.com/512/3022/3022256.png"
                                                  width="48">
 
                                         {% else %}
+
                                             <img src="https://cdn-icons-png.flaticon.com/512/2991/2991112.png"
                                                  width="48">
+
                                         {% endif %}
 
                                     </div>
@@ -169,7 +276,7 @@
 
                                     </div>
 
-                                    <!-- AÇÃO -->
+                                    <!-- DOWNLOAD -->
                                     <div class="text-muted">
 
                                         <i class="bi bi-download fs-5"></i>
@@ -194,6 +301,157 @@
 
             {% endif %}
 
+            <!-- LEITURAS -->
+            {% if request.user.perfil.role == 'admin' %}
+
+            <div class="mt-5">
+
+                <div class="row g-4">
+
+                    <!-- LERAM -->
+                    <div class="col-lg-6">
+
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                            <div class="card-header bg-success text-white border-0 rounded-top-4">
+
+                                <h6 class="mb-0">
+
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+
+                                    {% trans "Usuários que visualizaram" %}
+                                    ({{ total_lidos }})
+
+                                </h6>
+
+                            </div>
+
+                            <div class="card-body p-0">
+
+                                {% if leituras %}
+
+                                    <div class="list-group list-group-flush">
+
+                                        {% for leitura in leituras %}
+
+                                        <div class="list-group-item border-0 py-3 px-4">
+
+                                            <div class="d-flex justify-content-between align-items-center">
+
+                                                <div>
+
+                                                    <div class="fw-semibold">
+                                                        {{ leitura.usuario.username }}
+                                                    </div>
+
+                                                    <small class="text-muted">
+
+                                                        {{ leitura.usuario.get_full_name }}
+
+                                                    </small>
+
+                                                </div>
+
+                                                <small class="text-muted">
+
+                                                    {{ leitura.lido_em|date:"d/m/Y H:i" }}
+
+                                                </small>
+
+                                            </div>
+
+                                        </div>
+
+                                        {% endfor %}
+
+                                    </div>
+
+                                {% else %}
+
+                                    <div class="p-4 text-muted text-center">
+
+                                        {% trans "Nenhum usuário visualizou ainda." %}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- NÃO LERAM -->
+                    <div class="col-lg-6">
+
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                            <div class="card-header bg-danger text-white border-0 rounded-top-4">
+
+                                <h6 class="mb-0">
+
+                                    <i class="bi bi-x-circle-fill me-2"></i>
+
+                                    {% trans "Usuários que ainda não visualizaram" %}
+                                    ({{ usuarios_nao_leram.count }})
+
+                                </h6>
+
+                            </div>
+
+                            <div class="card-body p-0">
+
+                                {% if usuarios_nao_leram %}
+
+                                    <div class="list-group list-group-flush">
+
+                                        {% for usuario in usuarios_nao_leram %}
+
+                                        <div class="list-group-item border-0 py-3 px-4">
+
+                                            <div class="fw-semibold">
+
+                                                {{ usuario.username }}
+
+                                            </div>
+
+                                            <small class="text-muted">
+
+                                                {{ usuario.get_full_name }}
+
+                                            </small>
+
+                                        </div>
+
+                                        {% endfor %}
+
+                                    </div>
+
+                                {% else %}
+
+                                    <div class="p-4 text-success text-center fw-semibold">
+
+                                        <i class="bi bi-check-circle-fill me-2"></i>
+
+                                        {% trans "Todos os usuários visualizaram." %}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
         </div>
 
     </div>
@@ -202,6 +460,10 @@
 
 <style>
 
+.comunicado-texto{
+    font-size: .97rem;
+}
+
 .anexo-card{
     transition: all .18s ease;
     border-radius: 18px;
@@ -209,11 +471,19 @@
 
 .anexo-card:hover{
     transform: translateY(-3px);
-    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.12)!important;
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.12)!important;
 }
 
-.comunicado-texto{
-    font-size: .97rem;
+.progress{
+    background-color: rgba(0,0,0,.08);
+}
+
+.list-group-item{
+    transition: background .15s ease;
+}
+
+.list-group-item:hover{
+    background: rgba(0,0,0,.02);
 }
 
 </style>

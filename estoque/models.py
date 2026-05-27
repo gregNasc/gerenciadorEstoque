@@ -512,7 +512,7 @@ class ComunicadoArquivo(models.Model):
 
 class ComunicadoLeitura(models.Model):
 
-    comunicado = models.ForeignKey(Comunicado, on_delete=models.CASCADE)
+    comunicado = models.ForeignKey(Comunicado, on_delete=models.CASCADE, related_name='leituras')
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     lido_em = models.DateTimeField(auto_now_add=True)
 
