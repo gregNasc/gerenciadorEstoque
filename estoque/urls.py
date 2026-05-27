@@ -47,7 +47,7 @@ urlpatterns = [
 
 
     # ---------------- TRANSFERÊNCIAS ----------------
-    path('transferencias/', lista_transferencias, name='lista_transferencias'),
+#    path('transferencias/', lista_transferencias, name='lista_transferencias'),
 #    path('transferencias/criar/', views.transferencia_criar, name='transferencia_criar'),
 #    path('transferir-em-lote/', views.transferir_em_lote, name='transferir_em_lote'),
 #    path('transferir-lote/', views.transferir_em_lote, name='transferir_lote'),
@@ -56,6 +56,7 @@ urlpatterns = [
     path('transferencias/separacao/', views.caixa_separacao, name='caixa_separacao'),
     path('transferencias/recebimentos/', views.caixa_transferencias, name='caixa_transferencias'),
     path('transferencias/', views.lista_transferencias, name='lista_transferencias'),
+    path('transferencias/<int:id>/selecionados/', views.transferencia_selecionados, name='transferencia_selecionados'),
 
 
 

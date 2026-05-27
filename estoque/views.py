@@ -2534,6 +2534,24 @@ def caixa_solicitacoes(request):
 #    })
 
 @login_required
+def transferencia_selecionados(request, id):
+
+    transferencia = get_object_or_404(
+        Transferencia.objects.prefetch_related(
+            'itens__equipamento__produto'
+        ),
+        id=id
+    )
+
+    return render(
+        request,
+        'estoque/transferencia/selecionados.html',
+        {
+            'transferencia': transferencia
+        }
+    )
+
+@login_required
 @role_required('gestor', 'operador', 'admin')
 def caixa_separacao(request):
 
