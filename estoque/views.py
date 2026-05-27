@@ -8,7 +8,7 @@ from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
 from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
-from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
+from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
@@ -25,6 +25,7 @@ from .utils import EstoqueService
 from .security import secure_queryset
 #from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
 import json
+from django.urls import reverse
 import re
 from uuid import uuid4
 from collections import defaultdict
@@ -1845,7 +1846,6 @@ def ocultar_comunicado(request, comunicado_id):
 
     return redirect('estoque:caixa_comunicados')
 
-
 @login_required
 def caixa_alertas(request):
 
@@ -2409,6 +2409,32 @@ def painel_alocacao(request, solicitacao_id):
 
                 solicitacao.save(
                     update_fields=['status']
+                )
+
+                # COMUNICADO PARA O SOLICITANTE
+                comunicado = Comunicado.objects.create(
+
+                    titulo=(
+                        f'Solicitação #{solicitacao.id} aprovada'
+                    ),
+
+                    mensagem=(
+
+                        f'Sua solicitação foi aprovada.\n\n'
+
+                        f'As transferências dos equipamentos '
+                        f'já foram iniciadas.'
+                    ),
+
+                    tipo='OPERACIONAL',
+
+                    criado_por=request.user,
+
+                    ativo=True
+                )
+
+                comunicado.usuarios.add(
+                    solicitacao.criado_por
                 )
 
                 messages.success(
@@ -3022,6 +3048,106 @@ def transferencia_detalhe(request, id):
         'produto': alocacao.produto,
         'regional_origem': transferencia.regional_origem,
     })
+
+@login_required
+@role_required('admin')
+@require_POST
+def recusar_solicitacao(request, solicitacao_id):
+
+    solicitacao = get_object_or_404(
+        Solicitacao,
+        id=solicitacao_id,
+        status='PENDENTE'
+    )
+
+    motivo = request.POST.get('motivo_recusa')
+
+    if not motivo:
+
+        messages.error(
+            request,
+            'Informe o motivo da recusa.'
+        )
+
+        return redirect(
+            'estoque:caixa_solicitacoes'
+        )
+
+    solicitacao.status = 'REJEITADO'
+
+    solicitacao.recusado_por = request.user
+
+    solicitacao.data_recusa = timezone.now()
+
+    solicitacao.motivo_recusa = motivo
+
+    solicitacao.save()
+
+    # NOTIFICAÇÃO
+    Notificacao.objects.create(
+
+        usuario=solicitacao.criado_por,
+
+        solicitacao=solicitacao,
+
+        tipo='SOLICITACAO',
+
+        evento='REJEITADA',
+
+        mensagem=(
+            f'Solicitação #{solicitacao.id} recusada.'
+        )
+    )
+
+    # MENSAGEM DETALHADA
+    comunicado = Comunicado.objects.create(
+
+        titulo=f'Solicitação #{solicitacao.id} recusada',
+
+        mensagem=(
+
+            f'Sua solicitação foi recusada.\n\n'
+
+            f'Motivo da recusa:\n'
+            f'{motivo}'
+        ),
+
+        tipo='URGENTE',
+
+        criado_por=request.user,
+
+        ativo=True
+    )
+
+    comunicado.usuarios.add(
+        solicitacao.criado_por
+    )
+
+    messages.success(
+        request,
+        'Solicitação recusada com sucesso.'
+    )
+
+    return redirect(
+        'estoque:caixa_solicitacoes'
+    )
+
+@login_required
+def minhas_solicitacoes(request):
+
+    solicitacoes = (
+        Solicitacao.objects
+        .filter(criado_por=request.user)
+        .order_by('-criado_em')
+    )
+
+    return render(
+        request,
+        'estoque/solicitacoes/minhas.html',
+        {
+            'solicitacoes': solicitacoes
+        }
+    )
 
 @login_required
 @require_POST

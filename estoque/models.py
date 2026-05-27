@@ -243,6 +243,9 @@ class Solicitacao(models.Model):
     regional_origem = models.ForeignKey(Base, null=True, blank=True, on_delete=models.SET_NULL, related_name='origens')
     criado_em = models.DateTimeField(auto_now_add=True)
     data_aprovacao = models.DateTimeField(null=True, blank=True)
+    motivo_recusa = models.TextField(blank=True, null=True)
+    recusado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='recusas_solicitacao')
+    data_recusa = models.DateTimeField(null=True, blank=True)
 
 class SolicitacaoItem(models.Model):
     class Meta:

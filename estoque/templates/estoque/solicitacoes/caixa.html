@@ -3,21 +3,24 @@
 
 {% block content %}
 
-<div class="container mt-4">
+<div class="container-fluid px-4 mt-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
 
         <div>
-            <h3 class="mb-1">
-                {% trans "Pedidos Pendentes" %}
-            </h3>
 
-            <small class="text-muted">
-                {% trans "Solicitações aguardando separação e alocação" %}
-            </small>
+            <h2 class="fw-bold mb-1">
+                {% trans "Pedidos Pendentes" %}
+            </h2>
+
+            <p class="text-muted mb-0">
+                {% trans "Solicitações aguardando aprovação ou encaminhamento" %}
+            </p>
+
         </div>
 
-        <span class="badge bg-primary fs-6">
+        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
             {{ solicitacoes|length }} pedido(s)
         </span>
 
@@ -25,101 +28,111 @@
 
     {% for solicitacao in solicitacoes %}
 
-    <div class="card shadow-sm mb-3 border-0">
+    <div class="card border-0 shadow-sm mb-4 rounded-4">
 
-        <div class="card-body">
+        <div class="card-body p-4">
 
-            <div class="row align-items-center">
+            <!-- TOPO -->
+            <div class="row g-4 align-items-center">
 
                 <!-- ID -->
-                <div class="col-md-2">
+                <div class="col-lg-2">
 
-                    <h5 class="mb-1">
+                    <div class="fw-bold fs-5">
                         #{{ solicitacao.id }}
-                    </h5>
+                    </div>
 
                     <small class="text-muted">
-                        {{ solicitacao.data_criacao|date:"d/m/Y H:i" }}
+                        {{ solicitacao.criado_em|date:"d/m/Y H:i" }}
                     </small>
 
                 </div>
 
                 <!-- REGIONAL -->
-                <div class="col-md-2">
-
-                    <strong>
-                        {{ solicitacao.regional_solicitante.nome }}
-                    </strong>
-
-                    <div class="small text-muted">
-                        Regional solicitante
-                    </div>
-
-                </div>
-
-                <!-- MOTIVO -->
-                <div class="col-md-3">
+                <div class="col-lg-2">
 
                     <div class="fw-semibold">
-                        {{ solicitacao.motivo|truncatechars:60 }}
+                        {{ solicitacao.regional_solicitante.nome }}
                     </div>
 
                     <small class="text-muted">
-                        Motivo da solicitação
+                        {% trans "Regional solicitante" %}
                     </small>
 
                 </div>
 
-                <!-- ITENS -->
-                <div class="col-md-2">
+                <!-- SOLICITANTE -->
+                <div class="col-lg-2">
 
-                    {% for item in solicitacao.itens.all %}
+                    <div class="fw-semibold">
+                        {{ solicitacao.criado_por.username }}
+                    </div>
 
-                        <div class="mb-1">
+                    <small class="text-muted">
+                        {% trans "Solicitante" %}
+                    </small>
 
-                            <span class="fw-semibold">
-                                {{ item.categoria }}
-                            </span>
+                </div>
 
-                            <span class="badge bg-warning text-dark">
-                                {{ item.pendente }}
-                            </span>
+                <!-- MOTIVO -->
+                <div class="col-lg-3">
 
-                        </div>
+                    <div class="fw-semibold text-break">
+                        {{ solicitacao.motivo|truncatechars:80 }}
+                    </div>
 
-                    {% endfor %}
+                    <small class="text-muted">
+                        {% trans "Motivo" %}
+                    </small>
 
                 </div>
 
                 <!-- STATUS -->
-                <div class="col-md-1">
+                <div class="col-lg-1">
 
-                    <span class="badge bg-warning text-dark">
+                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">
                         {{ solicitacao.status }}
                     </span>
 
                 </div>
 
                 <!-- AÇÕES -->
-                <div class="col-md-2 text-end d-flex gap-2 justify-content-end">
+                <div class="col-lg-2">
 
-                    <!-- BOTÃO DETALHES -->
-                    <button class="btn btn-outline-secondary"
-                            type="button"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#detalhes{{ solicitacao.id }}">
+                    <div class="d-flex flex-column gap-2 align-items-stretch">
 
-                        <i class="bi bi-eye"></i>
 
-                    </button>
+                        <!-- APROVAR -->
+                        <a href="{% url 'estoque:painel_alocacao' solicitacao.id %}"
+                           class="btn btn-success btn-sm">
 
-                    <a href="{% url 'estoque:painel_alocacao' solicitacao.id %}"
-                       class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>
+                            {% trans "Encaminhar" %}
 
-                        <i class="bi bi-box-seam"></i>
-                        {% trans "Encaminhar" %}
+                        </a>
 
-                    </a>
+                        <!-- RECUSAR -->
+                        <button class="btn btn-danger btn-sm"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#recusar{{ solicitacao.id }}">
+
+                            <i class="bi bi-x-circle"></i>
+                            {% trans "Recusar" %}
+
+                        </button>
+
+                        <!-- DETALHES -->
+                        <button class="btn btn-outline-secondary btn-sm"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#detalhes{{ solicitacao.id }}">
+
+                            <i class="bi bi-eye"></i>
+
+                        </button>
+
+                    </div>
 
                 </div>
 
@@ -131,98 +144,170 @@
 
                 <hr>
 
-                <div class="row">
+                <div class="row g-4">
 
-                    <div class="col-md-6">
+                    <!-- MOTIVO -->
+                    <div class="col-lg-5">
 
-                        <h6 class="fw-bold">
-                            Motivo
-                        </h6>
+                        <div class="card bg-light border-0 rounded-4 h-100">
 
-                        <p class="mb-3">
-                            {{ solicitacao.motivo|default:"Não informado." }}
-                        </p>
+                            <div class="card-body">
+
+                                <h6 class="fw-bold mb-3">
+                                    {% trans "Motivo da solicitação" %}
+                                </h6>
+
+                                <div class="text-muted">
+
+                                    {{ solicitacao.motivo|linebreaks }}
+
+                                </div>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
-                    <div class="col-md-6">
+                    <!-- INFO -->
+                    <div class="col-lg-3">
 
-                        <h6 class="fw-bold">
-                            Informações adicionais
-                        </h6>
+                        <div class="card bg-light border-0 rounded-4 h-100">
 
-                        <ul class="list-group list-group-flush">
+                            <div class="card-body">
 
-                            <li class="list-group-item">
-                                <strong>Solicitante:</strong>
-                                {{ solicitacao.regional_solicitante.nome }}
-                            </li>
+                                <h6 class="fw-bold mb-3">
+                                    {% trans "Informações" %}
+                                </h6>
 
-                            <li class="list-group-item">
-                                <strong>Status:</strong>
-                                {{ solicitacao.status }}
-                            </li>
+                                <div class="small d-flex flex-column gap-2">
 
-                            <li class="list-group-item">
-                                <strong>Data:</strong>
-                                {{ solicitacao.criado_em|date:"d/m/Y H:i" }}
-                            </li>
+                                    <div>
+                                        <strong>ID:</strong>
+                                        #{{ solicitacao.id }}
+                                    </div>
 
-                        </ul>
+                                    <div>
+                                        <strong>{% trans "Status" %}:</strong>
+                                        {{ solicitacao.status }}
+                                    </div>
+
+                                    <div>
+                                        <strong>{% trans "Data" %}:</strong>
+                                        {{ solicitacao.criado_em|date:"d/m/Y H:i" }}
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ITENS -->
+                    <div class="col-lg-4">
+
+                        <div class="card bg-light border-0 rounded-4 h-100">
+
+                            <div class="card-body">
+
+                                <h6 class="fw-bold mb-3">
+                                    {% trans "Itens solicitados" %}
+                                </h6>
+
+                                <div class="d-flex flex-column gap-2">
+
+                                    {% for item in solicitacao.itens.all %}
+
+                                    <div class="border rounded-3 p-2 bg-white">
+
+                                        <div class="fw-semibold">
+                                            {{ item.categoria }}
+                                        </div>
+
+                                        <small class="text-muted">
+
+                                            {% trans "Quantidade" %}:
+                                            {{ item.quantidade }}
+
+                                            •
+
+                                            {% trans "Pendente" %}:
+                                            {{ item.pendente }}
+
+                                        </small>
+
+                                    </div>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
                 </div>
 
-                <div class="mt-3">
+            </div>
 
-                    <h6 class="fw-bold mb-3">
-                        Itens solicitados
-                    </h6>
+            <!-- RECUSAR -->
+            <div class="collapse mt-4"
+                 id="recusar{{ solicitacao.id }}">
 
-                    <div class="table-responsive">
+                <hr>
 
-                        <table class="table table-sm table-bordered align-middle">
+                <form method="post"
+                      action="{% url 'estoque:recusar_solicitacao' solicitacao.id %}">
 
-                            <thead class="table-light">
+                    {% csrf_token %}
 
-                                <tr>
-                                    <th>Categoria</th>
-                                    <th>Quantidade</th>
-                                    <th>Pendente</th>
-                                </tr>
+                    <div class="card border-danger rounded-4">
 
-                            </thead>
+                        <div class="card-body">
 
-                            <tbody>
+                            <h6 class="fw-bold text-danger mb-3">
 
-                                {% for item in solicitacao.itens.all %}
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                {% trans "Recusar solicitação" %}
 
-                                <tr>
+                            </h6>
 
-                                    <td>
-                                        {{ item.categoria }}
-                                    </td>
+                            <div class="mb-3">
 
-                                    <td>
-                                        {{ item.quantidade }}
-                                    </td>
+                                <label class="form-label fw-semibold">
 
-                                    <td>
-                                        {{ item.pendente }}
-                                    </td>
+                                    {% trans "Motivo da recusa" %}
 
-                                </tr>
+                                </label>
 
-                                {% endfor %}
+                                <textarea name="motivo_recusa"
+                                          class="form-control"
+                                          rows="4"
+                                          required></textarea>
 
-                            </tbody>
+                            </div>
 
-                        </table>
+                            <div class="text-end">
+
+                                <button type="submit"
+                                        class="btn btn-danger">
+
+                                    <i class="bi bi-x-circle me-1"></i>
+                                    {% trans "Confirmar Recusa" %}
+
+                                </button>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
-                </div>
+                </form>
 
             </div>
 
@@ -232,9 +317,11 @@
 
     {% empty %}
 
-    <div class="alert alert-warning">
+    <div class="alert alert-warning shadow-sm border-0 rounded-4">
 
-        {% trans "Nenhum pedido pendente." %}
+        <i class="bi bi-info-circle me-2"></i>
+
+        {% trans "Nenhuma solicitação pendente." %}
 
     </div>
 

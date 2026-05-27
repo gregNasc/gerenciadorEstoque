@@ -57,7 +57,8 @@ urlpatterns = [
     path('transferencias/recebimentos/', views.caixa_transferencias, name='caixa_transferencias'),
     path('transferencias/', views.lista_transferencias, name='lista_transferencias'),
     path('transferencias/<int:id>/selecionados/', views.transferencia_selecionados, name='transferencia_selecionados'),
-
+    path('solicitacoes/<int:solicitacao_id>/recusar/', views.recusar_solicitacao, name='recusar_solicitacao'),
+    path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
 
 
     # ---------------- SOLICITAÇÕES ----------------
