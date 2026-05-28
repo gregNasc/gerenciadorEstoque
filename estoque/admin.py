@@ -11,6 +11,7 @@ from .models import (
     Historico,
     Descricao,
     Base,
+    ComunicadoLeitura,
 )
 
 
@@ -74,6 +75,22 @@ class BaseAdmin(EmpresaAdminMixin, admin.ModelAdmin):
     search_fields = ('nome',)
     ordering = ('empresa', 'nome')
 
+@admin.register(ComunicadoLeitura)
+class ComunicadoLeituraAdmin(admin.ModelAdmin):
+    list_display = (
+        'comunicado',
+        'usuario',
+        'lido_em',
+    )
+
+    search_fields = (
+        'usuario__username',
+        'comunicado__titulo',
+    )
+
+    list_filter = (
+        'lido_em',
+    )
 
 # ================== PRODUTO ==================
 @admin.register(Produto)

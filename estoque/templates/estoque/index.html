@@ -156,7 +156,7 @@
                         </div>
                         {% endfor %}
                     {% else %}
-                        <!-- Exibe as quatro categorias resumidas -->
+                        <!-- Exibe as quatro categorias -->
                         {% for tipo, dados in r.produtos.items %}
                         <div class="d-flex justify-content-between align-items-center mb-2 small">
 
@@ -203,7 +203,7 @@
                         <strong class="text-danger">{{ r.sick }}</strong>
                     </div>
 
-                    <!-- Barra de disponibilidade com cores dinâmicas -->
+                    <!-- Barra de disponibilidade -->
                     <div class="small text-secondary mb-1">{% trans "Disponibilidade:" %} {{ r.disponibilidade }}%</div>
                     <div class="progress" style="height: 3px;">
                         <div class="progress-bar
