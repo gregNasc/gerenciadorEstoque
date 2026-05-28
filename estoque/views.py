@@ -1691,8 +1691,6 @@ def criar_comunicado(request):
 @login_required
 def caixa_comunicados(request):
 
-    perfil = request.user.perfil
-
     comunicados = (
         Comunicado.objects
         .filter(
@@ -1701,45 +1699,17 @@ def caixa_comunicados(request):
         .exclude(
             comunicadooculto__usuario=request.user
         )
-        .filter(
-            Q(expira_em__isnull=True) |
-            Q(expira_em__gt=timezone.now())
-        )
     )
 
-    # ADMIN VISUALIZA TODOS
-    if perfil.role == 'admin':
-
-        comunicados = comunicados.filter(
-
-            Q(enviar_para_todos=True) |
-
-            Q(empresa__isnull=True) |
-
-            Q(usuarios=request.user)
-
-        )
-
-    # USUÁRIOS NORMAIS RESPEITAM EMPRESA
-    else:
-
-        comunicados = comunicados.filter(
-
-            Q(enviar_para_todos=True) |
-
-            Q(usuarios=request.user) |
-
-            Q(
-                empresa=perfil.empresa
-            )
-
-        )
-
-    comunicados = (
-        comunicados
-        .distinct()
-        .order_by('-criado_em')
+    comunicados = comunicados.filter(
+        Q(expira_em__isnull=True) |
+        Q(expira_em__gt=timezone.now())
     )
+
+    comunicados = comunicados.filter(
+        Q(enviar_para_todos=True) |
+        Q(usuarios=request.user)
+    ).distinct().order_by('-criado_em')
 
     return render(
         request,
