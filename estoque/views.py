@@ -9,6 +9,7 @@ from .forms import EquipamentoForm
 from django.http import HttpResponse
 from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
+from estoque.models import Base
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
@@ -1342,10 +1343,19 @@ def exportar_historico_pdf(request):
 @login_required
 def historico_equipamento_modal(request, equipamento_id):
 
-    historico = Historico.objects.filter(
-        equipamento_id=equipamento_id
-    ).order_by('-data').first()
-    print("DEBUG HISTÓRICO:", historico)
+    historico = (
+        Historico.objects
+        .select_related(
+            'equipamento',
+            'usuario',
+            'equipamento__produto',
+            'equipamento__regional'
+        )
+        .filter(equipamento_id=equipamento_id)
+        .order_by('-data')
+        .first()
+    )
+
     if not historico:
         return HttpResponse("""
             <div class="alert alert-warning">
@@ -1353,9 +1363,18 @@ def historico_equipamento_modal(request, equipamento_id):
             </div>
         """)
 
-    return render(request, 'estoque/partials/historico_detalhes.html', {
-        'historico': historico
-    })
+    return render(
+        request,
+        'estoque/partials/historico_detalhes.html',
+        {
+            'historico': historico,
+            'equipamento': historico.equipamento,
+            'is_admin': request.user.perfil.is_admin,
+            'bases': Base.objects.all().order_by('nome'),
+            'produtos': Produto.objects.all().order_by('categoria', 'descricao'),
+            'status_choices': Equipamento.STATUS_CHOICES,
+        }
+    )
 
 def historico_parcial(request, equipamento_id):
     historico = Historico.objects.filter(equipamento_id=equipamento_id).last()
@@ -1995,26 +2014,15 @@ def criar_emprestimo(request):
 
         emprestimo = Emprestimo.objects.create(
 
-            protocolo=(
-                f'EMP-'
-                f'{timezone.now().strftime("%Y%m%d%H%M%S")}'
-            ),
-
+            protocolo=(f'EMP-' f'{timezone.now().strftime("%Y%m%d%H%M%S")}'),
             regional_origem=regional_origem,
-
             regional_destino=regional_destino,
-
             solicitado_por=request.user,
-
             motivo=motivo,
-
             data_emprestimo=timezone.localdate(),
-
-            data_prevista_devolucao=(
-                data_prevista_devolucao
-            ),
-
+            data_prevista_devolucao=(data_prevista_devolucao),
             status='SOLICITADO',
+            grupo=regional_origem.grupo_regional,
         )
 
         messages.success(
@@ -2054,6 +2062,36 @@ def criar_emprestimo(request):
     )
 
 @login_required
+@transaction.atomic
+def enviar_emprestimo(request, emprestimo_id):
+
+    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
+
+    if emprestimo.status != 'SOLICITADO':
+        messages.warning(
+            request,
+            'Este empréstimo não pode ser enviado.'
+        )
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
+
+    if not emprestimo.itens.exists():
+        messages.warning(
+            request,
+            'Adicione itens antes de enviar o empréstimo.'
+        )
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
+
+    emprestimo.status = 'EM_TRANSITO'
+    emprestimo.save()
+
+    messages.success(
+        request,
+        'Empréstimo enviado para conferência.'
+    )
+
+    return redirect('estoque:detalhe_emprestimo', emprestimo.id)
+
+@login_required
 def detalhe_emprestimo(request, emprestimo_id):
 
     emprestimo = get_object_or_404(
@@ -2088,50 +2126,46 @@ def detalhe_emprestimo(request, emprestimo_id):
 @transaction.atomic
 def aprovar_emprestimo(request, emprestimo_id):
 
-    emprestimo = get_object_or_404(
-        Emprestimo,
-        id=emprestimo_id
-    )
+    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
 
     perfil = request.user.perfil
+    regionais_usuario = perfil.regionais.all()
 
-    if not perfil.is_admin:
-
+    if not (
+        emprestimo.regional_origem in regionais_usuario
+        or emprestimo.regional_destino in regionais_usuario
+    ):
         messages.error(
             request,
-            'Você não possui permissão.'
+            'Você não possui permissão para operar este empréstimo.'
         )
-
-        return redirect(
-            'estoque:detalhe_emprestimo',
-            emprestimo.id
-        )
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
     if emprestimo.status != 'SOLICITADO':
-
         messages.warning(
             request,
-            'Este empréstimo não pode ser aprovado.'
+            'Este empréstimo não pode ser enviado.'
         )
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
-        return redirect(
-            'estoque:detalhe_emprestimo',
-            emprestimo.id
+
+    if not emprestimo.itens.exists():
+        messages.warning(
+            request,
+            'Adicione itens antes de enviar o empréstimo.'
         )
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
-    emprestimo.status = 'APROVADO'
+    emprestimo.status = 'EM_TRANSITO'
     emprestimo.aprovado_por = request.user
     emprestimo.save()
 
     messages.success(
         request,
-        'Empréstimo aprovado.'
+        'Empréstimo enviado para conferência.'
     )
 
-    return redirect(
-        'estoque:detalhe_emprestimo',
-        emprestimo.id
-    )
+    return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
 @login_required
 @transaction.atomic
@@ -2225,98 +2259,64 @@ def adicionar_itens_emprestimo(request, emprestimo_id):
 @transaction.atomic
 def receber_emprestimo(request, emprestimo_id):
 
-    emprestimo = get_object_or_404(
-
-        Emprestimo.objects.prefetch_related(
-            'itens',
-            'itens__equipamento',
-        ),
-
-        id=emprestimo_id
-    )
+    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
 
     if request.method == 'POST':
 
-        recebidos = request.POST.getlist(
-            'itens_recebidos'
-        )
+        recebidos = request.POST.getlist('itens_recebidos')
+
+        divergencias = False
 
         for item in emprestimo.itens.all():
 
             if str(item.id) in recebidos:
-
                 item.status = 'RECEBIDO'
-
+                item.equipamento.status = 'EMPRESTADO'
             else:
-
                 item.status = 'DIVERGENCIA'
+                divergencias = True
 
             item.save()
+            item.equipamento.save()
 
         emprestimo.confirmado_recebimento = True
-        emprestimo.status = 'EMPRESTADO'
+        emprestimo.status = 'EMPRESTADO' if not divergencias else 'EMPRESTADO_COM_DIVERGENCIA'
         emprestimo.save()
 
-        messages.success(
-            request,
-            'Recebimento confirmado.'
-        )
-
-        return redirect(
-            'estoque:detalhe_emprestimo',
-            emprestimo.id
-        )
-
-    context = {
-        'emprestimo': emprestimo,
-    }
-
-    return render(
-        request,
-        'estoque/emprestimos/receber.html',
-        context
-    )
+        messages.success(request, 'Recebimento confirmado.')
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
 @login_required
 @transaction.atomic
 def devolver_emprestimo(request, emprestimo_id):
 
-    emprestimo = get_object_or_404(
+    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
 
-        Emprestimo.objects.prefetch_related(
-            'itens',
-            'itens__equipamento',
-        ),
+    if request.method == 'POST':
 
-        id=emprestimo_id
-    )
+        devolvidos = request.POST.getlist('itens_devolvidos')
 
-    for item in emprestimo.itens.all():
+        divergencias = False
 
-        item.status = 'DEVOLVIDO'
-        item.save()
+        for item in emprestimo.itens.all():
 
-        equipamento = item.equipamento
+            if str(item.id) in devolvidos:
+                item.status = 'DEVOLVIDO'
+                item.equipamento.status = 'DISPONIVEL'
+            else:
+                item.status = 'DIVERGENCIA_DEVOLUCAO'
+                divergencias = True
 
-        equipamento.status = 'DISPONIVEL'
+            item.save()
+            item.equipamento.save()
 
-        equipamento.save()
+        emprestimo.status = 'DEVOLVIDO' if not divergencias else 'DEVOLVIDO_COM_DIVERGENCIA'
+        emprestimo.confirmado_devolucao = True
+        emprestimo.data_devolucao = timezone.localdate()
+        emprestimo.save()
 
-    emprestimo.status = 'DEVOLVIDO'
-    emprestimo.confirmado_devolucao = True
-    emprestimo.data_devolucao = timezone.localdate()
-
-    emprestimo.save()
-
-    messages.success(
-        request,
-        'Empréstimo devolvido com sucesso.'
-    )
-
-    return redirect(
-        'estoque:detalhe_emprestimo',
-        emprestimo.id
-    )
+        messages.success(request, 'Empréstimo devolvido com conferência.')
+        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
 
 # ----------------- TRANSFERÊNCIAS -----------------
@@ -3407,30 +3407,81 @@ def equipamentos_por_regional(request, produto_id, regional_id):
     return JsonResponse(data)
 
 @login_required
+@role_required('admin', 'gestor')
 def editar_equipamento(request, equipamento_id):
 
     equipamento = get_object_or_404(
-        Equipamento,
+        Equipamento.objects.select_related(
+            'produto',
+            'regional'
+        ),
         id=equipamento_id
     )
 
-    if request.method != 'POST':
-        return redirect('estoque')
+    perfil = request.user.perfil
+
+    is_admin = perfil.is_admin
+    is_gestor = perfil.is_gestor
+
+    bases = (
+        Base.objects.all().order_by('nome')
+        if is_admin else []
+    )
+
+    produtos = (
+        Produto.objects.all()
+        .order_by(
+            'categoria',
+            'descricao'
+        )
+    )
+
+    historico = (
+        Historico.objects
+        .filter(equipamento=equipamento)
+        .select_related(
+            'usuario',
+            'equipamento'
+        )
+        .order_by('-data')
+        .first()
+    )
+
+    if request.method == 'GET':
+
+        return render(
+            request,
+            'estoque/editar_equipamento.html',
+            {
+                'equipamento': equipamento,
+                'historico': historico,
+                'bases': bases,
+                'produtos': produtos,
+                'status_choices': Equipamento.STATUS_CHOICES,
+                'is_admin': is_admin,
+                'is_gestor': is_gestor,
+            }
+        )
 
     senha_confirmacao = request.POST.get(
-        'senha_confirmacao'
+        'senha_confirmacao',
+        ''
     )
 
     if not request.user.check_password(
         senha_confirmacao
     ):
-
         messages.error(
             request,
             'Senha inválida.'
         )
 
-        return redirect(request.META.get('HTTP_REFERER'))
+        return redirect(
+            request.META.get(
+                'HTTP_REFERER',
+                '/'
+            )
+        )
 
     patrimonio = request.POST.get(
         'patrimonio',
@@ -3442,11 +3493,6 @@ def editar_equipamento(request, equipamento_id):
         ''
     ).strip()
 
-#    status = request.POST.get(
-#        'status',
-#        ''
-#    ).strip()
-
     observacao = request.POST.get(
         'observacao_edicao',
         ''
@@ -3454,34 +3500,218 @@ def editar_equipamento(request, equipamento_id):
 
     foto = request.FILES.get('foto')
 
-    equipamento.patrimonio = patrimonio
-    equipamento.numero_serie = numero_serie
-
-#    if status:
-#        equipamento.status = status
-
-    if foto:
-        equipamento.foto = foto
-
-    equipamento.save()
-
-    Historico.objects.create(
-        equipamento=equipamento,
-        usuario=request.user,
-        tipo_acao='edicao',
-        detalhes={
-            'observacao': observacao,
-            'patrimonio': patrimonio,
-            'numero_serie': numero_serie,
-#            'status': status,
-        }
+    produto_id = request.POST.get(
+        'produto'
     )
 
-    messages.success(
-        request,
-        'Equipamento atualizado com sucesso.'
+    regional_id = request.POST.get(
+        'regional'
     )
+
+    responsavel = request.POST.get(
+        'responsavel',
+        ''
+    ).strip()
+
+    status = request.POST.get(
+        'status',
+        ''
+    ).strip()
+
+    try:
+
+        with transaction.atomic():
+
+            snapshot_antes = {
+                'produto_id': equipamento.produto_id,
+                'produto': (
+                    equipamento.produto.descricao
+                    if equipamento.produto else None
+                ),
+                'patrimonio': equipamento.patrimonio,
+                'numero_serie': equipamento.numero_serie,
+                'regional_id': equipamento.regional_id,
+                'regional': (
+                    equipamento.regional.nome
+                    if equipamento.regional else None
+                ),
+                'responsavel': equipamento.responsavel,
+                'status': equipamento.status,
+                'foto': (
+                    str(equipamento.foto)
+                    if equipamento.foto else None
+                ),
+            }
+
+            alteracoes = {}
+
+            if patrimonio != equipamento.patrimonio:
+
+                alteracoes['patrimonio'] = {
+                    'antes': equipamento.patrimonio,
+                    'depois': patrimonio,
+                }
+
+                equipamento.patrimonio = patrimonio
+
+            if numero_serie != equipamento.numero_serie:
+
+                alteracoes['numero_serie'] = {
+                    'antes': equipamento.numero_serie,
+                    'depois': numero_serie,
+                }
+
+                equipamento.numero_serie = numero_serie
+
+            if foto:
+
+                alteracoes['foto'] = {
+                    'antes': (
+                        str(equipamento.foto)
+                        if equipamento.foto else None
+                    ),
+                    'depois': foto.name,
+                }
+
+                equipamento.foto = foto
+
+            if is_admin:
+
+                if produto_id:
+
+                    novo_produto = get_object_or_404(
+                        Produto,
+                        id=produto_id
+                    )
+
+                    if (
+                        equipamento.produto_id
+                        != novo_produto.id
+                    ):
+
+                        alteracoes['produto'] = {
+                            'antes': (
+                                equipamento.produto.descricao
+                                if equipamento.produto else None
+                            ),
+                            'depois': novo_produto.descricao,
+                        }
+
+                        equipamento.produto = novo_produto
+
+                if regional_id:
+
+                    nova_regional = get_object_or_404(
+                        Base,
+                        id=regional_id
+                    )
+
+                    if (
+                        equipamento.regional_id
+                        != nova_regional.id
+                    ):
+
+                        alteracoes['regional'] = {
+                            'antes': (
+                                equipamento.regional.nome
+                                if equipamento.regional else None
+                            ),
+                            'depois': nova_regional.nome,
+                        }
+
+                        equipamento.regional = nova_regional
+
+                if responsavel != equipamento.responsavel:
+
+                    alteracoes['responsavel'] = {
+                        'antes': equipamento.responsavel,
+                        'depois': responsavel,
+                    }
+
+                    equipamento.responsavel = responsavel
+
+                if (
+                    status
+                    and
+                    status != equipamento.status
+                ):
+
+                    alteracoes['status'] = {
+                        'antes': equipamento.status,
+                        'depois': status,
+                    }
+
+                    equipamento.status = status
+
+            if not alteracoes:
+
+                messages.warning(
+                    request,
+                    'Nenhuma alteração foi realizada.'
+                )
+
+                return redirect(
+                    request.META.get(
+                        'HTTP_REFERER',
+                        '/'
+                    )
+                )
+
+            equipamento.save()
+
+            Historico.objects.create(
+                equipamento=equipamento,
+                usuario=request.user,
+                tipo_acao='EDICAO',
+                detalhes={
+                    'observacao': observacao,
+                    'alteracoes': alteracoes,
+                    'snapshot_antes': snapshot_antes,
+                    'snapshot_depois': {
+                        'produto_id': equipamento.produto_id,
+                        'produto': (
+                            equipamento.produto.descricao
+                            if equipamento.produto else None
+                        ),
+                        'patrimonio': equipamento.patrimonio,
+                        'numero_serie': equipamento.numero_serie,
+                        'regional_id': equipamento.regional_id,
+                        'regional': (
+                            equipamento.regional.nome
+                            if equipamento.regional else None
+                        ),
+                        'responsavel': equipamento.responsavel,
+                        'status': equipamento.status,
+                        'foto': (
+                            str(equipamento.foto)
+                            if equipamento.foto else None
+                        ),
+                    }
+                }
+            )
+
+        messages.success(
+            request,
+            'Equipamento atualizado com sucesso.'
+        )
+
+    except IntegrityError:
+
+        messages.error(
+            request,
+            'Patrimônio ou número de série já cadastrado.'
+        )
+
+    except Exception as e:
+
+        messages.error(
+            request,
+            f'Erro ao atualizar equipamento: {str(e)}'
+        )
 
     return redirect(
-        request.META.get('HTTP_REFERER')
+        request.META.get(
+            'HTTP_REFERER',
+            '/'
+        )
     )

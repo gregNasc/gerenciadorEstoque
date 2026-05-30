@@ -7,295 +7,316 @@
         <!-- COLUNA PRINCIPAL -->
         <div class="col-lg-8">
 
-            <div class="card border-0 shadow-sm">
+            <!-- RESUMO -->
+            <div class="card border-0 shadow-sm mb-4">
 
-                <!-- HEADER -->
                 <div class="card-header bg-white border-bottom">
-
                     <h5 class="mb-0 fw-semibold">
-
                         <i class="bi bi-clock-history text-primary me-2"></i>
                         {% trans "Informações do Registro" %}
-
                     </h5>
-
                 </div>
 
-                <!-- BODY -->
                 <div class="card-body">
 
-                    <!-- RESUMO -->
-                    <div class="row g-3 mb-4">
+                    <div class="row g-3">
 
                         <div class="col-md-6">
-
-                            <div class="border rounded p-3 h-100 bg-light">
-
-                                <div class="small text-muted mb-1">
+                            <div class="border rounded p-3 bg-light h-100">
+                                <div class="small text-muted">
                                     {% trans "Data / Hora" %}
                                 </div>
 
                                 <div class="fw-semibold">
                                     {{ historico.data|date:"d/m/Y H:i:s" }}
                                 </div>
-
                             </div>
-
                         </div>
 
                         <div class="col-md-6">
-
-                            <div class="border rounded p-3 h-100 bg-light">
-
-                                <div class="small text-muted mb-1">
-                                    {% trans "Tipo de Ação" %}
+                            <div class="border rounded p-3 bg-light h-100">
+                                <div class="small text-muted">
+                                    {% trans "Última Ação" %}
                                 </div>
 
                                 <span class="badge bg-primary">
                                     {{ historico.get_tipo_acao_display }}
                                 </span>
-
                             </div>
-
                         </div>
 
                         <div class="col-md-6">
-
                             <div class="border rounded p-3 h-100">
-
-                                <div class="small text-muted mb-1">
+                                <div class="small text-muted">
                                     {% trans "Usuário" %}
                                 </div>
 
                                 <div class="fw-semibold">
                                     {{ historico.usuario.username|default:"Sistema" }}
                                 </div>
-
                             </div>
-
                         </div>
 
                         <div class="col-md-6">
-
                             <div class="border rounded p-3 h-100">
-
-                                <div class="small text-muted mb-1">
+                                <div class="small text-muted">
                                     {% trans "Status Atual" %}
                                 </div>
 
                                 <span class="badge bg-success">
-                                    {{ historico.equipamento.get_status_display }}
+                                    {{ equipamento.get_status_display }}
                                 </span>
+                            </div>
+                        </div>
 
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- DADOS DO EQUIPAMENTO -->
+            <div class="card border-0 shadow-sm mb-4">
+
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0 fw-semibold">
+                        <i class="bi bi-pc-display me-2 text-secondary"></i>
+                        {% trans "Equipamento" %}
+                    </h5>
+                </div>
+
+                <div class="card-body">
+
+                    <table class="table table-bordered align-middle mb-0">
+
+                        <tbody>
+
+                            <tr>
+                                <th width="220">
+                                    {% trans "Produto" %}
+                                </th>
+                                <td>{{ equipamento.produto.descricao }}</td>
+                            </tr>
+
+                            <tr>
+                                <th>
+                                    {% trans "Número de Série" %}
+                                </th>
+                                <td>
+                                    <code>{{ equipamento.numero_serie }}</code>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>
+                                    {% trans "Patrimônio" %}
+                                </th>
+                                <td>
+                                    <code>{{ equipamento.patrimonio }}</code>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>
+                                    {% trans "Regional" %}
+                                </th>
+                                <td>
+                                    {{ equipamento.regional.nome }}
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>
+                                    {% trans "Responsável" %}
+                                </th>
+                                <td>
+                                    {{ equipamento.responsavel|default:"—" }}
+                                </td>
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            <!-- FORMULÁRIO -->
+            <div class="card border-warning shadow-sm">
+
+                <div class="card-header bg-warning-subtle">
+                    <strong>
+                        <i class="bi bi-pencil-square me-2"></i>
+                        {% trans "Editar Equipamento" %}
+                    </strong>
+                </div>
+
+                <div class="card-body">
+
+                    <form method="post"
+                          enctype="multipart/form-data"
+                          action="{% url 'estoque:editar_equipamento' equipamento.id %}">
+
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+
+                            {% if is_admin %}
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Produto" %}
+                                </label>
+
+                                <select name="produto" class="form-select">
+
+                                    {% for produto in produtos %}
+                                    <option value="{{ produto.id }}"
+                                            {% if equipamento.produto_id == produto.id %}selected{% endif %}>
+                                        {{ produto.descricao }}
+                                    </option>
+                                    {% endfor %}
+
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Regional" %}
+                                </label>
+
+                                <select name="regional" class="form-select">
+
+                                    {% for base in bases %}
+                                    <option value="{{ base.id }}"
+                                            {% if equipamento.regional_id == base.id %}selected{% endif %}>
+                                        {{ base.nome }}
+                                    </option>
+                                    {% endfor %}
+
+                                </select>
+                            </div>
+
+                            <!--div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Responsável" %}
+                                </label>
+
+                                <input type="text"
+                                       name="responsavel"
+                                       class="form-control"
+                                       value="{{ equipamento.responsavel }}">
+                            </div-->
+
+                            <!--div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Status" %}
+                                </label>
+
+                                <select name="status"
+                                        class="form-select">
+
+                                    {% for valor, descricao in status_choices %}
+
+                                    <option value="{{ valor }}"
+                                            {% if equipamento.status == valor %}selected{% endif %}>
+                                        {{ descricao }}
+                                    </option>
+
+                                    {% endfor %}
+
+                                </select>
+                            </div-->
+
+                            {% endif %}
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Patrimônio" %}
+                                </label>
+
+                                <input type="text"
+                                       name="patrimonio"
+                                       class="form-control"
+                                       value="{{ equipamento.patrimonio }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Número de Série" %}
+                                </label>
+
+                                <input type="text"
+                                       name="numero_serie"
+                                       class="form-control"
+                                       value="{{ equipamento.numero_serie }}"
+                                       required>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Nova Foto" %}
+                                </label>
+
+                                <input type="file"
+                                       id="id_foto"
+                                       name="foto"
+                                       class="form-control"
+                                       accept="image/*">
+
+                                {% if equipamento.foto %}
+                                <img src="{{ equipamento.foto.url }}"
+                                     id="previewImagem"
+                                     class="img-fluid rounded border mt-3"
+                                     style="max-height:260px;">
+                                {% else %}
+                                <img id="previewImagem"
+                                     class="img-fluid rounded border mt-3 d-none"
+                                     style="max-height:260px;">
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">
+                                    {% trans "Motivo da Alteração" %}
+                                </label>
+
+                                <textarea name="observacao_edicao"
+                                          class="form-control"
+                                          rows="4"
+                                          required></textarea>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-danger">
+                                    <i class="bi bi-key-fill me-1"></i>
+                                    {% trans "Senha de Confirmação" %}
+                                </label>
+
+                                <input type="password"
+                                       name="senha_confirmacao"
+                                       class="form-control"
+                                       required>
                             </div>
 
                         </div>
 
-                    </div>
+                        <div class="mt-4 d-flex justify-content-end">
 
-                    <!-- EQUIPAMENTO -->
-                    <div class="mb-3">
+                            <button type="submit"
+                                    class="btn btn-warning">
 
-                        <h5 class="fw-semibold">
+                                <i class="bi bi-check-circle me-1"></i>
 
-                            <i class="bi bi-pc-display me-2 text-secondary"></i>
-                            {% trans "Equipamento" %}
+                                {% trans "Salvar Alterações" %}
 
-                        </h5>
-
-                    </div>
-
-                    <div class="table-responsive mb-4">
-
-                        <table class="table table-bordered align-middle">
-
-                            <tbody>
-
-                                <tr>
-
-                                    <th width="220">
-                                        {% trans "Produto" %}
-                                    </th>
-
-                                    <td>
-                                        {{ historico.equipamento.produto.descricao }}
-                                    </td>
-
-                                </tr>
-
-                                <tr>
-
-                                    <th>
-                                        {% trans "Número de Série" %}
-                                    </th>
-
-                                    <td>
-
-                                        <code>
-                                            {{ historico.equipamento.numero_serie|default:"—" }}
-                                        </code>
-
-                                    </td>
-
-                                </tr>
-
-                                <tr>
-
-                                    <th>
-                                        {% trans "Patrimônio" %}
-                                    </th>
-
-                                    <td>
-
-                                        <code>
-                                            {{ historico.equipamento.patrimonio|default:"—" }}
-                                        </code>
-
-                                    </td>
-
-                                </tr>
-
-                                <tr>
-
-                                    <th>
-                                        {% trans "Status" %}
-                                    </th>
-
-                                    <td>
-
-                                        <span class="badge bg-secondary">
-                                            {{ historico.equipamento.get_status_display }}
-                                        </span>
-
-                                    </td>
-
-                                </tr>
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                    <!-- FORMULÁRIO DE EDIÇÃO -->
-                    <div class="card border-warning shadow-sm">
-
-                        <div class="card-header bg-warning-subtle">
-
-                            <strong>
-
-                                <i class="bi bi-pencil-square me-1"></i>
-                                {% trans "Editar Equipamento" %}
-
-                            </strong>
+                            </button>
 
                         </div>
 
-                        <div class="card-body">
-
-                            <form method="post"
-                                  enctype="multipart/form-data"
-                                  action="{% url 'estoque:editar_equipamento' historico.equipamento.id %}">
-
-                                {% csrf_token %}
-
-                                <div class="row g-3">
-
-                                    <div class="col-md-6">
-
-                                        <label class="form-label fw-semibold">
-
-                                            {% trans "Patrimônio" %}
-
-                                        </label>
-
-                                        <input type="text"
-                                               name="patrimonio"
-                                               class="form-control"
-                                               value="{{ historico.equipamento.patrimonio }}">
-
-                                    </div>
-
-                                    <div class="col-md-6">
-
-                                        <label class="form-label fw-semibold">
-
-                                            {% trans "Número de Série" %}
-
-                                        </label>
-
-                                        <input type="text"
-                                               name="numero_serie"
-                                               class="form-control"
-                                               value="{{ historico.equipamento.numero_serie }}">
-
-                                    </div>
-
-                                    <div class="col-md-6">
-
-                                        <label class="form-label fw-semibold">
-
-                                            {% trans "Nova Foto" %}
-
-                                        </label>
-
-                                        <input type="file"
-                                               name="foto"
-                                               class="form-control"
-                                               accept="image/*">
-
-                                    </div>
-
-                                    <div class="col-12">
-
-                                        <label class="form-label fw-semibold">
-
-                                            {% trans "Motivo da Alteração" %}
-
-                                        </label>
-
-                                        <textarea name="observacao_edicao"
-                                                  class="form-control"
-                                                  rows="3"
-                                                  required></textarea>
-
-                                    </div>
-
-                                    <div class="col-12">
-
-                                        <label class="form-label fw-semibold text-danger">
-
-                                            <i class="bi bi-key-fill me-1"></i>
-                                            {% trans "Senha de Confirmação" %}
-
-                                        </label>
-
-                                        <input type="password"
-                                               name="senha_confirmacao"
-                                               class="form-control"
-                                               required>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="mt-4 d-flex justify-content-end">
-
-                                    <button type="submit"
-                                            class="btn btn-warning">
-
-                                        <i class="bi bi-check-circle me-1"></i>
-                                        {% trans "Salvar Alterações" %}
-
-                                    </button>
-
-                                </div>
-
-                            </form>
-
-                        </div>
-
-                    </div>
+                    </form>
 
                 </div>
 
@@ -306,65 +327,21 @@
         <!-- COLUNA LATERAL -->
         <div class="col-lg-4">
 
-            <div class="card border-0 shadow-sm h-100">
+            <div class="card border-0 shadow-sm">
 
                 <div class="card-header bg-white border-bottom">
-
                     <h5 class="mb-0 fw-semibold">
-
                         <i class="bi bi-card-text text-primary me-2"></i>
-                        {% trans "Detalhes" %}
-
+                        {% trans "Detalhes da Auditoria" %}
                     </h5>
-
                 </div>
 
                 <div class="card-body">
 
-                    <!-- DETALHES -->
-                    <div class="bg-dark text-light rounded p-3 small mb-4"
-                         style="max-height:300px; overflow:auto;">
+                    <div class="bg-dark text-light rounded p-3 small"
+                         style="max-height:500px; overflow:auto;">
 
 <pre class="mb-0 text-light">{{ historico.detalhes|pprint }}</pre>
-
-                    </div>
-
-                    <!-- FOTO -->
-                    <div class="text-center">
-
-                        {% if historico.equipamento.foto and historico.equipamento.foto.name %}
-
-                            <a href="{{ historico.equipamento.foto.url }}"
-                               target="_blank">
-
-                                <img src="{{ historico.equipamento.foto.url }}"
-                                     class="img-fluid rounded border shadow-sm"
-                                     style="max-height:260px;"
-                                     alt="Foto do equipamento">
-
-                            </a>
-
-                            <div class="small text-muted mt-2">
-
-                                {% trans "Clique na imagem para ampliar" %}
-
-                            </div>
-
-                        {% else %}
-
-                            <div class="text-muted py-5">
-
-                                <i class="bi bi-image fs-1"></i>
-
-                                <div class="mt-2">
-
-                                    {% trans "Sem foto cadastrada" %}
-
-                                </div>
-
-                            </div>
-
-                        {% endif %}
 
                     </div>
 
@@ -377,3 +354,34 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    const inputFoto = document.getElementById('id_foto');
+    const preview = document.getElementById('previewImagem');
+
+    if (!inputFoto) return;
+
+    inputFoto.addEventListener('change', function() {
+
+        const file = this.files[0];
+
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+
+        };
+
+        reader.readAsDataURL(file);
+
+    });
+
+});
+</script>
+

@@ -10,69 +10,93 @@
 <div class="container-fluid px-4">
 
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
 
         <div>
+
             <h2 class="fw-bold mb-1">
                 {% trans "Novo Empréstimo" %}
             </h2>
 
             <p class="text-muted mb-0">
-                {% trans "Solicite equipamentos emprestados entre regionais" %}
+                {% trans "Solicite equipamentos emprestados entre regionais compatíveis" %}
             </p>
+
         </div>
 
         <a href="{% url 'estoque:lista_emprestimos' %}"
-           class="btn btn-light border">
+           class="btn btn-light border align-self-start">
+
             <i class="bi bi-arrow-left"></i>
+
             {% trans "Voltar" %}
+
         </a>
 
     </div>
 
     <div class="row justify-content-center">
 
-        <div class="col-xl-8">
+        <div class="col-xl-8 col-lg-10">
 
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm rounded-4">
 
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">
-                        {% trans "Dados do empréstimo" %}
-                    </h5>
+                <!-- HEADER CARD -->
+                <div class="card-header bg-white border-0 py-4 rounded-top-4">
+
+                    <div class="d-flex align-items-center gap-2">
+
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-2">
+                            <i class="bi bi-arrow-left-right text-primary"></i>
+                        </div>
+
+                        <div>
+
+                            <h5 class="mb-0 fw-bold">
+                                {% trans "Dados do empréstimo" %}
+                            </h5>
+
+                            <small class="text-muted">
+                                {% trans "Somente regionais do mesmo grupo poderão realizar empréstimos" %}
+                            </small>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
-                <div class="card-body">
+                <!-- BODY -->
+                <div class="card-body p-4">
 
                     <form method="post">
 
                         {% csrf_token %}
 
-                        <div class="row g-3">
+                        <div class="row g-4">
 
-                            <!-- REGIONAL ORIGEM -->
+                            <!-- REGIONAL SOLICITANTE -->
                             <div class="col-md-6">
 
                                 <label class="form-label fw-semibold">
                                     {% trans "Regional solicitante" %}
                                 </label>
 
-                                <select
-                                    name="regional_origem"
-                                    class="form-select"
-                                    required
-                                >
+                                <select id="regional_origem"
+                                        name="regional_origem"
+                                        class="form-select"
+                                        required>
 
                                     <option value="">
-                                        {% trans "Selecione" %}
+                                        {% trans "Selecione a regional" %}
                                     </option>
 
                                     {% for regional in regionais_usuario %}
-
-                                    <option value="{{ regional.id }}">
+                                    <option value="{{ regional.id }}"
+                                            data-grupo="{{ regional.grupo_regional_id }}"
+                                            data-grupo-nome="{{ regional.grupo_regional.nome }}">
                                         {{ regional.nome }}
                                     </option>
-
                                     {% endfor %}
 
                                 </select>
@@ -86,25 +110,45 @@
                                     {% trans "Regional que irá emprestar" %}
                                 </label>
 
-                                <select
-                                    name="regional_destino"
-                                    class="form-select"
-                                    required
-                                >
+                                <select id="regional_destino"
+                                        name="regional_destino"
+                                        class="form-select"
+                                        required>
 
                                     <option value="">
-                                        {% trans "Selecione" %}
+                                        {% trans "Selecione a regional" %}
                                     </option>
 
-                                    {% for regional in regionais_usuario %}
-
-                                    <option value="{{ regional.id }}">
+                                    {% for regional in regionais_destino %}
+                                    <option value="{{ regional.id }}"
+                                            data-grupo="{{ regional.grupo_regional_id }}">
                                         {{ regional.nome }}
                                     </option>
-
                                     {% endfor %}
 
                                 </select>
+
+                            </div>
+
+                            <!-- GRUPO -->
+                            <div class="col-12">
+
+                                <div id="grupo-info"
+                                     class="alert alert-light border d-none mb-0">
+
+                                    <div class="d-flex align-items-center gap-2">
+
+                                        <i class="bi bi-diagram-3"></i>
+
+                                        <span class="fw-semibold">
+                                            {% trans "Grupo Regional:" %}
+                                        </span>
+
+                                        <span id="grupo-nome"></span>
+
+                                    </div>
+
+                                </div>
 
                             </div>
 
@@ -115,12 +159,56 @@
                                     {% trans "Data prevista devolução" %}
                                 </label>
 
-                                <input
-                                    type="date"
-                                    name="data_prevista_devolucao"
-                                    class="form-control"
-                                    required
-                                >
+                                <input type="date"
+                                       name="data_prevista_devolucao"
+                                       class="form-control"
+                                       required>
+
+                            </div>
+
+                            <!-- CATEGORIA -->
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    Categoria do equipamento
+                                </label>
+
+                                <select id="categoria"
+                                        name="categoria"
+                                        class="form-select">
+
+                                    <option value="">Todas</option>
+
+                                    {% for c in categorias %}
+                                    <option value="{{ c.id }}">
+                                        {{ c.nome }}
+                                    </option>
+                                    {% endfor %}
+
+                                </select>
+
+                            </div>
+
+                            <!-- TIPO -->
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    Tipo do equipamento
+                                </label>
+
+                                <select id="tipo"
+                                        name="tipo"
+                                        class="form-select">
+
+                                    <option value="">Todos</option>
+
+                                    {% for t in tipos %}
+                                    <option value="{{ t.id }}">
+                                        {{ t.nome }}
+                                    </option>
+                                    {% endfor %}
+
+                                </select>
 
                             </div>
 
@@ -128,22 +216,20 @@
                             <div class="col-12">
 
                                 <label class="form-label fw-semibold">
-                                    {% trans "Motivo" %}
+                                    {% trans "Motivo do empréstimo" %}
                                 </label>
 
-                                <textarea
-                                    name="motivo"
-                                    rows="4"
-                                    class="form-control"
-                                    placeholder="{% trans 'Descreva o motivo do empréstimo...' %}"
-                                    required
-                                ></textarea>
+                                <textarea name="motivo"
+                                          rows="5"
+                                          class="form-control"
+                                          required></textarea>
 
                             </div>
 
                         </div>
 
-                        <div class="d-flex justify-content-end gap-2 mt-4">
+                        <!-- ACTIONS -->
+                        <div class="d-flex justify-content-end gap-2 mt-5">
 
                             <a href="{% url 'estoque:lista_emprestimos' %}"
                                class="btn btn-light border">
@@ -152,11 +238,7 @@
 
                             <button type="submit"
                                     class="btn btn-primary">
-
-                                <i class="bi bi-check-circle"></i>
-
                                 {% trans "Criar solicitação" %}
-
                             </button>
 
                         </div>
@@ -172,5 +254,48 @@
     </div>
 
 </div>
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const origemSelect = document.getElementById('regional_origem');
+    const destinoSelect = document.getElementById('regional_destino');
+
+    const grupoInfo = document.getElementById('grupo-info');
+    const grupoNome = document.getElementById('grupo-nome');
+
+    origemSelect.addEventListener('change', function () {
+
+        const origemOption = origemSelect.options[origemSelect.selectedIndex];
+
+        const grupoOrigem = origemOption.dataset.grupo;
+        const nomeGrupo = origemOption.dataset.grupoNome;
+        const origemId = origemOption.value;
+
+        grupoInfo.classList.remove('d-none');
+        grupoNome.textContent = nomeGrupo || '-';
+
+        Array.from(destinoSelect.options).forEach(option => {
+
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            const mesmoGrupo = option.dataset.grupo === grupoOrigem;
+            const mesmaRegional = option.value === origemId;
+
+            option.hidden = !mesmoGrupo || mesmaRegional;
+
+        });
+
+        destinoSelect.value = '';
+
+    });
+
+});
+
+</script>
 
 {% endblock %}

@@ -1,23 +1,174 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
 <div class="container-fluid px-4 py-4">
 
-    <div class="card border-0 shadow-sm overflow-hidden">
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
 
-        <div class="card-header bg-white border-0 py-4 px-4">
+        <div>
 
-            <h4 class="fw-bold mb-1">
+            <div class="d-flex align-items-center gap-2 mb-2">
+
+                <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+
+                    <i class="bi bi-box-seam me-1"></i>
+
+                    Recebimento
+
+                </span>
+
+                <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+
+                    {{ emprestimo.protocolo }}
+
+                </span>
+
+            </div>
+
+            <h2 class="fw-bold mb-1">
                 Conferência de recebimento
-            </h4>
+            </h2>
 
             <p class="text-muted mb-0">
-                Confirme os equipamentos recebidos.
+                Confirme os equipamentos recebidos da regional de origem.
             </p>
 
         </div>
 
+        <a href="{% url 'estoque:detalhe_emprestimo' emprestimo.id %}"
+           class="btn btn-light border">
+
+            <i class="bi bi-arrow-left"></i>
+
+            Voltar
+
+        </a>
+
+    </div>
+
+    <!-- INFO -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-xl-4 col-md-6">
+
+            <div class="info-card">
+
+                <div class="info-icon bg-primary-subtle text-primary">
+
+                    <i class="bi bi-building"></i>
+
+                </div>
+
+                <small class="text-muted d-block mb-1">
+                    Regional origem
+                </small>
+
+                <div class="fw-semibold fs-6">
+                    {{ emprestimo.regional_origem.nome }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-xl-4 col-md-6">
+
+            <div class="info-card">
+
+                <div class="info-icon bg-success-subtle text-success">
+
+                    <i class="bi bi-box-arrow-in-down"></i>
+
+                </div>
+
+                <small class="text-muted d-block mb-1">
+                    Regional destino
+                </small>
+
+                <div class="fw-semibold fs-6">
+                    {{ emprestimo.regional_destino.nome }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-xl-4 col-md-12">
+
+            <div class="info-card">
+
+                <div class="info-icon bg-info-subtle text-info">
+
+                    <i class="bi bi-pc-display"></i>
+
+                </div>
+
+                <small class="text-muted d-block mb-1">
+                    Equipamentos
+                </small>
+
+                <div class="fw-semibold fs-6">
+                    {{ emprestimo.itens.count }} item(ns)
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- CARD -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+
+        <!-- HEADER -->
+        <div class="card-header bg-white border-0 p-4">
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+
+                <div>
+
+                    <h5 class="fw-bold mb-1">
+                        Conferência dos equipamentos
+                    </h5>
+
+                    <p class="text-muted mb-0">
+                        Desmarque os itens com divergência.
+                    </p>
+
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap">
+
+                    <button type="button"
+                            id="marcarTodos"
+                            class="btn btn-light border">
+
+                        <i class="bi bi-check2-square"></i>
+
+                        Marcar todos
+
+                    </button>
+
+                    <button type="button"
+                            id="desmarcarTodos"
+                            class="btn btn-light border">
+
+                        <i class="bi bi-square"></i>
+
+                        Desmarcar todos
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- BODY -->
         <div class="card-body p-4">
 
             <form method="post">
@@ -26,16 +177,32 @@
 
                 <div class="table-responsive border rounded-4">
 
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table align-middle mb-0">
 
                         <thead class="table-light">
 
                             <tr>
-                                <th width="80" class="ps-4">OK</th>
-                                <th>Produto</th>
-                                <th>Série</th>
-                                <th>Patrimônio</th>
-                                <th>Status</th>
+
+                                <th width="90" class="ps-4">
+                                    OK
+                                </th>
+
+                                <th>
+                                    Produto
+                                </th>
+
+                                <th>
+                                    Série
+                                </th>
+
+                                <th>
+                                    Patrimônio
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
                             </tr>
 
                         </thead>
@@ -44,37 +211,83 @@
 
                             {% for item in emprestimo.itens.all %}
 
-                            <tr>
+                            <tr class="linha-item">
 
+                                <!-- CHECK -->
                                 <td class="ps-4">
 
-                                    <input
-                                        type="checkbox"
-                                        class="form-check-input check-item"
-                                        name="itens_recebidos"
-                                        value="{{ item.id }}"
-                                        checked
-                                    >
+                                    <div class="form-check">
+
+                                        <input
+                                            type="checkbox"
+                                            class="form-check-input check-item"
+                                            name="itens_recebidos"
+                                            value="{{ item.id }}"
+                                            checked
+                                        >
+
+                                    </div>
 
                                 </td>
 
+                                <!-- PRODUTO -->
                                 <td>
-                                    {{ item.equipamento.produto.descricao }}
+
+                                    <div class="fw-semibold">
+                                        {{ item.equipamento.produto.descricao }}
+                                    </div>
+
                                 </td>
 
-                                <td>
-                                    {{ item.equipamento.numero_serie }}
-                                </td>
-
-                                <td>
-                                    {{ item.equipamento.patrimonio }}
-                                </td>
-
+                                <!-- SÉRIE -->
                                 <td>
 
-                                    <span class="badge bg-success status-item">
-                                        Confirmado
+                                    <span class="text-muted">
+                                        {{ item.equipamento.numero_serie }}
                                     </span>
+
+                                </td>
+
+                                <!-- PATRIMÔNIO -->
+                                <td>
+
+                                    <span class="fw-semibold">
+                                        {{ item.equipamento.patrimonio }}
+                                    </span>
+
+                                </td>
+
+                                <!-- STATUS -->
+                                <td>
+
+                                    <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2 status-item">
+
+                                        <i class="bi bi-check-circle me-1"></i>
+
+                                        Confirmado
+
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="5"
+                                    class="text-center py-5 text-muted">
+
+                                    <div class="d-flex flex-column align-items-center gap-2">
+
+                                        <i class="bi bi-inbox fs-1"></i>
+
+                                        <span>
+                                            Nenhum equipamento encontrado.
+                                        </span>
+
+                                    </div>
 
                                 </td>
 
@@ -88,10 +301,20 @@
 
                 </div>
 
-                <div class="d-flex justify-content-end mt-4">
+                <!-- FOOTER -->
+                <div class="d-flex justify-content-end gap-2 mt-4">
+
+                    <a href="{% url 'estoque:detalhe_emprestimo' emprestimo.id %}"
+                       class="btn btn-light border">
+
+                        Cancelar
+
+                    </a>
 
                     <button type="submit"
                             class="btn btn-success px-4">
+
+                        <i class="bi bi-check-circle"></i>
 
                         Finalizar conferência
 
@@ -107,39 +330,140 @@
 
 </div>
 
+<style>
+
+.card {
+    border-radius: 22px;
+}
+
+.info-card {
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 20px;
+    padding: 22px;
+    height: 100%;
+    transition: .2s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 18px rgba(0,0,0,.04);
+}
+
+.info-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    margin-bottom: 14px;
+}
+
+.table > :not(caption) > * > * {
+    padding-top: 18px;
+    padding-bottom: 18px;
+    vertical-align: middle;
+}
+
+.btn {
+    border-radius: 14px;
+}
+
+.badge {
+    font-weight: 600;
+    letter-spacing: .2px;
+}
+
+tbody tr {
+    transition: .15s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(0,0,0,.015);
+}
+
+.form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+    cursor: pointer;
+}
+
+</style>
+
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    const checks = document.querySelectorAll(
-        '.check-item'
-    );
+    const checks =
+        document.querySelectorAll('.check-item');
+
+    const marcarTodos =
+        document.getElementById('marcarTodos');
+
+    const desmarcarTodos =
+        document.getElementById('desmarcarTodos');
+
+    function atualizarLinha(check) {
+
+        const linha =
+            check.closest('tr');
+
+        const badge =
+            linha.querySelector('.status-item');
+
+        if (check.checked) {
+
+            badge.className =
+                'badge rounded-pill bg-success-subtle text-success px-3 py-2 status-item';
+
+            badge.innerHTML =
+                '<i class="bi bi-check-circle me-1"></i> Confirmado';
+
+        } else {
+
+            badge.className =
+                'badge rounded-pill bg-danger-subtle text-danger px-3 py-2 status-item';
+
+            badge.innerHTML =
+                '<i class="bi bi-exclamation-triangle me-1"></i> Divergência';
+
+        }
+
+    }
 
     checks.forEach(function (check) {
 
+        atualizarLinha(check);
+
         check.addEventListener('change', function () {
 
-            const linha = this.closest('tr');
+            atualizarLinha(this);
 
-            const badge = linha.querySelector(
-                '.status-item'
-            );
+        });
 
-            if (this.checked) {
+    });
 
-                badge.className =
-                    'badge bg-success status-item';
+    marcarTodos.addEventListener('click', function () {
 
-                badge.innerText = 'Confirmado';
+        checks.forEach(function (check) {
 
-            } else {
+            check.checked = true;
 
-                badge.className =
-                    'badge bg-danger status-item';
+            atualizarLinha(check);
 
-                badge.innerText = 'Divergência';
+        });
 
-            }
+    });
+
+    desmarcarTodos.addEventListener('click', function () {
+
+        checks.forEach(function (check) {
+
+            check.checked = false;
+
+            atualizarLinha(check);
 
         });
 
@@ -150,4 +474,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 {% endblock %}
-

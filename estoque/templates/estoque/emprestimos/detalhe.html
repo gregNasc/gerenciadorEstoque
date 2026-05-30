@@ -1,35 +1,111 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
 <div class="container-fluid px-4 py-4">
 
-    <div class="card border-0 shadow-sm mb-4">
+    <!-- HEADER -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
 
-        <div class="card-body p-4">
+        <div class="card-body p-4 p-lg-5">
 
-            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-4">
 
+                <!-- INFO -->
                 <div>
 
-                    <h2 class="fw-bold mb-1">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+
+                        <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+
+                            <i class="bi bi-arrow-left-right me-1"></i>
+
+                            Empréstimo
+
+                        </span>
+
+                        <span class="badge rounded-pill
+                            {% if emprestimo.status == 'SOLICITADO' %}
+                                bg-warning-subtle text-warning
+                            {% elif emprestimo.status == 'APROVADO' %}
+                                bg-info-subtle text-info
+                            {% elif emprestimo.status == 'EM_TRANSITO' %}
+                                bg-primary-subtle text-primary
+                            {% elif emprestimo.status == 'EMPRESTADO' %}
+                                bg-success-subtle text-success
+                            {% elif emprestimo.status == 'DEVOLVIDO' %}
+                                bg-secondary-subtle text-secondary
+                            {% endif %}
+                            px-3 py-2">
+
+                            {{ emprestimo.get_status_display }}
+
+                        </span>
+
+                    </div>
+
+                    <h2 class="fw-bold mb-2">
                         {{ emprestimo.protocolo }}
                     </h2>
 
-                    <p class="text-muted mb-0">
-                        {{ emprestimo.regional_origem.nome }}
-                        →
-                        {{ emprestimo.regional_destino.nome }}
-                    </p>
+                    <div class="d-flex flex-column gap-1 text-muted">
+
+                        <div class="d-flex align-items-center gap-2">
+
+                            <i class="bi bi-building"></i>
+
+                            <span>
+                                {{ emprestimo.regional_origem.nome }}
+                            </span>
+
+                            <i class="bi bi-arrow-right"></i>
+
+                            <span>
+                                {{ emprestimo.regional_destino.nome }}
+                            </span>
+
+                        </div>
+
+                        {% if emprestimo.regional_origem.grupo_regional %}
+
+                        <div class="d-flex align-items-center gap-2">
+
+                            <i class="bi bi-diagram-3"></i>
+
+                            <span>
+                                Grupo:
+                                <strong>
+                                    {{ emprestimo.regional_origem.grupo_regional.nome }}
+                                </strong>
+                            </span>
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
 
                 </div>
 
+                <!-- ACTIONS -->
                 <div class="d-flex flex-wrap gap-2">
+
+                    <a href="{% url 'estoque:lista_emprestimos' %}"
+                       class="btn btn-light border">
+
+                        <i class="bi bi-arrow-left"></i>
+
+                        Voltar
+
+                    </a>
 
                     {% if emprestimo.status == 'SOLICITADO' %}
 
                     <a href="{% url 'estoque:aprovar_emprestimo' emprestimo.id %}"
                        class="btn btn-success">
+
+                        <i class="bi bi-check-circle"></i>
 
                         Aprovar
 
@@ -42,6 +118,8 @@
                     <a href="{% url 'estoque:adicionar_itens_emprestimo' emprestimo.id %}"
                        class="btn btn-primary">
 
+                        <i class="bi bi-plus-circle"></i>
+
                         Adicionar itens
 
                     </a>
@@ -53,6 +131,8 @@
                     <a href="{% url 'estoque:receber_emprestimo' emprestimo.id %}"
                        class="btn btn-success">
 
+                        <i class="bi bi-box-seam"></i>
+
                         Confirmar recebimento
 
                     </a>
@@ -63,6 +143,8 @@
 
                     <a href="{% url 'estoque:devolver_emprestimo' emprestimo.id %}"
                        class="btn btn-warning text-dark">
+
+                        <i class="bi bi-arrow-return-left"></i>
 
                         Confirmar devolução
 
@@ -78,17 +160,22 @@
 
     </div>
 
+    <!-- INFO CARDS -->
     <div class="row g-4 mb-4">
 
-        <div class="col-lg-3">
+        <div class="col-xl-3 col-md-6">
 
             <div class="info-card">
+
+                <div class="info-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-person"></i>
+                </div>
 
                 <small class="text-muted d-block mb-1">
                     Solicitante
                 </small>
 
-                <div class="fw-semibold">
+                <div class="fw-semibold fs-6">
                     {{ emprestimo.solicitado_por }}
                 </div>
 
@@ -96,15 +183,19 @@
 
         </div>
 
-        <div class="col-lg-3">
+        <div class="col-xl-3 col-md-6">
 
             <div class="info-card">
 
+                <div class="info-icon bg-success-subtle text-success">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+
                 <small class="text-muted d-block mb-1">
-                    Empréstimo
+                    Data empréstimo
                 </small>
 
-                <div class="fw-semibold">
+                <div class="fw-semibold fs-6">
                     {{ emprestimo.data_emprestimo|date:'d/m/Y' }}
                 </div>
 
@@ -112,15 +203,19 @@
 
         </div>
 
-        <div class="col-lg-3">
+        <div class="col-xl-3 col-md-6">
 
             <div class="info-card">
+
+                <div class="info-icon bg-warning-subtle text-warning">
+                    <i class="bi bi-clock-history"></i>
+                </div>
 
                 <small class="text-muted d-block mb-1">
                     Devolução prevista
                 </small>
 
-                <div class="fw-semibold">
+                <div class="fw-semibold fs-6">
                     {{ emprestimo.data_prevista_devolucao|date:'d/m/Y' }}
                 </div>
 
@@ -128,16 +223,30 @@
 
         </div>
 
-        <div class="col-lg-3">
+        <div class="col-xl-3 col-md-6">
 
             <div class="info-card">
 
+                <div class="info-icon bg-info-subtle text-info">
+                    <i class="bi bi-diagram-3"></i>
+                </div>
+
                 <small class="text-muted d-block mb-1">
-                    Status
+                    Grupo regional
                 </small>
 
-                <div class="fw-semibold">
-                    {{ emprestimo.get_status_display }}
+                <div class="fw-semibold fs-6">
+
+                    {% if emprestimo.regional_origem.grupo_regional %}
+
+                        {{ emprestimo.regional_origem.grupo_regional.nome }}
+
+                    {% else %}
+
+                        -
+
+                    {% endif %}
+
                 </div>
 
             </div>
@@ -146,31 +255,67 @@
 
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <!-- MOTIVO -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
 
-        <div class="card-header bg-white border-0 py-3 px-4">
+        <div class="card-header bg-white border-0 p-4">
 
-            <h5 class="fw-bold mb-0">
-                Motivo
-            </h5>
+            <div class="d-flex align-items-center gap-2">
+
+                <div class="info-icon bg-secondary-subtle text-secondary">
+                    <i class="bi bi-chat-left-text"></i>
+                </div>
+
+                <h5 class="fw-bold mb-0">
+                    Motivo do empréstimo
+                </h5>
+
+            </div>
 
         </div>
 
-        <div class="card-body px-4 pb-4 pt-0">
+        <div class="card-body px-4 pt-0 pb-4">
 
-            {{ emprestimo.motivo }}
+            <div class="bg-light rounded-4 p-4 border">
+
+                {{ emprestimo.motivo|linebreaks }}
+
+            </div>
 
         </div>
 
     </div>
 
-    <div class="card border-0 shadow-sm overflow-hidden">
+    <!-- EQUIPAMENTOS -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
 
-        <div class="card-header bg-white border-0 py-3 px-4">
+        <div class="card-header bg-white border-0 p-4">
 
-            <h5 class="fw-bold mb-0">
-                Equipamentos
-            </h5>
+            <div class="d-flex justify-content-between align-items-center">
+
+                <div class="d-flex align-items-center gap-2">
+
+                    <div class="info-icon bg-primary-subtle text-primary">
+                        <i class="bi bi-pc-display"></i>
+                    </div>
+
+                    <div>
+
+                        <h5 class="fw-bold mb-0">
+                            Equipamentos
+                        </h5>
+
+                        <small class="text-muted">
+
+                            {{ emprestimo.itens.count }} item(ns)
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
 
         </div>
 
@@ -181,10 +326,23 @@
                 <thead class="table-light">
 
                     <tr>
-                        <th class="ps-4">Produto</th>
-                        <th>Série</th>
-                        <th>Patrimônio</th>
-                        <th>Status</th>
+
+                        <th class="ps-4">
+                            Produto
+                        </th>
+
+                        <th>
+                            Série
+                        </th>
+
+                        <th>
+                            Patrimônio
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
                     </tr>
 
                 </thead>
@@ -196,41 +354,69 @@
                     <tr>
 
                         <td class="ps-4">
-                            {{ item.equipamento.produto.descricao }}
+
+                            <div class="fw-semibold">
+                                {{ item.equipamento.produto.descricao }}
+                            </div>
+
                         </td>
 
                         <td>
-                            {{ item.equipamento.numero_serie }}
+
+                            <span class="text-muted">
+                                {{ item.equipamento.numero_serie }}
+                            </span>
+
                         </td>
 
                         <td>
-                            {{ item.equipamento.patrimonio }}
+
+                            <span class="fw-semibold">
+                                {{ item.equipamento.patrimonio }}
+                            </span>
+
                         </td>
 
                         <td>
 
                             {% if item.status == 'RECEBIDO' %}
 
-                                <span class="badge bg-success">
+                                <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2">
+
+                                    <i class="bi bi-check-circle"></i>
+
                                     Recebido
+
                                 </span>
 
                             {% elif item.status == 'DIVERGENCIA' %}
 
-                                <span class="badge bg-danger">
+                                <span class="badge rounded-pill bg-danger-subtle text-danger px-3 py-2">
+
+                                    <i class="bi bi-exclamation-triangle"></i>
+
                                     Divergência
+
                                 </span>
 
                             {% elif item.status == 'DEVOLVIDO' %}
 
-                                <span class="badge bg-primary">
+                                <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+
+                                    <i class="bi bi-arrow-return-left"></i>
+
                                     Devolvido
+
                                 </span>
 
                             {% else %}
 
-                                <span class="badge bg-warning text-dark">
+                                <span class="badge rounded-pill bg-warning-subtle text-warning px-3 py-2">
+
+                                    <i class="bi bi-clock-history"></i>
+
                                     Pendente
+
                                 </span>
 
                             {% endif %}
@@ -243,9 +429,18 @@
 
                     <tr>
 
-                        <td colspan="4" class="text-center py-5 text-muted">
+                        <td colspan="4"
+                            class="text-center py-5 text-muted">
 
-                            Nenhum item adicionado.
+                            <div class="d-flex flex-column align-items-center gap-2">
+
+                                <i class="bi bi-inbox fs-1"></i>
+
+                                <span>
+                                    Nenhum item adicionado.
+                                </span>
+
+                            </div>
 
                         </td>
 
@@ -266,30 +461,48 @@
 <style>
 
 .card {
-    border-radius: 18px;
+    border-radius: 22px;
 }
 
 .info-card {
     border: 1px solid #ececec;
-    border-radius: 16px;
-    padding: 18px;
-    background: #fafafa;
+    border-radius: 20px;
+    padding: 22px;
+    background: #fff;
     height: 100%;
+    transition: .2s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 18px rgba(0,0,0,.04);
+}
+
+.info-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 1rem;
 }
 
 .table > :not(caption) > * > * {
-    padding-top: 16px;
-    padding-bottom: 16px;
+    padding-top: 18px;
+    padding-bottom: 18px;
     vertical-align: middle;
 }
 
 .btn {
-    border-radius: 12px;
+    border-radius: 14px;
+    padding-inline: 18px;
 }
 
 .badge {
-    border-radius: 999px;
-    padding: 8px 12px;
+    font-weight: 600;
+    letter-spacing: .2px;
 }
 
 </style>

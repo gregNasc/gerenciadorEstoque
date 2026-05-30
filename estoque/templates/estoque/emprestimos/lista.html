@@ -1,10 +1,12 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
 <div class="container-fluid px-4 py-4">
 
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
 
         <div>
 
@@ -18,35 +20,168 @@
 
         </div>
 
-        <a href="{% url 'estoque:criar_emprestimo' %}"
-           class="btn btn-primary px-4">
+        <div class="d-flex gap-2 flex-wrap">
 
-            <i class="bi bi-plus-circle me-2"></i>
-            Novo empréstimo
+            <a href="{% url 'estoque:criar_emprestimo' %}"
+               class="btn btn-primary px-4">
 
-        </a>
+                <i class="bi bi-plus-circle me-2"></i>
+
+                Novo empréstimo
+
+            </a>
+
+        </div>
 
     </div>
 
-    <div class="card border-0 shadow-sm overflow-hidden">
+    <!-- KPI CARDS -->
+    <div class="row g-3 mb-4">
 
-        <div class="card-header bg-white border-0 p-4">
+        <div class="col-xl-3 col-md-6">
 
-            <div class="position-relative">
+            <div class="kpi-card">
 
-                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <div class="kpi-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-arrow-left-right"></i>
+                </div>
 
-                <input
-                    type="text"
-                    id="filtroEmprestimos"
-                    class="form-control ps-5 filtro-input"
-                    placeholder="Pesquisar protocolo, regional ou solicitante..."
-                >
+                <div>
+
+                    <small class="text-muted d-block">
+                        Total
+                    </small>
+
+                    <h4 class="fw-bold mb-0">
+                        {{ emprestimos|length }}
+                    </h4>
+
+                </div>
 
             </div>
 
         </div>
 
+        <div class="col-xl-3 col-md-6">
+
+            <div class="kpi-card">
+
+                <div class="kpi-icon bg-warning-subtle text-warning">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+
+                <div>
+
+                    <small class="text-muted d-block">
+                        Solicitados
+                    </small>
+
+                    <h4 class="fw-bold mb-0">
+
+                        {{ emprestimos|dictsort:"status"|length }}
+
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="kpi-card">
+
+                <div class="kpi-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-truck"></i>
+                </div>
+
+                <div>
+
+                    <small class="text-muted d-block">
+                        Em trânsito
+                    </small>
+
+                    <h4 class="fw-bold mb-0">
+                        {{ emprestimos|length }}
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="kpi-card">
+
+                <div class="kpi-icon bg-success-subtle text-success">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+
+                <div>
+
+                    <small class="text-muted d-block">
+                        Finalizados
+                    </small>
+
+                    <h4 class="fw-bold mb-0">
+                        {{ emprestimos|length }}
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABELA -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+
+        <!-- HEADER -->
+        <div class="card-header bg-white border-0 p-4">
+
+            <div class="row g-3 align-items-center">
+
+                <div class="col-lg-6">
+
+                    <div class="position-relative">
+
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+
+                        <input
+                            type="text"
+                            id="filtroEmprestimos"
+                            class="form-control filtro-input ps-5"
+                            placeholder="Pesquisar protocolo, regional ou solicitante..."
+                        >
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-6">
+
+                    <div class="d-flex justify-content-lg-end">
+
+                        <span class="badge bg-light text-dark border px-3 py-2">
+
+                            {{ emprestimos|length }} empréstimo{{ emprestimos|length|pluralize }}
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TABLE -->
         <div class="table-responsive">
 
             <table class="table align-middle mb-0">
@@ -54,13 +189,39 @@
                 <thead class="table-light">
 
                     <tr>
-                        <th class="ps-4">Protocolo</th>
-                        <th>Origem</th>
-                        <th>Destino</th>
-                        <th>Itens</th>
-                        <th>Status</th>
-                        <th>Devolução</th>
-                        <th class="text-end pe-4">Ações</th>
+
+                        <th class="ps-4">
+                            Protocolo
+                        </th>
+
+                        <th>
+                            Origem
+                        </th>
+
+                        <th>
+                            Destino
+                        </th>
+
+                        <th>
+                            Grupo
+                        </th>
+
+                        <th>
+                            Itens
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Devolução
+                        </th>
+
+                        <th class="text-end pe-4">
+                            Ações
+                        </th>
+
                     </tr>
 
                 </thead>
@@ -71,68 +232,145 @@
 
                     <tr class="linha-emprestimo">
 
+                        <!-- PROTOCOLO -->
                         <td class="ps-4">
 
-                            <div class="fw-bold">
-                                {{ e.protocolo }}
+                            <div class="d-flex flex-column">
+
+                                <span class="fw-bold">
+                                    {{ e.protocolo }}
+                                </span>
+
+                                <small class="text-muted">
+                                    {{ e.solicitado_por }}
+                                </small>
+
                             </div>
 
-                            <small class="text-muted">
-                                {{ e.solicitado_por }}
-                            </small>
+                        </td>
+
+                        <!-- ORIGEM -->
+                        <td>
+
+                            <div class="fw-semibold">
+                                {{ e.regional_origem.nome }}
+                            </div>
 
                         </td>
 
+                        <!-- DESTINO -->
                         <td>
-                            {{ e.regional_origem.nome }}
+
+                            <div class="fw-semibold">
+                                {{ e.regional_destino.nome }}
+                            </div>
+
                         </td>
 
-                        <td>
-                            {{ e.regional_destino.nome }}
-                        </td>
-
-                        <td>
-                            <span class="badge bg-light text-dark border">
-                                {{ e.itens.count }} item{{ e.itens.count|pluralize }}
-                            </span>
-                        </td>
-
+                        <!-- GRUPO -->
                         <td>
 
-                            {% if e.status == 'SOLICITADO' %}
+                            {% if e.regional_origem.grupo_regional %}
 
-                                <span class="badge bg-warning text-dark">
-                                    Solicitado
-                                </span>
+                                <span class="badge bg-light text-dark border">
 
-                            {% elif e.status == 'APROVADO' %}
+                                    <i class="bi bi-diagram-3 me-1"></i>
 
-                                <span class="badge bg-info text-dark">
-                                    Aprovado
-                                </span>
+                                    {{ e.regional_origem.grupo_regional.nome }}
 
-                            {% elif e.status == 'EMPRESTADO' %}
-
-                                <span class="badge bg-primary">
-                                    Emprestado
-                                </span>
-
-                            {% elif e.status == 'DEVOLVIDO' %}
-
-                                <span class="badge bg-success">
-                                    Devolvido
                                 </span>
 
                             {% else %}
 
-                                <span class="badge bg-secondary">
-                                    {{ e.status }}
+                                <span class="text-muted">
+                                    -
                                 </span>
 
                             {% endif %}
 
                         </td>
 
+                        <!-- ITENS -->
+                        <td>
+
+                            <span class="badge bg-light text-dark border">
+
+                                <i class="bi bi-pc-display-horizontal me-1"></i>
+
+                                {{ e.itens.count }}
+
+                                item{{ e.itens.count|pluralize }}
+
+                            </span>
+
+                        </td>
+
+                        <!-- STATUS -->
+                        <td>
+
+                            {% if e.status == 'SOLICITADO' %}
+
+                                <span class="badge rounded-pill bg-warning-subtle text-warning px-3 py-2">
+
+                                    <i class="bi bi-hourglass-split me-1"></i>
+
+                                    Solicitado
+
+                                </span>
+
+                            {% elif e.status == 'APROVADO' %}
+
+                                <span class="badge rounded-pill bg-info-subtle text-info px-3 py-2">
+
+                                    <i class="bi bi-check2-circle me-1"></i>
+
+                                    Aprovado
+
+                                </span>
+
+                            {% elif e.status == 'EM_TRANSITO' %}
+
+                                <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+
+                                    <i class="bi bi-truck me-1"></i>
+
+                                    Em trânsito
+
+                                </span>
+
+                            {% elif e.status == 'EMPRESTADO' %}
+
+                                <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2">
+
+                                    <i class="bi bi-arrow-left-right me-1"></i>
+
+                                    Emprestado
+
+                                </span>
+
+                            {% elif e.status == 'DEVOLVIDO' %}
+
+                                <span class="badge rounded-pill bg-secondary-subtle text-secondary px-3 py-2">
+
+                                    <i class="bi bi-check-circle me-1"></i>
+
+                                    Devolvido
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+
+                                    {{ e.status }}
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <!-- DEVOLUÇÃO -->
                         <td>
 
                             <div class="fw-semibold">
@@ -141,10 +379,11 @@
 
                         </td>
 
+                        <!-- AÇÕES -->
                         <td class="text-end pe-4">
 
                             <a href="{% url 'estoque:detalhe_emprestimo' e.id %}"
-                               class="btn btn-light border btn-sm">
+                               class="btn btn-light border btn-sm rounded-3">
 
                                 <i class="bi bi-eye"></i>
 
@@ -158,9 +397,18 @@
 
                     <tr>
 
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="8"
+                            class="text-center py-5 text-muted">
 
-                            Nenhum empréstimo encontrado.
+                            <div class="d-flex flex-column align-items-center gap-2">
+
+                                <i class="bi bi-inbox fs-1"></i>
+
+                                <span>
+                                    Nenhum empréstimo encontrado.
+                                </span>
+
+                            </div>
 
                         </td>
 
@@ -181,29 +429,97 @@
 <style>
 
 .card {
-    border-radius: 18px;
+    border-radius: 22px;
+}
+
+.kpi-card {
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 20px;
+    padding: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 100%;
+    transition: .2s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 18px rgba(0,0,0,.04);
+}
+
+.kpi-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
 }
 
 .filtro-input {
-    border-radius: 12px;
-    height: 48px;
+    border-radius: 14px;
+    height: 50px;
 }
 
 .table > :not(caption) > * > * {
-    padding-top: 16px;
-    padding-bottom: 16px;
+    padding-top: 18px;
+    padding-bottom: 18px;
     vertical-align: middle;
 }
 
 .btn {
-    border-radius: 12px;
+    border-radius: 14px;
 }
 
 .badge {
-    border-radius: 999px;
-    padding: 8px 12px;
+    font-weight: 600;
+    letter-spacing: .2px;
+}
+
+tbody tr {
+    transition: .15s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(0,0,0,.015);
 }
 
 </style>
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const filtro =
+        document.getElementById('filtroEmprestimos');
+
+    const linhas =
+        document.querySelectorAll('.linha-emprestimo');
+
+    filtro.addEventListener('keyup', function () {
+
+        const termo =
+            filtro.value.toLowerCase();
+
+        linhas.forEach(function (linha) {
+
+            const texto =
+                linha.innerText.toLowerCase();
+
+            linha.style.display =
+                texto.includes(termo)
+                    ? ''
+                    : 'none';
+
+        });
+
+    });
+
+});
+
+</script>
 
 {% endblock %}
