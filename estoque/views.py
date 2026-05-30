@@ -1505,7 +1505,10 @@ def enviar_mensagem(request):
 
                 return redirect('estoque:enviar_mensagem')
 
-            destinatarios = destinatarios.distinct()
+            destinatarios = (
+                    destinatarios |
+                    User.objects.filter(id=request.user.id)
+            ).distinct()
 
             for usuario in destinatarios:
 
@@ -1653,31 +1656,45 @@ def criar_comunicado(request):
             )
 
             if empresa_id:
-
                 usuarios = usuarios.filter(
                     perfil__empresa_id=empresa_id
                 )
 
-            comunicado.usuarios.set(
-                usuarios.distinct()
-            )
+            usuarios = (
+                    usuarios |
+                    User.objects.filter(id=request.user.id)
+            ).distinct()
+
+            comunicado.usuarios.set(usuarios)
+
+
 
         elif regionais_ids:
 
             usuarios = User.objects.filter(
+
                 perfil__regionais__id__in=regionais_ids,
+
                 is_active=True
+
             )
 
             if empresa_id:
-
                 usuarios = usuarios.filter(
+
                     perfil__empresa_id=empresa_id
+
                 )
 
-            comunicado.usuarios.set(
-                usuarios.distinct()
-            )
+            usuarios = (
+
+                    usuarios |
+
+                    User.objects.filter(id=request.user.id)
+
+            ).distinct()
+
+            comunicado.usuarios.set(usuarios)
 
         for arquivo in request.FILES.getlist('arquivos'):
 
