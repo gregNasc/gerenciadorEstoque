@@ -15,6 +15,7 @@ from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
 from django.utils import timezone
 from datetime import datetime, time
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
@@ -3716,7 +3717,9 @@ def editar_equipamento(request, equipamento_id):
 
         messages.error(
             request,
-            'Patrimônio ou número de série já cadastrado.'
+            'Não foi possível salvar o equipamento. '
+            'Já existe outro equipamento utilizando '
+            'o mesmo patrimônio ou número de série.'
         )
 
     except Exception as e:

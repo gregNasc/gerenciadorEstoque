@@ -230,20 +230,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // =========================
-    // ELEMENTOS
-    // =========================
-
+   // ELEMENTOS
     const modalEl = document.getElementById('modal');
     const modalBody = document.getElementById('modal-body');
     const modalTitle = document.getElementById('modal-title');
     const closeBtn = document.getElementById('closeModal');
     const backBtn = document.getElementById('modalBackBtn');
 
-    // =========================
-    // CONFIGURAÇÕES
-    // =========================
-
+   // CONFIGURAÇÕES
     const STATUS_BLOQUEADOS_SICK = [
         'INATIVO',
         'SICK',
@@ -254,16 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
         'TRANSFERENCIA'
     ];
 
-    // =========================
-    // ESTADO
-    // =========================
-
+   // ESTADO
     let navigationStack = [];
 
-    // =========================
-    // HELPERS
-    // =========================
-
+   // HELPERS
     const escapeHtml = (str = '') => {
         return String(str).replace(/[&<>]/g, (m) => ({
             '&': '&amp;',
@@ -423,10 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // =========================
-    // API
-    // =========================
-
+   // API
     const api = {
 
         async request(url, options = {}) {
@@ -495,10 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // =========================
-    // REGIONAIS
-    // =========================
-
+   // REGIONAIS
     async function loadRegionais(
         produtoId,
         produtoNome
@@ -585,10 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // =========================
-    // EQUIPAMENTOS
-    // =========================
-
+   // EQUIPAMENTOS
     async function loadEquipamentos(
         produtoId,
         regionalId,
@@ -630,6 +609,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${data.equipamentos.length}
                         {% trans "equipamento(s)" %}
                     </span>
+
+                </div>
+
+                <div class="row mb-3">
+
+                    <div class="col-md-6">
+
+                        <input
+                            type="text"
+                            id="filtroEquipamentos"
+                            class="form-control"
+                            placeholder="Pesquisar por patrimônio ou número de série...">
+
+                    </div>
 
                 </div>
 
@@ -708,6 +701,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
             modalBody.innerHTML = html;
 
+            const filtro = document.getElementById(
+                'filtroEquipamentos'
+            );
+
+            if (filtro) {
+
+                filtro.addEventListener('input', function () {
+
+                    const termo =
+                        this.value.toLowerCase().trim();
+
+                    document
+                        .querySelectorAll('.eq-row')
+                        .forEach((row) => {
+
+                            const texto =
+                                row.innerText.toLowerCase();
+
+                            row.style.display =
+                                texto.includes(termo)
+                                    ? ''
+                                    : 'none';
+                        });
+                });
+            }
+
             // Histórico
             document
                 .querySelectorAll('.eq-row')
@@ -783,10 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // =========================
-    // HISTÓRICO
-    // =========================
-
+   // HISTÓRICO
     async function loadHistorico(
         equipamentoId,
         produtoId,
@@ -844,10 +860,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // =========================
-    // EVENTOS
-    // =========================
-
+   // EVENTOS
     document
         .querySelectorAll('.row-click')
         .forEach((row) => {
