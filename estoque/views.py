@@ -3268,7 +3268,11 @@ def receber_transferencia(request, transferencia_id):
         divergencia_detectada = False
         pendencia_detectada = False
 
+        usuarios = None
+        comunicado = None
+
         try:
+
             with transaction.atomic():
 
                 for item in itens:
@@ -3296,8 +3300,6 @@ def receber_transferencia(request, transferencia_id):
                             detalhes={
                                 'transferencia_id': transferencia.id,
                                 'protocolo': transferencia.protocolo,
-                                'origem': transferencia.regional_origem.nome,
-                                'destino': transferencia.regional_destino.nome,
                             }
                         )
 
@@ -3376,64 +3378,75 @@ def receber_transferencia(request, transferencia_id):
                 transferencia.data_recebimento = timezone.now()
                 transferencia.save(update_fields=['status', 'data_recebimento'])
 
-                if divergencia_detectada or pendencia_detectada:
-
-                    usuarios_origem = User.objects.filter(
-                        perfil__regionais=transferencia.regional_origem
-                    )
-
-                    admins = User.objects.filter(perfil__role='admin')
-
-                    usuarios = (usuarios_origem | admins).distinct()
-
-                    if divergencia_detectada:
-                        mensagem = Mensagem.objects.create(
-                            titulo='🚨 Divergência em transferência',
-                            conteudo=(
-                                f'Transferência {transferencia.protocolo} '
-                                f'com divergências detectadas.'
-                            ),
-                            enviado_por=request.user
-                        )
-
-                        MensagemDestino.objects.bulk_create([
-                            MensagemDestino(mensagem=mensagem, usuario=u)
-                            for u in usuarios
-                        ])
-
-                    if pendencia_detectada:
-                        mensagem = Mensagem.objects.create(
-                            titulo='⚠️ Pendência de transferência',
-                            conteudo=(
-                                f'Transferência {transferencia.protocolo} '
-                                f'com itens não recebidos.'
-                            ),
-                            enviado_por=request.user
-                        )
-
-                        MensagemDestino.objects.bulk_create([
-                            MensagemDestino(mensagem=mensagem, usuario=u)
-                            for u in usuarios
-                        ])
-
-                if transferencia.alocacao:
-
-                    item_solicitacao = transferencia.alocacao.item
-
-                    item_solicitacao.atendido += (total_recebidos + total_divergentes)
-                    item_solicitacao.save(update_fields=['atendido'])
-
-                    solicitacao = item_solicitacao.solicitacao
-
-                    pendentes = sum(i.pendente for i in solicitacao.itens.all())
-
-                    if pendentes <= 0:
-                        solicitacao.status = 'FINALIZADO'
-                        solicitacao.save(update_fields=['status'])
+                usuarios = (
+                    User.objects.filter(perfil__regionais=transferencia.regional_origem)
+                    | User.objects.filter(perfil__role='admin')
+                ).distinct()
 
         except Exception as e:
             messages.error(request, f'Erro ao receber transferência: {e}')
             return redirect('estoque:receber_transferencia', transferencia.id)
+
+        try:
+
+            if divergencia_detectada and pendencia_detectada:
+                titulo = f'Transferência {transferencia.protocolo} com divergências e pendências'
+            elif divergencia_detectada:
+                titulo = f'Transferência {transferencia.protocolo} com divergências'
+            elif pendencia_detectada:
+                titulo = f'Transferência {transferencia.protocolo} com pendências'
+            else:
+                titulo = f'Transferência {transferencia.protocolo} concluída sem ocorrências'
+
+            itens_detalhados = []
+
+            for item in itens:
+
+                if item.status not in ['DIVERGENTE', 'NAO_RECEBIDO']:
+                    continue
+
+                eq = item.equipamento
+
+                itens_detalhados.append({
+                    "produto": eq.produto.descricao if eq.produto else "",
+                    "serie_enviada": getattr(eq, "serie", ""),
+                    "patrimonio_enviado": getattr(eq, "patrimonio", ""),
+                    "status": item.status,
+                    "serie_recebida": getattr(item, "serie_recebida", ""),
+                    "patrimonio_recebido": getattr(item, "patrimonio_recebido", ""),
+                    "observacao": getattr(item, "observacao_recebimento", ""),
+                })
+
+            conteudo = (
+                f"Transferência: {transferencia.protocolo}\n\n"
+                f"Origem: {transferencia.regional_origem.nome}\n"
+                f"Destino: {transferencia.regional_destino.nome}\n\n"
+                f"Detalhamento por item:\n"
+            )
+
+            for i, item in enumerate(itens_detalhados, start=1):
+                conteudo += (
+                    f"\nItem {i}:\n"
+                    f"Produto: {item['produto']}\n"
+                    f"Status: {item['status']}\n"
+                    f"Enviado Série: {item['serie_enviada']} | Patrimônio: {item['patrimonio_enviado']}\n"
+                    f"Recebido Série: {item['serie_recebida']} | Patrimônio: {item['patrimonio_recebido']}\n"
+                    f"Observação: {item['observacao']}\n"
+                    "-----------------------------"
+                )
+
+            comunicado = Comunicado.objects.create(
+                titulo=titulo,
+                mensagem=conteudo,
+                tipo='OPERACIONAL',
+                criado_por=request.user,
+                ativo=True
+            )
+
+            comunicado.usuarios.add(*usuarios)
+
+        except Exception:
+            pass
 
         messages.success(
             request,
