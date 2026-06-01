@@ -425,6 +425,55 @@ class TransferRequest(models.Model):
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+class DivergenciaTransferencia(models.Model):
+
+    transferencia = models.ForeignKey(Transferencia, on_delete=models.CASCADE)
+    item = models.ForeignKey(TransferenciaItem, on_delete=models.CASCADE)
+    equipamento_enviado = models.ForeignKey(Equipamento, on_delete=models.PROTECT, related_name='divergencias_enviadas')
+    serie_recebida = models.CharField(max_length=100, blank=True)
+    patrimonio_recebido = models.CharField(max_length=100, blank=True)
+    observacao = models.TextField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+    resolvida = models.BooleanField(default=False)
+
+class PendenciaTransferencia(models.Model):
+
+    STATUS = [
+        ('ABERTA', 'Aberta'),
+        ('EM_ANALISE', 'Em análise'),
+        ('RESOLVIDA', 'Resolvida'),
+    ]
+
+    TIPO = [
+        ('DIVERGENCIA', 'Divergência'),
+        ('NAO_RECEBIDO', 'Não recebido'),
+    ]
+
+    transferencia = models.ForeignKey(Transferencia, on_delete=models.CASCADE, related_name='pendencias')
+    item = models.ForeignKey(TransferenciaItem, on_delete=models.CASCADE, related_name='pendencias')
+    tipo = models.CharField(max_length=30, choices=TIPO)
+    patrimonio_esperado = models.CharField(max_length=100, blank=True)
+    serie_esperada = models.CharField(max_length=150, blank=True)
+    patrimonio_recebido = models.CharField(max_length=100, blank=True)
+    serie_recebida = models.CharField(max_length=150, blank=True)
+    descricao = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='ABERTA')
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+    equipamento = models.ForeignKey(Equipamento, on_delete=models.PROTECT)
+    motivo = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return (
+            f'{self.transferencia.protocolo} - '
+            f'{self.tipo}'
+        )
+
 # ---------------- SICK ----------------
 class StatusEquipamento(models.TextChoices):
     ATIVO = 'ATIVO', _('Ativo')

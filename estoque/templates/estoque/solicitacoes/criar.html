@@ -109,6 +109,35 @@
 <form method="post">
     {% csrf_token %}
 
+
+    {% if regionais|length > 1 %}
+
+    <div class="mb-3">
+        <label class="form-label">
+            Regional Solicitante
+        </label>
+
+        <select name="regional" class="form-select" required>
+            {% for regional in regionais %}
+                <option value="{{ regional.id }}">
+                    {{ regional.nome }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+{% else %}
+
+    <input type="hidden"
+           name="regional"
+           value="{{ regionais.0.id }}">
+
+    <div class="alert alert-info">
+        Regional: <strong>{{ regionais.0.nome }}</strong>
+    </div>
+
+{% endif %}
+
     <div class="mb-3">
         <label>Tipo de Equipamento</label>
         <select name="categoria" class="form-select" required>

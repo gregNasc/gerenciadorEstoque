@@ -9,7 +9,9 @@ from .forms import EquipamentoForm
 from django.http import HttpResponse
 from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
+from .models import (PendenciaTransferencia, DivergenciaTransferencia)
 from estoque.models import Base
+from .utils import notificar_pendencia_transferencia
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
@@ -2829,20 +2831,40 @@ def pode_transferir(equipamento):
 @login_required
 @role_required('admin', 'gestor')
 def criar_solicitacao(request):
-    #print("USER:", request.user)
-    #print("ROLE:", request.user.perfil.role)
+
+    perfil = request.user.perfil
+
     if request.method == 'POST':
 
         motivo = request.POST.get('motivo')
+        regional_id = request.POST.get('regional')
+
         categorias = request.POST.getlist('categoria')
         quantidades = request.POST.getlist('quantidade')
 
         if not motivo:
-            messages.error(request, 'Informe o motivo da solicitação.')
+            messages.error(
+                request,
+                'Informe o motivo da solicitação.'
+            )
+            return redirect('estoque:criar_solicitacao')
+
+        regional = perfil.regionais.filter(
+            id=regional_id
+        ).first()
+
+        if not regional:
+            messages.error(
+                request,
+                'Selecione uma regional válida.'
+            )
             return redirect('estoque:criar_solicitacao')
 
         if not categorias:
-            messages.error(request, 'Adicione pelo menos um item.')
+            messages.error(
+                request,
+                'Adicione pelo menos um item.'
+            )
             return redirect('estoque:criar_solicitacao')
 
         try:
@@ -2850,7 +2872,7 @@ def criar_solicitacao(request):
 
                 solicitacao = Solicitacao.objects.create(
                     motivo=motivo,
-                    regional_solicitante=request.user.perfil.regionais.first(),
+                    regional_solicitante=regional,
                     criado_por=request.user
                 )
 
@@ -2875,16 +2897,37 @@ def criar_solicitacao(request):
                     itens_validos += 1
 
                 if itens_validos == 0:
-                    raise ValueError('Nenhum item válido informado.')
+                    raise ValueError(
+                        'Nenhum item válido informado.'
+                    )
 
         except Exception as e:
-            messages.error(request, f'Erro ao criar solicitação: {str(e)}')
-            return redirect('estoque:criar_solicitacao')
 
-        messages.success(request, 'Solicitação criada com sucesso!')
-#        return redirect('estoque:caixa_solicitacoes')
+            messages.error(
+                request,
+                f'Erro ao criar solicitação: {str(e)}'
+            )
 
-    return render(request, 'estoque/solicitacoes/criar.html')
+            return redirect(
+                'estoque:criar_solicitacao'
+            )
+
+        messages.success(
+            request,
+            'Solicitação criada com sucesso!'
+        )
+
+        return redirect(
+            'estoque:caixa_solicitacoes'
+        )
+
+    return render(
+        request,
+        'estoque/solicitacoes/criar.html',
+        {
+            'regionais': perfil.regionais.order_by('nome')
+        }
+    )
 
 @login_required
 @role_required('admin', 'gestor')
@@ -3201,88 +3244,204 @@ def receber_transferencia(request, transferencia_id):
     if (
         perfil.role != 'admin'
         and not perfil.regionais.filter(
-            id=transferencia.regional_destino.id
+            id=transferencia.regional_destino_id
         ).exists()
     ):
-        messages.error(
-            request,
-            'Sem permissão para receber esta transferência.'
-        )
+        messages.error(request, 'Sem permissão para receber esta transferência.')
         return redirect('estoque:caixa_transferencias')
 
     if transferencia.status != 'EM_TRANSITO':
-        messages.error(
-            request,
-            'Transferência não está em trânsito.'
-        )
+        messages.error(request, 'Transferência não está em trânsito.')
         return redirect('estoque:caixa_transferencias')
 
-    itens = transferencia.itens.all()
-    itens_lista = list(itens)
+    itens = transferencia.itens.select_related(
+        'equipamento',
+        'equipamento__produto'
+    )
 
     if request.method == 'POST':
 
-        with transaction.atomic():
+        total_recebidos = 0
+        total_divergentes = 0
+        total_nao_recebidos = 0
 
-            for item in itens:
+        divergencia_detectada = False
+        pendencia_detectada = False
 
-                equipamento = item.equipamento
+        try:
+            with transaction.atomic():
 
-                equipamento.regional = transferencia.regional_destino
+                for item in itens:
 
-                equipamento.status = 'ATIVO'
+                    equipamento = item.equipamento
 
-                equipamento.save(
-                    update_fields=[
-                        'regional',
-                        'status'
-                    ]
-                )
-
-                Historico.objects.create(
-                    equipamento=equipamento,
-                    tipo_acao='TRANSFERENCIA_RECEBIDA',
-                    usuario=request.user,
-                    detalhes={
-                        'transferencia_id': transferencia.id,
-                        'protocolo': transferencia.protocolo,
-                        'origem': transferencia.regional_origem.nome,
-                        'destino': transferencia.regional_destino.nome,
-                        'recebido_por': request.user.username,
-                    }
-                )
-
-            transferencia.status = 'RECEBIDO'
-            transferencia.data_recebimento = timezone.now()
-            transferencia.save()
-
-            if transferencia.alocacao:
-
-                item_solicitacao = transferencia.alocacao.item
-
-                item_solicitacao.atendido += len(itens_lista)
-
-                item_solicitacao.save(
-                    update_fields=['atendido']
-                )
-
-                solicitacao = item_solicitacao.solicitacao
-
-                pendentes = sum(
-                    i.pendente
-                    for i in solicitacao.itens.all()
-                )
-
-                if pendentes <= 0:
-
-                    solicitacao.status = 'FINALIZADO'
-                    solicitacao.save(
-                        update_fields=['status']
+                    status_item = request.POST.get(
+                        f'status_item_{item.id}',
+                        'RECEBIDO'
                     )
+
+                    if status_item == 'RECEBIDO':
+
+                        equipamento.regional = transferencia.regional_destino
+                        equipamento.status = 'ATIVO'
+                        equipamento.save(update_fields=['regional', 'status'])
+
+                        item.status = 'RECEBIDO'
+                        item.save(update_fields=['status'])
+
+                        Historico.objects.create(
+                            equipamento=equipamento,
+                            tipo_acao='TRANSFERENCIA_RECEBIDA',
+                            usuario=request.user,
+                            detalhes={
+                                'transferencia_id': transferencia.id,
+                                'protocolo': transferencia.protocolo,
+                                'origem': transferencia.regional_origem.nome,
+                                'destino': transferencia.regional_destino.nome,
+                            }
+                        )
+
+                        total_recebidos += 1
+
+                    elif status_item == 'DIVERGENTE':
+
+                        serie_recebida = request.POST.get(f'serie_recebida_{item.id}', '')
+                        patrimonio_recebido = request.POST.get(f'patrimonio_recebido_{item.id}', '')
+                        observacao = request.POST.get(f'observacao_item_{item.id}', '')
+
+                        equipamento.regional = transferencia.regional_destino
+                        equipamento.status = 'ATIVO'
+                        equipamento.save(update_fields=['regional', 'status'])
+
+                        item.status = 'DIVERGENTE'
+                        item.serie_recebida = serie_recebida
+                        item.patrimonio_recebido = patrimonio_recebido
+                        item.observacao_recebimento = observacao
+                        item.save()
+
+                        DivergenciaTransferencia.objects.create(
+                            transferencia=transferencia,
+                            item=item,
+                            equipamento_enviado=equipamento,
+                            serie_recebida=serie_recebida,
+                            patrimonio_recebido=patrimonio_recebido
+                        )
+
+                        Historico.objects.create(
+                            equipamento=equipamento,
+                            tipo_acao='TRANSFERENCIA_DIVERGENTE',
+                            usuario=request.user,
+                            detalhes={
+                                'transferencia_id': transferencia.id,
+                                'protocolo': transferencia.protocolo,
+                                'serie_recebida': serie_recebida,
+                                'patrimonio_recebido': patrimonio_recebido,
+                                'observacao': observacao,
+                            }
+                        )
+
+                        divergencia_detectada = True
+                        total_divergentes += 1
+
+                    elif status_item == 'NAO_RECEBIDO':
+
+                        equipamento.regional = transferencia.regional_origem
+                        equipamento.status = 'ATIVO'
+                        equipamento.save(update_fields=['regional', 'status'])
+
+                        item.status = 'NAO_RECEBIDO'
+                        item.save(update_fields=['status'])
+
+                        PendenciaTransferencia.objects.create(
+                            transferencia=transferencia,
+                            item=item,
+                            equipamento=equipamento,
+                            motivo='NAO_RECEBIDO'
+                        )
+
+                        Historico.objects.create(
+                            equipamento=equipamento,
+                            tipo_acao='ITEM_NAO_RECEBIDO',
+                            usuario=request.user,
+                            detalhes={
+                                'transferencia_id': transferencia.id,
+                                'protocolo': transferencia.protocolo,
+                            }
+                        )
+
+                        pendencia_detectada = True
+                        total_nao_recebidos += 1
+
+                transferencia.status = 'CONCLUIDA'
+                transferencia.data_recebimento = timezone.now()
+                transferencia.save(update_fields=['status', 'data_recebimento'])
+
+                if divergencia_detectada or pendencia_detectada:
+
+                    usuarios_origem = User.objects.filter(
+                        perfil__regionais=transferencia.regional_origem
+                    )
+
+                    admins = User.objects.filter(perfil__role='admin')
+
+                    usuarios = (usuarios_origem | admins).distinct()
+
+                    if divergencia_detectada:
+                        mensagem = Mensagem.objects.create(
+                            titulo='🚨 Divergência em transferência',
+                            conteudo=(
+                                f'Transferência {transferencia.protocolo} '
+                                f'com divergências detectadas.'
+                            ),
+                            enviado_por=request.user
+                        )
+
+                        MensagemDestino.objects.bulk_create([
+                            MensagemDestino(mensagem=mensagem, usuario=u)
+                            for u in usuarios
+                        ])
+
+                    if pendencia_detectada:
+                        mensagem = Mensagem.objects.create(
+                            titulo='⚠️ Pendência de transferência',
+                            conteudo=(
+                                f'Transferência {transferencia.protocolo} '
+                                f'com itens não recebidos.'
+                            ),
+                            enviado_por=request.user
+                        )
+
+                        MensagemDestino.objects.bulk_create([
+                            MensagemDestino(mensagem=mensagem, usuario=u)
+                            for u in usuarios
+                        ])
+
+                if transferencia.alocacao:
+
+                    item_solicitacao = transferencia.alocacao.item
+
+                    item_solicitacao.atendido += (total_recebidos + total_divergentes)
+                    item_solicitacao.save(update_fields=['atendido'])
+
+                    solicitacao = item_solicitacao.solicitacao
+
+                    pendentes = sum(i.pendente for i in solicitacao.itens.all())
+
+                    if pendentes <= 0:
+                        solicitacao.status = 'FINALIZADO'
+                        solicitacao.save(update_fields=['status'])
+
+        except Exception as e:
+            messages.error(request, f'Erro ao receber transferência: {e}')
+            return redirect('estoque:receber_transferencia', transferencia.id)
 
         messages.success(
             request,
-            f'Transferência #{transferencia.id} recebida com sucesso.'
+            (
+                f'Concluído. Recebidos: {total_recebidos} | '
+                f'Divergentes: {total_divergentes} | '
+                f'Pendentes: {total_nao_recebidos}'
+            )
         )
 
         return redirect('estoque:caixa_transferencias')

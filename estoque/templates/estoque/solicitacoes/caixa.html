@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block content %}
-
+{% if request.user.perfil.role == 'admin' %}
 <div class="container-fluid px-4 mt-4">
 
     <!-- HEADER -->
@@ -328,5 +328,5 @@
     {% endfor %}
 
 </div>
-
+{% endif %}
 {% endblock %}

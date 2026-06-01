@@ -2,6 +2,8 @@ from django.shortcuts import get_object_or_404
 from .models import Equipamento, Historico, Base
 from django.db.models import Count, Q, Sum, F
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.models import User
+from estoque.models import (Mensagem, MensagemDestino,)
 from django.db.models.functions import Coalesce
 from datetime import date
 
@@ -164,3 +166,50 @@ class EstoqueService:
         return queryset.values('status').annotate(
             total=Count('id')
         ).order_by('status')
+
+def notificar_pendencia_transferencia(transferencia, evento, mensagem):
+
+    usuarios_origem = User.objects.filter(
+        perfil__regionais=transferencia.regional_origem
+    )
+
+    admins = User.objects.filter(
+        perfil__role='admin'
+    )
+
+    usuarios = (
+        usuarios_origem | admins
+    ).distinct()
+
+    for usuario in usuarios:
+
+        Notificacao.objects.create(
+            usuario=usuario,
+            transferencia=transferencia,
+            tipo='TRANSFERENCIA',
+            evento=evento,
+            mensagem=mensagem,
+            link=f'/transferencias/{transferencia.id}/'
+        )
+
+def enviar_alerta_transferencia(usuarios, titulo, conteudo, enviado_por=None):
+
+    mensagem = Mensagem.objects.create(
+        titulo=titulo,
+        conteudo=conteudo,
+        enviado_por=enviado_por
+    )
+
+    destinos = [
+        MensagemDestino(
+            mensagem=mensagem,
+            usuario=usuario
+        )
+        for usuario in usuarios
+    ]
+
+    MensagemDestino.objects.bulk_create(
+        destinos
+    )
+
+    return mensagem

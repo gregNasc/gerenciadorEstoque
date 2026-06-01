@@ -6,13 +6,11 @@
 
     <div class="card border-0 shadow-sm">
 
-        <!-- HEADER -->
         <div class="card-header bg-white border-0 py-4 px-4">
 
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
 
                 <div>
-
                     <h3 class="fw-bold mb-1">
                         Conferência da transferência
                     </h3>
@@ -20,11 +18,10 @@
                     <p class="text-muted mb-0">
                         Valide os equipamentos recebidos antes de concluir a transferência.
                     </p>
-
                 </div>
 
                 <span class="badge bg-primary fs-6 px-3 py-2">
-                    Transferência #{{ transferencia.id }}
+                    Transferência #{{ transferencia.protocolo }}
                 </span>
 
             </div>
@@ -38,12 +35,11 @@
                 {% csrf_token %}
 
                 <!-- RESUMO -->
+
                 <div class="row g-3 mb-4">
 
                     <div class="col-lg-4">
-
                         <div class="info-card">
-
                             <small class="text-muted d-block mb-1">
                                 Origem
                             </small>
@@ -51,15 +47,11 @@
                             <div class="fw-semibold">
                                 {{ transferencia.regional_origem.nome }}
                             </div>
-
                         </div>
-
                     </div>
 
                     <div class="col-lg-4">
-
                         <div class="info-card">
-
                             <small class="text-muted d-block mb-1">
                                 Destino
                             </small>
@@ -67,15 +59,11 @@
                             <div class="fw-semibold">
                                 {{ transferencia.regional_destino.nome }}
                             </div>
-
                         </div>
-
                     </div>
 
                     <div class="col-lg-4">
-
                         <div class="info-card">
-
                             <small class="text-muted d-block mb-1">
                                 Total de itens
                             </small>
@@ -83,14 +71,13 @@
                             <div class="fw-semibold">
                                 {{ transferencia.itens.count }}
                             </div>
-
                         </div>
-
                     </div>
 
                 </div>
 
                 <!-- ALERTA -->
+
                 <div class="alert alert-warning border-0 shadow-sm mb-4">
 
                     <div class="fw-semibold mb-1">
@@ -98,13 +85,14 @@
                     </div>
 
                     <small>
-                        Marque apenas os equipamentos realmente recebidos.
-                        Caso exista divergência, deixe o item desmarcado.
+                        Verifique cuidadosamente série, patrimônio e integridade física dos equipamentos.
+                        Divergências serão notificadas automaticamente à regional de origem.
                     </small>
 
                 </div>
 
                 <!-- TABELA -->
+
                 <div class="table-responsive border rounded-4">
 
                     <table class="table table-hover align-middle mb-0">
@@ -112,8 +100,8 @@
                         <thead class="table-light">
 
                             <tr>
-                                <th width="70" class="ps-4">
-                                    Recebido
+                                <th width="230">
+                                    Resultado
                                 </th>
 
                                 <th>
@@ -121,16 +109,17 @@
                                 </th>
 
                                 <th>
-                                    Número Série
+                                    Série
                                 </th>
 
                                 <th>
                                     Patrimônio
                                 </th>
 
-                                <th>
+                                <th width="180">
                                     Status
                                 </th>
+
                             </tr>
 
                         </thead>
@@ -139,94 +128,156 @@
 
                             {% for item in transferencia.itens.all %}
 
-                            <tr class="linha-item">
+                                <tr>
 
-                                <!-- CHECK -->
-                                <td class="ps-4">
+                                    <td>
 
-                                    <div class="form-check form-switch">
-
-                                        <input
-                                            class="form-check-input check-recebido"
-                                            type="checkbox"
-                                            name="itens_recebidos"
-                                            value="{{ item.id }}"
-                                            id="item{{ item.id }}"
-                                            checked
+                                        <select
+                                            class="form-select status-select"
+                                            name="status_item_{{ item.id }}"
+                                            data-item="{{ item.id }}"
                                         >
+                                            <option value="RECEBIDO" selected>
+                                                ✅ Recebido
+                                            </option>
 
-                                    </div>
+                                            <option value="DIVERGENTE">
+                                                ⚠️ Divergência
+                                            </option>
 
-                                </td>
+                                            <option value="NAO_RECEBIDO">
+                                                ❌ Não recebido
+                                            </option>
 
-                                <!-- PRODUTO -->
-                                <td>
+                                        </select>
 
-                                    <div class="fw-semibold">
-                                        {{ item.equipamento.produto.descricao }}
-                                    </div>
+                                    </td>
 
-                                </td>
+                                    <td>
 
-                                <!-- SÉRIE -->
-                                <td>
+                                        <div class="fw-semibold">
+                                            {{ item.equipamento.produto.descricao }}
+                                        </div>
 
-                                    {% if item.equipamento.numero_serie %}
+                                    </td>
 
-                                        <span class="font-monospace">
-                                            {{ item.equipamento.numero_serie }}
+                                    <td>
+
+                                        {% if item.equipamento.numero_serie %}
+                                            <span class="font-monospace">
+                                                {{ item.equipamento.numero_serie }}
+                                            </span>
+                                        {% elif item.equipamento.serial %}
+                                            <span class="font-monospace">
+                                                {{ item.equipamento.serial }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                Sem série
+                                            </span>
+                                        {% endif %}
+
+                                    </td>
+
+                                    <td>
+
+                                        {% if item.equipamento.patrimonio %}
+                                            <span class="font-monospace">
+                                                {{ item.equipamento.patrimonio }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                —
+                                            </span>
+                                        {% endif %}
+
+                                    </td>
+
+                                    <td>
+
+                                        <span
+                                            id="status-{{ item.id }}"
+                                            class="badge bg-success-subtle text-success"
+                                        >
+                                            <i class="bi bi-check-circle me-1"></i>
+                                            Recebido
                                         </span>
 
-                                    {% elif item.equipamento.serial %}
+                                    </td>
 
-                                        <span class="font-monospace">
-                                            {{ item.equipamento.serial }}
-                                        </span>
+                                </tr>
 
-                                    {% else %}
+                                <!-- DIVERGÊNCIA -->
 
-                                        <span class="text-muted">
-                                            Sem série
-                                        </span>
+                                <tr
+                                    id="divergencia-{{ item.id }}"
+                                    class="d-none"
+                                >
 
-                                    {% endif %}
+                                    <td colspan="5">
 
-                                </td>
+                                        <div class="card border-warning bg-warning-subtle">
 
-                                <!-- PATRIMÔNIO -->
-                                <td>
+                                            <div class="card-body">
 
-                                    {% if item.equipamento.patrimonio %}
+                                                <h6 class="fw-bold mb-3">
+                                                    Informações da divergência
+                                                </h6>
 
-                                        <span class="font-monospace">
-                                            {{ item.equipamento.patrimonio }}
-                                        </span>
+                                                <div class="row g-3">
 
-                                    {% else %}
+                                                    <div class="col-md-6">
 
-                                        <span class="text-muted">
-                                            —
-                                        </span>
+                                                        <label class="form-label">
+                                                            Série recebida
+                                                        </label>
 
-                                    {% endif %}
+                                                        <input
+                                                            type="text"
+                                                            class="form-control"
+                                                            name="serie_recebida_{{ item.id }}"
+                                                        >
 
-                                </td>
+                                                    </div>
 
-                                <!-- STATUS -->
-                                <td>
+                                                    <div class="col-md-6">
 
-                                    <span class="badge status-item bg-success-subtle text-success"
-                                          id="status-{{ item.id }}">
+                                                        <label class="form-label">
+                                                            Patrimônio recebido
+                                                        </label>
 
-                                        <i class="bi bi-check-circle me-1"></i>
+                                                        <input
+                                                            type="text"
+                                                            class="form-control"
+                                                            name="patrimonio_recebido_{{ item.id }}"
+                                                        >
 
-                                        Confirmado
+                                                    </div>
 
-                                    </span>
+                                                    <div class="col-12">
 
-                                </td>
+                                                        <label class="form-label">
+                                                            Observação
+                                                        </label>
 
-                            </tr>
+                                                        <textarea
+                                                            rows="3"
+                                                            class="form-control"
+                                                            name="observacao_item_{{ item.id }}"
+                                                            placeholder="Descreva a divergência encontrada..."
+                                                        ></textarea>
+
+                                                    </div>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </td>
+
+                                </tr>
 
                             {% endfor %}
 
@@ -236,39 +287,40 @@
 
                 </div>
 
-                <!-- OBSERVAÇÃO -->
+                <!-- OBSERVAÇÃO GERAL -->
+
                 <div class="mt-4">
 
                     <label class="form-label fw-semibold">
-                        Observações da conferência
+                        Observações gerais
                     </label>
 
                     <textarea
                         name="observacao_recebimento"
                         rows="4"
                         class="form-control"
-                        placeholder="Descreva divergências, itens ausentes, avarias ou outras informações relevantes..."
+                        placeholder="Informações adicionais sobre o recebimento..."
                     ></textarea>
 
                 </div>
 
-                <!-- AÇÕES -->
+                <!-- BOTÕES -->
+
                 <div class="d-flex justify-content-end gap-2 mt-4">
 
-                    <a href="{% url 'estoque:transferencia_detalhe' transferencia.id %}"
-                       class="btn btn-light border">
-
+                    <a
+                        href="{% url 'estoque:transferencia_detalhe' transferencia.id %}"
+                        class="btn btn-light border"
+                    >
                         Cancelar
-
                     </a>
 
-                    <button type="submit"
-                            class="btn btn-success px-4">
-
+                    <button
+                        type="submit"
+                        class="btn btn-success px-4"
+                    >
                         <i class="bi bi-check2-circle me-2"></i>
-
                         Finalizar recebimento
-
                     </button>
 
                 </div>
@@ -301,15 +353,12 @@
     vertical-align: middle;
 }
 
-.table tbody tr {
-    transition: background .15s ease;
-}
-
 .table tbody tr:hover {
     background: #fafafa;
 }
 
-.form-control {
+.form-control,
+.form-select {
     border-radius: 12px;
 }
 
@@ -322,53 +371,72 @@
     padding: 8px 12px;
 }
 
-.form-check-input {
-    cursor: pointer;
-    width: 2.5rem;
-    height: 1.3rem;
-}
-
 </style>
 
 <script>
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
 
-    const checks = document.querySelectorAll(
-        '.check-recebido'
-    );
+    document.querySelectorAll('.status-select')
+        .forEach(select => {
 
-    checks.forEach(function (check) {
+            select.addEventListener('change', function() {
 
-        check.addEventListener('change', function () {
+                const itemId = this.dataset.item;
 
-            const itemId = this.value;
+                const badge =
+                    document.getElementById(
+                        `status-${itemId}`
+                    );
 
-            const badge = document.getElementById(
-                `status-${itemId}`
-            );
+                const divergencia =
+                    document.getElementById(
+                        `divergencia-${itemId}`
+                    );
 
-            if (this.checked) {
+                switch(this.value) {
 
-                badge.className =
-                    'badge status-item bg-success-subtle text-success';
+                    case 'RECEBIDO':
 
-                badge.innerHTML =
-                    '<i class="bi bi-check-circle me-1"></i> Confirmado';
+                        badge.className =
+                            'badge bg-success-subtle text-success';
 
-            } else {
+                        badge.innerHTML =
+                            '<i class="bi bi-check-circle me-1"></i> Recebido';
 
-                badge.className =
-                    'badge status-item bg-danger-subtle text-danger';
+                        divergencia.classList.add('d-none');
 
-                badge.innerHTML =
-                    '<i class="bi bi-x-circle me-1"></i> Divergência';
+                        break;
 
-            }
+                    case 'DIVERGENTE':
+
+                        badge.className =
+                            'badge bg-warning-subtle text-warning';
+
+                        badge.innerHTML =
+                            '<i class="bi bi-exclamation-triangle me-1"></i> Divergência';
+
+                        divergencia.classList.remove('d-none');
+
+                        break;
+
+                    case 'NAO_RECEBIDO':
+
+                        badge.className =
+                            'badge bg-danger-subtle text-danger';
+
+                        badge.innerHTML =
+                            '<i class="bi bi-x-circle me-1"></i> Não recebido';
+
+                        divergencia.classList.add('d-none');
+
+                        break;
+
+                }
+
+            });
 
         });
-
-    });
 
 });
 
