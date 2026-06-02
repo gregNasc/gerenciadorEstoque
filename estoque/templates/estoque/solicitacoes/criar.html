@@ -114,7 +114,7 @@
 
     <div class="mb-3">
         <label class="form-label">
-            Regional Solicitante
+            {% trans "Regional Solicitante" %}
         </label>
 
         <select name="regional" class="form-select" required>
@@ -133,19 +133,19 @@
            value="{{ regionais.0.id }}">
 
     <div class="alert alert-info">
-        Regional: <strong>{{ regionais.0.nome }}</strong>
+        {% trans "Regional" %} <strong>{{ regionais.0.nome }}</strong>
     </div>
 
 {% endif %}
 
     <div class="mb-3">
-        <label>Tipo de Equipamento</label>
+        <label>{% trans "Tipo de Equipamento" %}</label>
         <select name="categoria" class="form-select" required>
-            <option value="">Selecione...</option>
-            <option value="Coletores">Coletores</option>
-            <option value="Impressoras">Impressoras</option>
-            <option value="Notebooks">Notebooks</option>
-            <option value="Routers">Routers</option>
+            <option value="">{% trans "Selecione..." %}</option>
+            <option value="Coletores">{% trans "Coletores" %}</option>
+            <option value="Impressoras">{% trans "Impressoras" %}</option>
+            <option value="Notebooks">{% trans "Notebooks" %}</option>
+            <option value="Routers">{% trans "Routers" %}</option>
         </select>
     </div>
 
@@ -209,7 +209,7 @@
 </style>
 
     <div class="mb-3">
-        <label>Quantidade</label>
+        <label>{% trans "Quantidade" %}</label>
         <input type="number"
                name="quantidade"
                min="1"
@@ -218,7 +218,7 @@
     </div>
 
     <div class="mb-3">
-        <label>Motivo da solicitação</label>
+        <label>{% trans "Motivo da Solicitação" %}</label>
         <textarea name="motivo"
                   class="form-control"
                   rows="4"
@@ -226,7 +226,7 @@
     </div>
 
     <button class="btn btn-primary">
-        Enviar Solicitação
+        {% trans "Enviar Solicitação" %}
     </button>
 
 </form>
