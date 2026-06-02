@@ -20,6 +20,8 @@ from datetime import datetime, time
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from openpyxl import Workbook
+from collections import OrderedDict
 from django.contrib.auth.decorators import login_required
 from .decorators import role_required
 from django.db.models.signals import post_save
@@ -1103,16 +1105,27 @@ def marcar_sick_ajax(request, equipamento_id):
         ),
         id=equipamento_id
     )
-    equipamento = get_object_or_404(Equipamento, id=equipamento_id)
 
+    # Impedir marcação duplicada ou em status inválido
     if equipamento.status == "INATIVO":
         return JsonResponse({
             "success": False,
             "message": "Equipamento inativo não pode ser marcado como SICK."
-        })
+        }, status=400)
 
     if equipamento.status == 'SICK':
         return JsonResponse({'erro': 'Já está em SICK'}, status=400)
+
+    # Lê o motivo enviado pelo front-end (JSON)
+    try:
+        body = json.loads(request.body)
+        motivo = body.get('motivo', '').strip()
+    except json.JSONDecodeError:
+        motivo = ''
+
+    # Se não veio motivo ou está vazio, usa um valor padrão
+    if not motivo:
+        motivo = 'Via sistema'
 
     with transaction.atomic():
         equipamento.status = 'SICK'
@@ -1120,16 +1133,15 @@ def marcar_sick_ajax(request, equipamento_id):
 
         Sick.objects.create(
             equipamento=equipamento,
-            motivo='Via sistema',
+            motivo=motivo,
             categoria='OPERACIONAL',
-            #descricao=descricao
         )
 
         Historico.objects.create(
             equipamento=equipamento,
             tipo_acao='STATUS',
             usuario=request.user,
-            detalhes={'novo_status': 'SICK'}
+            detalhes={'novo_status': 'SICK', 'motivo': motivo}
         )
 
     return JsonResponse({'sucesso': True})
@@ -1241,58 +1253,140 @@ def exportar_historico_excel(request):
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Histórico de Equipamentos"
+    ws.title = "Inventário"
 
     headers = [
-        'Data',
+        'Data Cadastro',
         'Regional',
         'Equipamento',
+        'Tipo',
         'Número de Série',
         'Patrimônio',
-        'Tipo de Ação',
-        'Usuário',
-        'Detalhes'
+        'Status',
+        'Usuário'
     ]
+
     ws.append(headers)
 
-    historicos = Historico.objects.select_related(
-        'equipamento',
-        'equipamento__produto',
-        'usuario',
-        'equipamento__regional'
-    ).order_by('-data')
+    equipamentos = (
+        Equipamento.objects
+        .select_related(
+            'produto',
+            'regional'
+        )
+        .order_by(
+            'regional__nome',
+            'produto__descricao',
+            'numero_serie'
+        )
+    )
 
-    regional_nome = "TODAS"
+    regional_nome = 'TODAS'
 
     if regional_id:
-        historicos = historicos.filter(equipamento__regional_id=regional_id)
 
-        regional_nome = (
-            historicos.first().equipamento.regional.nome
-            if historicos.exists()
-            else "SEM_DADOS"
+        equipamentos = equipamentos.filter(
+            regional_id=regional_id
         )
 
-    for h in historicos:
+        regional = Base.objects.filter(
+            id=regional_id
+        ).first()
+
+        if regional:
+            regional_nome = regional.nome
+
+    # Primeiro histórico de criação de cada equipamento
+    historicos_criacao = (
+        Historico.objects
+        .filter(
+            tipo_acao='CRIACAO',
+            equipamento__in=equipamentos
+        )
+        .select_related('usuario')
+        .order_by('equipamento_id', 'data')
+    )
+
+    usuarios_por_equipamento = OrderedDict()
+
+    for h in historicos_criacao:
+
+        if h.equipamento_id not in usuarios_por_equipamento:
+            usuarios_por_equipamento[h.equipamento_id] = h.usuario.username
+
+    for eq in equipamentos:
+
+        status = {
+            'ATIVO': 'ATIVO',
+            'MANUTENCAO': 'EM MANUTENÇÃO',
+            'SICK': 'SICK',
+            'EM_TRANSITO': 'EM TRANSFERÊNCIA',
+            'RESERVADO_TRANSFERENCIA': 'EM TRANSFERÊNCIA',
+            'BAIXA': 'INATIVO',
+        }.get(eq.status, eq.status)
+
+        usuario = usuarios_por_equipamento.get(
+            eq.id,
+            'Sistema'
+        )
+
         ws.append([
-            h.data.strftime('%d/%m/%Y %H:%M'),
-            getattr(h.equipamento.regional, "nome", "N/A"),
-            h.equipamento.produto.descricao,
-            h.equipamento.numero_serie,
-            h.equipamento.patrimonio,
-            h.get_tipo_acao_display(),
-            h.usuario.username if h.usuario else "Sistema",
-            str(h.detalhes)[:200],
+            eq.data_cadastro.strftime('%d/%m/%Y %H:%M')
+            if eq.data_cadastro else '',
+
+            eq.regional.nome
+            if eq.regional else '',
+
+            eq.produto.descricao
+            if eq.produto else '',
+
+            eq.produto.get_categoria_display()
+            if eq.produto else '',
+
+            eq.numero_serie or '',
+
+            eq.patrimonio or '',
+
+            status,
+
+            usuario,
         ])
 
-    filename = f"historico_equipamentos_{regional_nome}.xlsx".replace(" ", "_")
+    for column in ws.columns:
+
+        max_length = 0
+        column_letter = column[0].column_letter
+
+        for cell in column:
+
+            try:
+                max_length = max(
+                    max_length,
+                    len(str(cell.value))
+                )
+            except Exception:
+                pass
+
+        ws.column_dimensions[column_letter].width = min(
+            max_length + 3,
+            50
+        )
+
+    filename = (
+        f"inventario_equipamentos_{regional_nome}.xlsx"
+        .replace(' ', '_')
+    )
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename={filename}'
+
+    response['Content-Disposition'] = (
+        f'attachment; filename="{filename}"'
+    )
 
     wb.save(response)
+
     return response
 
 @login_required

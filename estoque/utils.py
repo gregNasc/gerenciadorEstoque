@@ -15,7 +15,6 @@ def filtrar_por_empresa(queryset, request, campo_empresa='empresa'):
 
     return queryset.filter(**{campo_empresa: empresa})
 
-
 def get_object_empresa_or_404(model, request, campo_empresa='empresa', **kwargs):
     empresa = getattr(request, 'empresa', None)
 
@@ -25,14 +24,12 @@ def get_object_empresa_or_404(model, request, campo_empresa='empresa', **kwargs)
     kwargs[campo_empresa] = empresa
     return get_object_or_404(model, **kwargs)
 
-
 def qs_equipamentos(request):
     return filtrar_por_empresa(
         Equipamento.objects.select_related('produto', 'regional'),
         request,
         campo_empresa='regional__empresa'
     )
-
 
 def qs_historico(request):
     qs = Historico.objects.select_related(
@@ -56,13 +53,11 @@ def qs_historico(request):
 
     return qs.filter(equipamento__regional__in=bases)
 
-
 def qs_bases(request):
     return filtrar_por_empresa(
         Base.objects.all(),
         request
     )
-
 
 class EstoqueService:
     STATUS_ATIVO = 'ATIVO'

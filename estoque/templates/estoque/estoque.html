@@ -466,15 +466,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.text();
         },
 
-        async marcarSick(equipamentoId) {
+        // MODIFICADO: agora recebe 'motivo' e envia no corpo da requisição
+        async marcarSick(equipamentoId, motivo) {
 
             return this.request(
                 `/marcar-sick/${equipamentoId}/`,
                 {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': getCSRFToken()
-                    }
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ motivo: motivo })
                 }
             );
         }
@@ -750,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
 
-            // SICK
+            // SICK - MODIFICADO: coleta o motivo via prompt
             document
                 .querySelectorAll('.btn-sick')
                 .forEach((button) => {
@@ -765,16 +768,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         const serie =
                             button.dataset.serie;
 
-                        const confirmacao = confirm(
-                            `{% trans "Marcar" %} ${serie} {% trans "como SICK?" %}`
+                        // Substitui o confirm por um prompt para capturar o motivo
+                        const motivo = prompt(
+                            `Digite o motivo para marcar o equipamento ${serie} como SICK:`
                         );
 
-                        if (!confirmacao) return;
+                        if (motivo === null || motivo.trim() === '') {
+                            // Usuário cancelou ou não informou motivo
+                            return;
+                        }
 
                         try {
 
                             await api.marcarSick(
-                                equipamentoId
+                                equipamentoId,
+                                motivo.trim()
                             );
 
                             await loadEquipamentos(
