@@ -1,6 +1,6 @@
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
-
+from estoque.permissions import pode_realizar_manutencao_sick
 from .models import (
     Comunicado,
     ComunicadoLeitura,
@@ -126,4 +126,15 @@ def notificacoes_context(request):
         'transferencias_pendentes': transferencias_pendentes,
 
         'emprestimos_pendentes': emprestimos_pendentes,
+    }
+
+def permissoes_especiais(request):
+    if request.user.is_authenticated:
+        return {
+            'pode_realizar_manutencao_sick':
+                pode_realizar_manutencao_sick(request.user)
+        }
+
+    return {
+        'pode_realizar_manutencao_sick': False
     }

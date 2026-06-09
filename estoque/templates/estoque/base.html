@@ -300,7 +300,7 @@
 
 
                 <!-- SICK -->
-                {% if perfil.role == 'admin' %}
+                {% if perfil.role == 'admin' or pode_realizar_manutencao_sick %}
                 <li class="nav-item">
 
                     <a class="nav-link {% if url_name == 'sick' %}active{% endif %}"
@@ -312,6 +312,7 @@
                     </a>
 
                 </li>
+
                 {% endif %}
 
                 <!-- EQUIPAMENTO -->

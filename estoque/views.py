@@ -29,6 +29,8 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .utils import EstoqueService
 from .security import secure_queryset
+from estoque.permissions import (pode_gerenciar_sick, pode_enviar_comunicados,)
+from estoque.permissions import pode_realizar_manutencao_sick
 #from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
 import json
 from django.urls import reverse
@@ -834,6 +836,16 @@ def sick_view(request):
 
     perfil = request.user.perfil
 
+    pode_acessar = (
+            perfil.is_admin or
+            perfil.is_gestor or
+            pode_realizar_manutencao_sick(request.user)
+    )
+
+    if not pode_acessar:
+        messages.error(request, "Sem permissão.")
+        return redirect('estoque:index')
+
     if request.method == 'POST':
 
         sick_id = request.POST.get('sick_id')
@@ -851,11 +863,11 @@ def sick_view(request):
             )
 
             # Permissão
-            if (
-                    not perfil.is_admin and
-                    sick.equipamento.regional_id not in perfil.regionais_ids
-            ):
-                messages.error(request, "Sem permissão.")
+            if not pode_realizar_manutencao_sick(request.user):
+                messages.error(
+                    request,
+                    "Você não possui permissão para realizar manutenção SICK."
+                )
                 return redirect('estoque:sick')
 
             status_permitidos = [
@@ -870,19 +882,19 @@ def sick_view(request):
                 return redirect('estoque:sick')
 
             if novo_status == 'MANUTENCAO':
+
                 sick.motivo = motivo_manutencao
                 sick.previsao_retorno = previsao_retorno
 
-            if novo_status in ['ATIVO', 'INATIVO', 'SUCATA']:
-
-                sick.data_resolucao = timezone.now()
-                sick.ativo = False
-                sick.resolvido_por = request.user
-
-            elif novo_status == 'MANUTENCAO':
-
                 sick.ativo = True
                 sick.data_resolucao = None
+                sick.resolvido_por = None
+
+            elif novo_status in ['ATIVO', 'INATIVO', 'SUCATA']:
+
+                sick.ativo = False
+                sick.data_resolucao = timezone.now()
+                sick.resolvido_por = request.user
 
             #elif novo_status == 'MANUTENCAO':
 
@@ -898,15 +910,103 @@ def sick_view(request):
 
             equipamento.save(update_fields=['status'])
 
+            usuarios_destino = User.objects.filter(
+                perfil__regionais=equipamento.regional,
+                is_active=True
+            ).exclude(
+                id=request.user.id
+            ).distinct()
+
+            # Emitir comunicado para a base proprietária
+            if novo_status == 'MANUTENCAO':
+
+                comunicado = Comunicado.objects.create(
+                    titulo='Equipamento em manutenção',
+                    mensagem=(
+                        f'O equipamento "{equipamento.produto.descricao}" '
+                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}, '
+                        f'Série: {equipamento.numero_serie or "N/A"}) '
+                        f'foi encaminhado para manutenção.\n\n'
+                        f'Previsão de retorno: {previsao_retorno or "Não informada"}.\n\n'
+                        f'Motivo: {motivo_manutencao or "Não informado"}'
+                    ),
+                    tipo='MANUTENCAO',
+                    criado_por=request.user,
+                    empresa=equipamento.regional.empresa,
+                )
+                comunicado.usuarios.set(usuarios_destino)
+
+            elif novo_status == 'ATIVO':
+
+                comunicado = Comunicado.objects.create(
+                    titulo='Equipamento pronto',
+                    mensagem=(
+                        f'O equipamento "{equipamento.produto.descricao}" '
+                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}) '
+                        f'está disponível para retirada/utilização.'
+                    ),
+                    tipo='MANUTENCAO',
+                    criado_por=request.user,
+                    empresa=equipamento.regional.empresa,
+                )
+                comunicado.usuarios.set(usuarios_destino)
+
+
+            elif novo_status == 'SUCATA':
+
+                comunicado = Comunicado.objects.create(
+                    titulo='Equipamento sucateado',
+                    mensagem=(
+                        f'O equipamento "{equipamento.produto.descricao}" '
+                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}) '
+                        f'foi classificado como sucata após avaliação técnica.'
+                    ),
+                    tipo='MANUTENCAO',
+                    criado_por=request.user,
+                    empresa=equipamento.regional.empresa,
+                )
+                comunicado.usuarios.set(usuarios_destino)
+
+
+            elif novo_status == 'INATIVO':
+
+                comunicado = Comunicado.objects.create(
+                    titulo='Equipamento inativado',
+                    mensagem=(
+                        f'O equipamento "{equipamento.produto.descricao}" '
+                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}) '
+                        f'foi inativado.'
+                    ),
+                    tipo='MANUTENCAO',
+                    criado_por=request.user,
+                    empresa=equipamento.regional.empresa,
+                )
+                comunicado.usuarios.set(usuarios_destino)
+
+            if novo_status == 'MANUTENCAO':
+                tipo_acao = 'SICK_MANUTENCAO'
+
+            elif novo_status == 'ATIVO':
+                tipo_acao = 'SICK_RESOLVIDO'
+
+            elif novo_status == 'SUCATA':
+                tipo_acao = 'SICK_SUCATEADO'
+
+            else:  # INATIVO
+                tipo_acao = 'SICK_INATIVADO'
+
             Historico.objects.create(
                 equipamento=equipamento,
-                tipo_acao='SICK_RESOLVIDO',
+                tipo_acao=tipo_acao,
                 usuario=request.user,
                 detalhes={
                     'sick_id': sick.id,
                     'status_final': novo_status,
                     'motivo_manutencao': motivo_manutencao,
-                    'previsao_retorno': previsao_retorno,
+                    'previsao_retorno': (
+                        previsao_retorno.isoformat()
+                        if previsao_retorno else None
+                    ),
                 }
             )
 
@@ -924,7 +1024,7 @@ def sick_view(request):
         'resolvido_por'
     )
 
-    if perfil.is_admin:
+    if pode_realizar_manutencao_sick(request.user):
 
         sicks = qs
 
@@ -937,7 +1037,7 @@ def sick_view(request):
         else:
 
             sicks = qs.filter(
-                equipamento__regional=perfil.regionais
+                equipamento__regional__in=perfil.regionais.all()
             )
 
     status_filter = request.GET.get('status', 'todos')
@@ -1025,7 +1125,7 @@ def sick_view(request):
         equipamento__sicks__in=sicks
     ).distinct().order_by('descricao')
 
-    if perfil.is_admin:
+    if pode_realizar_manutencao_sick(request.user):
         regionais = Base.objects.all().order_by('nome')
     else:
         regionais = perfil.regionais.all().order_by('nome')

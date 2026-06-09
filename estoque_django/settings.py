@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'estoque.apps.EstoqueConfig',
     'core',
+    'insumos',
 ]
 
 MIDDLEWARE = [
@@ -104,6 +105,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
 
                 'estoque.context_processors.notificacoes_context',
+                'estoque.context_processors.permissoes_especiais',
 
             ],
         },
