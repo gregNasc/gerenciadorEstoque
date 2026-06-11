@@ -87,11 +87,13 @@ urlpatterns = [
     path('emprestimos/', views.lista_emprestimos, name='lista_emprestimos'),
     path('emprestimos/novo/', views.criar_emprestimo, name='criar_emprestimo'),
     path('emprestimos/<int:emprestimo_id>/', views.detalhe_emprestimo, name='detalhe_emprestimo'),
-    path('emprestimos/<int:emprestimo_id>/aprovar/', views.aprovar_emprestimo, name='aprovar_emprestimo'),
-    path('emprestimos/<int:emprestimo_id>/itens/', views.adicionar_itens_emprestimo, name='adicionar_itens_emprestimo'),
+#    path('emprestimos/<int:emprestimo_id>/aprovar/', views.aprovar_emprestimo, name='aprovar_emprestimo'),
+#    path('emprestimos/<int:emprestimo_id>/itens/', views.adicionar_itens_emprestimo, name='adicionar_itens_emprestimo'),
     path('emprestimos/<int:emprestimo_id>/receber/', views.receber_emprestimo, name='receber_emprestimo'),
     path('emprestimos/<int:emprestimo_id>/devolver/', views.devolver_emprestimo, name='devolver_emprestimo'),
-
+#    path('emprestimos/<int:emprestimo_id>/enviar/', views.enviar_emprestimo, name='enviar_emprestimo'),
+    path('emprestimos/', views.lista_emprestimos, name='lista_emprestimos'),
+    path('emprestimos/<int:emprestimo_id>/confirmar-devolucao/', views.receber_devolucao_emprestimo, name='receber_devolucao_emprestimo'),
 
     # ---------------- PASSWORD RESET ----------------
     path('password-reset/', auth_views.PasswordResetView.as_view(

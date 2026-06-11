@@ -172,13 +172,11 @@ class Equipamento(models.Model):
 
 # ---------------- EMPRÉSTIMO ----------------
 class Emprestimo(models.Model):
-
     STATUS = (
-        ('SOLICITADO', 'Solicitado'),
-        ('APROVADO', 'Aprovado'),
-        ('EM_TRANSITO', 'Em trânsito'),
+        ('AGUARDANDO_RECEBIMENTO', 'Aguardando recebimento'),
         ('EMPRESTADO', 'Emprestado'),
-        ('DEVOLVIDO', 'Devolvido'),
+        ('AGUARDANDO_CONFIRMACAO_DEVOLUCAO', 'Aguardando confirmação devolução'),
+        ('FINALIZADO', 'Finalizado'),
         ('CANCELADO', 'Cancelado'),
     )
 
@@ -192,11 +190,19 @@ class Emprestimo(models.Model):
     data_emprestimo = models.DateField()
     data_prevista_devolucao = models.DateField()
     data_devolucao = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS, default='SOLICITADO')
+    status = models.CharField(max_length=35, choices=STATUS, default='SOLICITADO')
     confirmado_recebimento = models.BooleanField(default=False)
     confirmado_devolucao = models.BooleanField(default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
+
+    @property
+    def esta_atrasado(self):
+        return (
+                self.status not in ['FINALIZADO', 'CANCELADO']
+                and self.data_prevista_devolucao
+                and timezone.localdate() > self.data_prevista_devolucao
+        )
 
     class Meta:
         ordering = ['-criado_em']
@@ -207,7 +213,8 @@ class Emprestimo(models.Model):
 class ItemEmprestimo(models.Model):
 
     STATUS = (
-        ('PENDENTE', 'Pendente'),
+        ('RESERVADO', 'Reservado'),
+        ('ENVIADO', 'Enviado'),
         ('RECEBIDO', 'Recebido'),
         ('DEVOLVIDO', 'Devolvido'),
         ('DIVERGENCIA', 'Divergência'),

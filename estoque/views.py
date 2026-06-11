@@ -1,9 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from openpyxl import Workbook
+from .services.emprestimo_service import EmprestimoService
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
@@ -917,12 +919,13 @@ def sick_view(request):
                 id=request.user.id
             ).distinct()
 
-            # Emitir comunicado para a base proprietária
+            # Emitir comunicado para a base e admin
             if novo_status == 'MANUTENCAO':
 
                 comunicado = Comunicado.objects.create(
                     titulo='Equipamento em manutenção',
                     mensagem=(
+                        f'Regional: {equipamento.regional.nome}\n\n'
                         f'O equipamento "{equipamento.produto.descricao}" '
                         f'(Patrimônio: {equipamento.patrimonio or "N/A"}, '
                         f'Série: {equipamento.numero_serie or "N/A"}) '
@@ -934,22 +937,52 @@ def sick_view(request):
                     criado_por=request.user,
                     empresa=equipamento.regional.empresa,
                 )
-                comunicado.usuarios.set(usuarios_destino)
+                usuarios_destino = User.objects.filter(
+                    perfil__regionais=equipamento.regional,
+                    is_active=True
+                ).exclude(
+                    id=request.user.id
+                )
+
+                admins = User.objects.filter(
+                    perfil__role='admin',
+                    is_active=True
+                )
+
+                comunicado.usuarios.set(
+                    (usuarios_destino | admins).distinct()
+                )
 
             elif novo_status == 'ATIVO':
 
                 comunicado = Comunicado.objects.create(
                     titulo='Equipamento pronto',
                     mensagem=(
+                        f'Regional: {equipamento.regional.nome}\n\n'
                         f'O equipamento "{equipamento.produto.descricao}" '
-                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}) '
+                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}, '
+                        f'Série: {equipamento.numero_serie or "N/A"}) '
                         f'está disponível para retirada/utilização.'
                     ),
                     tipo='MANUTENCAO',
                     criado_por=request.user,
                     empresa=equipamento.regional.empresa,
                 )
-                comunicado.usuarios.set(usuarios_destino)
+                usuarios_destino = User.objects.filter(
+                    perfil__regionais=equipamento.regional,
+                    is_active=True
+                ).exclude(
+                    id=request.user.id
+                )
+
+                admins = User.objects.filter(
+                    perfil__role='admin',
+                    is_active=True
+                )
+
+                comunicado.usuarios.set(
+                    (usuarios_destino | admins).distinct()
+                )
 
 
             elif novo_status == 'SUCATA':
@@ -973,15 +1006,31 @@ def sick_view(request):
                 comunicado = Comunicado.objects.create(
                     titulo='Equipamento inativado',
                     mensagem=(
+                        f'Regional: {equipamento.regional.nome}\n\n'
                         f'O equipamento "{equipamento.produto.descricao}" '
-                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}) '
+                        f'(Patrimônio: {equipamento.patrimonio or "N/A"}, '
+                        f'Série: {equipamento.numero_serie or "N/A"}) '
                         f'foi inativado.'
                     ),
                     tipo='MANUTENCAO',
                     criado_por=request.user,
                     empresa=equipamento.regional.empresa,
                 )
-                comunicado.usuarios.set(usuarios_destino)
+                usuarios_destino = User.objects.filter(
+                    perfil__regionais=equipamento.regional,
+                    is_active=True
+                ).exclude(
+                    id=request.user.id
+                )
+
+                admins = User.objects.filter(
+                    perfil__role='admin',
+                    is_active=True
+                )
+
+                comunicado.usuarios.set(
+                    (usuarios_destino | admins).distinct()
+                )
 
             if novo_status == 'MANUTENCAO':
                 tipo_acao = 'SICK_MANUTENCAO'
@@ -1003,10 +1052,8 @@ def sick_view(request):
                     'sick_id': sick.id,
                     'status_final': novo_status,
                     'motivo_manutencao': motivo_manutencao,
-                    'previsao_retorno': (
-                        previsao_retorno.isoformat()
-                        if previsao_retorno else None
-                    ),
+                    'previsao_retorno': previsao_retorno or None,
+
                 }
             )
 
@@ -2103,6 +2150,35 @@ def ler_alerta(request, alerta_id):
 
 
 # ----------------- EMPRÉSTIMOS --------------------
+def _usuario_tem_acesso_emprestimo(user, emprestimo):
+    perfil = user.perfil
+    if perfil.is_admin:
+        return True
+
+    bases = perfil.regionais.all()
+
+    return (
+        emprestimo.regional_origem in bases
+        or emprestimo.regional_destino in bases
+    )
+
+def _usuario_e_destino(user, emprestimo):
+    perfil = user.perfil
+
+    return (
+        perfil.is_admin
+        or emprestimo.regional_destino in perfil.regionais.all()
+    )
+
+def _usuario_e_origem(user, emprestimo):
+
+    perfil = user.perfil
+
+    return (
+        perfil.is_admin
+        or emprestimo.regional_origem in perfil.regionais.all()
+    )
+
 @login_required
 def lista_emprestimos(request):
 
@@ -2114,12 +2190,9 @@ def lista_emprestimos(request):
             'regional_origem',
             'regional_destino',
             'solicitado_por',
-            'aprovado_por',
         )
         .prefetch_related(
             'itens',
-            'itens__equipamento',
-            'itens__equipamento__produto',
         )
         .order_by('-criado_em')
     )
@@ -2127,22 +2200,17 @@ def lista_emprestimos(request):
     if not perfil.is_admin:
 
         emprestimos = emprestimos.filter(
-            Q(
-                regional_origem__in=perfil.regionais.all()
-            ) |
-            Q(
-                regional_destino__in=perfil.regionais.all()
-            )
+            Q(regional_origem__in=perfil.regionais.all())
+            |
+            Q(regional_destino__in=perfil.regionais.all())
         ).distinct()
-
-    context = {
-        'emprestimos': emprestimos,
-    }
 
     return render(
         request,
         'estoque/emprestimos/lista.html',
-        context
+        {
+            'emprestimos': emprestimos,
+        }
     )
 
 @login_required
@@ -2151,122 +2219,145 @@ def criar_emprestimo(request):
 
     perfil = request.user.perfil
 
-    regionais_usuario = perfil.regionais.all()
+    regionais_usuario = perfil.regionais.select_related(
+        'grupo_regional'
+    )
 
-    if not regionais_usuario.exists():
+    regionais_destino = Base.objects.select_related(
+        'grupo_regional'
+    )
 
-        messages.error(
-            request,
-            'Seu perfil não possui regionais vinculadas.'
+    equipamentos = (
+        Equipamento.objects
+        .filter(
+            status='ATIVO',
+            regional__in=regionais_usuario
         )
+        .select_related(
+            'produto',
+            'regional',
+        )
+        .order_by(
+            'produto__descricao',
+            'numero_serie',
+        )
+    )
 
-        return redirect('estoque:lista_emprestimos')
+    produtos_lista = (
+        Produto.objects
+        .filter(
+            equipamento__status='ATIVO',
+            equipamento__regional__in=regionais_usuario
+        )
+        .distinct()
+        .order_by('descricao')
+    )
 
     if request.method == 'POST':
 
-        regional_origem_id = request.POST.get(
-            'regional_origem'
+        regional_origem = get_object_or_404(
+            Base,
+            id=request.POST.get('regional_origem')
         )
 
-        regional_destino_id = request.POST.get(
-            'regional_destino'
+        regional_destino = get_object_or_404(
+            Base,
+            id=request.POST.get('regional_destino')
         )
 
-        motivo = request.POST.get(
-            'motivo'
-        )
+        motivo = request.POST.get('motivo')
 
-        data_prevista_devolucao = request.POST.get(
+        data_prevista = request.POST.get(
             'data_prevista_devolucao'
         )
 
-        regional_origem = get_object_or_404(
-            Base,
-            id=regional_origem_id
+        equipamentos_ids = request.POST.getlist(
+            'equipamentos'
         )
 
         if regional_origem not in regionais_usuario:
 
             messages.error(
                 request,
-                'Você não possui acesso a esta regional.'
+                'Você não possui acesso à base de origem.'
             )
 
             return redirect(
                 'estoque:criar_emprestimo'
             )
 
-        regional_destino = get_object_or_404(
-            Base,
-            id=regional_destino_id
-        )
-
         if (
-            regional_origem.grupo_regional !=
-            regional_destino.grupo_regional
+            regional_origem.grupo_regional
+            != regional_destino.grupo_regional
         ):
 
             messages.error(
                 request,
-                'As regionais precisam pertencer ao mesmo grupo.'
+                'As bases devem pertencer ao mesmo grupo.'
             )
 
             return redirect(
                 'estoque:criar_emprestimo'
             )
 
-        if regional_origem == regional_destino:
+        if not equipamentos_ids:
+
+            messages.warning(
+                request,
+                'Selecione ao menos um equipamento.'
+            )
+
+            return redirect(
+                'estoque:criar_emprestimo'
+            )
+
+        equipamentos_selecionados = (
+            Equipamento.objects
+            .filter(
+                id__in=equipamentos_ids,
+                regional=regional_origem,
+                status='ATIVO',
+            )
+        )
+
+        try:
+
+            emprestimo = EmprestimoService.criar(
+                base_origem=regional_origem,
+                base_destino=regional_destino,
+                user=request.user,
+                motivo=motivo,
+                data_prevista=data_prevista,
+                equipamentos=equipamentos_selecionados,
+            )
+
+            messages.success(
+                request,
+                f'Empréstimo {emprestimo.protocolo} criado com sucesso.'
+            )
+
+            return redirect(
+                'estoque:detalhe_emprestimo',
+                emprestimo.id
+            )
+
+        except ValidationError as e:
 
             messages.error(
                 request,
-                'A regional destino deve ser diferente da origem.'
+                str(e)
             )
 
             return redirect(
                 'estoque:criar_emprestimo'
             )
-
-        emprestimo = Emprestimo.objects.create(
-
-            protocolo=(f'EMP-' f'{timezone.now().strftime("%Y%m%d%H%M%S")}'),
-            regional_origem=regional_origem,
-            regional_destino=regional_destino,
-            solicitado_por=request.user,
-            motivo=motivo,
-            data_emprestimo=timezone.localdate(),
-            data_prevista_devolucao=(data_prevista_devolucao),
-            status='SOLICITADO',
-            grupo=regional_origem.grupo_regional,
-        )
-
-        messages.success(
-            request,
-            'Solicitação criada com sucesso.'
-        )
-
-        return redirect(
-            'estoque:detalhe_emprestimo',
-            emprestimo.id
-        )
-
-    regionais_destino = Base.objects.filter(
-        grupo_regional__in=regionais_usuario.values_list(
-            'grupo_regional',
-            flat=True
-        )
-    ).exclude(
-        id__in=regionais_usuario.values_list(
-            'id',
-            flat=True
-        )
-    ).order_by(
-        'grupo_regional__nome',
-        'nome'
-    ).distinct()
 
     context = {
         'regionais_usuario': regionais_usuario,
         'regionais_destino': regionais_destino,
+        'categorias': Produto.CATEGORIAS,
+        'equipamentos': equipamentos,
+        'produtos_lista': produtos_lista,
     }
 
     return render(
@@ -2274,36 +2365,6 @@ def criar_emprestimo(request):
         'estoque/emprestimos/criar.html',
         context
     )
-
-@login_required
-@transaction.atomic
-def enviar_emprestimo(request, emprestimo_id):
-
-    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
-
-    if emprestimo.status != 'SOLICITADO':
-        messages.warning(
-            request,
-            'Este empréstimo não pode ser enviado.'
-        )
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
-
-    if not emprestimo.itens.exists():
-        messages.warning(
-            request,
-            'Adicione itens antes de enviar o empréstimo.'
-        )
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
-
-    emprestimo.status = 'EM_TRANSITO'
-    emprestimo.save()
-
-    messages.success(
-        request,
-        'Empréstimo enviado para conferência.'
-    )
-
-    return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
 @login_required
 def detalhe_emprestimo(request, emprestimo_id):
@@ -2315,7 +2376,6 @@ def detalhe_emprestimo(request, emprestimo_id):
             'regional_origem',
             'regional_destino',
             'solicitado_por',
-            'aprovado_por',
         )
         .prefetch_related(
             'itens',
@@ -2326,8 +2386,81 @@ def detalhe_emprestimo(request, emprestimo_id):
         id=emprestimo_id
     )
 
+    if not _usuario_tem_acesso_emprestimo(
+        request.user,
+        emprestimo
+    ):
+        raise PermissionDenied()
+
+    possui_itens_para_devolver = (
+        emprestimo.itens.filter(
+            status__in=[
+                'RECEBIDO',
+                'DIVERGENCIA',
+            ]
+        ).exists()
+    )
+
+    possui_itens_para_confirmar = (
+        emprestimo.itens.filter(
+            status__in=[
+                'DEVOLVIDO',
+                'DIVERGENCIA',
+            ]
+        ).exists()
+    )
+
     context = {
+
         'emprestimo': emprestimo,
+
+        'pode_receber': (
+
+            emprestimo.status ==
+            'AGUARDANDO_RECEBIMENTO'
+
+            and
+
+            _usuario_e_destino(
+                request.user,
+                emprestimo
+            )
+        ),
+
+        'pode_devolver': (
+
+            emprestimo.status == 'EMPRESTADO'
+
+            and
+
+            possui_itens_para_devolver
+
+            and
+
+            _usuario_e_destino(
+                request.user,
+                emprestimo
+            )
+        ),
+
+        'pode_confirmar_devolucao': (
+
+            emprestimo.status in [
+                'AGUARDANDO_CONFIRMACAO_DEVOLUCAO',
+                'EMPRESTADO',
+            ]
+
+            and
+
+            possui_itens_para_confirmar
+
+            and
+
+            _usuario_e_origem(
+                request.user,
+                emprestimo
+            )
+        ),
     }
 
     return render(
@@ -2338,119 +2471,30 @@ def detalhe_emprestimo(request, emprestimo_id):
 
 @login_required
 @transaction.atomic
-def aprovar_emprestimo(request, emprestimo_id):
-
-    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
-
-    perfil = request.user.perfil
-    regionais_usuario = perfil.regionais.all()
-
-    if not (
-        emprestimo.regional_origem in regionais_usuario
-        or emprestimo.regional_destino in regionais_usuario
-    ):
-        messages.error(
-            request,
-            'Você não possui permissão para operar este empréstimo.'
-        )
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
-
-    if emprestimo.status != 'SOLICITADO':
-        messages.warning(
-            request,
-            'Este empréstimo não pode ser enviado.'
-        )
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
-
-
-    if not emprestimo.itens.exists():
-        messages.warning(
-            request,
-            'Adicione itens antes de enviar o empréstimo.'
-        )
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
-
-    emprestimo.status = 'EM_TRANSITO'
-    emprestimo.aprovado_por = request.user
-    emprestimo.save()
-
-    messages.success(
-        request,
-        'Empréstimo enviado para conferência.'
-    )
-
-    return redirect('estoque:detalhe_emprestimo', emprestimo.id)
-
-@login_required
-@transaction.atomic
-def adicionar_itens_emprestimo(request, emprestimo_id):
+def receber_emprestimo(request, emprestimo_id):
 
     emprestimo = get_object_or_404(
-        Emprestimo,
+        Emprestimo.objects.prefetch_related(
+            'itens',
+            'itens__equipamento',
+        ),
         id=emprestimo_id
     )
 
-    equipamentos = (
+    perfil = request.user.perfil
 
-        Equipamento.objects
+    if (
+        not perfil.is_admin
+        and emprestimo.regional_destino
+        not in perfil.regionais.all()
+    ):
+        raise PermissionDenied()
 
-        .filter(
-            regional=emprestimo.regional_origem,
-            status='DISPONIVEL'
-        )
+    if emprestimo.status != 'AGUARDANDO_RECEBIMENTO':
 
-        .select_related(
-            'produto'
-        )
-
-        .order_by(
-            'produto__nome'
-        )
-    )
-
-    if request.method == 'POST':
-
-        equipamentos_ids = request.POST.getlist(
-            'equipamentos'
-        )
-
-        if not equipamentos_ids:
-
-            messages.warning(
-                request,
-                'Selecione ao menos um equipamento.'
-            )
-
-            return redirect(
-                'estoque:adicionar_itens_emprestimo',
-                emprestimo.id
-            )
-
-        for equipamento in Equipamento.objects.filter(
-            id__in=equipamentos_ids
-        ):
-
-            if ItemEmprestimo.objects.filter(
-                emprestimo=emprestimo,
-                equipamento=equipamento
-            ).exists():
-
-                continue
-
-            ItemEmprestimo.objects.create(
-                emprestimo=emprestimo,
-                equipamento=equipamento,
-            )
-
-            equipamento.status = 'EMPRESTADO'
-            equipamento.save()
-
-        emprestimo.status = 'EM_TRANSITO'
-        emprestimo.save()
-
-        messages.success(
+        messages.warning(
             request,
-            'Itens adicionados com sucesso.'
+            'Este empréstimo não está aguardando recebimento.'
         )
 
         return redirect(
@@ -2458,79 +2502,161 @@ def adicionar_itens_emprestimo(request, emprestimo_id):
             emprestimo.id
         )
 
-    context = {
-        'emprestimo': emprestimo,
-        'equipamentos': equipamentos,
-    }
+    if request.method == 'POST':
+
+        recebidos = request.POST.getlist(
+            'itens_recebidos'
+        )
+
+        EmprestimoService.receber(
+            emprestimo,
+            recebidos,
+            request.user,
+        )
+
+        messages.success(
+            request,
+            'Recebimento confirmado.'
+        )
+
+        return redirect(
+            'estoque:detalhe_emprestimo',
+            emprestimo.id
+        )
 
     return render(
         request,
-        'estoque/emprestimos/adicionar_itens.html',
-        context
+        'estoque/emprestimos/receber.html',
+        {
+            'emprestimo': emprestimo,
+        }
     )
-
-@login_required
-@transaction.atomic
-def receber_emprestimo(request, emprestimo_id):
-
-    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
-
-    if request.method == 'POST':
-
-        recebidos = request.POST.getlist('itens_recebidos')
-
-        divergencias = False
-
-        for item in emprestimo.itens.all():
-
-            if str(item.id) in recebidos:
-                item.status = 'RECEBIDO'
-                item.equipamento.status = 'EMPRESTADO'
-            else:
-                item.status = 'DIVERGENCIA'
-                divergencias = True
-
-            item.save()
-            item.equipamento.save()
-
-        emprestimo.confirmado_recebimento = True
-        emprestimo.status = 'EMPRESTADO' if not divergencias else 'EMPRESTADO_COM_DIVERGENCIA'
-        emprestimo.save()
-
-        messages.success(request, 'Recebimento confirmado.')
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
 
 @login_required
 @transaction.atomic
 def devolver_emprestimo(request, emprestimo_id):
 
-    emprestimo = get_object_or_404(Emprestimo, id=emprestimo_id)
+    emprestimo = get_object_or_404(
+        Emprestimo.objects.prefetch_related(
+            'itens',
+            'itens__equipamento',
+        ),
+        id=emprestimo_id
+    )
+
+    perfil = request.user.perfil
+
+    if (
+        not perfil.is_admin
+        and emprestimo.regional_destino
+        not in perfil.regionais.all()
+    ):
+        raise PermissionDenied()
+
+    if emprestimo.status != 'EMPRESTADO':
+
+        messages.warning(
+            request,
+            'Este empréstimo não pode ser devolvido.'
+        )
+
+        return redirect(
+            'estoque:detalhe_emprestimo',
+            emprestimo.id
+        )
 
     if request.method == 'POST':
 
-        devolvidos = request.POST.getlist('itens_devolvidos')
+        devolvidos = request.POST.getlist(
+            'itens_devolvidos'
+        )
 
-        divergencias = False
+        EmprestimoService.devolver(
+            emprestimo,
+            devolvidos,
+            request.user,
+        )
 
-        for item in emprestimo.itens.all():
+        messages.success(
+            request,
+            'Devolução registrada.'
+        )
 
-            if str(item.id) in devolvidos:
-                item.status = 'DEVOLVIDO'
-                item.equipamento.status = 'DISPONIVEL'
-            else:
-                item.status = 'DIVERGENCIA_DEVOLUCAO'
-                divergencias = True
+        return redirect(
+            'estoque:detalhe_emprestimo',
+            emprestimo.id
+        )
 
-            item.save()
-            item.equipamento.save()
+    return render(
+        request,
+        'estoque/emprestimos/devolver.html',
+        {
+            'emprestimo': emprestimo,
+        }
+    )
 
-        emprestimo.status = 'DEVOLVIDO' if not divergencias else 'DEVOLVIDO_COM_DIVERGENCIA'
-        emprestimo.confirmado_devolucao = True
-        emprestimo.data_devolucao = timezone.localdate()
-        emprestimo.save()
+@login_required
+@transaction.atomic
+def receber_devolucao_emprestimo(request, emprestimo_id):
 
-        messages.success(request, 'Empréstimo devolvido com conferência.')
-        return redirect('estoque:detalhe_emprestimo', emprestimo.id)
+    emprestimo = get_object_or_404(
+        Emprestimo.objects.prefetch_related(
+            'itens',
+            'itens__equipamento',
+        ),
+        id=emprestimo_id
+    )
+
+    if not _usuario_e_origem(
+        request.user,
+        emprestimo
+    ):
+        raise PermissionDenied()
+
+    if (
+        emprestimo.status !=
+        'AGUARDANDO_CONFIRMACAO_DEVOLUCAO'
+    ):
+
+        messages.warning(
+            request,
+            'Esta devolução não está aguardando confirmação.'
+        )
+
+        return redirect(
+            'estoque:detalhe_emprestimo',
+            emprestimo.id
+        )
+
+    if request.method == 'POST':
+
+        itens_confirmados = request.POST.getlist(
+            'itens_confirmados'
+        )
+
+        EmprestimoService.confirmar_devolucao(
+            emprestimo,
+            itens_confirmados,
+            request.user,
+        )
+
+        messages.success(
+            request,
+            'Devolução confirmada.'
+        )
+
+        return redirect(
+            'estoque:detalhe_emprestimo',
+            emprestimo.id,
+        )
+
+    return render(
+        request,
+        'estoque/emprestimos/receber_devolucao.html',
+        {
+            'emprestimo': emprestimo,
+        }
+    )
 
 
 # ----------------- TRANSFERÊNCIAS -----------------

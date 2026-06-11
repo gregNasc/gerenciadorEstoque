@@ -1,0 +1,89 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<div class="container-fluid px-4 py-4">
+
+    <div class="mb-4">
+
+        <h2 class="fw-bold">
+            Confirmar devolução
+        </h2>
+
+        <p class="text-muted">
+            Valide os equipamentos devolvidos pela base de destino.
+        </p>
+
+    </div>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="table-responsive">
+
+                <table class="table align-middle mb-0">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50"></th>
+                            <th>Produto</th>
+                            <th>Série</th>
+                            <th>Patrimônio</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for item in emprestimo.itens.all %}
+
+                            <tr>
+
+                                <td>
+                                    <input type="checkbox"
+                                           name="itens_confirmados"
+                                           value="{{ item.id }}"
+                                           class="form-check-input"
+                                           checked>
+                                </td>
+
+                                <td>
+                                    {{ item.equipamento.produto.descricao }}
+                                </td>
+
+                                <td>
+                                    {{ item.equipamento.numero_serie }}
+                                </td>
+
+                                <td>
+                                    {{ item.equipamento.patrimonio }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="card-footer bg-white text-end">
+
+                <button type="submit"
+                        class="btn btn-success">
+                    Confirmar recebimento da devolução
+                </button>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

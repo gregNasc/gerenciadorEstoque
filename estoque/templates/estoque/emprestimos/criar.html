@@ -1,249 +1,129 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
 
-{% block title %}
-{% trans "Novo Empréstimo" %}
-{% endblock %}
-
 {% block content %}
 
-<div class="container-fluid px-4">
+<div class="container-fluid px-4 py-4">
 
-    <!-- HEADER -->
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
-
-            <h2 class="fw-bold mb-1">
-                {% trans "Novo Empréstimo" %}
-            </h2>
+            <h2 class="fw-bold mb-1">Novo Empréstimo</h2>
 
             <p class="text-muted mb-0">
-                {% trans "Solicite equipamentos emprestados entre regionais compatíveis" %}
+                Selecione os equipamentos que serão emprestados.
             </p>
-
         </div>
 
         <a href="{% url 'estoque:lista_emprestimos' %}"
-           class="btn btn-light border align-self-start">
+           class="btn btn-light border">
 
             <i class="bi bi-arrow-left"></i>
-
-            {% trans "Voltar" %}
+            Voltar
 
         </a>
 
     </div>
 
-    <div class="row justify-content-center">
+    <form method="post">
 
-        <div class="col-xl-8 col-lg-10">
+        {% csrf_token %}
 
-            <div class="card border-0 shadow-sm rounded-4">
+        <div class="card border-0 shadow-sm rounded-4">
 
-                <!-- HEADER CARD -->
-                <div class="card-header bg-white border-0 py-4 rounded-top-4">
+            <div class="card-body p-4">
 
-                    <div class="d-flex align-items-center gap-2">
+                <div class="row g-4">
 
-                        <div class="bg-primary bg-opacity-10 rounded-circle p-2">
-                            <i class="bi bi-arrow-left-right text-primary"></i>
-                        </div>
+                    <!-- BASE ORIGEM -->
+                    <div class="col-md-6">
 
-                        <div>
+                        <label class="form-label fw-semibold">
+                            Base de origem
+                        </label>
 
-                            <h5 class="mb-0 fw-bold">
-                                {% trans "Dados do empréstimo" %}
-                            </h5>
+                        <select id="regional_origem"
+                                name="regional_origem"
+                                class="form-select"
+                                required>
 
-                            <small class="text-muted">
-                                {% trans "Somente regionais do mesmo grupo poderão realizar empréstimos" %}
-                            </small>
+                            <option value="">
+                                Selecione
+                            </option>
 
-                        </div>
+                            {% for r in regionais_usuario %}
+
+                                <option value="{{ r.id }}"
+                                        data-grupo="{{ r.grupo_regional_id }}">
+
+                                    {{ r.nome }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
 
                     </div>
 
-                </div>
+                    <!-- BASE DESTINO -->
+                    <div class="col-md-6">
 
-                <!-- BODY -->
-                <div class="card-body p-4">
+                        <label class="form-label fw-semibold">
+                            Base destino
+                        </label>
 
-                    <form method="post">
+                        <select id="regional_destino"
+                                name="regional_destino"
+                                class="form-select"
+                                required>
 
-                        {% csrf_token %}
+                            <option value="">
+                                Selecione
+                            </option>
 
-                        <div class="row g-4">
+                            {% for r in regionais_destino %}
 
-                            <!-- REGIONAL SOLICITANTE -->
-                            <div class="col-md-6">
+                                <option value="{{ r.id }}"
+                                        data-grupo="{{ r.grupo_regional_id }}">
 
-                                <label class="form-label fw-semibold">
-                                    {% trans "Regional solicitante" %}
-                                </label>
+                                    {{ r.nome }}
 
-                                <select id="regional_origem"
-                                        name="regional_origem"
-                                        class="form-select"
-                                        required>
+                                </option>
 
-                                    <option value="">
-                                        {% trans "Selecione a regional" %}
-                                    </option>
+                            {% endfor %}
 
-                                    {% for regional in regionais_usuario %}
-                                    <option value="{{ regional.id }}"
-                                            data-grupo="{{ regional.grupo_regional_id }}"
-                                            data-grupo-nome="{{ regional.grupo_regional.nome }}">
-                                        {{ regional.nome }}
-                                    </option>
-                                    {% endfor %}
+                        </select>
 
-                                </select>
+                    </div>
 
-                            </div>
+                    <!-- DATA -->
+                    <div class="col-md-6">
 
-                            <!-- REGIONAL DESTINO -->
-                            <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Data prevista de devolução
+                        </label>
 
-                                <label class="form-label fw-semibold">
-                                    {% trans "Regional que irá emprestar" %}
-                                </label>
+                        <input type="date"
+                               name="data_prevista_devolucao"
+                               class="form-control"
+                               required>
 
-                                <select id="regional_destino"
-                                        name="regional_destino"
-                                        class="form-select"
-                                        required>
+                    </div>
 
-                                    <option value="">
-                                        {% trans "Selecione a regional" %}
-                                    </option>
+                    <!-- MOTIVO -->
+                    <div class="col-md-6">
 
-                                    {% for regional in regionais_destino %}
-                                    <option value="{{ regional.id }}"
-                                            data-grupo="{{ regional.grupo_regional_id }}">
-                                        {{ regional.nome }}
-                                    </option>
-                                    {% endfor %}
+                        <label class="form-label fw-semibold">
+                            Motivo
+                        </label>
 
-                                </select>
+                        <input type="text"
+                               name="motivo"
+                               class="form-control"
+                               required>
 
-                            </div>
-
-                            <!-- GRUPO -->
-                            <div class="col-12">
-
-                                <div id="grupo-info"
-                                     class="alert alert-light border d-none mb-0">
-
-                                    <div class="d-flex align-items-center gap-2">
-
-                                        <i class="bi bi-diagram-3"></i>
-
-                                        <span class="fw-semibold">
-                                            {% trans "Grupo Regional:" %}
-                                        </span>
-
-                                        <span id="grupo-nome"></span>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <!-- DATA -->
-                            <div class="col-md-6">
-
-                                <label class="form-label fw-semibold">
-                                    {% trans "Data prevista devolução" %}
-                                </label>
-
-                                <input type="date"
-                                       name="data_prevista_devolucao"
-                                       class="form-control"
-                                       required>
-
-                            </div>
-
-                            <!-- CATEGORIA -->
-                            <div class="col-md-6">
-
-                                <label class="form-label fw-semibold">
-                                    Categoria do equipamento
-                                </label>
-
-                                <select id="categoria"
-                                        name="categoria"
-                                        class="form-select">
-
-                                    <option value="">Todas</option>
-
-                                    {% for c in categorias %}
-                                    <option value="{{ c.id }}">
-                                        {{ c.nome }}
-                                    </option>
-                                    {% endfor %}
-
-                                </select>
-
-                            </div>
-
-                            <!-- TIPO -->
-                            <div class="col-md-6">
-
-                                <label class="form-label fw-semibold">
-                                    Tipo do equipamento
-                                </label>
-
-                                <select id="tipo"
-                                        name="tipo"
-                                        class="form-select">
-
-                                    <option value="">Todos</option>
-
-                                    {% for t in tipos %}
-                                    <option value="{{ t.id }}">
-                                        {{ t.nome }}
-                                    </option>
-                                    {% endfor %}
-
-                                </select>
-
-                            </div>
-
-                            <!-- MOTIVO -->
-                            <div class="col-12">
-
-                                <label class="form-label fw-semibold">
-                                    {% trans "Motivo do empréstimo" %}
-                                </label>
-
-                                <textarea name="motivo"
-                                          rows="5"
-                                          class="form-control"
-                                          required></textarea>
-
-                            </div>
-
-                        </div>
-
-                        <!-- ACTIONS -->
-                        <div class="d-flex justify-content-end gap-2 mt-5">
-
-                            <a href="{% url 'estoque:lista_emprestimos' %}"
-                               class="btn btn-light border">
-                                {% trans "Cancelar" %}
-                            </a>
-
-                            <button type="submit"
-                                    class="btn btn-primary">
-                                {% trans "Criar solicitação" %}
-                            </button>
-
-                        </div>
-
-                    </form>
+                    </div>
 
                 </div>
 
@@ -251,7 +131,191 @@
 
         </div>
 
-    </div>
+        <!-- FILTROS -->
+        <div class="card border-0 shadow-sm rounded-4 mt-4">
+
+            <div class="card-header bg-white">
+
+                <h5 class="fw-bold mb-0">
+                    Equipamentos disponíveis
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row g-3 mb-4">
+
+                    <div class="col-md-4">
+
+                        <label class="form-label small text-secondary fw-semibold">
+                            Categoria
+                        </label>
+
+                        <select id="filtro_categoria"
+                                class="form-select">
+
+                            <option value="">
+                                Todas
+                            </option>
+
+                            {% for value, label in categorias %}
+
+                                <option value="{{ value }}">
+                                    {{ label }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <label class="form-label small text-secondary fw-semibold">
+                            Equipamento
+                        </label>
+
+                        <select id="filtro_produto"
+                                class="form-select">
+
+                            <option value="">
+                                Todos
+                            </option>
+
+                            {% for p in produtos_lista %}
+
+                                <option value="{{ p.id }}"
+                                        data-categoria="{{ p.categoria }}">
+                                    {{ p.descricao }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <label class="form-label small text-secondary fw-semibold">
+                            Buscar
+                        </label>
+
+                        <input type="text"
+                               id="filtro_busca"
+                               class="form-control"
+                               placeholder="Série ou patrimônio">
+
+                    </div>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table align-middle">
+
+                        <thead class="table-light">
+
+                            <tr>
+
+                                <th width="50"></th>
+
+                                <th>Produto</th>
+
+                                <th>Categoria</th>
+
+                                <th>Série</th>
+
+                                <th>Patrimônio</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="equipamentos-body">
+
+                            {% for equipamento in equipamentos %}
+
+                                <tr class="equipamento-row"
+                                    data-base="{{ equipamento.regional.id }}"
+                                    data-categoria="{{ equipamento.produto.categoria }}"
+                                    data-produto="{{ equipamento.produto.id }}"
+                                    data-serie="{{ equipamento.numero_serie|default:''|lower }}"
+                                    data-patrimonio="{{ equipamento.patrimonio|default:''|lower }}">
+
+                                    <td>
+
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               name="equipamentos"
+                                               value="{{ equipamento.id }}">
+
+                                    </td>
+
+                                    <td>
+                                        {{ equipamento.produto.descricao }}
+                                    </td>
+
+                                    <td>
+                                        {{ equipamento.produto.get_categoria_display }}
+                                    </td>
+
+                                    <td>
+                                        {{ equipamento.numero_serie }}
+                                    </td>
+
+                                    <td>
+                                        {{ equipamento.patrimonio }}
+                                    </td>
+
+                                </tr>
+
+                            {% empty %}
+
+                                <tr>
+
+                                    <td colspan="5"
+                                        class="text-center py-4 text-muted">
+
+                                        Nenhum equipamento disponível.
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+
+            <a href="{% url 'estoque:lista_emprestimos' %}"
+               class="btn btn-light border">
+
+                Cancelar
+
+            </a>
+
+            <button type="submit"
+                    class="btn btn-primary">
+
+                Criar empréstimo
+
+            </button>
+
+        </div>
+
+    </form>
 
 </div>
 
@@ -259,43 +323,195 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    const origemSelect = document.getElementById('regional_origem');
-    const destinoSelect = document.getElementById('regional_destino');
+    const origem = document.getElementById('regional_origem');
+    const destino = document.getElementById('regional_destino');
 
-    const grupoInfo = document.getElementById('grupo-info');
-    const grupoNome = document.getElementById('grupo-nome');
+    const categoria = document.getElementById('filtro_categoria');
+    const produto = document.getElementById('filtro_produto');
+    const busca = document.getElementById('filtro_busca');
 
-    origemSelect.addEventListener('change', function () {
+    /*
+    |--------------------------------------------------------------------------
+    | Bases destino
+    |--------------------------------------------------------------------------
+    */
 
-        const origemOption = origemSelect.options[origemSelect.selectedIndex];
+    function atualizarBasesDestino() {
 
-        const grupoOrigem = origemOption.dataset.grupo;
-        const nomeGrupo = origemOption.dataset.grupoNome;
-        const origemId = origemOption.value;
+        const origemSelecionada = origem.value;
 
-        grupoInfo.classList.remove('d-none');
-        grupoNome.textContent = nomeGrupo || '-';
+        const optionOrigem = origem.options[
+            origem.selectedIndex
+        ];
 
-        Array.from(destinoSelect.options).forEach(option => {
+        const grupoOrigem =
+            optionOrigem?.dataset?.grupo;
+
+        Array.from(destino.options).forEach(option => {
 
             if (!option.value) {
                 option.hidden = false;
                 return;
             }
 
-            const mesmoGrupo = option.dataset.grupo === grupoOrigem;
-            const mesmaRegional = option.value === origemId;
+            const mesmoGrupo =
+                option.dataset.grupo === grupoOrigem;
 
-            option.hidden = !mesmoGrupo || mesmaRegional;
+            const mesmaBase =
+                option.value === origemSelecionada;
+
+            option.hidden =
+                !origemSelecionada ||
+                !mesmoGrupo ||
+                mesmaBase;
 
         });
 
-        destinoSelect.value = '';
+        if (
+            destino.selectedOptions.length &&
+            destino.selectedOptions[0].hidden
+        ) {
+            destino.value = '';
+        }
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Produtos
+    |--------------------------------------------------------------------------
+    */
+
+    function atualizarProdutos() {
+
+        const categoriaSelecionada =
+            categoria.value;
+
+        Array.from(produto.options).forEach(option => {
+
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            option.hidden =
+                categoriaSelecionada &&
+                option.dataset.categoria !==
+                categoriaSelecionada;
+
+        });
+
+        if (
+            produto.selectedOptions.length &&
+            produto.selectedOptions[0].hidden
+        ) {
+            produto.value = '';
+        }
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Equipamentos
+    |--------------------------------------------------------------------------
+    */
+
+    function aplicarFiltros() {
+
+        const base =
+            origem.value;
+
+        const categoriaSelecionada =
+            categoria.value;
+
+        const produtoSelecionado =
+            produto.value;
+
+        const texto =
+            busca.value.toLowerCase().trim();
+
+        document.querySelectorAll(
+            '.equipamento-row'
+        ).forEach(row => {
+
+            const okBase =
+                !base ||
+                row.dataset.base === base;
+
+            const okCategoria =
+                !categoriaSelecionada ||
+                row.dataset.categoria ===
+                categoriaSelecionada;
+
+            const okProduto =
+                !produtoSelecionado ||
+                row.dataset.produto ===
+                produtoSelecionado;
+
+            const okBusca =
+                !texto ||
+                row.dataset.serie.includes(texto) ||
+                row.dataset.patrimonio.includes(texto);
+
+            row.style.display =
+                okBase &&
+                okCategoria &&
+                okProduto &&
+                okBusca
+                    ? ''
+                    : 'none';
+
+        });
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Eventos
+    |--------------------------------------------------------------------------
+    */
+
+    origem.addEventListener('change', function () {
+
+        atualizarBasesDestino();
+
+        aplicarFiltros();
 
     });
+
+    categoria.addEventListener('change', function () {
+
+        atualizarProdutos();
+
+        aplicarFiltros();
+
+    });
+
+    produto.addEventListener(
+        'change',
+        aplicarFiltros
+    );
+
+    busca.addEventListener(
+        'input',
+        aplicarFiltros
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inicialização
+    |--------------------------------------------------------------------------
+    */
+
+    atualizarBasesDestino();
+
+    atualizarProdutos();
+
+    aplicarFiltros();
 
 });
 
 </script>
 
 {% endblock %}
+

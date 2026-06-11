@@ -95,36 +95,59 @@ def notificacoes_context(request):
 
     # ---------------- EMPRÉSTIMOS ----------------
 
-    emprestimos_pendentes = (
+    emprestimos_recebimento = (
         Emprestimo.objects
         .filter(
             regional_destino__in=perfil.regionais.all(),
-            status='EM_TRANSITO'
+            status='AGUARDANDO_RECEBIMENTO'
         )
         .count()
+    )
+
+    emprestimos_devolucao = (
+        Emprestimo.objects
+        .filter(
+            regional_destino__in=perfil.regionais.all(),
+            status='EMPRESTADO'
+        )
+        .count()
+    )
+
+    emprestimos_confirmacao = (
+        Emprestimo.objects
+        .filter(
+            regional_origem__in=perfil.regionais.all(),
+            status='AGUARDANDO_CONFIRMACAO_DEVOLUCAO'
+        )
+        .count()
+    )
+    # ---------------- TOTAL EMPRÉSTIMOS ----------------
+
+    emprestimos_pendentes = (
+            emprestimos_recebimento +
+            emprestimos_devolucao +
+            emprestimos_confirmacao
     )
 
     # ---------------- TOTAL MENU ----------------
 
     notificacoes_pendentes = (
-        solicitacoes_pendentes +
-        separacoes_pendentes +
-        transferencias_pendentes +
-        emprestimos_pendentes
+            solicitacoes_pendentes +
+            separacoes_pendentes +
+            transferencias_pendentes +
+            emprestimos_pendentes
     )
 
     return {
 
         'comunicados_nao_lidos': comunicados_nao_lidos,
-
         'notificacoes_pendentes': notificacoes_pendentes,
-
         'solicitacoes_pendentes': solicitacoes_pendentes,
-
         'separacoes_pendentes': separacoes_pendentes,
-
         'transferencias_pendentes': transferencias_pendentes,
-
+        'emprestimos_recebimento': emprestimos_recebimento,
+        'emprestimos_devolucao': emprestimos_devolucao,
+        'emprestimos_confirmacao': emprestimos_confirmacao,
         'emprestimos_pendentes': emprestimos_pendentes,
     }
 

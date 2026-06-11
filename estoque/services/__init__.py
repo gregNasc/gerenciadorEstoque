@@ -1,0 +1,3 @@
+from .emprestimo_service import EmprestimoService
+from .notificacao_service import NotificacaoService
+from .comunicado_service import ComunicadoService

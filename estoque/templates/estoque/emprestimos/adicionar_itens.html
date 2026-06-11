@@ -1,0 +1,127 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+
+<div class="container-fluid px-4 py-4">
+
+<div class="d-flex justify-content-between mb-4">
+
+    <div>
+        <h2 class="fw-bold">
+            Selecionar equipamentos
+        </h2>
+
+        <p class="text-muted">
+
+            {{ emprestimo.regional_origem }}
+            →
+
+            {{ emprestimo.regional_destino }}
+
+        </p>
+    </div>
+
+    <a href="{% url 'estoque:detalhe_emprestimo' emprestimo.id %}"
+       class="btn btn-light border">
+
+        Voltar
+
+    </a>
+
+</div>
+
+<form method="post">
+
+{% csrf_token %}
+
+<div class="card shadow-sm border-0">
+
+<div class="card-body">
+
+<div class="table-responsive">
+
+<table class="table align-middle">
+
+<thead>
+
+<tr>
+
+<th></th>
+
+<th>Produto</th>
+
+<th>Categoria</th>
+
+<th>Série</th>
+
+<th>Patrimônio</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for e in equipamentos %}
+
+<tr>
+
+<td>
+
+<input type="checkbox"
+       name="equipamentos"
+       value="{{ e.id }}">
+
+</td>
+
+<td>{{ e.produto.descricao }}</td>
+
+<td>{{ e.produto.get_categoria_display }}</td>
+
+<td>{{ e.numero_serie }}</td>
+
+<td>{{ e.patrimonio }}</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="5"
+    class="text-center text-muted py-4">
+
+Nenhum equipamento disponível.
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<div class="card-footer text-end bg-white">
+
+<button class="btn btn-primary">
+
+Enviar equipamentos
+
+</button>
+
+</div>
+
+</div>
+
+</form>
+
+</div>
+
+{% endblock %}
