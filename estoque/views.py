@@ -83,14 +83,17 @@ def index(request):
         # Por produto
         produtos_na_categoria = list(
             equipamentos
-            .values('produto__id', 'produto__descricao')
+            .values('produto__categoria')
             .annotate(
                 total=Count('id'),
                 ativos=Count('id', filter=Q(status='ATIVO')),
                 sick=Count('id', filter=Q(status='SICK')),
+                inativos=Count('id', filter=Q(status='INATIVO')),
                 transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
+                emprestados=Count('id', filter=Q(status='EMPRESTADO')),
+                manutencao=Count('id', filter=Q(status='MANUTENCAO')),
             )
-            .order_by('produto__descricao')
+            .order_by('produto__categoria')
         )
 
         for p in produtos_na_categoria:
@@ -106,7 +109,10 @@ def index(request):
                 total=Count('id'),
                 ativos=Count('id', filter=Q(status='ATIVO')),
                 sick=Count('id', filter=Q(status='SICK')),
+                inativos=Count('id', filter=Q(status='INATIVO')),
                 transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
+                emprestados=Count('id', filter=Q(status='EMPRESTADO')),
+                manutencao=Count('id', filter=Q(status='MANUTENCAO')),
             )
             .order_by('produto__categoria')
         )
@@ -129,6 +135,7 @@ def index(request):
         total = equip_regional.count()
         ativos = equip_regional.filter(status='ATIVO').count()
         sick = equip_regional.filter(status='SICK').count()
+        inativos = equip_regional.filter(status='INATIVO').count()
 
         regional_data = {
             'regional__id': regional.id,
@@ -136,6 +143,7 @@ def index(request):
             'total': total,
             'ativos': ativos,
             'sick': sick,
+            'inativos': inativos,
             'disponibilidade': round((ativos / total * 100), 2) if total else 0,
         }
 
@@ -163,6 +171,7 @@ def index(request):
                     total=Count('id'),
                     ativos=Count('id', filter=Q(status='ATIVO')),
                     sick=Count('id', filter=Q(status='SICK')),
+                    inativos=Count('id', filter=Q(status='INATIVO')),
                     transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
                 )
             )

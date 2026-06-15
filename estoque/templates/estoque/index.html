@@ -116,6 +116,7 @@
                     <span class="text-secondary">{% trans "Em Manutenção" %}</span>
                     <strong class="text-danger">{{ item.sick }}</strong>
                 </div>
+
             </div>
         </div>
     </div>
@@ -201,6 +202,10 @@
                     <div class="d-flex justify-content-between small mb-2">
                         <span class="text-secondary">{% trans "Em Manutenção" %}</span>
                         <strong class="text-danger">{{ r.sick }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-secondary">{% trans "Inativos" %}</span>
+                        <strong class="text-secondary">{{ r.inativos }}</strong>
                     </div>
 
                     <!-- Barra de disponibilidade -->

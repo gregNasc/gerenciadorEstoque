@@ -65,6 +65,7 @@ class EstoqueService:
     STATUS_TRANSFERENCIA = 'TRANSFERENCIA'
     STATUS_MANUTENCAO = 'MANUTENCAO'
     STATUS_BAIXA = 'BAIXA'
+    STATUS_INATIVO = 'INATIVO'
 
     @classmethod
     def get_kpis_gerais(cls, queryset):
@@ -75,6 +76,7 @@ class EstoqueService:
             transferencia=Count('id', filter=Q(status=cls.STATUS_TRANSFERENCIA)),
             manutencao=Count('id', filter=Q(status=cls.STATUS_MANUTENCAO)),
             baixa=Count('id', filter=Q(status=cls.STATUS_BAIXA)),
+            inativos=Count('id', filter=Q(status=cls.STATUS_INATIVO)),
         )
 
     @classmethod
@@ -107,10 +109,11 @@ class EstoqueService:
                 'regional__id': regional.id,
                 'regional__nome': regional.nome,
                 'total': kpis_regional['total'],
-                'ativos': kpis_regional['ativos'],  # Todos ATIVOS
-                'sick': kpis_regional['sick'],  # Apenas SICK ativos
+                'ativos': kpis_regional['ativos'],
+                'sick': kpis_regional['sick'],
                 'transferencia': kpis_regional['transferencia'],
                 'manutencao': kpis_regional['manutencao'],
+                'inativos': kpis_regional['inativos'],
                 'disponibilidade': cls.get_disponibilidade(equip_regional),
                 'produtos': {}
             }
@@ -147,6 +150,7 @@ class EstoqueService:
                 sick=Count('id', filter=Q(status=cls.STATUS_SICK)),
                 transferencia=Count('id', filter=Q(status=cls.STATUS_TRANSFERENCIA)),
                 manutencao=Count('id', filter=Q(status=cls.STATUS_MANUTENCAO)),
+                inativos=Count('id', filter=Q(status=cls.STATUS_INATIVO)),
             )
             .order_by('produto__descricao', 'regional__nome')
         )
