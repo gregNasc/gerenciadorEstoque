@@ -83,7 +83,10 @@ def index(request):
         # Por produto
         produtos_na_categoria = list(
             equipamentos
-            .values('produto__categoria')
+            .values(
+                'produto__id',
+                'produto__descricao',
+            )
             .annotate(
                 total=Count('id'),
                 ativos=Count('id', filter=Q(status='ATIVO')),
@@ -93,7 +96,7 @@ def index(request):
                 emprestados=Count('id', filter=Q(status='EMPRESTADO')),
                 manutencao=Count('id', filter=Q(status='MANUTENCAO')),
             )
-            .order_by('produto__categoria')
+            .order_by('produto__descricao')
         )
 
         for p in produtos_na_categoria:
