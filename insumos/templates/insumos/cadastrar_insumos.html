@@ -126,15 +126,11 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log(insumoSelect);
     const url = "{% url 'insumos:insumos_por_categoria' %}";
 
-    // ======================
     // FILTRO INSUMO
-    // ======================
     if (categoriaSelect && insumoSelect) {
 
         categoriaSelect.addEventListener('change', async function () {
-
             insumoSelect.innerHTML = '<option value="">Carregando...</option>';
-
             if (!this.value) {
                 insumoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
                 return;
@@ -142,19 +138,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             try {
                 const resp = await fetch(`${url}?categoria=${this.value}`);
-
                 if (!resp.ok) throw new Error('Erro ao buscar insumos');
-
                 const data = await resp.json();
-
                 insumoSelect.innerHTML = '<option value="">Selecione</option>';
-
                 if (!data.insumos || data.insumos.length === 0) {
                     insumoSelect.innerHTML = '<option value="">Nenhum insumo encontrado</option>';
                     return;
                 }
 
-                data.insumos.forEach(i => {
+                data.insumos.sort((a, b) => {
+                        const na = parseInt(a.descricao.match(/\d+/)?.[0] || 999999);
+                        const nb = parseInt(b.descricao.match(/\d+/)?.[0] || 999999);
+                        return na - nb;
+                    });
+
+                    data.insumos.forEach(i => {
                     const opt = document.createElement('option');
                     opt.value = i.id;
                     opt.textContent = i.descricao;
@@ -168,16 +166,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ======================
     // MODAL
-    // ======================
     const modal = document.getElementById('modalConfirmacao');
 
     function abrirModal() {
         modal.style.display = 'block';
         modal.classList.add('show');
         document.body.classList.add('modal-open');
-
         let backdrop = document.querySelector('.modal-backdrop');
         if (!backdrop) {
             backdrop = document.createElement('div');
@@ -190,7 +185,6 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.style.display = 'none';
         modal.classList.remove('show');
         document.body.classList.remove('modal-open');
-
         const backdrop = document.querySelector('.modal-backdrop');
         if (backdrop) backdrop.remove();
     }
@@ -201,7 +195,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const categoria = document.querySelector('[name="categoria"]');
         const insumo = document.querySelector('[name="insumo"]');
         const quantidade = document.querySelector('[name="quantidade"]');
-
         document.getElementById('modalBase').innerText =
             base?.options[base.selectedIndex]?.text || '';
 
@@ -215,9 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
             quantidade?.value || '';
     }
 
-    // ======================
     // EVENTS
-    // ======================
     document.getElementById('btnSalvarInsumo').addEventListener('click', function () {
         preencherModal();
         abrirModal();
@@ -225,7 +216,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
     document.getElementById('btnFecharModalX').addEventListener('click', fecharModal);
-
     document.getElementById('btnConfirmarEnvio').addEventListener('click', function () {
         document.getElementById('formInsumo').submit();
     });
