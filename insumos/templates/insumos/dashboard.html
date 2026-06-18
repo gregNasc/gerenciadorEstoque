@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+<h2>BI Operacional</h2>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <canvas id="chartBase"></canvas>
+    </div>
+
+    <div class="col-md-6">
+        <canvas id="chartRanking"></canvas>
+    </div>
+
+</div>
+
+<div class="row mt-4">
+
+    <div class="col-12">
+        <canvas id="chartMensal"></canvas>
+    </div>
+
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+// CONSUMO POR BASE
+fetch('/insumos/api/bi/consumo-base/')
+.then(r => r.json())
+.then(data => {
+
+    new Chart(document.getElementById('chartBase'), {
+        type: 'bar',
+        data: {
+            labels: data.map(i => i.inventario__base__nome),
+            datasets: [{
+                label: 'Consumo (R$)',
+                data: data.map(i => i.total)
+            }]
+        }
+    });
+
+});
+
+
+// RANKING INSUMOS
+fetch('/insumos/api/bi/ranking-insumos/')
+.then(r => r.json())
+.then(data => {
+
+    new Chart(document.getElementById('chartRanking'), {
+        type: 'bar',
+        data: {
+            labels: data.map(i => i.insumo__descricao),
+            datasets: [{
+                label: 'Quantidade',
+                data: data.map(i => i.total)
+            }]
+        }
+    });
+
+});
+
+
+// CONSUMO POR MÊS
+fetch('/insumos/api/bi/consumo-mes/')
+.then(r => r.json())
+.then(data => {
+
+    new Chart(document.getElementById('chartMensal'), {
+        type: 'line',
+        data: {
+            labels: data.map(i => i.mes),
+            datasets: [{
+                label: 'Consumo mensal',
+                data: data.map(i => i.total)
+            }]
+        }
+    });
+
+});
+
+</script>
+
+{% endblock %}

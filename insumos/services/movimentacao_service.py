@@ -76,7 +76,7 @@ class MovimentacaoService:
                 f'{insumo.unidade_medida}'
             ),
             dados={
-                'base': base.sigla,
+                'base': base.nome,
                 'insumo': insumo.descricao,
                 'tipo': 'ENTRADA',
                 'quantidade': str(quantidade),
@@ -119,7 +119,7 @@ class MovimentacaoService:
                 f'{insumo.unidade_medida}'
             ),
             dados={
-                'base': base.sigla,
+                'base': base.nome,
                 'insumo': insumo.descricao,
                 'tipo': 'SAIDA',
                 'quantidade': str(quantidade),
@@ -134,7 +134,7 @@ class MovimentacaoService:
 
         quantidade = Decimal(str(quantidade))
         movimentacao = MovimentacaoInsumo.objects.create(
-            base=base,
+            base=base.nome,
             insumo=insumo,
             tipo='DEVOLUCAO',
             quantidade=quantidade,
@@ -159,7 +159,7 @@ class MovimentacaoService:
             )
 
         movimentacao = MovimentacaoInsumo.objects.create(
-            base=base,
+            base=base.nome,
             insumo=insumo,
             tipo='PERDA',
             quantidade=quantidade,
@@ -192,7 +192,7 @@ class MovimentacaoService:
         )
 
         movimentacao = MovimentacaoInsumo.objects.create(
-            base=base,
+            base=base.nome,
             insumo=insumo,
             tipo=tipo,
             quantidade=abs(diferenca),
@@ -215,7 +215,7 @@ class MovimentacaoService:
                 f'{insumo.unidade_medida}'
             ),
             dados={
-                'base': base.sigla,
+                'base': base,
                 'insumo': insumo.descricao,
                 'saldo_sistema': str(saldo_sistema),
                 'saldo_real': str(saldo_real),

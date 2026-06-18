@@ -74,16 +74,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-
     'django.contrib.sessions.middleware.SessionMiddleware',
-
     'django.middleware.locale.LocaleMiddleware',
-
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-
     'estoque.middleware.UserLanguageMiddleware',
     'estoque.middleware.EmpresaMiddleware',
-
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -103,7 +98,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-
+                'insumos.context_processors.menu_insumos',
                 'estoque.context_processors.notificacoes_context',
                 'estoque.context_processors.permissoes_especiais',
 

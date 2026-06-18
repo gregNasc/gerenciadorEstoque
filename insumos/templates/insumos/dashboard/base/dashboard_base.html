@@ -1,0 +1,67 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<h3 class="mb-4">Dashboard Base (Operação)</h3>
+
+<div class="row g-3">
+
+    <div class="col-md-4">
+        <div class="card shadow-sm p-3 text-center">
+            <h6 class="text-muted">Inventários em andamento</h6>
+            <h3>{{ inventarios_andamento }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm p-3 text-center">
+            <h6 class="text-muted">Checklists abertos</h6>
+            <h3>{{ checklists_abertos }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm p-3 text-center">
+            <h6 class="text-muted">Solicitações pendentes</h6>
+            <h3>{{ solicitacoes_pendentes }}</h3>
+        </div>
+    </div>
+
+</div>
+
+<hr class="my-4">
+
+<div class="card shadow-sm p-3">
+    <h6 class="mb-3">Visão Operacional</h6>
+    <canvas id="chartBase" height="100"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctxBase = document.getElementById('chartBase');
+
+new Chart(ctxBase, {
+    type: 'bar',
+    data: {
+        labels: ['Inventários', 'Checklists', 'Solicitações'],
+        datasets: [{
+            label: 'Volume Operacional',
+            data: [
+                {{ inventarios_andamento }},
+                {{ checklists_abertos }},
+                {{ solicitacoes_pendentes }}
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+</script>
+
+{% endblock %}

@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from insumos.constants import GruposInsumos
 
 
 # ---------------- BASE ----------------
@@ -41,6 +42,43 @@ class Perfil(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True, related_name="perfis")
     regionais = models.ManyToManyField(Base, blank=True, related_name="perfis")
     role = models.CharField(max_length=10, choices=Role.choices)
+
+    @property
+    def grupos_insumos(self):
+
+        return self.user.groups.filter(
+            name__startswith='INSUMOS_'
+        )
+
+    @property
+    def is_solicitante_insumos(self):
+        return self.user.groups.filter(
+            name=GruposInsumos.SOLICITANTE
+        ).exists()
+
+    @property
+    def is_compras_insumos(self):
+        return self.user.groups.filter(
+            name=GruposInsumos.COMPRAS
+        ).exists()
+
+    @property
+    def is_planejamento_insumos(self):
+        return self.user.groups.filter(
+            name=GruposInsumos.PLANEJAMENTO
+        ).exists()
+
+    @property
+    def is_financeiro_insumos(self):
+        return self.user.groups.filter(
+            name=GruposInsumos.FINANCEIRO
+        ).exists()
+
+    @property
+    def is_executivo_insumos(self):
+        return self.user.groups.filter(
+            name=GruposInsumos.EXECUTIVO
+        ).exists()
 
     # -------- REGIONAIS --------
     @property

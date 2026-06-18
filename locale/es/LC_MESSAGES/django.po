@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-02 15:11-0300\n"
+"POT-Creation-Date: 2026-06-16 18:11-0300\n"
 "PO-Revision-Date: 2026-05-21 18:00-0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Spanish <es@li.org>\n"
@@ -22,43 +22,43 @@ msgstr ""
 msgid "Selecione"
 msgstr "Seleccione"
 
-#: .\estoque\forms.py:32 .\estoque\models.py:118 .\estoque\models.py:255
+#: .\estoque\forms.py:32 .\estoque\models.py:118 .\estoque\models.py:262
 #: .\estoque\templates\estoque\index.html:22
-#: .\estoque\templates\estoque\index.html:167
+#: .\estoque\templates\estoque\index.html:168
 #: .\estoque\templates\estoque\sick.html:80
 #: .\estoque\templates\estoque\solicitacoes\criar.html:145
-#: .\estoque\utils.py:93
+#: .\estoque\utils.py:95
 msgid "Coletores"
 msgstr "Colectores"
 
-#: .\estoque\forms.py:33 .\estoque\models.py:119 .\estoque\models.py:256
+#: .\estoque\forms.py:33 .\estoque\models.py:119 .\estoque\models.py:263
 #: .\estoque\templates\estoque\index.html:23
-#: .\estoque\templates\estoque\index.html:171
+#: .\estoque\templates\estoque\index.html:172
 #: .\estoque\templates\estoque\sick.html:81
 #: .\estoque\templates\estoque\solicitacoes\criar.html:146
-#: .\estoque\utils.py:94
+#: .\estoque\utils.py:96
 msgid "Impressoras"
 msgstr "Impresoras"
 
-#: .\estoque\forms.py:34 .\estoque\models.py:120 .\estoque\models.py:257
+#: .\estoque\forms.py:34 .\estoque\models.py:120 .\estoque\models.py:264
 #: .\estoque\templates\estoque\index.html:24
-#: .\estoque\templates\estoque\index.html:175
+#: .\estoque\templates\estoque\index.html:176
 #: .\estoque\templates\estoque\sick.html:82
 #: .\estoque\templates\estoque\solicitacoes\criar.html:147
-#: .\estoque\utils.py:95
+#: .\estoque\utils.py:97
 msgid "Notebooks"
 msgstr "Portátiles"
 
-#: .\estoque\forms.py:35 .\estoque\models.py:121 .\estoque\models.py:258
+#: .\estoque\forms.py:35 .\estoque\models.py:121 .\estoque\models.py:265
 #: .\estoque\templates\estoque\index.html:25
-#: .\estoque\templates\estoque\index.html:179
+#: .\estoque\templates\estoque\index.html:180
 #: .\estoque\templates\estoque\sick.html:83
 #: .\estoque\templates\estoque\solicitacoes\criar.html:148
-#: .\estoque\utils.py:96
+#: .\estoque\utils.py:98
 msgid "Routers"
 msgstr "Routers"
 
-#: .\estoque\models.py:142 .\estoque\models.py:479
+#: .\estoque\models.py:142 .\estoque\models.py:486
 msgid "Ativo"
 msgstr "Activo"
 
@@ -70,7 +70,7 @@ msgstr "Reservado para Transferencia"
 msgid "Em Trânsito"
 msgstr "En tránsito"
 
-#: .\estoque\models.py:145 .\estoque\models.py:481
+#: .\estoque\models.py:145 .\estoque\models.py:488
 #: .\estoque\templates\estoque\comunicados\detalhe.html:45
 #: .\estoque\templates\estoque\estoque.html:84
 #: .\estoque\templates\estoque\sick.html:109
@@ -87,8 +87,7 @@ msgstr "SICK"
 msgid "Baixa"
 msgstr "Baja"
 
-#: .\estoque\models.py:229 .\estoque\models.py:288
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:418
+#: .\estoque\models.py:236 .\estoque\models.py:295
 #: .\estoque\templates\estoque\sick.html:188
 #: .\estoque\templates\estoque\solicitacoes\caixa.html:236
 #: .\estoque\templates\estoque\transferencia\listar.html:86
@@ -96,87 +95,87 @@ msgstr "Baja"
 msgid "Pendente"
 msgstr "Pendiente"
 
-#: .\estoque\models.py:230
+#: .\estoque\models.py:237
 msgid "Aprovado"
 msgstr "Aprobado"
 
-#: .\estoque\models.py:231
+#: .\estoque\models.py:238
 msgid "Rejeitado"
 msgstr "Rechazado"
 
-#: .\estoque\models.py:232
+#: .\estoque\models.py:239
 msgid "Em Transferência"
 msgstr "En Transferencia"
 
-#: .\estoque\models.py:233 .\estoque\templates\estoque\sick.html:221
+#: .\estoque\models.py:240 .\estoque\templates\estoque\sick.html:221
 msgid "Finalizado"
 msgstr "Finalizado"
 
-#: .\estoque\models.py:289 .\estoque\templates\estoque\estoque.html:83
+#: .\estoque\models.py:296 .\estoque\templates\estoque\estoque.html:83
 #: .\estoque\templates\estoque\transferencia\listar.html:90
 #: .\estoque\templates\estoque\transferencia\listar.html:256
 msgid "Em trânsito"
 msgstr "En tránsito"
 
-#: .\estoque\models.py:290
+#: .\estoque\models.py:297
 #: .\estoque\templates\estoque\transferencia\listar.html:94
 #: .\estoque\templates\estoque\transferencia\listar.html:263
 msgid "Concluída"
 msgstr "Concluida"
 
-#: .\estoque\models.py:291
+#: .\estoque\models.py:298
 #: .\estoque\templates\estoque\transferencia\listar.html:98
 #: .\estoque\templates\estoque\transferencia\listar.html:270
 msgid "Cancelada"
 msgstr "Cancelada"
 
-#: .\estoque\models.py:352
+#: .\estoque\models.py:359
 msgid "Solicitação"
 msgstr "Solicitud"
 
-#: .\estoque\models.py:353 .\estoque\models.py:502
+#: .\estoque\models.py:360 .\estoque\models.py:509
 #: .\estoque\templates\estoque\transferencia\listar.html:117
 msgid "Transferência"
 msgstr "Transferencia"
 
-#: .\estoque\models.py:357
+#: .\estoque\models.py:364
 msgid "Criada"
 msgstr "Creada"
 
-#: .\estoque\models.py:358
+#: .\estoque\models.py:365
 msgid "Aprovada"
 msgstr "Aprobada"
 
-#: .\estoque\models.py:359
+#: .\estoque\models.py:366
 msgid "Rejeitada"
 msgstr "Rechazada"
 
-#: .\estoque\models.py:360
+#: .\estoque\models.py:367
 msgid "Em transferência"
 msgstr "En transferencia"
 
-#: .\estoque\models.py:361
+#: .\estoque\models.py:368
 msgid "Recebida"
 msgstr "Recibida"
 
-#: .\estoque\models.py:480 .\estoque\models.py:503
-#: .\estoque\templates\estoque\base.html:310
+#: .\estoque\models.py:487 .\estoque\models.py:510
+#: .\estoque\templates\estoque\base.html:324
 msgid "SICK"
 msgstr "SICK"
 
-#: .\estoque\models.py:482 .\estoque\templates\estoque\sick.html:179
+#: .\estoque\models.py:489 .\estoque\templates\estoque\sick.html:179
 msgid "Sucata"
 msgstr "Chatarra"
 
-#: .\estoque\models.py:483 .\estoque\templates\estoque\sick.html:175
+#: .\estoque\models.py:490 .\estoque\templates\estoque\sick.html:175
 msgid "Inativo"
 msgstr "Inactivo"
 
-#: .\estoque\models.py:501
+#: .\estoque\models.py:508
 msgid "Criação"
 msgstr "Creación"
 
-#: .\estoque\models.py:504
+#: .\estoque\models.py:511
 msgid "Edição"
 msgstr "Edición"
 
@@ -187,7 +186,6 @@ msgstr "Asignación de la Solicitud"
 #: .\estoque\templates\estoque\alocacao\painel.html:19
 #: .\estoque\templates\estoque\comunicados\criar.html:39
 #: .\estoque\templates\estoque\comunicados\detalhe.html:15
-#: .\estoque\templates\estoque\emprestimos\criar.html:32
 msgid "Voltar"
 msgstr "Volver"
 
@@ -212,7 +210,6 @@ msgid "Quantidade"
 msgstr "Cantidad"
 
 #: .\estoque\templates\estoque\alocacao\painel.html:41
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:175
 #: .\estoque\templates\estoque\solicitacoes\caixa.html:72
 msgid "Solicitante"
 msgstr "Solicitante"
@@ -282,15 +279,15 @@ msgstr "Separación"
 msgid "Recebimentos"
 msgstr "Recepciones"
 
-#: .\estoque\templates\estoque\base.html:270
+#: .\estoque\templates\estoque\base.html:272
 msgid "Empréstimos"
 msgstr "Préstamos"
 
-#: .\estoque\templates\estoque\base.html:289
+#: .\estoque\templates\estoque\base.html:303
 msgid "Todas Transferências"
 msgstr "Todas las Transferencias"
 
-#: .\estoque\templates\estoque\base.html:325
+#: .\estoque\templates\estoque\base.html:340
 #: .\estoque\templates\estoque\cadastrar_equipamento.html:27
 #: .\estoque\templates\estoque\historico.html:64
 #: .\estoque\templates\estoque\historico.html:114
@@ -302,11 +299,11 @@ msgstr "Todas las Transferencias"
 msgid "Equipamento"
 msgstr "Equipo"
 
-#: .\estoque\templates\estoque\base.html:340
+#: .\estoque\templates\estoque\base.html:355
 msgid "Usuários"
 msgstr "Usuarios"
 
-#: .\estoque\templates\estoque\base.html:372
+#: .\estoque\templates\estoque\base.html:387
 msgid "Sair"
 msgstr "Salir"
 
@@ -476,7 +473,6 @@ msgstr "Destino"
 #: .\estoque\templates\estoque\caixa_separacao.html:31
 #: .\estoque\templates\estoque\caixa_transferencias.html:35
 #: .\estoque\templates\estoque\detalhes_produto.html:35
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:343
 #: .\estoque\templates\estoque\estoque.html:641
 #: .\estoque\templates\estoque\lista_transferencias.html:21
 #: .\estoque\templates\estoque\lista_transferencias.html:82
@@ -702,7 +698,6 @@ msgid "Selecionar"
 msgstr "Seleccionar"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:31
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:339
 #: .\estoque\templates\estoque\estoque.html:640
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:112
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:236
@@ -730,7 +725,7 @@ msgstr "Sin Foto"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:80
 #: .\estoque\templates\estoque\estoque.html:120
-#: .\estoque\templates\estoque\index.html:124
+#: .\estoque\templates\estoque\index.html:125
 msgid "Nenhum equipamento encontrado."
 msgstr "Ningún equipo encontrado."
 
@@ -759,147 +754,12 @@ msgid "Descreva o motivo do Sick"
 msgstr "Describa el motivo del SICK"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:146
-#: .\estoque\templates\estoque\emprestimos\criar.html:236
 msgid "Cancelar"
 msgstr "Cancelar"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:147
 msgid "Confirmar SICK"
 msgstr "Confirmar SICK"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:5
-#: .\estoque\templates\estoque\emprestimos\criar.html:18
-msgid "Novo Empréstimo"
-msgstr "Nuevo Préstamo"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:22
-msgid "Solicite equipamentos emprestados entre regionais compatíveis"
-msgstr "Solicite equipos prestados entre regionales compatibles"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:56
-msgid "Dados do empréstimo"
-msgstr "Datos del préstamo"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:60
-msgid "Somente regionais do mesmo grupo poderão realizar empréstimos"
-msgstr "Solo regionales del mismo grupo podrán realizar préstamos"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:82
-#: .\estoque\templates\estoque\solicitacoes\caixa.html:59
-msgid "Regional solicitante"
-msgstr "Regional solicitante"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:91
-#: .\estoque\templates\estoque\emprestimos\criar.html:119
-msgid "Selecione a regional"
-msgstr "Seleccione la regional"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:110
-msgid "Regional que irá emprestar"
-msgstr "Regional que prestará"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:144
-msgid "Grupo Regional:"
-msgstr "Grupo Regional:"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:159
-msgid "Data prevista devolução"
-msgstr "Fecha prevista de devolución"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:219
-msgid "Motivo do empréstimo"
-msgstr "Motivo del préstamo"
-
-#: .\estoque\templates\estoque\emprestimos\criar.html:241
-msgid "Criar solicitação"
-msgstr "Crear solicitud"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:24
-#| msgid "Empréstimos"
-msgid "Empréstimo"
-msgstr "Préstamos"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:77
-msgid "Grupo:"
-msgstr "Grupo:"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:110
-#| msgid "Aprovado"
-msgid "Aprovar"
-msgstr "Aprobado"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:136
-#| msgid "Confirmar Recusa"
-msgid "Confirmar Recebimento"
-msgstr "Confirmar Rechazo"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:149
-#| msgid "Confirmar Recusa"
-msgid "Confirmar Devolução"
-msgstr "Confirmar Rechazo"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:195
-#, fuzzy
-#| msgid "Empréstimos"
-msgid "Data Empréstimo"
-msgstr "Préstamos"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:215
-msgid "Devolução Prevista"
-msgstr "Devolución Prevista"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:235
-#, fuzzy
-#| msgid "Grupo Regional:"
-msgid "Grupo Regional"
-msgstr "Grupo Regional:"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:270
-#, fuzzy
-#| msgid "Motivo do empréstimo"
-msgid "Motivo do Empréstimo"
-msgstr "Motivo del préstamo"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:305
-#, fuzzy
-#| msgid "Equipamento"
-msgid "Equipamentos"
-msgstr "Equipo"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:331
-#: .\estoque\templates\estoque\partials\historico_detalhes.html:96
-#: .\estoque\templates\estoque\partials\historico_detalhes.html:169
-msgid "Produto"
-msgstr "Producto"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:335
-#: .\estoque\templates\estoque\estoque.html:639
-msgid "Série"
-msgstr "Serie"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:388
-#, fuzzy
-#| msgid "Recebida"
-msgid "Recebido"
-msgstr "Recibida"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:398
-#, fuzzy
-#| msgid "Transferência"
-msgid "Divergência"
-msgstr "Transferencia"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:408
-#, fuzzy
-#| msgid "Resolvido"
-msgid "Devolvido"
-msgstr "Resuelto"
-
-#: .\estoque\templates\estoque\emprestimos\detalhe.html:440
-#, fuzzy
-#| msgid "Nenhum equipamento encontrado."
-msgid "Nenhum item adicionado."
-msgstr "Ningún equipo encontrado."
 
 #: .\estoque\templates\estoque\estoque.html:14
 msgid "📋 Estoque Geral"
@@ -942,7 +802,7 @@ msgid "Aplicar"
 msgstr "Aplicar"
 
 #: .\estoque\templates\estoque\estoque.html:80
-#: .\estoque\templates\estoque\index.html:194
+#: .\estoque\templates\estoque\index.html:195
 #: .\estoque\templates\estoque\transferencia\listar.html:27
 msgid "Total"
 msgstr "Total"
@@ -953,6 +813,7 @@ msgid "Ativos"
 msgstr "Activos"
 
 #: .\estoque\templates\estoque\estoque.html:85
+#: .\estoque\templates\estoque\index.html:207
 #: .\estoque\templates\estoque\sick.html:49
 #: .\estoque\templates\estoque\sick.html:110
 msgid "Inativos"
@@ -983,6 +844,10 @@ msgstr "Error al cargar regionales:"
 #: .\estoque\templates\estoque\estoque.html:613
 msgid "equipamento(s)"
 msgstr "equipo(s)"
+
+#: .\estoque\templates\estoque\estoque.html:639
+msgid "Série"
+msgstr "Serie"
 
 #: .\estoque\templates\estoque\estoque.html:808
 msgid "Erro ao carregar equipamentos:"
@@ -1073,27 +938,27 @@ msgid "Todas as informações estão consistentes em tempo real."
 msgstr "Toda la información es consistente en tiempo real."
 
 #: .\estoque\templates\estoque\index.html:116
-#: .\estoque\templates\estoque\index.html:202
+#: .\estoque\templates\estoque\index.html:203
 msgid "Em Manutenção"
 msgstr "En Mantenimiento"
 
-#: .\estoque\templates\estoque\index.html:155
+#: .\estoque\templates\estoque\index.html:156
 msgid "Nenhum equipamento desta categoria na regional"
 msgstr "Ningún equipo de esta categoría en la regional"
 
-#: .\estoque\templates\estoque\index.html:198
+#: .\estoque\templates\estoque\index.html:199
 msgid "Em Operação"
 msgstr "En Operación"
 
-#: .\estoque\templates\estoque\index.html:207
+#: .\estoque\templates\estoque\index.html:212
 msgid "Disponibilidade:"
 msgstr "Disponibilidad:"
 
-#: .\estoque\templates\estoque\index.html:221
+#: .\estoque\templates\estoque\index.html:226
 msgid "Ver detalhes"
 msgstr "Ver detalles"
 
-#: .\estoque\templates\estoque\index.html:235
+#: .\estoque\templates\estoque\index.html:240
 msgid "Detalhes da Regional"
 msgstr "Detalles de la Regional"
 
@@ -1170,6 +1035,11 @@ msgstr "Última Acción"
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:63
 msgid "Status Atual"
 msgstr "Estado Actual"
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:96
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:169
+msgid "Produto"
+msgstr "Producto"
 
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:103
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:248
@@ -1288,6 +1158,10 @@ msgstr "Pedidos Pendientes"
 msgid "Solicitações aguardando aprovação ou encaminhamento"
 msgstr "Solicitudes pendientes de aprobación o derivación"
 
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:59
+msgid "Regional solicitante"
+msgstr "Regional solicitante"
+
 #: .\estoque\templates\estoque\solicitacoes\caixa.html:85
 #: .\estoque\templates\estoque\solicitar.html:26
 msgid "Motivo"
@@ -1346,22 +1220,18 @@ msgid "Voltar para o início"
 msgstr "Volver al inicio"
 
 #: .\estoque\templates\estoque\solicitacoes\criar.html:117
-#| msgid "Regional solicitante"
 msgid "Regional Solicitante"
 msgstr "Regional solicitante"
 
 #: .\estoque\templates\estoque\solicitacoes\criar.html:142
-#| msgid "Equipamento"
 msgid "Tipo de Equipamento"
 msgstr "Equipo"
 
 #: .\estoque\templates\estoque\solicitacoes\criar.html:144
-#| msgid "Selecione"
 msgid "Selecione..."
 msgstr "Seleccione"
 
 #: .\estoque\templates\estoque\solicitacoes\criar.html:221
-#| msgid "Motivo da solicitação"
 msgid "Motivo da Solicitação"
 msgstr "Motivo de la solicitud"
 
@@ -1514,6 +1384,98 @@ msgstr "Informe su correo electrónico para recibir el enlace de recuperación."
 #: .\estoque\templates\registration\password_reset_form.html:16
 msgid "Enviar link"
 msgstr "Enviar enlace"
+
+#~ msgid "Novo Empréstimo"
+#~ msgstr "Nuevo Préstamo"
+
+#~ msgid "Solicite equipamentos emprestados entre regionais compatíveis"
+#~ msgstr "Solicite equipos prestados entre regionales compatibles"
+
+#~ msgid "Dados do empréstimo"
+#~ msgstr "Datos del préstamo"
+
+#~ msgid "Somente regionais do mesmo grupo poderão realizar empréstimos"
+#~ msgstr "Solo regionales del mismo grupo podrán realizar préstamos"
+
+#~ msgid "Selecione a regional"
+#~ msgstr "Seleccione la regional"
+
+#~ msgid "Regional que irá emprestar"
+#~ msgstr "Regional que prestará"
+
+#~ msgid "Grupo Regional:"
+#~ msgstr "Grupo Regional:"
+
+#~ msgid "Data prevista devolução"
+#~ msgstr "Fecha prevista de devolución"
+
+#~ msgid "Motivo do empréstimo"
+#~ msgstr "Motivo del préstamo"
+
+#~ msgid "Criar solicitação"
+#~ msgstr "Crear solicitud"
+
+#~| msgid "Empréstimos"
+#~ msgid "Empréstimo"
+#~ msgstr "Préstamos"
+
+#~ msgid "Grupo:"
+#~ msgstr "Grupo:"
+
+#~| msgid "Aprovado"
+#~ msgid "Aprovar"
+#~ msgstr "Aprobado"
+
+#~| msgid "Confirmar Recusa"
+#~ msgid "Confirmar Recebimento"
+#~ msgstr "Confirmar Rechazo"
+
+#~| msgid "Confirmar Recusa"
+#~ msgid "Confirmar Devolução"
+#~ msgstr "Confirmar Rechazo"
+
+#, fuzzy
+#~| msgid "Empréstimos"
+#~ msgid "Data Empréstimo"
+#~ msgstr "Préstamos"
+
+#~ msgid "Devolução Prevista"
+#~ msgstr "Devolución Prevista"
+
+#, fuzzy
+#~| msgid "Grupo Regional:"
+#~ msgid "Grupo Regional"
+#~ msgstr "Grupo Regional:"
+
+#, fuzzy
+#~| msgid "Motivo do empréstimo"
+#~ msgid "Motivo do Empréstimo"
+#~ msgstr "Motivo del préstamo"
+
+#, fuzzy
+#~| msgid "Equipamento"
+#~ msgid "Equipamentos"
+#~ msgstr "Equipo"
+
+#, fuzzy
+#~| msgid "Recebida"
+#~ msgid "Recebido"
+#~ msgstr "Recibida"
+
+#, fuzzy
+#~| msgid "Transferência"
+#~ msgid "Divergência"
+#~ msgstr "Transferencia"
+
+#, fuzzy
+#~| msgid "Resolvido"
+#~ msgid "Devolvido"
+#~ msgstr "Resuelto"
+
+#, fuzzy
+#~| msgid "Nenhum equipamento encontrado."
+#~ msgid "Nenhum item adicionado."
+#~ msgstr "Ningún equipo encontrado."
 
 #~ msgid "Marcar"
 #~ msgstr "Marcar"

@@ -1,0 +1,25 @@
+from django.urls import path
+from django.shortcuts import redirect
+from insumos.views.dashboard_base import dashboard_base
+from insumos.views.dashboard_planejamento import dashboard_planejamento
+from insumos.views.dashboard_financeiro import dashboard_financeiro
+from insumos.views import api
+from insumos.views.api import insumos_por_categoria
+
+app_name = 'insumos'
+
+urlpatterns = [
+    path('', lambda request: redirect('insumos:dashboard_base')),
+    path('dashboard/base/', dashboard_base, name='dashboard_base'),
+    path('dashboard/planejamento/', dashboard_planejamento, name='dashboard_planejamento'),
+    path('dashboard/financeiro/', dashboard_financeiro, name='dashboard_financeiro'),
+    path('api/kpis/inventarios/', api.kpi_inventarios),
+    path('api/bi/consumo-base/', api.consumo_por_base),
+    path('api/bi/ranking-insumos/', api.ranking_insumos),
+    path('api/bi/consumo-mes/', api.consumo_por_mes),
+    path('insumos/', api.lista_insumos, name='lista_insumos'),
+    path('insumos/cadastrar/', api.cadastrar_insumo, name='cadastrar_insumos'),
+    path('insumos/<int:pk>/editar/', api.editar_insumo, name='editar_insumos'),
+    path('api/insumos-por-categoria/', insumos_por_categoria, name='insumos_por_categoria'),
+    path('estoque/', api.estoque_insumos, name='estoque_insumos'),
+]

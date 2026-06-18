@@ -1,0 +1,262 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}
+{% trans "Entrada de Insumos" %}
+{% endblock %}
+
+{% block content %}
+{% if request.user.is_authenticated %}
+
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+
+        <div class="card-header bg-dark text-white">
+            {% trans "📦 Entrada de Insumos" %}
+        </div>
+
+        <div class="card-body">
+
+            <form method="post" id="formInsumo">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.errors }}
+                    </div>
+                {% endif %}
+
+                <div class="row">
+
+                    <!-- BASE -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Base</label>
+                        {{ form.base }}
+                        {% if form.base.errors %}
+                            <div class="text-danger small">{{ form.base.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- CATEGORIA -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Categoria</label>
+                        {{ form.categoria }}
+                        {% if form.categoria.errors %}
+                            <div class="text-danger small">{{ form.categoria.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- INSUMO -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Insumo</label>
+                        {{ form.insumo }}
+                        {% if form.insumo.errors %}
+                            <div class="text-danger small">{{ form.insumo.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- QUANTIDADE -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Quantidade</label>
+                        {{ form.quantidade }}
+                        {% if form.quantidade.errors %}
+                            <div class="text-danger small">{{ form.quantidade.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                </div>
+
+                <!-- BOTÃO -->
+                <div class="text-end mt-3">
+                    <button type="button" class="btn btn-primary" id="btnSalvarInsumo">
+                        {% trans "Salvar" %}
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="modalConfirmacao" tabindex="-1" style="display:none;">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+
+        <div class="modal-content">
+
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">🔍 Confirme os dados</h5>
+                <button type="button" class="btn-close btn-close-white" id="btnFecharModalX"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-2"><strong>Base:</strong> <span id="modalBase"></span></div>
+                <div class="mb-2"><strong>Categoria:</strong> <span id="modalCategoria"></span></div>
+                <div class="mb-2"><strong>Insumo:</strong> <span id="modalInsumo"></span></div>
+                <div class="mb-2"><strong>Quantidade:</strong> <span id="modalQuantidade"></span></div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn btn-secondary" id="btnFecharModal">
+                    ✏️ Corrigir
+                </button>
+
+                <button type="button" class="btn btn-success" id="btnConfirmarEnvio">
+                    ✅ Confirmar e Salvar
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('JS carregou');
+    const categoriaSelect = document.querySelector('[name="categoria"]');
+    const insumoSelect = document.querySelector('[name="insumo"]');
+    console.log(categoriaSelect);
+    console.log(insumoSelect);
+    const url = "{% url 'insumos:insumos_por_categoria' %}";
+
+    // ======================
+    // FILTRO INSUMO
+    // ======================
+    if (categoriaSelect && insumoSelect) {
+
+        categoriaSelect.addEventListener('change', async function () {
+
+            insumoSelect.innerHTML = '<option value="">Carregando...</option>';
+
+            if (!this.value) {
+                insumoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
+                return;
+            }
+
+            try {
+                const resp = await fetch(`${url}?categoria=${this.value}`);
+
+                if (!resp.ok) throw new Error('Erro ao buscar insumos');
+
+                const data = await resp.json();
+
+                insumoSelect.innerHTML = '<option value="">Selecione</option>';
+
+                if (!data.insumos || data.insumos.length === 0) {
+                    insumoSelect.innerHTML = '<option value="">Nenhum insumo encontrado</option>';
+                    return;
+                }
+
+                data.insumos.forEach(i => {
+                    const opt = document.createElement('option');
+                    opt.value = i.id;
+                    opt.textContent = i.descricao;
+                    insumoSelect.appendChild(opt);
+                });
+
+            } catch (e) {
+                console.error(e);
+                insumoSelect.innerHTML = '<option value="">Erro ao carregar insumos</option>';
+            }
+        });
+    }
+
+    // ======================
+    // MODAL
+    // ======================
+    const modal = document.getElementById('modalConfirmacao');
+
+    function abrirModal() {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+
+        let backdrop = document.querySelector('.modal-backdrop');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            document.body.appendChild(backdrop);
+        }
+    }
+
+    function fecharModal() {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+    }
+
+    function preencherModal() {
+
+        const base = document.querySelector('[name="base"]');
+        const categoria = document.querySelector('[name="categoria"]');
+        const insumo = document.querySelector('[name="insumo"]');
+        const quantidade = document.querySelector('[name="quantidade"]');
+
+        document.getElementById('modalBase').innerText =
+            base?.options[base.selectedIndex]?.text || '';
+
+        document.getElementById('modalCategoria').innerText =
+            categoria?.options[categoria.selectedIndex]?.text || '';
+
+        document.getElementById('modalInsumo').innerText =
+            insumo?.options[insumo.selectedIndex]?.text || '';
+
+        document.getElementById('modalQuantidade').innerText =
+            quantidade?.value || '';
+    }
+
+    // ======================
+    // EVENTS
+    // ======================
+    document.getElementById('btnSalvarInsumo').addEventListener('click', function () {
+        preencherModal();
+        abrirModal();
+    });
+
+    document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
+    document.getElementById('btnFecharModalX').addEventListener('click', fecharModal);
+
+    document.getElementById('btnConfirmarEnvio').addEventListener('click', function () {
+        document.getElementById('formInsumo').submit();
+    });
+
+});
+</script>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1050;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,.5);
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1040;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+}
+
+.modal-backdrop.show { opacity: .5; }
+.modal-open { overflow: hidden; }
+</style>
+
+{% endif %}
+{% endblock %}

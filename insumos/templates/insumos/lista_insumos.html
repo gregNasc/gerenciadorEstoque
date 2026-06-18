@@ -1,0 +1,131 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}
+Insumos
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="mb-0">Cadastro de Insumos</h2>
+            <small class="text-muted">
+                Gerenciamento de materiais e consumíveis
+            </small>
+        </div>
+
+        <a href="{% url 'insumos:cadastrar_insumos' %}"
+           class="btn btn-primary">
+
+            <i class="bi bi-plus-circle"></i>
+            Novo Insumo
+
+        </a>
+
+    </div>
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-light">
+
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Unidade</th>
+                            <th>Controle</th>
+                            <th>Valor Médio</th>
+                            <th>Status</th>
+                            <th width="120">Ações</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for insumo in insumos %}
+
+                        <tr>
+
+                            <td>
+                                <strong>{{ insumo.descricao }}</strong>
+                            </td>
+
+                            <td>
+                                {{ insumo.categoria.nome }}
+                            </td>
+
+                            <td>
+                                {{ insumo.unidade_medida }}
+                            </td>
+
+                            <td>
+                                {{ insumo.get_tipo_controle_display }}
+                            </td>
+
+                            <td>
+                                R$ {{ insumo.valor_medio }}
+                            </td>
+
+                            <td>
+
+                                {% if insumo.ativo %}
+                                    <span class="badge bg-success">
+                                        Ativo
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        Inativo
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                <a href="{% url 'insumos:editar_insumos' insumo.id %}"
+                                   class="btn btn-sm btn-outline-primary">
+
+                                    <i class="bi bi-pencil"></i>
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td colspan="7" class="text-center py-4">
+
+                                Nenhum insumo cadastrado.
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

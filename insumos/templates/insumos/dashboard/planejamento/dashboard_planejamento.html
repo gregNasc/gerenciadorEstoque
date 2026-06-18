@@ -1,0 +1,54 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+
+<h3 class="mb-4">Dashboard Planejamento</h3>
+
+<div class="row g-3">
+
+    <div class="col-md-6">
+        <div class="card shadow-sm p-3 text-center">
+            <h6 class="text-muted">Solicitações pendentes</h6>
+            <h3>{{ solicitacoes_pendentes }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm p-3 text-center">
+            <h6 class="text-muted">Em compra</h6>
+            <h3>{{ solicitacoes_em_compra }}</h3>
+        </div>
+    </div>
+
+</div>
+
+<hr class="my-4">
+
+<div class="card shadow-sm p-3">
+    <h6 class="mb-3">Fluxo de Planejamento</h6>
+    <canvas id="chartPlanejamento" height="100"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctxPlan = document.getElementById('chartPlanejamento');
+
+new Chart(ctxPlan, {
+    type: 'doughnut',
+    data: {
+        labels: ['Pendentes', 'Em compra'],
+        datasets: [{
+            data: [
+                {{ solicitacoes_pendentes }},
+                {{ solicitacoes_em_compra }}
+            ]
+        }]
+    },
+    options: {
+        responsive: true
+    }
+});
+</script>
+
+{% endblock %}

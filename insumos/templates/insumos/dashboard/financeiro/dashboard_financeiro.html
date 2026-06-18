@@ -1,0 +1,231 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}Dashboard | Financeiro{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <!-- Título -->
+    <div class="border-bottom pb-3 mb-4">
+        <h1 class="h3 mb-0 fw-semibold">Dashboard Financeiro</h1>
+        <p class="text-secondary small mt-1">
+            Visão de custos por base, inventário e consumo
+        </p>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body bg-light">
+
+            <form method="get" class="row g-3 align-items-end">
+
+                <!-- INVENTÁRIO -->
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Inventory
+                    </label>
+                    <select name="inventario" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todos</option>
+                        {% for inv in inventarios %}
+                            <option value="{{ inv.id }}"
+                                {% if request.GET.inventario == inv.id|stringformat:"s" %}selected{% endif %}>
+                                {{ inv.sigla }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+
+                <!-- BASE -->
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Base
+                    </label>
+                    <select name="base" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">Todas</option>
+                        {% for base in bases %}
+                            <option value="{{ base.id }}"
+                                {% if request.GET.base == base.id|stringformat:"s" %}selected{% endif %}>
+                                {{ base.sigla }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- CLIENTE -->
+                <div class="col-md-2">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Cliente
+                    </label>
+
+                    <select name="cliente"
+                            class="form-select form-select-sm bg-white auto-submit">
+
+                        <option value="">Todos</option>
+
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}"
+                                {% if request.GET.cliente == cliente.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+                                {{ cliente.sigla }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- LOJA -->
+                <div class="col-md-2">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Loja
+                    </label>
+
+                    <select name="loja"
+                            class="form-select form-select-sm bg-white auto-submit">
+
+                        <option value="">Todas</option>
+
+                        {% for loja in lojas %}
+                            <option value="{{ loja }}"
+                                {% if request.GET.loja == loja %}
+                                    selected
+                                {% endif %}>
+                                {{ loja }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- PERÍODO INICIO -->
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Início
+                    </label>
+                    <input type="date"
+                           name="inicio"
+                           value="{{ request.GET.inicio }}"
+                           class="form-control form-control-sm">
+                </div>
+
+                <!-- PERÍODO FIM -->
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        Fim
+                    </label>
+                    <input type="date"
+                           name="fim"
+                           value="{{ request.GET.fim }}"
+                           class="form-control form-control-sm">
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3">
+                    <span class="text-secondary small">Valor em Estoque</span>
+                    <h3 class="fw-bold mt-1">R$ {{ valor_total_estoque }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3">
+                    <span class="text-secondary small">Consumo Total</span>
+                    <h3 class="fw-bold mt-1 text-danger">R$ {{ total_consumo }}</h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- GRÁFICO PRINCIPAL -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <h6 class="mb-3">Consumo vs Estoque</h6>
+            <canvas id="chartFinanceiro"></canvas>
+        </div>
+    </div>
+
+    <!-- ANÁLISES (BI REAL) -->
+    <div class="row g-3">
+
+        <!-- MAIORES CUSTOS POR BASE -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+
+                    <h6 class="mb-3">Maiores Custos por Base</h6>
+
+                    {% for item in custos_por_base %}
+                    <div class="d-flex justify-content-between small border-bottom py-2">
+                        <span class="text-secondary">
+                            {{ item.inventario__base__sigla }}
+                        </span>
+                        <strong>R$ {{ item.total }}</strong>
+                    </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ITENS MAIS USADOS -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+
+                    <h6 class="mb-3">Itens Mais Usados</h6>
+
+                    {% for item in top_insumos %}
+                    <div class="d-flex justify-content-between small border-bottom py-2">
+                        <span class="text-secondary">
+                            {{ item.insumo__descricao }}
+                        </span>
+                        <strong>{{ item.quantidade }}</strong>
+                    </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const ctxFin = document.getElementById('chartFinanceiro');
+
+        new Chart(ctxFin, {
+            type: 'bar',
+            data: {
+                labels: ['Estoque', 'Consumo'],
+                datasets: [{
+                    label: 'R$',
+                    data: [
+                        {{ valor_total_estoque }},
+                        {{ total_consumo }}
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    </script>
+
+</div>
+{% endblock %}
