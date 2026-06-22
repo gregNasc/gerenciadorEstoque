@@ -1,0 +1,35 @@
+{% extends "estoque/base.html" %}
+{% load i18n static %}
+
+{% block title %}Importar Inventários{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Importar Inventários a partir de Excel</h1>
+    <p>Selecione o arquivo <strong>.xlsx</strong> com as abas: <strong>Siglas e Tipos</strong> <strong></strong><strong></strong>.</p>
+    <p>A importação irá:</p>
+    <ul>
+        <li>Atualizar/criar clientes com base na aba <strong>Siglas e Tipos</strong>.</li>
+        <li>Vincular cada inventário à regional correspondente.</li>
+    </ul>
+
+    {% if messages %}
+        <ul class="messagelist">
+            {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div style="margin: 20px 0;">
+            <input type="file" name="arquivo" accept=".xlsx" required>
+        </div>
+        <div>
+            <input type="submit" value="Importar" class="button" style="background: #417690; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+            <a href="{% url 'admin:index' %}" class="button" style="background: #ccc; padding: 10px 20px; border-radius: 4px; text-decoration: none; color: #333;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

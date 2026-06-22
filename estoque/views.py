@@ -6,6 +6,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from openpyxl import Workbook
 from .services.emprestimo_service import EmprestimoService
+from insumos.models import Inventario
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
@@ -17,6 +18,9 @@ from .utils import notificar_pendencia_transferencia
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
+from estoque.models import Equipamento
+from insumos.models import (ChecklistDiario, ChecklistLoteTag)
+from insumos.models import LoteTag
 from django.utils import timezone
 from datetime import datetime, time
 from django.db import IntegrityError, transaction
@@ -26,6 +30,7 @@ from openpyxl import Workbook
 from collections import OrderedDict
 from django.contrib.auth.decorators import login_required
 from .decorators import role_required
+from datetime import date
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
@@ -194,7 +199,6 @@ def index(request):
 
 
     # SELECTS
-
     produtos_lista = Produto.objects.all()
     if categoria:
         produtos_lista = produtos_lista.filter(categoria=categoria)
@@ -4239,3 +4243,135 @@ def editar_equipamento(request, equipamento_id):
             '/'
         )
     )
+
+@login_required
+def checklist_view(request):
+    if request.method == 'POST':
+        try:
+            inventario_id = request.POST.get('inventario')
+            if not inventario_id:
+                messages.error(request, 'É necessário selecionar um inventário.')
+                return redirect('estoque:checklist')
+
+            checklist = ChecklistDiario.objects.create(
+                inventario_id=inventario_id,
+                data_inicio=timezone.now(),
+                criado_por=request.user,
+                responsavel=request.user,
+                status='ABERTO'
+            )
+
+            equipamento_mapping = {
+                'coletor': 'tag_saida_coletor',
+                'impressora': 'tag_saida_impressora',
+                'notebook': 'tag_saida_notebook',
+                'router': 'tag_saida_router',
+            }
+
+            for campo, tag_field in equipamento_mapping.items():
+                equip_id = request.POST.get(campo)
+                if equip_id:
+                    from insumos.models import ChecklistEquipamento
+                    ChecklistEquipamento.objects.create(
+                        checklist=checklist,
+                        equipamento_id=equip_id,
+                        tag_saida=request.POST.get(tag_field, ''),
+                        tag_volta=request.POST.get(f'tag_volta_{campo}', '')
+                    )
+
+            lote_tag_id = request.POST.get('lote_tag')
+            if lote_tag_id:
+                from insumos.models import ChecklistLoteTag
+                ChecklistLoteTag.objects.create(
+                    checklist=checklist,
+                    lote_id=lote_tag_id,
+                    numero_inicial_enviado=request.POST.get('tag_inicial'),
+                    numero_final_enviado=request.POST.get('tag_final'),
+                    numero_inicial_retornado=request.POST.get('tag_retorno_inicial') or None,
+                    numero_final_retornado=request.POST.get('tag_retorno_final') or None
+                )
+
+            messages.success(request, 'Checklist criado com sucesso!')
+            return redirect('insumos:checklist_detail', pk=checklist.id)
+
+        except Exception as e:
+            messages.error(request, f'Erro ao criar checklist: {str(e)}')
+            return redirect('estoque:checklist')
+
+    regionais_ids = request.user.perfil.regionais_ids
+
+    if request.user.perfil.is_admin:
+        equipamentos = Equipamento.objects.filter(status='ATIVO')
+        inventarios = Inventario.objects.filter(
+            status='PLANEJADO',
+            data_inicio=date.today()
+        )
+    else:
+        regionais_ids = request.user.perfil.regionais_ids
+        equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id__in=regionais_ids)
+        inventarios = Inventario.objects.filter(
+            status='PLANEJADO',
+            base__in=request.user.perfil.regionais.all(),
+            data_inicio=date.today()
+        )
+
+    context = {
+        'coletores': equipamentos.filter(produto__categoria='Coletores'),
+        'impressoras': equipamentos.filter(produto__categoria='Impressoras'),
+        'notebooks': equipamentos.filter(produto__categoria='Notebooks'),
+        'routers': equipamentos.filter(produto__categoria='Routers'),
+        'inventarios': inventarios,
+        'url_name': 'checklist',
+    }
+    return render(request, 'estoque/checklist.html', context)
+
+def get_equipamentos_disponiveis(request):
+    regional_id = request.GET.get('regional')
+    categoria = request.GET.get('categoria')
+
+    if not regional_id or not categoria:
+        return JsonResponse({'results': []})
+
+    equipamentos = Equipamento.objects.filter(
+        status='ATIVO',
+        regional_id=regional_id,
+        produto__categoria=categoria
+    ).select_related('produto')
+
+    data = [{
+        'id': eq.id,
+        'text': f"{eq.numero_serie} - {eq.produto.descricao} ({eq.patrimonio})",
+        'numero_serie': eq.numero_serie,
+        'patrimonio': eq.patrimonio,
+        'produto_descricao': eq.produto.descricao
+    } for eq in equipamentos]
+
+    return JsonResponse({'results': data})
+
+def get_lotes_tags_disponiveis(request):
+    regional_id = request.GET.get('regional')
+
+    if not regional_id:
+        return JsonResponse({'results': []})
+
+    if not request.user.perfil.is_admin:
+        regionais_ids = request.user.perfil.regionais_ids
+        if int(regional_id) not in regionais_ids:
+            return JsonResponse({'results': []}, status=403)
+
+    lotes = LoteTag.objects.filter(
+        ativo=True,
+        quantidade_disponivel__gt=0,
+        base_id=regional_id
+    )
+
+    data = [{
+        'id': lote.id,
+        'text': f"Lote {lote.numero_inicial} a {lote.numero_final} (disp: {lote.quantidade_disponivel})",
+        'numero_inicial': lote.numero_inicial,
+        'numero_final': lote.numero_final,
+        'quantidade_disponivel': lote.quantidade_disponivel
+    } for lote in lotes]
+
+    return JsonResponse({'results': data})
+

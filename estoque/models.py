@@ -182,6 +182,7 @@ class Equipamento(models.Model):
         ('EM_TRANSITO', _('Em Trânsito')),
         ('MANUTENCAO', _('Manutenção')),
         ('SICK', _('Sick')),
+        ('EM_USO', _('Em Uso')),
         ('BAIXA', _('Baixa')),
     ]
 

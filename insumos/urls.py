@@ -4,6 +4,7 @@ from insumos.views.dashboard_base import dashboard_base
 from insumos.views.dashboard_planejamento import dashboard_planejamento
 from insumos.views.dashboard_financeiro import dashboard_financeiro
 from insumos.views import api
+from insumos.views.api import importar_excel
 from insumos.views.api import insumos_por_categoria
 
 app_name = 'insumos'
@@ -22,4 +23,6 @@ urlpatterns = [
     path('insumos/<int:pk>/editar/', api.editar_insumo, name='editar_insumos'),
     path('api/insumos-por-categoria/', insumos_por_categoria, name='insumos_por_categoria'),
     path('estoque/', api.estoque_insumos, name='estoque_insumos'),
+    path('importar-excel/', api.importar_excel, name='importar_excel'),
+    path('api/inventario/<int:inventario_id>/', api.inventario_detalhes, name='inventario_detalhes'),
 ]

@@ -138,6 +138,11 @@ class Inventario(models.Model):
     data_fim = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default='PLANEJADO')
     criado_por = models.ForeignKey(User, on_delete=models.PROTECT)
+    endereco = models.CharField(max_length=255, blank=True, null=True)
+    bairro = models.CharField(max_length=100, blank=True, null=True)
+    cidade = models.CharField(max_length=100, blank=True, null=True)
+    cep = models.CharField(max_length=20, blank=True, null=True)
+    cnpj = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
 
@@ -192,6 +197,33 @@ class ItemChecklist(models.Model):
 
     class Meta:
         unique_together = (('checklist', 'insumo'),)
+
+class ChecklistEquipamento(models.Model):
+    checklist = models.ForeignKey('ChecklistDiario', on_delete=models.CASCADE, related_name='equipamentos_utilizados')
+    equipamento = models.ForeignKey('estoque.Equipamento', on_delete=models.PROTECT)
+    tag_saida = models.CharField(max_length=100, verbose_name="Nº Tag na Saída")
+    tag_volta = models.CharField(max_length=100, null=True, blank=True, verbose_name="Nº Tag na Volta")
+    data_retorno = models.DateTimeField(null=True, blank=True)
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = (('checklist', 'equipamento'),)
+
+    def __str__(self):
+        return f"{self.equipamento} - {self.tag_saida}"
+
+class ChecklistLoteTag(models.Model):
+    checklist = models.ForeignKey('ChecklistDiario', on_delete=models.CASCADE, related_name='lotes_tags_movimentados')
+    lote = models.ForeignKey('LoteTag', on_delete=models.PROTECT)
+    numero_inicial_enviado = models.IntegerField()
+    numero_final_enviado = models.IntegerField()
+    numero_inicial_retornado = models.IntegerField(null=True, blank=True)
+    numero_final_retornado = models.IntegerField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[('ENVIADO', 'Enviado'), ('RETORNADO', 'Retornado')], default='ENVIADO')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.lote} - Faixa {self.numero_inicial_enviado} a {self.numero_final_enviado}"
 
 class ConsumoInsumo(models.Model):
 

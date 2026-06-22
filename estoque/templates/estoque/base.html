@@ -70,6 +70,20 @@
 
             <ul class="navbar-nav ms-auto align-items-lg-center">
 
+                <!-- CHECKLIST -->
+
+                <!--li class="nav-item">
+
+                    <a class="nav-link {% if url_name == 'checklist' %}active{% endif %}"
+                       href="{% url 'estoque:checklist' %}">
+
+                        <i class="bi bi-plus-circle"></i>
+                        {% trans "Checklist" %}
+
+                    </a-->
+
+                </li>
+
                 <!-- ESTOQUE -->
                 <li class="nav-item dropdown">
 
@@ -111,6 +125,18 @@
                             </a>
 
                         </li>
+
+                          {% if perfil.role == 'admin' %}
+                        <!--li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'insumos:importar_excel' %}">
+                                <i class="bi bi-file-earmark-excel"></i>
+                                {% trans "Importar Excel" %}
+                            </a>
+                        </li-->
+                        {% endif %}
 
                     </ul>
 

@@ -117,4 +117,7 @@ urlpatterns = [
 
     # ---------------- EDIÇÃO ----------------
     path('equipamento/<int:equipamento_id>/editar/', views.editar_equipamento, name='editar_equipamento'),
+    path('checklist/', views.checklist_view, name='checklist'),
+    path('api/equipamentos-disponiveis/', views.get_equipamentos_disponiveis, name='api_equipamentos'),
+    path('api/lotes-tags-disponiveis/', views.get_lotes_tags_disponiveis, name='api_lotes_tags'),
 ]
