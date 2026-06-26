@@ -6,7 +6,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from openpyxl import Workbook
 from .services.emprestimo_service import EmprestimoService
-from insumos.models import Inventario
+from insumos.models import Inventario, Insumo
+from insumos.services.checklist_service import ChecklistService
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import HttpResponse
@@ -19,7 +20,7 @@ from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
 from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
 from estoque.models import Equipamento
-from insumos.models import (ChecklistDiario, ChecklistLoteTag)
+from insumos.models import ChecklistDiario
 from insumos.models import LoteTag
 from django.utils import timezone
 from datetime import datetime, time
@@ -753,7 +754,6 @@ def detalhes_produto_view(request, produto_id, regional_id):
                 messages.success(request, f"{sucesso} transferência(s) criada(s).")
 
             return redirect(request.path)
-
 
 @login_required
 @role_required('admin', 'gestor')
@@ -4253,46 +4253,54 @@ def checklist_view(request):
                 messages.error(request, 'É necessário selecionar um inventário.')
                 return redirect('estoque:checklist')
 
-            checklist = ChecklistDiario.objects.create(
-                inventario_id=inventario_id,
-                data_inicio=timezone.now(),
-                criado_por=request.user,
-                responsavel=request.user,
-                status='ABERTO'
-            )
+            inventario = get_object_or_404(Inventario.objects.select_related('base', 'cliente'), id=inventario_id)
 
-            equipamento_mapping = {
-                'coletor': 'tag_saida_coletor',
-                'impressora': 'tag_saida_impressora',
-                'notebook': 'tag_saida_notebook',
-                'router': 'tag_saida_router',
-            }
+            if (
+                not request.user.perfil.is_admin
+                and not request.user.perfil.regionais.filter(id=inventario.base_id).exists()
+            ):
+                messages.error(request, 'Você não tem acesso à base deste inventário.')
+                return redirect('estoque:checklist')
 
-            for campo, tag_field in equipamento_mapping.items():
-                equip_id = request.POST.get(campo)
-                if equip_id:
-                    from insumos.models import ChecklistEquipamento
-                    ChecklistEquipamento.objects.create(
-                        checklist=checklist,
-                        equipamento_id=equip_id,
-                        tag_saida=request.POST.get(tag_field, ''),
-                        tag_volta=request.POST.get(f'tag_volta_{campo}', '')
-                    )
+            categorias_equipamentos = ['router', 'coletor', 'notebook', 'impressora']
+            equipamentos_ids = []
 
-            lote_tag_id = request.POST.get('lote_tag')
-            if lote_tag_id:
-                from insumos.models import ChecklistLoteTag
-                ChecklistLoteTag.objects.create(
-                    checklist=checklist,
-                    lote_id=lote_tag_id,
-                    numero_inicial_enviado=request.POST.get('tag_inicial'),
-                    numero_final_enviado=request.POST.get('tag_final'),
-                    numero_inicial_retornado=request.POST.get('tag_retorno_inicial') or None,
-                    numero_final_retornado=request.POST.get('tag_retorno_final') or None
-                )
+            for categoria in categorias_equipamentos:
+                equipamentos_ids.extend(request.POST.getlist(f'equipamentos_{categoria}'))
 
-            messages.success(request, 'Checklist criado com sucesso!')
-            return redirect('insumos:checklist_detail', pk=checklist.id)
+            insumos_payload = []
+            for insumo_id in request.POST.getlist('insumo_ids'):
+                quantidade = request.POST.get(f'insumo_{insumo_id}_enviada')
+                if quantidade:
+                    insumos_payload.append((insumo_id, quantidade))
+
+            if not equipamentos_ids and not insumos_payload:
+                messages.error(request, 'Selecione ao menos um equipamento ou informe um insumo.')
+                return redirect('estoque:checklist')
+
+            with transaction.atomic():
+                checklist = ChecklistService.criar(inventario=inventario, usuario=request.user, observacao=request.POST.get('observacao', ''),)
+
+                equipamentos = (Equipamento.objects.select_related('regional', 'produto').filter(id__in=equipamentos_ids))
+
+                for equipamento in equipamentos:
+                    ChecklistService.adicionar_equipamento(checklist=checklist, equipamento=equipamento, usuario=request.user,)
+
+                insumos = {str(insumo.id): insumo
+                    for insumo in Insumo.objects.filter(id__in=[item[0] for item in insumos_payload])
+                }
+
+                for insumo_id, quantidade in insumos_payload:
+                    ChecklistService.registrar_envio_item(checklist=checklist, insumo=insumos[insumo_id], quantidade_enviada=quantidade, usuario=request.user,)
+                checklist.status = 'EM_EXECUCAO'
+                checklist.save(update_fields=['status'])
+
+                if inventario.status == 'PLANEJADO':
+                    inventario.status = 'EM_ANDAMENTO'
+                    inventario.save(update_fields=['status'])
+
+            messages.success(request, 'Checklist criado e estoque movimentado com sucesso!')
+            return redirect('estoque:checklist')
 
         except Exception as e:
             messages.error(request, f'Erro ao criar checklist: {str(e)}')
@@ -4302,18 +4310,11 @@ def checklist_view(request):
 
     if request.user.perfil.is_admin:
         equipamentos = Equipamento.objects.filter(status='ATIVO')
-        inventarios = Inventario.objects.filter(
-            status='PLANEJADO',
-            data_inicio=date.today()
-        )
+        inventarios = Inventario.objects.filter(status='PLANEJADO', data_inicio=date.today())
     else:
         regionais_ids = request.user.perfil.regionais_ids
         equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id__in=regionais_ids)
-        inventarios = Inventario.objects.filter(
-            status='PLANEJADO',
-            base__in=request.user.perfil.regionais.all(),
-            data_inicio=date.today()
-        )
+        inventarios = Inventario.objects.filter(status='PLANEJADO', base__in=request.user.perfil.regionais.all(), data_inicio=date.today())
 
     context = {
         'coletores': equipamentos.filter(produto__categoria='Coletores'),
@@ -4321,6 +4322,7 @@ def checklist_view(request):
         'notebooks': equipamentos.filter(produto__categoria='Notebooks'),
         'routers': equipamentos.filter(produto__categoria='Routers'),
         'inventarios': inventarios,
+        'insumos': Insumo.objects.filter(ativo=True).select_related('categoria').order_by('categoria__nome', 'descricao'),
         'url_name': 'checklist',
     }
     return render(request, 'estoque/checklist.html', context)
@@ -4332,11 +4334,7 @@ def get_equipamentos_disponiveis(request):
     if not regional_id or not categoria:
         return JsonResponse({'results': []})
 
-    equipamentos = Equipamento.objects.filter(
-        status='ATIVO',
-        regional_id=regional_id,
-        produto__categoria=categoria
-    ).select_related('produto')
+    equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id=regional_id, produto__categoria=categoria).select_related('produto')
 
     data = [{
         'id': eq.id,
@@ -4359,11 +4357,7 @@ def get_lotes_tags_disponiveis(request):
         if int(regional_id) not in regionais_ids:
             return JsonResponse({'results': []}, status=403)
 
-    lotes = LoteTag.objects.filter(
-        ativo=True,
-        quantidade_disponivel__gt=0,
-        base_id=regional_id
-    )
+    lotes = LoteTag.objects.filter(ativo=True, quantidade_disponivel__gt=0, base_id=regional_id)
 
     data = [{
         'id': lote.id,

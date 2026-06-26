@@ -25,4 +25,8 @@ urlpatterns = [
     path('estoque/', api.estoque_insumos, name='estoque_insumos'),
     path('importar-excel/', api.importar_excel, name='importar_excel'),
     path('api/inventario/<int:inventario_id>/', api.inventario_detalhes, name='inventario_detalhes'),
+    path('gerenciar-inventarios/', api.gerenciar_inventarios, name='gerenciar_inventarios'),
+    path('inventarios/', api.lista_inventarios, name='lista_inventarios'),
+    path('inventarios/<int:pk>/editar/', api.editar_inventario, name='editar_inventario'),
+    path('exportar-excel/', api.exportar_excel, name='exportar_excel'),
 ]

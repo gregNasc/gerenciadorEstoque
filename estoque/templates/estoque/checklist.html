@@ -1,6 +1,5 @@
 {% extends "estoque/base.html" %}
 {% load i18n static %}
-
 {% block title %}{% trans "Checklist" %}{% endblock %}
 
 {% block extra_css %}
@@ -100,6 +99,11 @@
         outline: none;
         border-bottom-color: #1e3c72;
     }
+    .info-grid input[readonly] {
+        background: #f8f9fa;
+        cursor: default;
+        color: #495057;
+    }
     .obs {
         font-size: 13px;
         color: #444;
@@ -171,6 +175,55 @@
         padding: 2px 6px;
         border-radius: 4px;
         display: inline-block;
+    }
+    .resumo-selecionados {
+        font-size: 11px;
+        color: #1e3c72;
+        margin-top: 3px;
+        max-width: 150px;
+        word-wrap: break-word;
+        line-height: 1.3;
+    }
+    .accordion-button:not(.collapsed) {
+        background: #1e3c72;
+        color: #fff;
+    }
+    .accordion-button:not(.collapsed)::after {
+        filter: brightness(0) invert(1);
+    }
+    .accordion-button {
+        background: #e7edf5;
+        font-weight: 700;
+    }
+    .accordion-body {
+        padding: 0;
+    }
+    .insumos-block {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #1e3c72;
+        margin-bottom: 20px;
+    }
+    .insumos-block h5 {
+        color: #1e3c72;
+        margin-bottom: 10px;
+    }
+    .insumos-block table {
+        background: #fff;
+    }
+    .tooltip-icon {
+        cursor: help;
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+    .badge-etiqueta {
+        background: #ffc107;
+        color: #212529;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 5px;
     }
     /* Estilos do modal customizado */
     .custom-modal-overlay {
@@ -294,6 +347,10 @@
         .custom-modal-overlay { display: none !important; }
         .info-grid input { border-bottom: 1px solid #000; }
         .input-cell input { border-bottom: 1px solid #000; }
+        .accordion-button { background: transparent !important; color: #000 !important; }
+        .accordion-button::after { display: none !important; }
+        .accordion-collapse { display: block !important; }
+        .accordion-body { padding: 0 !important; }
     }
 </style>
 {% endblock %}
@@ -304,23 +361,24 @@
 
     <form method="POST" action="{% url 'estoque:checklist' %}">
         {% csrf_token %}
+        <div id="equipamentosSelecionadosInputs"></div>
 
         <!-- Dados do cliente e inventário -->
         <div class="info-grid">
             <label for="cliente">CLIENTE</label>
-            <input type="text" id="cliente" name="cliente" placeholder="Nome do cliente" value="">
+            <input type="text" id="cliente" name="cliente" placeholder="Preenchido automaticamente" value="" readonly>
 
             <label for="data">DATA</label>
-            <input type="text" id="data" name="data" placeholder="DD/MM/AAAA" value="{% now 'd/m/Y' %}">
+            <input type="text" id="data" name="data" placeholder="DD/MM/AAAA" value="{% now 'd/m/Y' %}" readonly>
 
             <label for="endereco">ENDEREÇO</label>
-            <input type="text" id="endereco" name="endereco" placeholder="Endereço completo" value="">
+            <input type="text" id="endereco" name="endereco" placeholder="Preenchido automaticamente" value="" readonly>
 
             <label for="bairro">BAIRRO</label>
-            <input type="text" id="bairro" name="bairro" placeholder="Bairro" value="">
+            <input type="text" id="bairro" name="bairro" placeholder="Preenchido automaticamente" value="" readonly>
 
             <label for="cidade">CIDADE</label>
-            <input type="text" id="cidade" name="cidade" placeholder="Cidade/UF" value="">
+            <input type="text" id="cidade" name="cidade" placeholder="Preenchido automaticamente" value="" readonly>
 
             <label for="inventario">INVENTÁRIO</label>
             <select id="inventario" name="inventario" required style="border: none; border-bottom: 2px solid #b0c4de; background: transparent; padding: 4px 6px; font-size: 15px; width: 100%; min-width: 120px;">
@@ -335,153 +393,270 @@
             <strong>OBS:</strong> <input type="text" name="observacao" style="border: none; border-bottom: 1px dashed #7a8b9f; background: transparent; width: 80%;">
         </div>
 
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="th-main" rowspan="2" style="width:45px;">#</th>
-                        <th class="th-main" rowspan="2" style="text-align:left; padding-left:12px;">DESCRIÇÃO</th>
-                        <th class="th-main" rowspan="2" style="width:130px;">ENVIO<br><span style="font-weight:400;font-size:11px;">Tag Saída / Qtd</span></th>
-                        <th class="th-main" colspan="2" style="width:140px;">CONFERÊNCIA LOJA</th>
-                        <th class="th-main" rowspan="2" style="width:130px;">RETORNO<br><span style="font-weight:400;font-size:11px;">Tag Volta / Qtd</span></th>
-                    </tr>
-                    <tr>
-                        <th class="th-sub">Entrada</th>
-                        <th class="th-sub">Saída</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- DEPARTAMENTO PESSOAL -->
-                    <tr class="group-row"><td colspan="6">DEPARTAMENTO PESSOAL</td></tr>
-                    <tr><td class="num-col">1</td><td class="desc-col">Toner Impressora Laser</td><td class="input-cell"><input type="text" name="item_1" placeholder=""></td><td class="input-cell"><input type="text" name="item_1_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_1_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_1_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">2</td><td class="desc-col">Marcador de Coleta - AZUL ESCURO</td><td class="input-cell"><input type="text" name="item_2" placeholder=""></td><td class="input-cell"><input type="text" name="item_2_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_2_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_2_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">3</td><td class="desc-col">Marcador de Coleta - AZUL CLARO</td><td class="input-cell"><input type="text" name="item_3" placeholder=""></td><td class="input-cell"><input type="text" name="item_3_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_3_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_3_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">4</td><td class="desc-col">Touca</td><td class="input-cell"><input type="text" name="item_4" placeholder=""></td><td class="input-cell"><input type="text" name="item_4_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_4_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_4_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">5</td><td class="desc-col">Luva</td><td class="input-cell"><input type="text" name="item_5" placeholder=""></td><td class="input-cell"><input type="text" name="item_5_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_5_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_5_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">6</td><td class="desc-col">Máscara</td><td class="input-cell"><input type="text" name="item_6" placeholder=""></td><td class="input-cell"><input type="text" name="item_6_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_6_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_6_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">7</td><td class="desc-col">Grampeador</td><td class="input-cell"><input type="text" name="item_7" placeholder=""></td><td class="input-cell"><input type="text" name="item_7_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_7_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_7_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">8</td><td class="desc-col">Durex</td><td class="input-cell"><input type="text" name="item_8" placeholder=""></td><td class="input-cell"><input type="text" name="item_8_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_8_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_8_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">9</td><td class="desc-col">Papel Sulfite (Pacote)</td><td class="input-cell"><input type="text" name="item_9" placeholder=""></td><td class="input-cell"><input type="text" name="item_9_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_9_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_9_retorno" placeholder=""></td></tr>
+        <!-- Bloco de INSUMOS -->
+        <!--div class="insumos-block">
+            <h5><i class="bi bi-box"></i> Insumos a serem enviados <small style="font-weight:normal; font-size:0.8rem;">(preencha apenas a quantidade enviada)</small></h5>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="th-sub" style="text-align:left;">Insumo</th>
+                            <th class="th-sub">Categoria</th>
+                            <th class="th-sub">Unidade</th>
+                            <th class="th-sub">Quantidade enviada</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for insumo in insumos %}
+                            <tr>
+                                <td class="desc-col">
+                                    {{ insumo.descricao }}
+                                    <input type="hidden" name="insumo_ids" value="{{ insumo.id }}">
+                                </td>
+                                <td>{{ insumo.categoria.nome }}</td>
+                                <td>{{ insumo.unidade_medida }}</td>
+                                <td class="input-cell">
+                                    <input
+                                        type="number"
+                                        name="insumo_{{ insumo.id }}_enviada"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0"
+                                    >
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-muted">Nenhum insumo ativo cadastrado.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div-->
 
-                    <!-- ETIQUETAS -->
-                    <tr><td class="num-col">10</td><td class="desc-col">Etiqueta Setor 0001</td><td class="input-cell"><input type="text" name="tag_saida_10" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_10_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_10_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_10" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">11</td><td class="desc-col">Etiqueta Setor 1000</td><td class="input-cell"><input type="text" name="tag_saida_11" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_11_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_11_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_11" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">12</td><td class="desc-col">Etiqueta Setor 2000</td><td class="input-cell"><input type="text" name="tag_saida_12" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_12_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_12_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_12" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">13</td><td class="desc-col">Etiqueta Setor 3000</td><td class="input-cell"><input type="text" name="tag_saida_13" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_13_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_13_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_13" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">14</td><td class="desc-col">Etiqueta Setor 3500 - Peso Variável</td><td class="input-cell"><input type="text" name="tag_saida_14" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_14_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_14_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_14" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">15</td><td class="desc-col">Etiqueta Setor 4000</td><td class="input-cell"><input type="text" name="tag_saida_15" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_15_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_15_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_15" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">16</td><td class="desc-col">Etiqueta Setor 5000</td><td class="input-cell"><input type="text" name="tag_saida_16" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_16_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_16_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_16" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">17</td><td class="desc-col">Etiqueta Setor 6000</td><td class="input-cell"><input type="text" name="tag_saida_17" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_17_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_17_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_17" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">18</td><td class="desc-col">Etiqueta Setor 7000</td><td class="input-cell"><input type="text" name="tag_saida_18" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_18_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_18_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_18" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">19</td><td class="desc-col">Etiqueta Setor 8000</td><td class="input-cell"><input type="text" name="tag_saida_19" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_19_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_19_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_19" placeholder="Tag Volta"></td></tr>
-                    <tr><td class="num-col">20</td><td class="desc-col">Etiqueta Setor 9000</td><td class="input-cell"><input type="text" name="tag_saida_20" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_20_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_20_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_20" placeholder="Tag Volta"></td></tr>
+        <!-- Tabela principal com Accordion -->
+        <div class="accordion" id="accordionChecklist" style="margin-top:20px;">
 
-                    <tr><td class="num-col">21</td><td class="desc-col">Marcador Coletado</td><td class="input-cell"><input type="text" name="item_21" placeholder=""></td><td class="input-cell"><input type="text" name="item_21_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_21_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_21_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">22</td><td class="desc-col">Calça Térmica</td><td class="input-cell"><input type="text" name="item_22" placeholder=""></td><td class="input-cell"><input type="text" name="item_22_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_22_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_22_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">23</td><td class="desc-col">Capa Térmica</td><td class="input-cell"><input type="text" name="item_23" placeholder=""></td><td class="input-cell"><input type="text" name="item_23_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_23_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_23_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">24</td><td class="desc-col">Capacete</td><td class="input-cell"><input type="text" name="item_24" placeholder=""></td><td class="input-cell"><input type="text" name="item_24_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_24_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_24_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">25</td><td class="desc-col">Botas do 33/48</td><td class="input-cell"><input type="text" name="item_25" placeholder="0"></td><td class="input-cell"><input type="text" name="item_25_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_25_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_25_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">26</td><td class="desc-col">Cinto de segurança</td><td class="input-cell"><input type="text" name="item_26" placeholder=""></td><td class="input-cell"><input type="text" name="item_26_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_26_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_26_retorno" placeholder=""></td></tr>
+            <!-- DEPARTAMENTO PESSOAL -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePessoal" aria-expanded="true">
+                        DEPARTAMENTO PESSOAL
+                    </button>
+                </h2>
+                <div id="collapsePessoal" class="accordion-collapse collapse show" data-bs-parent="#accordionChecklist">
+                    <div class="accordion-body p-0">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="th-main" rowspan="2" style="width:45px;">#</th>
+                                        <th class="th-main" rowspan="2" style="text-align:left; padding-left:12px;">DESCRIÇÃO</th>
+                                        <th class="th-main" rowspan="2" style="width:130px;">ENVIO<br><span style="font-weight:400;font-size:11px;">Tag Saída / Qtd</span></th>
+                                        <th class="th-main" colspan="2" style="width:140px;">CONFERÊNCIA LOJA</th>
+                                        <th class="th-main" rowspan="2" style="width:130px;">RETORNO<br><span style="font-weight:400;font-size:11px;">Tag Volta / Qtd</span></th>
+                                    </tr>
+                                    <tr>
+                                        <th class="th-sub" title="Conferência de entrada realizada pela loja">Entrada <i class="bi bi-info-circle tooltip-icon"></i></th>
+                                        <th class="th-sub" title="Conferência de saída realizada pela loja">Saída <i class="bi bi-info-circle tooltip-icon"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td class="num-col">1</td><td class="desc-col">Toner Impressora Laser</td><td class="input-cell"><input type="text" name="item_1" placeholder=""></td><td class="input-cell"><input type="text" name="item_1_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_1_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_1_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">2</td><td class="desc-col">Marcador de Coleta - AZUL ESCURO</td><td class="input-cell"><input type="text" name="item_2" placeholder=""></td><td class="input-cell"><input type="text" name="item_2_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_2_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_2_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">3</td><td class="desc-col">Marcador de Coleta - AZUL CLARO</td><td class="input-cell"><input type="text" name="item_3" placeholder=""></td><td class="input-cell"><input type="text" name="item_3_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_3_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_3_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">4</td><td class="desc-col">Touca</td><td class="input-cell"><input type="text" name="item_4" placeholder=""></td><td class="input-cell"><input type="text" name="item_4_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_4_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_4_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">5</td><td class="desc-col">Luva</td><td class="input-cell"><input type="text" name="item_5" placeholder=""></td><td class="input-cell"><input type="text" name="item_5_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_5_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_5_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">6</td><td class="desc-col">Máscara</td><td class="input-cell"><input type="text" name="item_6" placeholder=""></td><td class="input-cell"><input type="text" name="item_6_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_6_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_6_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">7</td><td class="desc-col">Grampeador</td><td class="input-cell"><input type="text" name="item_7" placeholder=""></td><td class="input-cell"><input type="text" name="item_7_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_7_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_7_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">8</td><td class="desc-col">Durex</td><td class="input-cell"><input type="text" name="item_8" placeholder=""></td><td class="input-cell"><input type="text" name="item_8_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_8_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_8_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">9</td><td class="desc-col">Papel Sulfite (Pacote)</td><td class="input-cell"><input type="text" name="item_9" placeholder=""></td><td class="input-cell"><input type="text" name="item_9_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_9_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_9_retorno" placeholder=""></td></tr>
+                                    <!-- TAGS -->
+                                    <tr class="group-row"><td colspan="6">TAGs <span class="badge-etiqueta">Tag Saída e Tag Volta obrigatórias</span></td></tr>
+                                    <tr><td class="num-col">10</td><td class="desc-col">Etiqueta Setor 0001</td><td class="input-cell"><input type="text" name="tag_saida_10" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_10_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_10_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_10" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">11</td><td class="desc-col">Etiqueta Setor 1000</td><td class="input-cell"><input type="text" name="tag_saida_11" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_11_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_11_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_11" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">12</td><td class="desc-col">Etiqueta Setor 2000</td><td class="input-cell"><input type="text" name="tag_saida_12" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_12_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_12_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_12" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">13</td><td class="desc-col">Etiqueta Setor 3000</td><td class="input-cell"><input type="text" name="tag_saida_13" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_13_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_13_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_13" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">14</td><td class="desc-col">Etiqueta Setor 3500 - Peso Variável</td><td class="input-cell"><input type="text" name="tag_saida_14" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_14_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_14_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_14" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">15</td><td class="desc-col">Etiqueta Setor 4000</td><td class="input-cell"><input type="text" name="tag_saida_15" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_15_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_15_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_15" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">16</td><td class="desc-col">Etiqueta Setor 5000</td><td class="input-cell"><input type="text" name="tag_saida_16" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_16_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_16_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_16" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">17</td><td class="desc-col">Etiqueta Setor 6000</td><td class="input-cell"><input type="text" name="tag_saida_17" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_17_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_17_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_17" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">18</td><td class="desc-col">Etiqueta Setor 7000</td><td class="input-cell"><input type="text" name="tag_saida_18" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_18_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_18_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_18" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">19</td><td class="desc-col">Etiqueta Setor 8000</td><td class="input-cell"><input type="text" name="tag_saida_19" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_19_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_19_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_19" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">20</td><td class="desc-col">Etiqueta Setor 9000</td><td class="input-cell"><input type="text" name="tag_saida_20" placeholder="Tag Saída"></td><td class="input-cell"><input type="text" name="item_20_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_20_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="tag_volta_20" placeholder="Tag Volta"></td></tr>
+                                    <tr><td class="num-col">21</td><td class="desc-col">Marcador Coletado</td><td class="input-cell"><input type="text" name="item_21" placeholder=""></td><td class="input-cell"><input type="text" name="item_21_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_21_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_21_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">22</td><td class="desc-col">Calça Térmica</td><td class="input-cell"><input type="text" name="item_22" placeholder=""></td><td class="input-cell"><input type="text" name="item_22_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_22_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_22_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">23</td><td class="desc-col">Capa Térmica</td><td class="input-cell"><input type="text" name="item_23" placeholder=""></td><td class="input-cell"><input type="text" name="item_23_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_23_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_23_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">24</td><td class="desc-col">Capacete</td><td class="input-cell"><input type="text" name="item_24" placeholder=""></td><td class="input-cell"><input type="text" name="item_24_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_24_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_24_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">25</td><td class="desc-col">Botas do 33/48</td><td class="input-cell"><input type="text" name="item_25" placeholder="0"></td><td class="input-cell"><input type="text" name="item_25_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_25_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_25_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">26</td><td class="desc-col">Cinto de segurança</td><td class="input-cell"><input type="text" name="item_26" placeholder=""></td><td class="input-cell"><input type="text" name="item_26_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_26_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_26_retorno" placeholder=""></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- FIOS E CABOS -->
-                    <tr class="group-row"><td colspan="6">FIOS E CABOS</td></tr>
-                    <tr><td class="num-col">27</td><td class="desc-col">Access Point + Fonte</td><td class="input-cell"><input type="text" name="item_27" placeholder=""></td><td class="input-cell"><input type="text" name="item_27_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_27_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_27_retorno" placeholder=""></td></tr>
+            <!-- FIOS E CABOS -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFios">
+                        FIOS E CABOS
+                    </button>
+                </h2>
+                <div id="collapseFios" class="accordion-collapse collapse" data-bs-parent="#accordionChecklist">
+                    <div class="accordion-body p-0">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="th-main" rowspan="2" style="width:45px;">#</th>
+                                        <th class="th-main" rowspan="2" style="text-align:left; padding-left:12px;">DESCRIÇÃO</th>
+                                        <th class="th-main" rowspan="2" style="width:130px;">ENVIO<br><span style="font-weight:400;font-size:11px;">Tag Saída / Qtd</span></th>
+                                        <th class="th-main" colspan="2" style="width:140px;">CONFERÊNCIA LOJA</th>
+                                        <th class="th-main" rowspan="2" style="width:130px;">RETORNO<br><span style="font-weight:400;font-size:11px;">Tag Volta / Qtd</span></th>
+                                    </tr>
+                                    <tr>
+                                        <th class="th-sub" title="Conferência de entrada realizada pela loja">Entrada <i class="bi bi-info-circle tooltip-icon"></i></th>
+                                        <th class="th-sub" title="Conferência de saída realizada pela loja">Saída <i class="bi bi-info-circle tooltip-icon"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td class="num-col">27</td><td class="desc-col">Access Point + Fonte</td><td class="input-cell"><input type="text" name="item_27" placeholder=""></td><td class="input-cell"><input type="text" name="item_27_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_27_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_27_retorno" placeholder=""></td></tr>
 
-                    <tr>
-                        <td class="num-col">28</td>
-                        <td class="desc-col">Router Hap + Fonte</td>
-                        <td class="input-cell">
-                            <button type="button" class="btn-selecionar" onclick="abrirModal('router')">Selecionar</button>
-                            <span class="contador" id="router-contador">0 selecionados</span>
-                        </td>
-                        <td class="input-cell"><input type="text" name="router_conf_entrada" placeholder=""></td>
-                        <td class="input-cell"><input type="text" name="router_conf_saida" placeholder=""></td>
-                        <td class="input-cell"><!-- Retorno vazio para equipamentos --></td>
-                    </tr>
+                                    <tr>
+                                        <td class="num-col">28</td>
+                                        <td class="desc-col">Router Hap + Fonte</td>
+                                        <td class="input-cell">
+                                            <button type="button" class="btn-selecionar" onclick="abrirModal('router')">Selecionar</button>
+                                            <span class="contador" id="router-contador">0 selecionados</span>
+                                            <div id="router-selecionados" class="resumo-selecionados"></div>
+                                        </td>
+                                        <td class="input-cell"><input type="text" name="router_conf_entrada" placeholder=""></td>
+                                        <td class="input-cell"><input type="text" name="router_conf_saida" placeholder=""></td>
+                                        <td class="input-cell"></td>
+                                    </tr>
 
-                    <tr><td class="num-col">29</td><td class="desc-col">Switch Poe Pro</td><td class="input-cell"><input type="text" name="item_29" placeholder=""></td><td class="input-cell"><input type="text" name="item_29_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_29_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_29_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">30</td><td class="desc-col">Cabo Power</td><td class="input-cell"><input type="text" name="item_30" placeholder=""></td><td class="input-cell"><input type="text" name="item_30_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_30_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_30_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">31</td><td class="desc-col">Cabo USB (Impressora)</td><td class="input-cell"><input type="text" name="item_31" placeholder=""></td><td class="input-cell"><input type="text" name="item_31_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_31_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_31_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">32</td><td class="desc-col">Filtro de Linha</td><td class="input-cell"><input type="text" name="item_32" placeholder=""></td><td class="input-cell"><input type="text" name="item_32_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_32_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_32_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">33</td><td class="desc-col">Transformador</td><td class="input-cell"><input type="text" name="item_33" placeholder=""></td><td class="input-cell"><input type="text" name="item_33_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_33_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_33_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">34</td><td class="desc-col">Cabo Transformador</td><td class="input-cell"><input type="text" name="item_34" placeholder=""></td><td class="input-cell"><input type="text" name="item_34_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_34_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_34_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">35</td><td class="desc-col">Teste Voltagem</td><td class="input-cell"><input type="text" name="item_35" placeholder="No Filtro"></td><td class="input-cell"><input type="text" name="item_35_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_35_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_35_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">36</td><td class="desc-col">Adaptador</td><td class="input-cell"><input type="text" name="item_36" placeholder=""></td><td class="input-cell"><input type="text" name="item_36_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_36_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_36_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">37</td><td class="desc-col">Extensão</td><td class="input-cell"><input type="text" name="item_37" placeholder=""></td><td class="input-cell"><input type="text" name="item_37_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_37_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_37_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">38</td><td class="desc-col">Cabo de Rede (RJ45)</td><td class="input-cell"><input type="text" name="item_38" placeholder=""></td><td class="input-cell"><input type="text" name="item_38_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_38_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_38_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">39</td><td class="desc-col">Extensor de Rede / Carrinho</td><td class="input-cell"><input type="text" name="item_39" placeholder="0"></td><td class="input-cell"><input type="text" name="item_39_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_39_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_39_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">40</td><td class="desc-col">Cintos Coletor</td><td class="input-cell"><input type="text" name="item_40" placeholder=""></td><td class="input-cell"><input type="text" name="item_40_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_40_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_40_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">29</td><td class="desc-col">Switch Poe Pro</td><td class="input-cell"><input type="text" name="item_29" placeholder=""></td><td class="input-cell"><input type="text" name="item_29_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_29_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_29_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">30</td><td class="desc-col">Cabo Power</td><td class="input-cell"><input type="text" name="item_30" placeholder=""></td><td class="input-cell"><input type="text" name="item_30_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_30_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_30_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">31</td><td class="desc-col">Cabo USB (Impressora)</td><td class="input-cell"><input type="text" name="item_31" placeholder=""></td><td class="input-cell"><input type="text" name="item_31_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_31_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_31_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">32</td><td class="desc-col">Filtro de Linha</td><td class="input-cell"><input type="text" name="item_32" placeholder=""></td><td class="input-cell"><input type="text" name="item_32_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_32_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_32_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">33</td><td class="desc-col">Transformador</td><td class="input-cell"><input type="text" name="item_33" placeholder=""></td><td class="input-cell"><input type="text" name="item_33_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_33_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_33_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">34</td><td class="desc-col">Cabo Transformador</td><td class="input-cell"><input type="text" name="item_34" placeholder=""></td><td class="input-cell"><input type="text" name="item_34_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_34_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_34_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">35</td><td class="desc-col">Teste Voltagem</td><td class="input-cell"><input type="text" name="item_35" placeholder="No Filtro"></td><td class="input-cell"><input type="text" name="item_35_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_35_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_35_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">36</td><td class="desc-col">Adaptador</td><td class="input-cell"><input type="text" name="item_36" placeholder=""></td><td class="input-cell"><input type="text" name="item_36_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_36_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_36_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">37</td><td class="desc-col">Extensão</td><td class="input-cell"><input type="text" name="item_37" placeholder=""></td><td class="input-cell"><input type="text" name="item_37_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_37_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_37_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">38</td><td class="desc-col">Cabo de Rede (RJ45)</td><td class="input-cell"><input type="text" name="item_38" placeholder=""></td><td class="input-cell"><input type="text" name="item_38_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_38_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_38_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">39</td><td class="desc-col">Extensor de Rede / Carrinho</td><td class="input-cell"><input type="text" name="item_39" placeholder="0"></td><td class="input-cell"><input type="text" name="item_39_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_39_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_39_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">40</td><td class="desc-col">Cintos Coletor</td><td class="input-cell"><input type="text" name="item_40" placeholder=""></td><td class="input-cell"><input type="text" name="item_40_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_40_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_40_retorno" placeholder=""></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- COLETOR DE DADOS -->
-                    <tr class="group-row"><td colspan="6">COLETOR DE DADOS</td></tr>
-                    <tr>
-                        <td class="num-col">41</td>
-                        <td class="desc-col">Coletor de Dados</td>
-                        <td class="input-cell">
-                            <button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Selecionar</button>
-                            <span class="contador" id="coletor-contador">0 selecionados</span>
-                        </td>
-                        <td class="input-cell"><input type="text" name="coletor_conf_entrada" placeholder=""></td>
-                        <td class="input-cell"><input type="text" name="coletor_conf_saida" placeholder=""></td>
-                        <td class="input-cell"><!-- Retorno vazio --></td>
-                    </tr>
+            <!-- COLETOR DE DADOS -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseColetor">
+                        COLETOR DE DADOS
+                    </button>
+                </h2>
+                <div id="collapseColetor" class="accordion-collapse collapse" data-bs-parent="#accordionChecklist">
+                    <div class="accordion-body p-0">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="th-main" rowspan="2" style="width:45px;">#</th>
+                                        <th class="th-main" rowspan="2" style="text-align:left; padding-left:12px;">DESCRIÇÃO</th>
+                                        <th class="th-main" rowspan="2" style="width:130px;">ENVIO<br><span style="font-weight:400;font-size:11px;">Tag Saída / Qtd</span></th>
+                                        <th class="th-main" colspan="2" style="width:140px;">CONFERÊNCIA LOJA</th>
+                                        <th class="th-main" rowspan="2" style="width:130px;">RETORNO<br><span style="font-weight:400;font-size:11px;">Tag Volta / Qtd</span></th>
+                                    </tr>
+                                    <tr>
+                                        <th class="th-sub" title="Conferência de entrada realizada pela loja">Entrada <i class="bi bi-info-circle tooltip-icon"></i></th>
+                                        <th class="th-sub" title="Conferência de saída realizada pela loja">Saída <i class="bi bi-info-circle tooltip-icon"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="num-col">41</td>
+                                        <td class="desc-col">Coletor de Dados</td>
+                                        <td class="input-cell">
+                                            <button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Selecionar</button>
+                                            <span class="contador" id="coletor-contador">0 selecionados</span>
+                                            <div id="coletor-selecionados" class="resumo-selecionados"></div>
+                                        </td>
+                                        <td class="input-cell"><input type="text" name="coletor_conf_entrada" placeholder=""></td>
+                                        <td class="input-cell"><input type="text" name="coletor_conf_saida" placeholder=""></td>
+                                        <td class="input-cell"></td>
+                                    </tr>
 
-                    <tr><td class="num-col">42</td><td class="desc-col">Carregador de Bateria</td><td class="input-cell"><input type="text" name="item_42" placeholder=""></td><td class="input-cell"><input type="text" name="item_42_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_42_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_42_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">43</td><td class="desc-col">Fonte Carregador de Bateria</td><td class="input-cell"><input type="text" name="item_43" placeholder=""></td><td class="input-cell"><input type="text" name="item_43_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_43_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_43_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">44</td><td class="desc-col">Bateria Coletor</td><td class="input-cell"><input type="text" name="item_44" placeholder=""></td><td class="input-cell"><input type="text" name="item_44_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_44_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_44_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">45</td><td class="desc-col">Carregador Tipo C (Coletor Android)</td><td class="input-cell"><input type="text" name="item_45" placeholder=""></td><td class="input-cell"><input type="text" name="item_45_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_45_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_45_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">46</td><td class="desc-col">Cabo USB (Berço)</td><td class="input-cell"><input type="text" name="item_46" placeholder=""></td><td class="input-cell"><input type="text" name="item_46_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_46_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_46_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">47</td><td class="desc-col">Berço + Cabo USB</td><td class="input-cell"><input type="text" name="item_47" placeholder=""></td><td class="input-cell"><input type="text" name="item_47_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_47_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_47_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">48</td><td class="desc-col">Mouse</td><td class="input-cell"><input type="text" name="item_48" placeholder=""></td><td class="input-cell"><input type="text" name="item_48_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_48_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_48_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">49</td><td class="desc-col">Placa 3G</td><td class="input-cell"><input type="text" name="item_49" placeholder=""></td><td class="input-cell"><input type="text" name="item_49_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_49_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_49_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">50</td><td class="desc-col">Tablet</td><td class="input-cell"><input type="text" name="item_50" placeholder=""></td><td class="input-cell"><input type="text" name="item_50_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_50_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_50_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">42</td><td class="desc-col">Carregador de Bateria</td><td class="input-cell"><input type="text" name="item_42" placeholder=""></td><td class="input-cell"><input type="text" name="item_42_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_42_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_42_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">43</td><td class="desc-col">Fonte Carregador de Bateria</td><td class="input-cell"><input type="text" name="item_43" placeholder=""></td><td class="input-cell"><input type="text" name="item_43_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_43_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_43_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">44</td><td class="desc-col">Bateria Coletor</td><td class="input-cell"><input type="text" name="item_44" placeholder=""></td><td class="input-cell"><input type="text" name="item_44_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_44_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_44_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">45</td><td class="desc-col">Carregador Tipo C (Coletor Android)</td><td class="input-cell"><input type="text" name="item_45" placeholder=""></td><td class="input-cell"><input type="text" name="item_45_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_45_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_45_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">46</td><td class="desc-col">Cabo USB (Berço)</td><td class="input-cell"><input type="text" name="item_46" placeholder=""></td><td class="input-cell"><input type="text" name="item_46_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_46_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_46_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">47</td><td class="desc-col">Berço + Cabo USB</td><td class="input-cell"><input type="text" name="item_47" placeholder=""></td><td class="input-cell"><input type="text" name="item_47_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_47_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_47_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">48</td><td class="desc-col">Mouse</td><td class="input-cell"><input type="text" name="item_48" placeholder=""></td><td class="input-cell"><input type="text" name="item_48_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_48_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_48_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">49</td><td class="desc-col">Placa 3G</td><td class="input-cell"><input type="text" name="item_49" placeholder=""></td><td class="input-cell"><input type="text" name="item_49_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_49_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_49_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">50</td><td class="desc-col">Tablet</td><td class="input-cell"><input type="text" name="item_50" placeholder=""></td><td class="input-cell"><input type="text" name="item_50_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_50_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_50_retorno" placeholder=""></td></tr>
 
-                    <tr>
-                        <td class="num-col">51</td>
-                        <td class="desc-col">Notebook</td>
-                        <td class="input-cell">
-                            <button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Selecionar</button>
-                            <span class="contador" id="notebook-contador">0 selecionados</span>
-                        </td>
-                        <td class="input-cell"><input type="text" name="notebook_conf_entrada" placeholder=""></td>
-                        <td class="input-cell"><input type="text" name="notebook_conf_saida" placeholder=""></td>
-                        <td class="input-cell"><!-- Retorno vazio --></td>
-                    </tr>
+                                    <tr>
+                                        <td class="num-col">51</td>
+                                        <td class="desc-col">Notebook</td>
+                                        <td class="input-cell">
+                                            <button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Selecionar</button>
+                                            <span class="contador" id="notebook-contador">0 selecionados</span>
+                                            <div id="notebook-selecionados" class="resumo-selecionados"></div>
+                                        </td>
+                                        <td class="input-cell"><input type="text" name="notebook_conf_entrada" placeholder=""></td>
+                                        <td class="input-cell"><input type="text" name="notebook_conf_saida" placeholder=""></td>
+                                        <td class="input-cell"></td>
+                                    </tr>
 
-                    <tr><td class="num-col">52</td><td class="desc-col">Fonte Notebook</td><td class="input-cell"><input type="text" name="item_52" placeholder=""></td><td class="input-cell"><input type="text" name="item_52_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_52_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_52_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">52</td><td class="desc-col">Fonte Notebook</td><td class="input-cell"><input type="text" name="item_52" placeholder=""></td><td class="input-cell"><input type="text" name="item_52_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_52_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_52_retorno" placeholder=""></td></tr>
 
-                    <tr>
-                        <td class="num-col">53</td>
-                        <td class="desc-col">Impressora Laser</td>
-                        <td class="input-cell">
-                            <button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Selecionar</button>
-                            <span class="contador" id="impressora-contador">0 selecionados</span>
-                        </td>
-                        <td class="input-cell"><input type="text" name="impressora_conf_entrada" placeholder=""></td>
-                        <td class="input-cell"><input type="text" name="impressora_conf_saida" placeholder=""></td>
-                        <td class="input-cell"><!-- Retorno vazio --></td>
-                    </tr>
+                                    <tr>
+                                        <td class="num-col">53</td>
+                                        <td class="desc-col">Impressora Laser</td>
+                                        <td class="input-cell">
+                                            <button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Selecionar</button>
+                                            <span class="contador" id="impressora-contador">0 selecionados</span>
+                                            <div id="impressora-selecionados" class="resumo-selecionados"></div>
+                                        </td>
+                                        <td class="input-cell"><input type="text" name="impressora_conf_entrada" placeholder=""></td>
+                                        <td class="input-cell"><input type="text" name="impressora_conf_saida" placeholder=""></td>
+                                        <td class="input-cell"></td>
+                                    </tr>
 
-                    <tr><td class="num-col">54</td><td class="desc-col">Escada</td><td class="input-cell"><input type="text" name="item_54" placeholder=""></td><td class="input-cell"><input type="text" name="item_54_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_54_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_54_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">55</td><td class="desc-col">Balança</td><td class="input-cell"><input type="text" name="item_55" placeholder=""></td><td class="input-cell"><input type="text" name="item_55_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_55_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_55_retorno" placeholder=""></td></tr>
-                    <tr><td class="num-col">56</td><td class="desc-col">Fonte Balança</td><td class="input-cell"><input type="text" name="item_56" placeholder=""></td><td class="input-cell"><input type="text" name="item_56_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_56_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_56_retorno" placeholder=""></td></tr>
-                </tbody>
-            </table>
+                                    <tr><td class="num-col">54</td><td class="desc-col">Escada</td><td class="input-cell"><input type="text" name="item_54" placeholder=""></td><td class="input-cell"><input type="text" name="item_54_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_54_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_54_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">55</td><td class="desc-col">Balança</td><td class="input-cell"><input type="text" name="item_55" placeholder=""></td><td class="input-cell"><input type="text" name="item_55_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_55_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_55_retorno" placeholder=""></td></tr>
+                                    <tr><td class="num-col">56</td><td class="desc-col">Fonte Balança</td><td class="input-cell"><input type="text" name="item_56" placeholder=""></td><td class="input-cell"><input type="text" name="item_56_conf_entrada" placeholder=""></td><td class="input-cell"><input type="text" name="item_56_conf_saida" placeholder=""></td><td class="input-cell"><input type="text" name="item_56_retorno" placeholder=""></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Assinaturas -->
         <div class="signature-area">
             <div class="signature-box">
                 <label>Assinatura do Responsável pela Preparação</label>
-                <input type="text" name="assinatura_preparacao" placeholder="______________________________">
+                <input type="text" name="assinatura_preparacao" placeholder="___________________________________________________________">
             </div>
             <div class="signature-box">
                 <label>Assinatura do Responsável pela Conferência Loja</label>
-                <input type="text" name="assinatura_conferencia" placeholder="______________________________">
+                <input type="text" name="assinatura_conferencia" placeholder="___________________________________________________________">
             </div>
             <div class="signature-box">
                 <label>Assinatura do Responsável pelo Retorno</label>
-                <input type="text" name="assinatura_retorno" placeholder="______________________________">
+                <input type="text" name="assinatura_retorno" placeholder="___________________________________________________________">
             </div>
         </div>
 
@@ -493,15 +668,14 @@
     </form>
 </div>
 
+<!-- Modal customizado -->
 <div class="custom-modal-overlay" id="customModalOverlay">
     <div class="custom-modal">
         <div class="custom-modal-header">
             <h5 id="customModalTitle">Selecionar Itens</h5>
             <button type="button" class="custom-modal-close" onclick="fecharModal()">&times;</button>
         </div>
-        <div class="custom-modal-body" id="customModalBody">
-
-        </div>
+        <div class="custom-modal-body" id="customModalBody"></div>
         <div class="custom-modal-footer">
             <span class="contador" id="customModalContador">0 selecionados</span>
             <div>
@@ -537,115 +711,148 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 campoCliente.value = data.cliente;
                 campoData.value = data.data;
-                campoEndereco.value = data.endereco;
-                campoBairro.value = data.bairro;
-                campoCidade.value = data.cidade;
+                campoEndereco.value = data.endereco || '';
+                campoBairro.value = data.bairro || '';
+                campoCidade.value = data.cidade || '';
             })
             .catch(error => console.error('Erro ao buscar inventário:', error));
     });
 });
 </script>
+
 <script>
-    // Dados dos equipamentos
-    const equipamentos = {
-        router: [
-            {% for eq in routers %}
-                { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
-            {% endfor %}
-        ],
-        coletor: [
-            {% for eq in coletores %}
-                { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
-            {% endfor %}
-        ],
-        notebook: [
-            {% for eq in notebooks %}
-                { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
-            {% endfor %}
-        ],
-        impressora: [
-            {% for eq in impressoras %}
-                { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
-            {% endfor %}
-        ]
+// Dados dos equipamentos (populados pelo Django)
+const equipamentos = {
+    router: [
+        {% for eq in routers %}
+            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
+        {% endfor %}
+    ],
+    coletor: [
+        {% for eq in coletores %}
+            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
+        {% endfor %}
+    ],
+    notebook: [
+        {% for eq in notebooks %}
+            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
+        {% endfor %}
+    ],
+    impressora: [
+        {% for eq in impressoras %}
+            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao }}" },
+        {% endfor %}
+    ]
+};
+
+let categoriaAtual = '';
+let selecionados = {};
+
+function abrirModal(categoria) {
+    categoriaAtual = categoria;
+    const overlay = document.getElementById('customModalOverlay');
+    const body = document.getElementById('customModalBody');
+    const title = document.getElementById('customModalTitle');
+
+    const nomes = {
+        router: 'Selecionar Routers',
+        coletor: 'Selecionar Coletores',
+        notebook: 'Selecionar Notebooks',
+        impressora: 'Selecionar Impressoras'
     };
+    title.textContent = nomes[categoria] || 'Selecionar Itens';
 
-    let categoriaAtual = '';
-    let selecionados = {};
+    let html = '';
+    const itens = equipamentos[categoria] || [];
+    if (itens.length === 0) {
+        html = '<p class="text-muted">Nenhum item disponível.</p>';
+    } else {
+        itens.forEach(item => {
+            const checked = selecionados[categoria] && selecionados[categoria].includes(item.id) ? 'checked' : '';
+            html += `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${item.id}" id="${categoria}_${item.id}" onchange="atualizarContadorModal()" ${checked}>
+                    <label class="form-check-label" for="${categoria}_${item.id}">
+                        ${item.descricao}
+                    </label>
+                </div>
+            `;
+        });
+    }
+    body.innerHTML = html;
+    atualizarContadorModal();
+    overlay.classList.add('active');
+}
 
-    // Abrir modal
-    function abrirModal(categoria) {
-        categoriaAtual = categoria;
-        const overlay = document.getElementById('customModalOverlay');
-        const body = document.getElementById('customModalBody');
-        const title = document.getElementById('customModalTitle');
+function fecharModal() {
+    document.getElementById('customModalOverlay').classList.remove('active');
+}
 
-        const nomes = {
-            router: 'Selecionar Routers',
-            coletor: 'Selecionar Coletores',
-            notebook: 'Selecionar Notebooks',
-            impressora: 'Selecionar Impressoras'
-        };
-        title.textContent = nomes[categoria] || 'Selecionar Itens';
+function atualizarContadorModal() {
+    const body = document.getElementById('customModalBody');
+    const checkboxes = body.querySelectorAll('input[type="checkbox"]:checked');
+    const contador = document.getElementById('customModalContador');
+    contador.textContent = checkboxes.length + ' selecionado' + (checkboxes.length !== 1 ? 's' : '');
+}
 
-        let html = '';
-        const itens = equipamentos[categoria] || [];
-        if (itens.length === 0) {
-            html = '<p class="text-muted">Nenhum item disponível.</p>';
-        } else {
-            itens.forEach(item => {
-                const checked = selecionados[categoria] && selecionados[categoria].includes(item.id) ? 'checked' : '';
-                html += `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${item.id}" id="${categoria}_${item.id}" onchange="atualizarContadorModal()" ${checked}>
-                        <label class="form-check-label" for="${categoria}_${item.id}">
-                            ${item.descricao}
-                        </label>
-                    </div>
-                `;
-            });
-        }
-        body.innerHTML = html;
-        atualizarContadorModal();
-        overlay.classList.add('active');
+function confirmarSelecao() {
+    const body = document.getElementById('customModalBody');
+    const checkboxes = body.querySelectorAll('input[type="checkbox"]:checked');
+    const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+    selecionados[categoriaAtual] = ids;
+    atualizarInputsEquipamentos();
+
+    // Atualiza contador e resumo na célula
+    const contadorCelula = document.getElementById(categoriaAtual + '-contador');
+    if (contadorCelula) {
+        contadorCelula.textContent = ids.length + ' selecionado' + (ids.length !== 1 ? 's' : '');
+    }
+    const resumoDiv = document.getElementById(categoriaAtual + '-selecionados');
+    if (resumoDiv) {
+        const nomes = ids.map(id => {
+            const item = equipamentos[categoriaAtual].find(e => e.id === id);
+            return item ? item.descricao : '';
+        }).filter(Boolean);
+        resumoDiv.textContent = nomes.join(', ');
     }
 
-    function fecharModal() {
-        document.getElementById('customModalOverlay').classList.remove('active');
-    }
+    fecharModal();
+}
 
-    function atualizarContadorModal() {
-        const body = document.getElementById('customModalBody');
-        const checkboxes = body.querySelectorAll('input[type="checkbox"]:checked');
-        const contador = document.getElementById('customModalContador');
-        contador.textContent = checkboxes.length + ' selecionado' + (checkboxes.length !== 1 ? 's' : '');
-    }
-
-    function confirmarSelecao() {
-        const body = document.getElementById('customModalBody');
-        const checkboxes = body.querySelectorAll('input[type="checkbox"]:checked');
-        const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
-
-        selecionados[categoriaAtual] = ids;
-
-        const contadorCelula = document.getElementById(categoriaAtual + '-contador');
-        if (contadorCelula) {
-            contadorCelula.textContent = ids.length + ' selecionado' + (ids.length !== 1 ? 's' : '');
-        }
-
-        fecharModal();
-    }
-
-    // Inicializa contadores
-    document.addEventListener('DOMContentLoaded', function() {
-        ['coletor', 'router', 'notebook', 'impressora'].forEach(cat => {
-            const contador = document.getElementById(cat + '-contador');
-            if (contador) {
-                const ids = selecionados[cat] || [];
-                contador.textContent = ids.length + ' selecionado' + (ids.length !== 1 ? 's' : '');
-            }
+function atualizarInputsEquipamentos() {
+    const container = document.getElementById('equipamentosSelecionadosInputs');
+    container.innerHTML = '';
+    Object.entries(selecionados).forEach(([categoria, ids]) => {
+        ids.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'equipamentos_' + categoria;
+            input.value = id;
+            container.appendChild(input);
         });
     });
+}
+
+// Inicializa contadores e resumos
+document.addEventListener('DOMContentLoaded', function() {
+    ['coletor', 'router', 'notebook', 'impressora'].forEach(cat => {
+        const contador = document.getElementById(cat + '-contador');
+        if (contador) {
+            const ids = selecionados[cat] || [];
+            contador.textContent = ids.length + ' selecionado' + (ids.length !== 1 ? 's' : '');
+        }
+        const resumoDiv = document.getElementById(cat + '-selecionados');
+        if (resumoDiv) {
+            const ids = selecionados[cat] || [];
+            const nomes = ids.map(id => {
+                const item = equipamentos[cat].find(e => e.id === id);
+                return item ? item.descricao : '';
+            }).filter(Boolean);
+            resumoDiv.textContent = nomes.join(', ');
+        }
+    });
+    atualizarInputsEquipamentos();
 
     // Fecha modal ao clicar fora
     document.getElementById('customModalOverlay').addEventListener('click', function(e) {
@@ -653,6 +860,6 @@ document.addEventListener('DOMContentLoaded', function() {
             fecharModal();
         }
     });
+});
 </script>
-
 {% endblock %}

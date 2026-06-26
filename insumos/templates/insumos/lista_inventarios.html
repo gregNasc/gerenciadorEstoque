@@ -1,0 +1,172 @@
+{% extends "estoque/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Inventários" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filtros-row {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .table th {
+        background: #1e3c72;
+        color: #fff;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    .badge-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    .badge-planejado { background: #ffc107; color: #212529; }
+    .badge-andamento { background: #17a2b8; color: #fff; }
+    .badge-finalizado { background: #28a745; color: #fff; }
+    .btn-limpar { background: #6c757d; color: #fff; }
+    .btn-limpar:hover { background: #5a6268; color: #fff; }
+    .table-responsive { overflow-x: auto; }
+    .detalhes-linha {
+        font-size: 13px;
+        color: #495057;
+    }
+    .detalhes-linha strong {
+        color: #1e3c72;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">
+        <i class="bi bi-list-ul"></i> Inventários
+        <small class="text-muted fs-6">({{ inventarios|length }} registros)</small>
+    </h1>
+
+    <!-- Filtros -->
+    <div class="filtros-row">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="sigla" class="form-label fw-bold">Sigla</label>
+                <input type="text" class="form-control" id="sigla" name="sigla"
+                       placeholder="Ex: LAS" value="{{ request.GET.sigla|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label for="loja" class="form-label fw-bold">Loja</label>
+                <input type="text" class="form-control" id="loja" name="loja"
+                       placeholder="Nº" value="{{ request.GET.loja|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label for="data_inicio" class="form-label fw-bold">Data de</label>
+                <input type="date" class="form-control" id="data_inicio" name="data_inicio"
+                       value="{{ request.GET.data_inicio|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label for="data_fim" class="form-label fw-bold">Data até</label>
+                <input type="date" class="form-control" id="data_fim" name="data_fim"
+                       value="{{ request.GET.data_fim|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="regional" class="form-label fw-bold">Regional</label>
+                <select class="form-select" id="regional" name="regional">
+                    <option value="">Todas</option>
+                    {% for reg in regionais %}
+                        <option value="{{ reg.id }}" {% if request.GET.regional == reg.id|stringformat:"s" %}selected{% endif %}>
+                            {{ reg.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-12 d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'insumos:lista_inventarios' %}" class="btn btn-limpar">
+                    <i class="bi bi-eraser"></i> Limpar
+                </a>
+                {% if perfil.role == 'admin' %}
+                <a href="{% url 'insumos:importar_excel' %}" class="btn btn-success ms-auto">
+                    <i class="bi bi-upload"></i> Importar Excel
+                </a>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'insumos:exportar_excel' %}" class="btn btn-success">
+                        <i class="bi bi-download"></i> Exportar Excel
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Sigla</th>
+                    <th>Cliente</th>
+                    <th>Loja</th>
+                    <th>Regional</th>
+                    <th>Data Início</th>
+                    <th>Status</th>
+                    <th>Pessoas</th>
+                    <th>Tipo</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in inventarios %}
+                <tr>
+                    <td><strong>{{ inv.cliente.sigla }}</strong></td>
+                    <td>{{ inv.cliente.nome|truncatechars:25 }}</td>
+                    <td>{{ inv.loja }}</td>
+                    <td>{{ inv.base.nome }}</td>
+                    <td>{{ inv.data_inicio|date:"d/m/Y" }}</td>
+                    <td>
+                        <span class="badge-status
+                            {% if inv.status == 'PLANEJADO' %}badge-planejado
+                            {% elif inv.status == 'EM_ANDAMENTO' %}badge-andamento
+                            {% elif inv.status == 'FINALIZADO' %}badge-finalizado{% endif %}">
+                            {{ inv.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ inv.pessoas|default_if_none:"-" }}</td>
+                    <td>{{ inv.tipo|default_if_none:"-" }}</td>
+                    <td class="text-center">
+                        <!--a href="{% url 'insumos:editar_inventario' inv.id %}"
+                           class="btn btn-sm btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a-->
+                        <a href="{% url 'insumos:editar_inventario' inv.id %}"
+                           class="btn btn-sm btn-outline-info" title="Ver detalhes">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+
+                <tr class="detalhes-linha">
+                    <td colspan="9" style="background:#f8f9fa; padding:8px 15px;">
+                        <span class="me-3"><strong>Líder:</strong> {{ inv.lider|default_if_none:"-" }}</span>
+                        <span class="me-3"><strong>Ponto:</strong> {{ inv.ponto_encontro|default_if_none:"-" }}</span>
+                        <span class="me-3"><strong>Responsável:</strong> {{ inv.responsavel_visita|default_if_none:"-" }}</span>
+                        <span class="me-3"><strong>Previsão Peças:</strong> {{ inv.previsao_pecas|default_if_none:"-" }}</span>
+                        <span><strong>BID:</strong> {{ inv.bid|default_if_none:"-" }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block"></i>
+                        Nenhum inventário encontrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

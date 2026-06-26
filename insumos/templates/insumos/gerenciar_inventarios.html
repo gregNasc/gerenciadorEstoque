@@ -1,0 +1,257 @@
+{% extends "estoque/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Gerenciar Inventários{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge-status {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+    .badge-PLANEJADO { background: #ffeeba; color: #856404; }
+    .badge-EM_ANDAMENTO { background: #b8daff; color: #004085; }
+    .badge-FINALIZADO { background: #c3e6cb; color: #155724; }
+    
+    .table-dados-brutos {
+        background: #f8f9fa;
+        font-size: 0.85rem;
+    }
+    .table-dados-brutos td {
+        padding: 4px 8px;
+        border: 1px solid #dee2e6;
+        word-break: break-word;
+        max-width: 200px;
+    }
+    .table-dados-brutos .key-col {
+        font-weight: 600;
+        background: #e9ecef;
+        width: 150px;
+    }
+    .expand-btn {
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+    .expand-btn:hover {
+        color: #1e3c72;
+    }
+    .detalhes-row {
+        display: none;
+    }
+    .detalhes-row.show {
+        display: table-row;
+    }
+    .filtros-form {
+        background: #f0f4f8;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .filtros-form select, .filtros-form input {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 4px 8px;
+        width: 100%;
+    }
+    .filtros-form .col-auto {
+        display: flex;
+        align-items: end;
+    }
+    .btn-editar {
+        padding: 2px 8px;
+        font-size: 0.8rem;
+    }
+    .modal-json textarea {
+        font-family: monospace;
+        font-size: 0.85rem;
+        height: 300px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-3">📊 Gerenciar Inventários</h1>
+    
+    <!-- Filtros -->
+    <div class="filtros-form">
+        <form method="GET" class="row g-3">
+            <div class="col-md-2">
+                <label for="cliente" class="form-label">Cliente</label>
+                <select name="cliente" id="cliente" class="form-select">
+                    <option value="">Todos</option>
+                    {% for c in clientes %}
+                        <option value="{{ c.id }}" {% if filtro_cliente == c.id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.sigla }} - {{ c.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="regional" class="form-label">Regional</label>
+                <select name="regional" id="regional" class="form-select">
+                    <option value="">Todas</option>
+                    {% for r in regionais %}
+                        <option value="{{ r.id }}" {% if filtro_regional == r.id|stringformat:"s" %}selected{% endif %}>
+                            {{ r.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">Todos</option>
+                    {% for status_code, status_label in status_choices %}
+                        <option value="{{ status_code }}" {% if filtro_status == status_code %}selected{% endif %}>
+                            {{ status_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="data_inicio" class="form-label">Data Início (>=)</label>
+                <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ filtro_data_inicio }}">
+            </div>
+            <div class="col-md-2">
+                <label for="data_fim" class="form-label">Data Início (<=)</label>
+                <input type="date" name="data_fim" id="data_fim" class="form-control" value="{{ filtro_data_fim }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela de inventários -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Cliente</th>
+                    <th>Loja</th>
+                    <th>Data Início</th>
+                    <th>Regional</th>
+                    <th>Status</th>
+                    <th>Endereço</th>
+                    <th>Bairro</th>
+                    <th>Cidade</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in inventarios %}
+                    <tr>
+                        <td><strong>{{ inv.cliente.sigla }}</strong></td>
+                        <td>{{ inv.loja }}</td>
+                        <td>{{ inv.data_inicio|date:"d/m/Y" }}</td>
+                        <td>{{ inv.base.nome }}</td>
+                        <td>
+                            <span class="badge-status badge-{{ inv.status }}">
+                                {{ inv.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ inv.endereco|default:"-" }}</td>
+                        <td>{{ inv.bairro|default:"-" }}</td>
+                        <td>{{ inv.cidade|default:"-" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary expand-btn" data-id="{{ inv.id }}">
+                                <i class="bi bi-eye"></i> Dados
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary btn-editar" data-id="{{ inv.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- Linha de detalhes (dados brutos) -->
+                    <tr class="detalhes-row" id="detalhes-{{ inv.id }}">
+                        <td colspan="9">
+                            <div class="table-responsive">
+                                <table class="table table-dados-brutos">
+                                    <thead>
+                                        <tr>
+                                            <th colspan="2" class="table-secondary">📋 Dados Brutos ({{ inv.dados_brutos|length }} campos)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for key, value in inv.dados_brutos.items %}
+                                            <tr>
+                                                <td class="key-col">{{ key }}</td>
+                                                <td>{{ value|default:"-" }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr><td colspan="2" class="text-muted">Nenhum dado bruto disponível.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">Nenhum inventário encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de Edição (via AJAX) -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Inventário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="editModalBody">
+                <!-- Carregado via AJAX -->
+                <div class="text-center"><div class="spinner-border"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Expandir/colapsar dados brutos
+    document.querySelectorAll('.expand-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const row = document.getElementById('detalhes-' + id);
+            row.classList.toggle('show');
+            const icon = this.querySelector('i');
+            if (row.classList.contains('show')) {
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                icon.className = 'bi bi-eye';
+            }
+        });
+    });
+
+    // Abrir modal de edição
+    document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const modal = new bootstrap.Modal(document.getElementById('editModal'));
+            const body = document.getElementById('editModalBody');
+            body.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+            modal.show();
+
+            fetch(`/insumos/api/inventario/${id}/editar/`)
+                .then(response => response.json())
+                .then(data => {
+                    body.innerHTML = data.html;
+                })
+                .catch(error => {
+                    body.innerHTML = '<div class="alert alert-danger">Erro ao carregar dados.</div>';
+                });
+        });
+    });
+});
+</script>
+{% endblock %}

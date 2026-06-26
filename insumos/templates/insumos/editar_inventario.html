@@ -1,0 +1,83 @@
+{% extends "estoque/base.html" %}
+{% load i18n static %}
+
+{% block title %}Editar Inventário{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                ✏️ Editar Inventário
+            </h5>
+        </div>
+
+        <div class="card-body">
+
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div class="row">
+
+                    {% for field in form %}
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label fw-bold">
+                                {{ field.label }}
+                            </label>
+
+                            {{ field }}
+
+                            {% if field.help_text %}
+                                <small class="text-muted">
+                                    {{ field.help_text }}
+                                </small>
+                            {% endif %}
+
+                            {% for error in field.errors %}
+                                <div class="text-danger small">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between">
+
+                    <a href="{% url 'insumos:lista_inventarios' %}"
+                       class="btn btn-secondary">
+                        ← Cancelar
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-success">
+                        💾 Salvar Alterações
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

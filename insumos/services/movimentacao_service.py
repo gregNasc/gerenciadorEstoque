@@ -134,7 +134,7 @@ class MovimentacaoService:
 
         quantidade = Decimal(str(quantidade))
         movimentacao = MovimentacaoInsumo.objects.create(
-            base=base.nome,
+            base=base,
             insumo=insumo,
             tipo='DEVOLUCAO',
             quantidade=quantidade,
@@ -154,12 +154,10 @@ class MovimentacaoService:
 
         if saldo < quantidade:
 
-            raise ValueError(
-                'Saldo insuficiente.'
-            )
+            raise ValueError('Saldo insuficiente.')
 
         movimentacao = MovimentacaoInsumo.objects.create(
-            base=base.nome,
+            base=base,
             insumo=insumo,
             tipo='PERDA',
             quantidade=quantidade,
@@ -183,16 +181,13 @@ class MovimentacaoService:
                 'O ajuste de saída excede o saldo disponível.'
             )
 
-            return None
-
-        tipo = (
-            'AJUSTE_ENTRADA'
+        tipo = ('AJUSTE_ENTRADA'
             if diferenca > 0
             else 'AJUSTE_SAIDA'
         )
 
         movimentacao = MovimentacaoInsumo.objects.create(
-            base=base.nome,
+            base=base,
             insumo=insumo,
             tipo=tipo,
             quantidade=abs(diferenca),

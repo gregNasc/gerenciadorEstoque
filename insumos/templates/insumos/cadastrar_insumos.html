@@ -1,6 +1,5 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
-
 {% block title %}
 {% trans "Entrada de Insumos" %}
 {% endblock %}
@@ -9,15 +8,12 @@
 {% if request.user.is_authenticated %}
 
 <div class="container mt-4">
-
     <div class="card shadow-sm">
-
         <div class="card-header bg-dark text-white">
             {% trans "📦 Entrada de Insumos" %}
         </div>
 
         <div class="card-body">
-
             <form method="post" id="formInsumo">
                 {% csrf_token %}
 
@@ -67,7 +63,7 @@
 
                 </div>
 
-                <!-- BOTÃO -->
+                <!-- SALVAR -->
                 <div class="text-end mt-3">
                     <button type="button" class="btn btn-primary" id="btnSalvarInsumo">
                         {% trans "Salvar" %}
@@ -83,37 +79,28 @@
 <!-- MODAL -->
 <div class="modal fade" id="modalConfirmacao" tabindex="-1" style="display:none;">
     <div class="modal-dialog modal-dialog-centered modal-md">
-
         <div class="modal-content">
-
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title">🔍 Confirme os dados</h5>
                 <button type="button" class="btn-close btn-close-white" id="btnFecharModalX"></button>
             </div>
 
             <div class="modal-body">
-
                 <div class="mb-2"><strong>Base:</strong> <span id="modalBase"></span></div>
                 <div class="mb-2"><strong>Categoria:</strong> <span id="modalCategoria"></span></div>
                 <div class="mb-2"><strong>Insumo:</strong> <span id="modalInsumo"></span></div>
                 <div class="mb-2"><strong>Quantidade:</strong> <span id="modalQuantidade"></span></div>
-
             </div>
 
             <div class="modal-footer">
-
                 <button type="button" class="btn btn-secondary" id="btnFecharModal">
                     ✏️ Corrigir
                 </button>
-
                 <button type="button" class="btn btn-success" id="btnConfirmarEnvio">
                     ✅ Confirmar e Salvar
                 </button>
-
             </div>
-
         </div>
-
     </div>
 </div>
 

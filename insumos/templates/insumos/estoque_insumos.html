@@ -2,18 +2,56 @@
 {% block content %}
 
 <div class="container mt-4">
-
     <div class="card shadow-sm">
-
         <div class="card-header bg-dark text-white">
             📦 Estoque de Insumos
         </div>
-
         <div class="card-body">
 
             <div class="table-responsive">
 
                 <table class="table table-striped table-hover">
+
+                <div class="card shadow-sm mb-3">
+
+                    <div class="card-header bg-light">
+                        <strong>🔎 Filtros</strong>
+                    </div>
+
+                    <div class="card-body">
+                        <form method="get">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label fw-bold">
+                                        Categoria
+                                    </label>
+                                    {{ form.categoria }}
+                                </div>
+                                <!--div class="col-md-5">
+                                    <label class="form-label fw-bold">
+                                        Insumo
+                                    </label>
+                                    {{ form.insumo }}
+                                </div-->
+                                <div class="col-md-1">
+                                    <button type="submit"
+                                            class="btn btn-primary w-120">
+                                        Pesquisar
+                                    </button>
+                                </div>
+                                <!--div class="col-md-1">
+                                    <a href="{% url 'insumos:estoque_insumos' %}"
+                                       class="btn btn-outline-secondary w-100">
+                                        ✖
+                                    </a>
+                                </div-->
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </div>
 
                     <thead>
 
@@ -23,40 +61,32 @@
                             <th>Insumo</th>
                             <th>Unidade</th>
                             <th>Saldo</th>
-                            <th>Mínimo</th>
+                            <!--th>Mínimo</th-->
                             <th>Status</th>
                         </tr>
 
                     </thead>
 
                     <tbody>
-
                         {% for item in estoque %}
-
                         <tr>
 
-                            <td>{{ item.base.sigla }}</td>
-
+                            <td>{{ item.base }}</td>
                             <td>
                                 {{ item.insumo.categoria.nome }}
                             </td>
-
                             <td>
                                 {{ item.insumo.descricao }}
                             </td>
-
                             <td>
                                 {{ item.insumo.unidade_medida }}
                             </td>
-
                             <td>
                                 {{ item.saldo }}
                             </td>
-
-                            <td>
+                            <!--td>
                                 {{ item.minimo }}
-                            </td>
-
+                            </td-->
                             <td>
 
                                 {% if item.critico %}

@@ -9,25 +9,18 @@ class ConsumoService:
     @transaction.atomic
     def gerar(*, item):
 
-        if item.quantidade_utilizada <= 0:
+        quantidade = item.quantidade_utilizada + item.quantidade_perdida
+
+        if quantidade <= 0:
             return None
 
-        consumo_existente = ConsumoInsumo.objects.filter(
-            item_checklist=item
-        ).exists()
+        consumo_existente = ConsumoInsumo.objects.filter(item_checklist=item).exists()
 
         if consumo_existente:
-            raise ValueError(
-                'Consumo já registrado para este item.'
-            )
-
-        quantidade = item.quantidade_utilizada
+            raise ValueError('Consumo já registrado para este item.')
 
         if item.insumo.valor_medio is None:
-            raise ValueError(
-                f'O insumo "{item.insumo.descricao}" '
-                'não possui valor médio definido.'
-            )
+            raise ValueError(f'O insumo "{item.insumo.descricao}" ''não possui valor médio definido.')
 
         valor_unitario = item.insumo.valor_medio
         valor_total = quantidade * valor_unitario
@@ -48,11 +41,13 @@ class ConsumoService:
                 f'{item.insumo.descricao}'
             ),
             dados={
-                'inventario': item.checklist.inventario.sigla,
-                'cliente': item.checklist.inventario.cliente,
-                'base': item.checklist.inventario.base.sigla,
+                'inventario': str(item.checklist.inventario),
+                'cliente': item.checklist.inventario.cliente.sigla,
+                'base': item.checklist.inventario.base.nome,
                 'insumo': item.insumo.descricao,
                 'quantidade': str(quantidade),
+                'quantidade_utilizada': str(item.quantidade_utilizada),
+                'quantidade_perdida': str(item.quantidade_perdida),
                 'valor_unitario': str(valor_unitario),
                 'valor_total': str(valor_total),
             }
