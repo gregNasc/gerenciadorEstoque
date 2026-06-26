@@ -236,36 +236,6 @@ class ChecklistService:
 
         return checklist
 
-class ChecklistParserService:
-
-    @staticmethod
-    def parse_post(data):
-        insumos = []
-        equipamentos = []
-        tags = []
-
-        for key, value in data.items():
-
-            # INSUMOS
-            if key.startswith("insumo_") and key.endswith("_enviada"):
-                insumo_id = key.split("_")[1]
-                if value:
-                    insumos.append({"insumo_id": int(insumo_id), "quantidade": Decimal(value)})
-
-            # TAGS
-            if key.startswith("tag_saida_"):
-                idx = key.replace("tag_saida_", "")
-                tags.append({"index": idx, "saida": value, "volta": data.get(f"tag_volta_{idx}")})
-
-            # EQUIPAMENTOS
-            if key.startswith("equipamentos_"):
-                categoria = key.replace("equipamentos_", "")
-                equipamentos.append({"categoria": categoria, "id": int(value)})
-
-        return {"insumos": insumos, "equipamentos": equipamentos, "tags": tags}
-
-class ChecklistService:
-
     @staticmethod
     @transaction.atomic
     def processar_checklist(*, checklist, data, usuario):
@@ -295,3 +265,31 @@ class ChecklistService:
                     usuario=usuario,
                     numero_inicial_retornado=tag["volta"]
                 )
+
+class ChecklistParserService:
+
+    @staticmethod
+    def parse_post(data):
+        insumos = []
+        equipamentos = []
+        tags = []
+
+        for key, value in data.items():
+
+            # INSUMOS
+            if key.startswith("insumo_") and key.endswith("_enviada"):
+                insumo_id = key.split("_")[1]
+                if value:
+                    insumos.append({"insumo_id": int(insumo_id), "quantidade": Decimal(value)})
+
+            # TAGS
+            if key.startswith("tag_saida_"):
+                idx = key.replace("tag_saida_", "")
+                tags.append({"index": idx, "saida": value, "volta": data.get(f"tag_volta_{idx}")})
+
+            # EQUIPAMENTOS
+            if key.startswith("equipamentos_"):
+                categoria = key.replace("equipamentos_", "")
+                equipamentos.append({"categoria": categoria, "id": int(value)})
+
+        return {"insumos": insumos, "equipamentos": equipamentos, "tags": tags}
