@@ -1,0 +1,240 @@
+{% extends "estoque/base.html" %}
+{% load i18n static %}
+
+{% block title %}Fechamento do Checklist #{{ checklist.id }}{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <h1>Fechamento do Checklist #{{ checklist.id }}</h1>
+    <p class="text-muted">
+        Preencha os insumos utilizados/retornados/perdidos, confirme o retorno dos equipamentos
+        e informe as faixas de retorno das TAGs.
+    </p>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mt-3">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
+
+    <!-- ========================= -->
+    <!-- 1. INSUMOS                -->
+    <!-- ========================= -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <strong>Insumos enviados</strong>
+        </div>
+        <div class="card-body">
+            {% if itens %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Enviado</th>
+                                <th style="width: 140px;">Utilizado</th>
+                                <th style="width: 140px;">Retornado</th>
+                                <th style="width: 140px;">Perdido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens %}
+                            <tr>
+                                <td>{{ item.insumo.descricao }}</td>
+                                <td>{{ item.quantidade_enviada }}</td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        name="utilizada_{{ item.id }}"
+                                        value="{{ item.quantidade_utilizada|default_if_none:0 }}"
+                                        step="0.01"
+                                        min="0"
+                                        class="form-control"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        name="retornada_{{ item.id }}"
+                                        value="{{ item.quantidade_retornada|default_if_none:0 }}"
+                                        step="0.01"
+                                        min="0"
+                                        class="form-control"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        name="perdida_{{ item.id }}"
+                                        value="{{ item.quantidade_perdida|default_if_none:0 }}"
+                                        step="0.01"
+                                        min="0"
+                                        class="form-control"
+                                    >
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">
+                    A soma de utilizado + retornado + perdido deve bater com a quantidade enviada.
+                </small>
+            {% else %}
+                <p class="text-muted mb-0">Nenhum insumo enviado neste checklist.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ========================= -->
+    <!-- 2. EQUIPAMENTOS          -->
+    <!-- ========================= -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <strong>Equipamentos enviados</strong>
+        </div>
+        <div class="card-body">
+            {% if equipamentos %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Equipamento</th>
+                                <th>Patrimônio</th>
+                                <th>Nº de Série</th>
+                                <th style="width: 180px;">Retorno confirmado</th>
+                                <th>Data de retorno</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for equip in equipamentos %}
+                            <tr>
+                                <td>{{ equip.equipamento.nome|default:equip.equipamento.modelo|default:"Equipamento" }}</td>
+                                <td>{{ equip.equipamento.patrimonio }}</td>
+                                <td>{{ equip.equipamento.numero_serie }}</td>
+                                <td>
+                                    <div class="form-check">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            name="equip_retorno_{{ equip.id }}"
+                                            id="equip_retorno_{{ equip.id }}"
+                                            value="1"
+                                            {% if equip.data_retorno %}checked{% endif %}
+                                        >
+                                        <label class="form-check-label" for="equip_retorno_{{ equip.id }}">
+                                            Confirmar retorno
+                                        </label>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if equip.data_retorno %}
+                                        {{ equip.data_retorno|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        <span class="text-muted">Pendente</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">
+                    Marque os equipamentos que já retornaram para a base.
+                </small>
+            {% else %}
+                <p class="text-muted mb-0">Nenhum equipamento enviado neste checklist.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ========================= -->
+    <!-- 3. LOTES DE TAG          -->
+    <!-- ========================= -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <strong>TAGs movimentadas</strong>
+        </div>
+        <div class="card-body">
+            {% if lotes_tags %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Lote</th>
+                                <th>Faixa enviada</th>
+                                <th style="width: 160px;">Retorno inicial</th>
+                                <th style="width: 160px;">Retorno final</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lote_item in lotes_tags %}
+                            <tr>
+                                <td>
+                                    {{ lote_item.lote }}
+                                </td>
+                                <td>
+                                    {{ lote_item.numero_inicial_enviado }} até {{ lote_item.numero_final_enviado }}
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        name="tag_retorno_inicial_{{ lote_item.id }}"
+                                        value="{{ lote_item.numero_inicial_retornado|default_if_none:'' }}"
+                                        min="0"
+                                        class="form-control"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        name="tag_retorno_final_{{ lote_item.id }}"
+                                        value="{{ lote_item.numero_final_retornado|default_if_none:'' }}"
+                                        min="0"
+                                        class="form-control"
+                                    >
+                                </td>
+                                <td>
+                                    {% if lote_item.status %}
+                                        {{ lote_item.status }}
+                                    {% else %}
+                                        <span class="text-muted">Pendente</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">
+                    Preencha a faixa de TAGs efetivamente retornada, quando houver retorno.
+                </small>
+            {% else %}
+                <p class="text-muted mb-0">Nenhum lote de TAG vinculado a este checklist.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <button type="submit" name="acao" value="salvar" class="btn btn-primary">
+            Salvar alterações
+        </button>
+        <button type="submit" name="acao" value="finalizar" class="btn btn-success">
+            Salvar e finalizar checklist
+        </button>
+        <a href="{% url 'insumos:checklist_detail' checklist.id %}" class="btn btn-secondary">
+            Cancelar
+        </a>
+    </div>
+</form>
+
+
+</div>
+{% endblock %}

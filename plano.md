@@ -136,7 +136,7 @@ Sistema para controle de equipamentos por regional, com:
 ## Decisões Técnicas (IMPORTANTE)
 
 * Evitar lógica duplicada (signals + views ao mesmo tempo)
-* Preferir clareza > “mágica”
+* Preferir clareza > 
 * Sempre garantir rastreabilidade no Histórico
 
 ---

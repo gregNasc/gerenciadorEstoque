@@ -1,10 +1,22 @@
 from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
-from insumos.models import (ChecklistDiario, ChecklistEquipamento, ChecklistLoteTag, HistoricoInsumo, ItemChecklist, MovimentacaoTag, LoteTag, Insumo)
+from django.core.exceptions import ValidationError
+
+from insumos.models import (
+    ChecklistDiario,
+    ChecklistEquipamento,
+    ChecklistLoteTag,
+    HistoricoInsumo,
+    ItemChecklist,
+    MovimentacaoTag,
+    LoteTag,
+    Insumo,
+)
 from insumos.services.consumo_service import ConsumoService
 from insumos.services.movimentacao_service import MovimentacaoService
 from estoque.models import Equipamento
+
 
 class ChecklistService:
 
@@ -17,14 +29,15 @@ class ChecklistService:
             criado_por=usuario,
             responsavel=responsavel or usuario,
             observacao=observacao,
-            status='ABERTO',
+            status='EM_EXECUCAO',
         )
 
+
+    # INSUMOS
     @staticmethod
     @transaction.atomic
     def adicionar_item(*, checklist, insumo, quantidade_enviada):
         quantidade_enviada = Decimal(str(quantidade_enviada or '0'))
-
         if quantidade_enviada <= 0:
             return None
 
@@ -33,21 +46,29 @@ class ChecklistService:
             insumo=insumo,
             defaults={'quantidade_enviada': quantidade_enviada},
         )
-
         if not criado:
-            raise ValueError('Este insumo ja foi adicionado ao checklist.')
-
+            raise ValueError('Este insumo já foi adicionado ao checklist.')
         return item
 
     @staticmethod
     @transaction.atomic
     def registrar_envio_item(*, checklist, insumo, quantidade_enviada, usuario):
+        quantidade_enviada = Decimal(str(quantidade_enviada or '0'))
+        if quantidade_enviada <= 0:
+            return None
+
+        saldo = MovimentacaoService.saldo(checklist.inventario.base, insumo)
+        if saldo < quantidade_enviada:
+            raise ValueError(
+                f'Saldo insuficiente para o insumo "{insumo.descricao}". '
+                f'Disponível: {saldo}. Solicitado: {quantidade_enviada}.'
+            )
+
         item = ChecklistService.adicionar_item(
             checklist=checklist,
             insumo=insumo,
             quantidade_enviada=quantidade_enviada,
         )
-
         if item is None:
             return None
 
@@ -58,27 +79,69 @@ class ChecklistService:
             usuario=usuario,
             observacao=f'Envio para checklist {checklist.id}',
         )
-
         return item
 
     @staticmethod
+    def insumos_disponiveis_para_checklist(base):
+        insumos = []
+        queryset = (
+            Insumo.objects
+            .filter(ativo=True)
+            .select_related('categoria')
+            .order_by('descricao')
+        )
+
+        for insumo in queryset:
+            saldo = MovimentacaoService.saldo(base, insumo)
+            if saldo > 0:
+                insumos.append({
+                    'id': insumo.id,
+                    'descricao': insumo.descricao,
+                    'categoria': insumo.categoria.nome if insumo.categoria_id else '',
+                    'saldo': saldo,
+                    'insumo': insumo,
+                })
+
+        return insumos
+
+    @staticmethod
     @transaction.atomic
-    def adicionar_equipamento(*, checklist, equipamento, usuario, tag_saida='', tag_volta=''):
+    def atualizar_item(*, item, utilizada, retornada, perdida):
+        utilizada = Decimal(str(utilizada or '0'))
+        retornada = Decimal(str(retornada or '0'))
+        perdida = Decimal(str(perdida or '0'))
+        total = utilizada + retornada + perdida
+
+        if total > item.quantidade_enviada:
+            raise ValueError('A soma não pode exceder a quantidade enviada.')
+
+        item.quantidade_utilizada = utilizada
+        item.quantidade_retornada = retornada
+        item.quantidade_perdida = perdida
+        item.save(update_fields=[
+            'quantidade_utilizada', 'quantidade_retornada', 'quantidade_perdida'
+        ])
+        return item
+
+
+    # EQUIPAMENTOS
+    @staticmethod
+    @transaction.atomic
+    def adicionar_equipamento(*, checklist, equipamento, usuario):
         if equipamento.regional_id != checklist.inventario.base_id:
             raise ValueError(
-                f'O equipamento {equipamento} nao pertence a base do inventario.'
+                f'O equipamento {equipamento} não pertence à base do inventário.'
             )
-
         if equipamento.status != 'ATIVO':
             raise ValueError(
-                f'O equipamento {equipamento} nao esta ativo para envio.'
+                f'O equipamento {equipamento} não está ativo para envio.'
             )
 
         item = ChecklistEquipamento.objects.create(
             checklist=checklist,
             equipamento=equipamento,
-            tag_saida=tag_saida or equipamento.patrimonio or equipamento.numero_serie,
-            tag_volta=tag_volta or '',
+            tag_saida='',
+            tag_volta='',
         )
 
         equipamento.status = 'EM_USO'
@@ -96,91 +159,169 @@ class ChecklistService:
                 'patrimonio': equipamento.patrimonio,
             },
         )
-
         return item
+
+
+    # TAGS
+    @staticmethod
+    def _validar_numero_dentro_do_lote(lote, numero, campo='Número'):
+        if numero is None:
+            raise ValueError(f'{campo} não informado.')
+
+        if numero < lote.numero_inicial or numero > lote.numero_final:
+            raise ValueError(
+                f'{campo} {numero} fora da faixa do lote '
+                f'({lote.numero_inicial} até {lote.numero_final}).'
+            )
+
+    @staticmethod
+    def _quantidade_tags_utilizadas(numero_inicial, numero_final):
+        return numero_final - numero_inicial
 
     @staticmethod
     @transaction.atomic
-    def adicionar_lote_tag(*, checklist, lote, numero_inicial_enviado, numero_final_enviado, usuario, numero_inicial_retornado=None, numero_final_retornado=None,):
+    def adicionar_lote_tag(*, checklist, lote, numero_inicial_utilizado, usuario, rolo=None):
+        """
+        Na criação/execução do checklist, a TAG registra apenas o início do intervalo consumido.
+        O número final será informado na finalização.
+        """
         if lote.base_id != checklist.inventario.base_id:
-            raise ValueError('O lote de tags nao pertence a base do inventario.')
+            raise ValueError('O lote de tags não pertence à base do inventário.')
 
-        numero_inicial_enviado = int(numero_inicial_enviado)
-        numero_final_enviado = int(numero_final_enviado)
+        if rolo:
+            if rolo.lote_id != lote.id:
+                raise ValueError('O rolo informado não pertence ao lote selecionado.')
+            if rolo.status != 'DISPONIVEL':
+                raise ValueError(
+                    f'O rolo {rolo.codigo} do lote {lote.numero_inicial}-{lote.numero_final} não está disponível.'
+                )
 
-        if numero_inicial_enviado > numero_final_enviado:
-            raise ValueError('A faixa inicial de tags nao pode ser maior que a final.')
+        numero_inicial_utilizado = int(numero_inicial_utilizado)
 
-        quantidade_enviada = numero_final_enviado - numero_inicial_enviado + 1
+        if False and lote.quantidade_disponivel <= 0:
+            raise ValueError(
+                f'O lote {lote.numero_inicial}-{lote.numero_final} não possui rolos disponíveis.'
+            )
 
-        if lote.quantidade_disponivel < quantidade_enviada:
-            raise ValueError('Lote de tags sem saldo disponivel para esta faixa.')
+        ChecklistService._validar_numero_dentro_do_lote(
+            lote, numero_inicial_utilizado, 'Número inicial'
+        )
+
+        if rolo and numero_inicial_utilizado < rolo.numero_atual:
+            raise ValueError(
+                f'O número inicial não pode ser menor que o número atual do rolo ({rolo.numero_atual}).'
+            )
+
+        # impede duplicidade do mesmo lote no mesmo checklist
+        if ChecklistLoteTag.objects.filter(checklist=checklist, rolo=rolo).exists():
+            raise ValueError(
+                f'O lote {lote.numero_inicial}-{lote.numero_final} já foi adicionado a este checklist.'
+            )
 
         item = ChecklistLoteTag.objects.create(
             checklist=checklist,
             lote=lote,
-            numero_inicial_enviado=numero_inicial_enviado,
-            numero_final_enviado=numero_final_enviado,
-            numero_inicial_retornado=numero_inicial_retornado,
-            numero_final_retornado=numero_final_retornado,
+            rolo=rolo,
+            numero_inicial_utilizado=numero_inicial_utilizado,
         )
 
-        MovimentacaoTag.objects.create(
-            inventario=checklist.inventario,
-            lote=lote,
-            numero_inicial=numero_inicial_enviado,
-            numero_final=numero_final_enviado,
-            tipo='ENVIO',
+        if rolo:
+            rolo.status = 'EM_USO'
+            rolo.save(update_fields=['status'])
+
+        HistoricoInsumo.objects.create(
+            tipo='CHECKLIST',
             usuario=usuario,
+            descricao=f'Lote de TAG adicionado ao checklist {checklist.id}.',
+            dados={
+                'checklist': checklist.id,
+                'inventario': str(checklist.inventario),
+                'base': checklist.inventario.base.nome,
+                'lote_id': lote.id,
+                'lote_faixa': f'{lote.numero_inicial}-{lote.numero_final}',
+                'numero_inicial_utilizado': numero_inicial_utilizado,
+            },
         )
-
-        lote.quantidade_disponivel -= quantidade_enviada
-        lote.save(update_fields=['quantidade_disponivel'])
 
         return item
 
     @staticmethod
     @transaction.atomic
-    def atualizar_item(*, item, utilizada, retornada, perdida):
-        utilizada = Decimal(str(utilizada or '0'))
-        retornada = Decimal(str(retornada or '0'))
-        perdida = Decimal(str(perdida or '0'))
-        total = utilizada + retornada + perdida
+    def atualizar_retorno_lote_tag(*, item_lote, numero_final_utilizado):
+        """
+        Usado na finalização/edição do checklist para informar até onde a TAG foi usada.
+        """
+        numero_final_utilizado = int(numero_final_utilizado)
 
-        if total > item.quantidade_enviada:
-            raise ValueError('A soma nao pode exceder a quantidade enviada.')
-
-        item.quantidade_utilizada = utilizada
-        item.quantidade_retornada = retornada
-        item.quantidade_perdida = perdida
-        item.save(
-            update_fields=[
-                'quantidade_utilizada',
-                'quantidade_retornada',
-                'quantidade_perdida',
-            ]
+        ChecklistService._validar_numero_dentro_do_lote(
+            item_lote.lote, numero_final_utilizado, 'Número final'
         )
 
-        return item
+        if numero_final_utilizado < item_lote.numero_inicial_utilizado:
+            raise ValueError(
+                f'O número final ({numero_final_utilizado}) não pode ser menor que o número inicial '
+                f'({item_lote.numero_inicial_utilizado}).'
+            )
 
+        item_lote.numero_final_utilizado = numero_final_utilizado
+        item_lote.save(update_fields=['numero_final_utilizado'])
+
+        if item_lote.rolo_id:
+            rolo = item_lote.rolo
+            rolo.numero_atual = numero_final_utilizado
+            rolo.status = (
+                'ESGOTADO'
+                if numero_final_utilizado >= item_lote.lote.numero_final
+                else 'DISPONIVEL'
+            )
+            rolo.save(update_fields=['numero_atual', 'status'])
+
+        return item_lote
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_tags_finalizacao(*, checklist, data):
+        """
+        Atualiza o número final utilizado de cada lote do checklist.
+        Espera campos no POST como:
+        - tag_final_item_12 = 4568
+        - tag_final_item_13 = 6789
+        """
+        for item_lote in checklist.lotes_tags_movimentados.select_related('lote'):
+            valor = data.get(f'tag_final_item_{item_lote.id}', '').strip()
+            if not valor:
+                raise ValueError(
+                    f'Informe o número final utilizado para o lote '
+                    f'{item_lote.lote.numero_inicial}-{item_lote.lote.numero_final}.'
+                )
+
+            ChecklistService.atualizar_retorno_lote_tag(
+                item_lote=item_lote,
+                numero_final_utilizado=int(valor),
+            )
+
+
+    # FINALIZAÇÃO
     @staticmethod
     @transaction.atomic
     def finalizar(*, checklist, usuario):
         if checklist.status == 'FINALIZADO':
-            raise ValueError('Checklist ja finalizado.')
+            raise ValueError('Checklist já finalizado.')
 
         base = checklist.inventario.base
 
+        # ==========================================
+        # 1. INSUMOS
+        # ==========================================
         for item in checklist.itens.select_related('insumo'):
             total = (
                 item.quantidade_utilizada
                 + item.quantidade_retornada
                 + item.quantidade_perdida
             )
-
             if total != item.quantidade_enviada:
                 raise ValueError(
-                    f'O item "{item.insumo.descricao}" nao esta conciliado. '
+                    f'O item "{item.insumo.descricao}" não está conciliado. '
                     f'Enviado: {item.quantidade_enviada}. Apurado: {total}.'
                 )
 
@@ -193,22 +334,92 @@ class ChecklistService:
                     observacao=f'Retorno do checklist {checklist.id}',
                 )
 
-            if item.quantidade_utilizada > 0:
+            if item.quantidade_utilizada > 0 or item.quantidade_perdida > 0:
                 ConsumoService.gerar(item=item)
 
-        for item_equipamento in checklist.equipamentos_utilizados.select_related('equipamento'):
-            equipamento = item_equipamento.equipamento
+        # ==========================================
+        # 2. EQUIPAMENTOS
+        # ==========================================
+        equipamentos_pendentes = checklist.equipamentos_utilizados.filter(data_retorno__isnull=True)
+        if equipamentos_pendentes.exists():
+            pendentes = ', '.join([
+                f'{e.equipamento.patrimonio} ({e.equipamento.numero_serie})'
+                for e in equipamentos_pendentes
+            ])
+            raise ValueError(
+                f'O checklist não pode ser finalizado pois os seguintes equipamentos '
+                f'não tiveram o retorno confirmado: {pendentes}'
+            )
 
-            if item_equipamento.tag_volta:
-                item_equipamento.data_retorno = timezone.now()
-                item_equipamento.save(update_fields=['data_retorno'])
-                equipamento.status = 'ATIVO'
-                equipamento.save(update_fields=['status', 'data_atualizacao'])
+        for item_equip in checklist.equipamentos_utilizados.select_related('equipamento'):
+            equipamento = item_equip.equipamento
+            equipamento.status = 'ATIVO'
+            equipamento.save(update_fields=['status', 'data_atualizacao'])
 
+        # ==========================================
+        # 3. TAGS
+        # ==========================================
+        itens_lote = checklist.lotes_tags_movimentados.select_related('lote')
+
+        for item_lote in itens_lote:
+            lote = item_lote.lote
+
+            if item_lote.numero_final_utilizado is None:
+                raise ValueError(
+                    f'O lote de TAG {lote.numero_inicial}-{lote.numero_final} '
+                    f'não teve o número final informado.'
+                )
+
+            ChecklistService._validar_numero_dentro_do_lote(
+                lote, item_lote.numero_inicial_utilizado, 'Número inicial'
+            )
+            ChecklistService._validar_numero_dentro_do_lote(
+                lote, item_lote.numero_final_utilizado, 'Número final'
+            )
+
+            if item_lote.numero_final_utilizado < item_lote.numero_inicial_utilizado:
+                raise ValueError(
+                    f'O número final do lote {lote.numero_inicial}-{lote.numero_final} '
+                    f'não pode ser menor que o número inicial.'
+                )
+
+            quantidade_utilizada = ChecklistService._quantidade_tags_utilizadas(
+                item_lote.numero_inicial_utilizado,
+                item_lote.numero_final_utilizado,
+            )
+
+            if quantidade_utilizada < 0:
+                raise ValueError(
+                    f'A quantidade utilizada do lote {lote.numero_inicial}-{lote.numero_final} é inválida.'
+                )
+
+            if False and quantidade_utilizada > lote.quantidade_disponivel:
+                raise ValueError(
+                    f'O lote {lote.numero_inicial}-{lote.numero_final} não possui saldo suficiente. '
+                    f'Disponível: {lote.quantidade_disponivel}. '
+                    f'Necessário: {quantidade_utilizada}.'
+                )
+
+            # registra a faixa efetivamente utilizada no inventário
+            MovimentacaoTag.objects.create(
+                inventario=checklist.inventario,
+                lote=lote,
+                numero_inicial=item_lote.numero_inicial_utilizado,
+                numero_final=item_lote.numero_final_utilizado,
+                tipo='UTILIZACAO',
+                usuario=usuario,
+            )
+
+            # baixa saldo apenas quando o consumo real é conhecido
+            pass
+
+        # ==========================================
+        # 4. HISTÓRICO / FINALIZAÇÃO
+        # ==========================================
         HistoricoInsumo.objects.create(
             tipo='CHECKLIST',
             usuario=usuario,
-            descricao=f'Checklist diario do inventario {checklist.inventario} finalizado.',
+            descricao=f'Checklist do inventário {checklist.inventario} finalizado.',
             dados={
                 'checklist': checklist.id,
                 'inventario': str(checklist.inventario),
@@ -217,6 +428,7 @@ class ChecklistService:
                 'data_inicio': str(checklist.data_inicio),
                 'itens': checklist.itens.count(),
                 'equipamentos': checklist.equipamentos_utilizados.count(),
+                'lotes_tags': checklist.lotes_tags_movimentados.count(),
             },
         )
 
@@ -225,46 +437,53 @@ class ChecklistService:
         checklist.data_fim = agora
         checklist.finalizado_em = agora
         checklist.finalizado_por = usuario
-        checklist.save(
-            update_fields=[
-                'status',
-                'data_fim',
-                'finalizado_em',
-                'finalizado_por',
-            ]
-        )
+        checklist.save(update_fields=[
+            'status', 'data_fim', 'finalizado_em', 'finalizado_por'
+        ])
 
         return checklist
 
+
+    # PROCESSAMENTO DO FORMULÁRIO
     @staticmethod
     @transaction.atomic
     def processar_checklist(*, checklist, data, usuario):
-
         payload = ChecklistParserService.parse_post(data)
 
+        # --------------------------
         # INSUMOS
+        # --------------------------
         for item in payload["insumos"]:
             insumo = Insumo.objects.get(id=item["insumo_id"])
+            ChecklistService.registrar_envio_item(
+                checklist=checklist,
+                insumo=insumo,
+                quantidade_enviada=item["quantidade_enviada"],
+                usuario=usuario
+            )
 
-            ChecklistService.registrar_envio_item(checklist=checklist, insumo=insumo, quantidade_enviada=item["quantidade"], usuario=usuario)
-
+        # --------------------------
         # EQUIPAMENTOS
+        # --------------------------
         for eq in payload["equipamentos"]:
             equipamento = Equipamento.objects.get(id=eq["id"])
+            ChecklistService.adicionar_equipamento(
+                checklist=checklist,
+                equipamento=equipamento,
+                usuario=usuario,
+            )
 
-            ChecklistService.adicionar_equipamento(checklist=checklist, equipamento=equipamento, usuario=usuario)
-
+        # --------------------------
         # TAGS
+        # --------------------------
         for tag in payload["tags"]:
-            if tag["saida"]:
-                ChecklistService.adicionar_lote_tag(
-                    checklist=checklist,
-                    lote=LoteTag.objects.first(),
-                    numero_inicial_enviado=int(tag["saida"]),
-                    numero_final_enviado=int(tag["saida"]),
-                    usuario=usuario,
-                    numero_inicial_retornado=tag["volta"]
-                )
+            lote = LoteTag.objects.get(id=tag["lote_id"])
+            ChecklistService.adicionar_lote_tag(
+                checklist=checklist,
+                lote=lote,
+                numero_inicial_utilizado=tag["numero_inicial_utilizado"],
+                usuario=usuario,
+            )
 
 class ChecklistParserService:
 
@@ -274,22 +493,65 @@ class ChecklistParserService:
         equipamentos = []
         tags = []
 
+        # ==========================================
+        # INSUMOS
+        # ==========================================
         for key, value in data.items():
-
-            # INSUMOS
             if key.startswith("insumo_") and key.endswith("_enviada"):
                 insumo_id = key.split("_")[1]
                 if value:
-                    insumos.append({"insumo_id": int(insumo_id), "quantidade": Decimal(value)})
+                    insumos.append({
+                        "insumo_id": int(insumo_id),
+                        "quantidade_enviada": Decimal(value),
+                        "quantidade_utilizada": Decimal(data.get(f"insumo_{insumo_id}_utilizada", 0)),
+                        "quantidade_retornada": Decimal(data.get(f"insumo_{insumo_id}_retornada", 0)),
+                        "quantidade_perdida": Decimal(data.get(f"insumo_{insumo_id}_perdida", 0)),
+                    })
 
-            # TAGS
-            if key.startswith("tag_saida_"):
-                idx = key.replace("tag_saida_", "")
-                tags.append({"index": idx, "saida": value, "volta": data.get(f"tag_volta_{idx}")})
-
-            # EQUIPAMENTOS
+        # ==========================================
+        # EQUIPAMENTOS
+        # ==========================================
+        for key, value in data.items():
             if key.startswith("equipamentos_"):
                 categoria = key.replace("equipamentos_", "")
-                equipamentos.append({"categoria": categoria, "id": int(value)})
+                if value:
+                    equipamentos.append({
+                        "id": int(value),
+                        "categoria": categoria,
+                    })
 
-        return {"insumos": insumos, "equipamentos": equipamentos, "tags": tags}
+        # ==========================================
+        # TAGS
+        # ==========================================
+        # Espera campos:
+        # lote_tag_1_id
+        # tag_numero_inicial_1
+        # tag_numero_final_1   (opcional)
+        #
+        # lote_tag_2_id
+        # tag_numero_inicial_2
+        # tag_numero_final_2
+        # ...
+        for key, value in data.items():
+            if key.startswith("lote_tag_") and key.endswith("_id"):
+                lote_id = value
+                if lote_id:
+                    idx = key.replace("lote_tag_", "").replace("_id", "")
+
+                    numero_inicial = data.get(f"tag_numero_inicial_{idx}", '').strip()
+                    numero_final = data.get(f"tag_numero_final_{idx}", '').strip()
+
+                    if not numero_inicial:
+                        raise ValueError('Número inicial da TAG não informado.')
+
+                    tags.append({
+                        "lote_id": int(lote_id),
+                        "numero_inicial_utilizado": int(numero_inicial),
+                        "numero_final_utilizado": int(numero_final) if numero_final else None,
+                    })
+
+        return {
+            "insumos": insumos,
+            "equipamentos": equipamentos,
+            "tags": tags,
+        }

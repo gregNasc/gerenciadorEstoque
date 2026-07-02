@@ -29,4 +29,11 @@ urlpatterns = [
     path('inventarios/', api.lista_inventarios, name='lista_inventarios'),
     path('inventarios/<int:pk>/editar/', api.editar_inventario, name='editar_inventario'),
     path('exportar-excel/', api.exportar_excel, name='exportar_excel'),
+    path('api/insumos-por-base/', api.insumos_por_base, name='api_insumos_por_base'),
+    path('checklists/', api.lista_checklists, name='lista_checklists'),
+    path('checklist/<int:pk>/finalizar/', api.finalizar_checklist, name='finalizar_checklist'),
+    path('checklist/<int:pk>/', api.checklist_detail, name='checklist_detail'),
+    path('checklist/<int:pk>/editar-itens/', api.editar_itens_checklist, name='editar_itens_checklist'),
+    path('checklist/<int:pk>/editar/', api.editar_checklist, name='editar_checklist'),
+    path('api/ultimo-checklist/', api.ultimo_checklist_por_loja, name='api_ultimo_checklist'),
 ]

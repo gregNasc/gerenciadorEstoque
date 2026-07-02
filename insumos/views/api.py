@@ -1,7 +1,4 @@
-from django.contrib.auth.decorators import login_required
 from django.db.models.functions import TruncMonth
-from decimal import Decimal
-from django.http import JsonResponse
 from django.db.models import (Q, Sum, F)
 from django.http import HttpResponse
 from insumos.models import ConsumoInsumo
@@ -15,11 +12,10 @@ from insumos.services.movimentacao_service import MovimentacaoService
 from decimal import Decimal
 from django.http import JsonResponse
 from estoque.models import Equipamento, Produto
-from insumos.models import LoteTag
+from insumos.models import LoteTag, RoloTag
 from insumos.forms import FiltroEstoqueInsumoForm, InventarioForm
 from django.db import transaction
 from django.utils import timezone
-from insumos.models import MovimentacaoTag
 from estoque.decorators import role_required
 import openpyxl
 from django.contrib.admin.views.decorators import staff_member_required
@@ -28,13 +24,14 @@ from django.utils.timezone import make_aware
 from datetime import datetime, date, time
 from insumos.models import Inventario, Cliente
 from estoque.models import Base, Empresa
+from insumos.services.checklist_service import ChecklistService
 
 @login_required
-@role_required('admin', 'gestor')
+@role_required('admin', 'gestor', 'operador')
 def estoque_insumos(request):
 
     perfil = request.user.perfil
-    bases = perfil.regionais.all()
+    bases = Base.objects.all() if perfil.is_admin else perfil.regionais.all()
     categoria_id = request.GET.get('categoria')
     insumo_id = request.GET.get('insumo')
     insumos = (Insumo.objects.filter(ativo=True).select_related('categoria'))
@@ -250,50 +247,11 @@ def insumos_por_categoria(request):
 
     return JsonResponse({'insumos': list(insumos)})
 
-def finalizar_checklist(checklist_id, usuario):
+def finalizar_checklist_legado(checklist_id, usuario):
     checklist = ChecklistDiario.objects.get(id=checklist_id)
 
     with transaction.atomic():
-        for item_equip in checklist.equipamentos_utilizados.all():
-            equip = item_equip.equipamento
-
-            if item_equip.tag_volta:
-                item_equip.data_retorno = timezone.now()
-                item_equip.save()
-                equip.status = 'ATIVO'
-                equip.save()
-            else:
-                equip.status = 'EM_USO'
-                equip.save()
-
-        for item_lote in checklist.lotes_tags_movimentados.all():
-            lote = item_lote.lote
-            MovimentacaoTag.objects.create(
-                inventario=checklist.inventario,
-                lote=lote,
-                numero_inicial=item_lote.numero_inicial_enviado,
-                numero_final=item_lote.numero_final_enviado,
-                tipo='ENVIO',
-                usuario=usuario
-            )
-
-            if item_lote.numero_inicial_retornado and item_lote.numero_final_retornado:
-                MovimentacaoTag.objects.create(
-                    inventario=checklist.inventario,
-                    lote=lote,
-                    numero_inicial=item_lote.numero_inicial_retornado,
-                    numero_final=item_lote.numero_final_retornado,
-                    tipo='RETORNO',
-                    usuario=usuario
-                )
-
-                item_lote.status = 'RETORNADO'
-                item_lote.save()
-
-        checklist.status = 'FINALIZADO'
-        checklist.finalizado_em = timezone.now()
-        checklist.finalizado_por = usuario
-        checklist.save()
+        ChecklistService.finalizar(checklist=checklist, usuario=usuario)
 
 def checklist_list(request):
     checklists = ChecklistDiario.objects.all()
@@ -953,3 +911,321 @@ def exportar_excel(request):
 
     wb.save(response)
     return response
+
+def insumos_por_base(request):
+    base_id = request.GET.get('base_id')
+    if not base_id:
+        return JsonResponse({'insumos': []})
+
+    # Buscar todos os insumos ativos
+    insumos = Insumo.objects.filter(ativo=True).select_related('categoria')
+    data = []
+    for insumo in insumos:
+        saldo = MovimentacaoService.saldo(base_id, insumo)
+        if saldo > 0:
+            data.append({
+                'id': insumo.id,
+                'descricao': insumo.descricao,
+                'categoria': insumo.categoria.nome,
+                'unidade': insumo.unidade_medida,
+                'saldo': float(saldo),
+            })
+    return JsonResponse({'insumos': data})
+
+@login_required
+def lista_checklists(request):
+    if request.user.perfil.is_admin:
+        checklists = ChecklistDiario.objects.all().select_related('inventario__cliente', 'inventario__base')
+    else:
+        checklists = ChecklistDiario.objects.filter(
+            inventario__base__in=request.user.perfil.regionais.all()
+        ).select_related('inventario__cliente', 'inventario__base')
+
+    checklists = checklists.order_by('-data_inicio')
+
+    context = {
+        'checklists': checklists,
+        'perfil': request.user.perfil,
+    }
+    return render(request, 'insumos/lista_checklists.html', context)
+
+@login_required
+def finalizar_checklist(request, pk):
+    checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base', 'inventario__cliente'), pk=pk)
+
+    # Verifica permissão (admin, gestor, ou responsável)
+    if not request.user.perfil.is_admin:
+        if not request.user.perfil.is_gestor and checklist.responsavel != request.user:
+            messages.error(request, 'Você não tem permissão para finalizar este checklist.')
+            return redirect('insumos:lista_checklists')
+
+    # Verifica se já está finalizado
+    if checklist.status == 'FINALIZADO':
+        messages.warning(request, 'Este checklist já foi finalizado.')
+        return redirect('insumos:lista_checklists')
+
+    try:
+        with transaction.atomic():
+            ChecklistService.finalizar(checklist=checklist, usuario=request.user)
+        messages.success(request, f'Checklist #{checklist.id} finalizado com sucesso!')
+    except ValueError as e:
+        messages.error(request, f'Erro ao finalizar checklist: {str(e)}')
+    except Exception as e:
+        messages.error(request, f'Erro inesperado: {str(e)}')
+
+    return redirect('insumos:lista_checklists')
+
+@login_required
+def checklist_detail(request, pk):
+    checklist = get_object_or_404(ChecklistDiario.objects.select_related(
+        'inventario__cliente', 'inventario__base'
+    ), pk=pk)
+
+    # Verifica permissão
+    if not request.user.perfil.is_admin:
+        if checklist.inventario.base_id not in request.user.perfil.regionais_ids:
+            messages.error(request, 'Você não tem acesso a este checklist.')
+            return redirect('insumos:lista_checklists')
+
+    if request.method == 'POST':
+        if checklist.status == 'FINALIZADO':
+            messages.warning(request, 'Este checklist já foi finalizado.')
+            return redirect('insumos:checklist_detail', pk=checklist.pk)
+
+        try:
+            with transaction.atomic():
+                for item in checklist.itens.select_related('insumo'):
+                    ChecklistService.atualizar_item(
+                        item=item,
+                        utilizada=request.POST.get(f'utilizada_{item.id}', 0),
+                        retornada=request.POST.get(f'retornada_{item.id}', 0),
+                        perdida=request.POST.get(f'perdida_{item.id}', 0),
+                    )
+
+                for item_equip in checklist.equipamentos_utilizados.select_related('equipamento'):
+                    retorno_confirmado = request.POST.get(f'equip_retorno_{item_equip.id}')
+                    if retorno_confirmado and not item_equip.data_retorno:
+                        item_equip.data_retorno = timezone.now()
+                        item_equip.save(update_fields=['data_retorno'])
+
+                if request.POST.get('acao') == 'finalizar':
+                    ChecklistService.atualizar_tags_finalizacao(
+                        checklist=checklist,
+                        data=request.POST,
+                    )
+                    ChecklistService.finalizar(checklist=checklist, usuario=request.user)
+                    messages.success(request, f'Checklist #{checklist.id} finalizado com sucesso!')
+                    return redirect('insumos:lista_checklists')
+
+                for item_lote in checklist.lotes_tags_movimentados.select_related('lote'):
+                    valor = request.POST.get(f'tag_final_item_{item_lote.id}', '').strip()
+                    if valor:
+                        ChecklistService.atualizar_retorno_lote_tag(
+                            item_lote=item_lote,
+                            numero_final_utilizado=valor,
+                        )
+
+            messages.success(request, 'Retorno do checklist salvo com sucesso.')
+
+        except ValueError as e:
+            messages.error(request, f'Erro no retorno do checklist: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Erro inesperado: {str(e)}')
+
+        return redirect('insumos:checklist_detail', pk=checklist.pk)
+
+    tags = checklist.lotes_tags_movimentados.select_related('lote', 'rolo')
+
+    context = {
+        'checklist': checklist,
+        'itens': checklist.itens.select_related('insumo'),
+        'equipamentos': checklist.equipamentos_utilizados.select_related('equipamento__produto'),
+        'tags': tags,
+        'total_tags_utilizadas': sum(tag.quantidade_utilizada for tag in tags),
+    }
+    return render(request, 'insumos/checklist_detail.html', context)
+
+@login_required
+def editar_itens_checklist(request, pk):
+    checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base'), pk=pk)
+
+    # Verifica permissão
+    if not request.user.perfil.is_admin and checklist.inventario.base_id not in request.user.perfil.regionais_ids:
+        messages.error(request, 'Você não tem acesso a este checklist.')
+        return redirect('insumos:lista_checklists')
+
+    if checklist.status == 'FINALIZADO':
+        messages.warning(request, 'Este checklist já está finalizado.')
+        return redirect('insumos:lista_checklists')
+
+    if request.method == 'POST':
+        for item in checklist.itens.select_related('insumo'):
+            utilizada = request.POST.get(f'utilizada_{item.id}', 0)
+            retornada = request.POST.get(f'retornada_{item.id}', 0)
+            perdida = request.POST.get(f'perdida_{item.id}', 0)
+
+            try:
+                ChecklistService.atualizar_item(
+                    item=item,
+                    utilizada=utilizada,
+                    retornada=retornada,
+                    perdida=perdida
+                )
+            except ValueError as e:
+                messages.error(request, f'Erro no item "{item.insumo.descricao}": {str(e)}')
+                return redirect('insumos:editar_itens_checklist', pk=checklist.id)
+
+        messages.success(request, 'Itens do checklist atualizados com sucesso!')
+        return redirect('insumos:checklist_detail', pk=checklist.id)
+
+    context = {
+        'checklist': checklist,
+        'itens': checklist.itens.select_related('insumo'),
+    }
+    return render(request, 'insumos/editar_itens_checklist.html', context)
+
+@login_required
+def ultimo_checklist_por_loja(request):
+    cliente_sigla = request.GET.get('cliente')
+    loja = request.GET.get('loja')
+    base_id = request.GET.get('base')
+
+    if not cliente_sigla or not loja or not base_id:
+        return JsonResponse({'error': 'Parâmetros incompletos'}, status=400)
+
+    # Busca o último checklist daquela loja (finalizado ou em execução)
+    ultimo = ChecklistDiario.objects.filter(
+        inventario__cliente__sigla=cliente_sigla,
+        inventario__loja=loja,
+        inventario__base_id=base_id,
+        status__in=['FINALIZADO', 'EM_EXECUCAO']
+    ).order_by('-data_inicio').first()
+
+    if not ultimo:
+        return JsonResponse({'dados': None})
+
+    # Monta resposta
+    data = {
+        'checklist_id': ultimo.id,
+        'data': ultimo.data_inicio.strftime('%d/%m/%Y %H:%M'),
+        'insumos': [],
+        'equipamentos': [],
+        'tags': []
+    }
+
+    # Insumos
+    for item in ultimo.itens.select_related('insumo'):
+        data['insumos'].append({
+            'insumo_id': item.insumo.id,
+            'enviada': float(item.quantidade_enviada),
+            'utilizada': float(item.quantidade_utilizada or 0),
+            'retornada': float(item.quantidade_retornada or 0),
+            'perdida': float(item.quantidade_perdida or 0),
+        })
+
+    # Equipamentos
+    for eq in ultimo.equipamentos_utilizados.select_related('equipamento'):
+        data['equipamentos'].append({
+            'id': eq.equipamento.id,
+            'categoria': eq.equipamento.produto.categoria.lower(),  # coletor, router, etc.
+            'tag_saida': eq.tag_saida,
+            'tag_volta': eq.tag_volta,
+        })
+
+    # Tags (LoteTag) - se houver
+    for tag in ultimo.lotes_tags_movimentados.select_related('lote', 'rolo'):
+        data['tags'].append({
+            'lote_id': tag.lote.id,
+            'rolo_id': tag.rolo_id,
+            'inicial_utilizado': tag.numero_inicial_utilizado,
+            'final_utilizado': tag.numero_final_utilizado,
+        })
+
+    return JsonResponse({'dados': data})
+
+@login_required
+def editar_checklist(request, pk):
+    checklist = get_object_or_404(ChecklistDiario.objects.select_related(
+        'inventario__base', 'inventario__cliente'
+    ), pk=pk)
+
+    # Verifica permissão (admin, gestor, ou responsável)
+    if not request.user.perfil.is_admin:
+        if not request.user.perfil.is_gestor and checklist.responsavel != request.user:
+            messages.error(request, 'Você não tem permissão para editar este checklist.')
+            return redirect('insumos:lista_checklists')
+
+    if checklist.status == 'FINALIZADO':
+        messages.warning(request, 'Checklist já finalizado, não pode ser editado.')
+        return redirect('insumos:checklist_detail', pk=checklist.pk)
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Atualizar insumos (quantidades utilizada, retornada, perdida)
+                for item in checklist.itens.select_related('insumo'):
+                    utilizada = request.POST.get(f'insumo_{item.insumo.id}_utilizada', 0)
+                    retornada = request.POST.get(f'insumo_{item.insumo.id}_retornada', 0)
+                    perdida = request.POST.get(f'insumo_{item.insumo.id}_perdida', 0)
+                    # Atualiza o item
+                    item.quantidade_utilizada = Decimal(utilizada or 0)
+                    item.quantidade_retornada = Decimal(retornada or 0)
+                    item.quantidade_perdida = Decimal(perdida or 0)
+                    item.save(update_fields=['quantidade_utilizada', 'quantidade_retornada', 'quantidade_perdida'])
+
+                # Atualizar equipamentos (tag_volta = retorno confirmado)
+                for eq in checklist.equipamentos_utilizados.all():
+                    # Identifica a categoria para buscar o campo de retorno
+                    categoria = eq.equipamento.produto.categoria.lower()
+                    retorno = request.POST.get(f'retorno_equip_{categoria}', '')
+                    if retorno:
+                        eq.tag_volta = retorno
+                        eq.save(update_fields=['tag_volta'])
+
+                messages.success(request, 'Checklist atualizado com sucesso!')
+                return redirect('insumos:checklist_detail', pk=checklist.pk)
+
+        except Exception as e:
+            messages.error(request, f'Erro ao atualizar: {str(e)}')
+
+    # GET: carrega o formulário de edição
+    # Precisamos dos mesmos dados do checklist para popular o template
+    # Vamos usar o mesmo template 'estoque/checklist.html', mas com dados preenchidos
+
+    # Prepara listas de equipamentos (como na view de criação)
+    from estoque.models import Equipamento
+    from insumos.models import Insumo
+
+    regionais_ids = request.user.perfil.regionais_ids
+    if request.user.perfil.is_admin:
+        equipamentos = Equipamento.objects.filter(status='ATIVO')
+        lotes_tags = RoloTag.objects.filter(status='DISPONIVEL', lote__ativo=True).select_related('lote', 'lote__base')
+    else:
+        equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id__in=regionais_ids)
+        lotes_tags = RoloTag.objects.filter(
+            status='DISPONIVEL',
+            lote__ativo=True,
+            lote__base_id__in=regionais_ids,
+        ).select_related('lote', 'lote__base')
+
+    # Obtém itens do checklist para pré-preencher
+    itens_checklist = []  # Não precisamos da lista fixa aqui, pois vamos preencher com os dados do checklist
+
+    # Insumos já existentes no checklist
+    insumos_do_checklist = checklist.itens.select_related('insumo')
+
+    context = {
+        'checklist': checklist,
+        'coletores': equipamentos.filter(produto__categoria='Coletores'),
+        'impressoras': equipamentos.filter(produto__categoria='Impressoras'),
+        'notebooks': equipamentos.filter(produto__categoria='Notebooks'),
+        'routers': equipamentos.filter(produto__categoria='Routers'),
+        'inventarios': [checklist.inventario],  # apenas o inventário atual
+        'insumos': insumos_do_checklist,  # insumos já adicionados
+        'lotes_tags': lotes_tags,
+        'lotes_tags_selecionados': checklist.lotes_tags_movimentados.select_related('lote'),
+        'url_name': 'editar_checklist',
+        'editando': True,  # flag para indicar que é edição
+        'equipamentos_selecionados': checklist.equipamentos_utilizados.all(),
+    }
+    return render(request, 'estoque/checklist.html', context)

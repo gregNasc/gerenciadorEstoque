@@ -240,16 +240,60 @@ class ChecklistEquipamento(models.Model):
 
 class ChecklistLoteTag(models.Model):
     checklist = models.ForeignKey('ChecklistDiario', on_delete=models.CASCADE, related_name='lotes_tags_movimentados')
-    lote = models.ForeignKey('LoteTag', on_delete=models.PROTECT)
-    numero_inicial_enviado = models.IntegerField()
-    numero_final_enviado = models.IntegerField()
-    numero_inicial_retornado = models.IntegerField(null=True, blank=True)
-    numero_final_retornado = models.IntegerField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=[('ENVIADO', 'Enviado'), ('RETORNADO', 'Retornado')], default='ENVIADO')
+    lote = models.ForeignKey('LoteTag', on_delete=models.PROTECT, related_name='checklists_utilizados')
+    rolo = models.ForeignKey('RoloTag', on_delete=models.PROTECT, null=True, blank=True, related_name='checklists_utilizados')
+    numero_inicial_utilizado = models.IntegerField()
+    numero_final_utilizado = models.IntegerField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Lote de TAG do checklist'
+        verbose_name_plural = 'Lotes de TAG do checklist'
+        indexes = [
+            models.Index(fields=['checklist']),
+            models.Index(fields=['lote']),
+        ]
+
     def __str__(self):
-        return f"{self.lote} - Faixa {self.numero_inicial_enviado} a {self.numero_final_enviado}"
+        faixa = f'{self.lote.numero_inicial}-{self.lote.numero_final}'
+        return f'Checklist #{self.checklist_id} | Lote {faixa} | início {self.numero_inicial_utilizado}'
+
+    @property
+    def quantidade_utilizada(self):
+        if (
+            self.numero_final_utilizado is not None and
+            self.numero_final_utilizado >= self.numero_inicial_utilizado
+        ):
+            return self.numero_final_utilizado - self.numero_inicial_utilizado
+        return 0
+
+    def validar_numero_inicial(self):
+        if self.numero_inicial_utilizado < self.lote.numero_inicial or self.numero_inicial_utilizado > self.lote.numero_final:
+            raise ValidationError(
+                f'O número inicial {self.numero_inicial_utilizado} está fora da faixa do lote '
+                f'({self.lote.numero_inicial} até {self.lote.numero_final}).'
+            )
+
+    def validar_numero_final(self):
+        if self.numero_final_utilizado is None:
+            return
+
+        if self.numero_final_utilizado < self.numero_inicial_utilizado:
+            raise ValidationError(
+                'O número final utilizado não pode ser menor que o número inicial utilizado.'
+            )
+
+        if self.numero_final_utilizado < self.lote.numero_inicial or self.numero_final_utilizado > self.lote.numero_final:
+            raise ValidationError(
+                f'O número final {self.numero_final_utilizado} está fora da faixa do lote '
+                f'({self.lote.numero_inicial} até {self.lote.numero_final}).'
+            )
+
+    def clean(self):
+        super().clean()
+        if self.lote_id:
+            self.validar_numero_inicial()
+            self.validar_numero_final()
 
 class ConsumoInsumo(models.Model):
 
@@ -311,24 +355,74 @@ class LoteTag(models.Model):
     valor_unitario = models.DecimalField(max_digits=10, decimal_places=2)
     ativo = models.BooleanField(default=True)
     quantidade_total = models.IntegerField(default=0, editable=False)
-    quantidade_disponivel = models.IntegerField(default=0, editable=False)
+    quantidade_disponivel = models.IntegerField(default=0)
 
     class Meta:
         indexes = [
             models.Index(fields=['base']),
             models.Index(fields=['ativo']),
         ]
-
         permissions = [
             ('gerenciar_tags', 'Pode gerenciar TAGs'),
         ]
 
-class MovimentacaoTag(models.Model):
+    def __str__(self):
+        return f'Lote {self.numero_inicial}-{self.numero_final} | Base: {self.base.nome}'
 
+    @property
+    def faixa_label(self):
+        return f'{self.numero_inicial} até {self.numero_final}'
+
+    @property
+    def tamanho_faixa(self):
+        return self.numero_final - self.numero_inicial + 1
+
+    def save(self, *args, **kwargs):
+        self.quantidade_total = self.tamanho_faixa
+
+        super().save(*args, **kwargs)
+
+class RoloTag(models.Model):
+
+    STATUS = [
+        ('DISPONIVEL', 'Disponível'),
+        ('EM_USO', 'Em uso'),
+        ('ESGOTADO', 'Esgotado'),
+    ]
+
+    lote = models.ForeignKey(LoteTag, on_delete=models.CASCADE, related_name='rolos')
+    codigo = models.PositiveIntegerField()
+    numero_atual = models.IntegerField()
+    status = models.CharField(max_length=20, choices=STATUS, default='DISPONIVEL')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (('lote', 'codigo'),)
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['lote', 'status']),
+        ]
+
+    def __str__(self):
+        return f'Rolo {self.codigo} | {self.lote.faixa_label} | atual {self.numero_atual}'
+
+    def clean(self):
+        super().clean()
+        if self.lote_id and (
+            self.numero_atual < self.lote.numero_inicial or
+            self.numero_atual > self.lote.numero_final
+        ):
+            raise ValidationError(
+                f'O número atual {self.numero_atual} está fora da faixa do lote '
+                f'({self.lote.numero_inicial} até {self.lote.numero_final}).'
+            )
+
+class MovimentacaoTag(models.Model):
     TIPOS = [
-        ('ENVIO', 'Envio'),
-        ('RETORNO', 'Retorno'),
+        ('UTILIZACAO', 'Utilização em inventário'),
         ('PERDA', 'Perda'),
+        ('AJUSTE', 'Ajuste'),
     ]
 
     inventario = models.ForeignKey(Inventario, on_delete=models.CASCADE)

@@ -1,0 +1,416 @@
+{% extends "estoque/base.html" %}
+{% load i18n static %}
+
+{% block title %}Retorno do Checklist #{{ checklist.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .return-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .return-header h1 {
+        margin: 0;
+        color: #1e3c72;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .badge-aberto { background: #ffc107; color: #212529; }
+    .badge-execucao { background: #17a2b8; color: #fff; }
+    .badge-finalizado { background: #28a745; color: #fff; }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .summary-item {
+        border: 1px solid #d7e0ea;
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 10px 12px;
+    }
+
+    .summary-item strong {
+        display: block;
+        color: #1e3c72;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .return-section {
+        border: 1px solid #d7e0ea;
+        border-radius: 8px;
+        background: #fff;
+        margin-bottom: 18px;
+        overflow: hidden;
+    }
+
+    .return-section h4 {
+        margin: 0;
+        padding: 12px 16px;
+        background: #eef3f8;
+        color: #1e3c72;
+        font-size: 17px;
+        font-weight: 700;
+        border-bottom: 1px solid #d7e0ea;
+    }
+
+    .return-section .section-body {
+        padding: 14px 16px;
+    }
+
+    .table th {
+        background: #1e3c72;
+        color: #fff;
+        font-size: 12px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .number-input {
+        min-width: 110px;
+        text-align: center;
+    }
+
+    .usage-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 70px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e8f4ff;
+        color: #1e3c72;
+        font-weight: 700;
+    }
+
+    .actions-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 0;
+        background: rgba(255,255,255,.94);
+        border-top: 1px solid #e1e7ef;
+    }
+
+    @media (max-width: 992px) {
+        .return-header,
+        .actions-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, minmax(140px, 1fr));
+        }
+    }
+
+    @media (max-width: 576px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="return-header">
+        <div>
+            <h1><i class="bi bi-arrow-return-left"></i> Retorno do Checklist #{{ checklist.id }}</h1>
+            <span class="badge-status
+                {% if checklist.status == 'ABERTO' %}badge-aberto
+                {% elif checklist.status == 'EM_EXECUCAO' %}badge-execucao
+                {% elif checklist.status == 'FINALIZADO' %}badge-finalizado{% endif %}">
+                {{ checklist.get_status_display }}
+            </span>
+        </div>
+        <a href="{% url 'insumos:lista_checklists' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="summary-grid">
+        <div class="summary-item">
+            <strong>Cliente</strong>
+            {{ checklist.inventario.cliente.sigla }} - Loja {{ checklist.inventario.loja }}
+        </div>
+        <div class="summary-item">
+            <strong>Base</strong>
+            {{ checklist.inventario.base.nome }}
+        </div>
+        <div class="summary-item">
+            <strong>Inventario</strong>
+            {{ checklist.inventario.data_inicio|date:"d/m/Y" }}
+        </div>
+        <div class="summary-item">
+            <strong>Tags usadas</strong>
+            <span id="totalTagsUsadas">{{ total_tags_utilizadas }}</span>
+        </div>
+    </div>
+
+    <form method="POST" id="retornoChecklistForm">
+        {% csrf_token %}
+
+        <div class="return-section">
+            <h4><i class="bi bi-box"></i> Insumos</h4>
+            <div class="section-body">
+                {% if itens %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Enviado</th>
+                                <th>Utilizado</th>
+                                <th>Retornado</th>
+                                <th>Perdido</th>
+                                <th>Conferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens %}
+                            <tr data-insumo-row data-enviado="{{ item.quantidade_enviada }}">
+                                <td>
+                                    <strong>{{ item.insumo.descricao }}</strong>
+                                    <small class="text-muted d-block">{{ item.insumo.unidade_medida }}</small>
+                                </td>
+                                <td>{{ item.quantidade_enviada }}</td>
+                                <td>
+                                    <input type="number" name="utilizada_{{ item.id }}"
+                                           value="{{ item.quantidade_utilizada|default_if_none:0 }}"
+                                           step="0.01" min="0" class="form-control number-input"
+                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <input type="number" name="retornada_{{ item.id }}"
+                                           value="{{ item.quantidade_retornada|default_if_none:0 }}"
+                                           step="0.01" min="0" class="form-control number-input"
+                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <input type="number" name="perdida_{{ item.id }}"
+                                           value="{{ item.quantidade_perdida|default_if_none:0 }}"
+                                           step="0.01" min="0" class="form-control number-input"
+                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <span class="usage-pill" data-insumo-status>Pendente</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted mb-0">Nenhum insumo enviado neste checklist.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="return-section">
+            <h4><i class="bi bi-pc-display"></i> Equipamentos</h4>
+            <div class="section-body">
+                {% if equipamentos %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Equipamento</th>
+                                <th>Patrimonio</th>
+                                <th>Serie</th>
+                                <th>Retornou</th>
+                                <th>Data retorno</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in equipamentos %}
+                            <tr>
+                                <td>{{ eq.equipamento.produto.descricao }}</td>
+                                <td>{{ eq.equipamento.patrimonio }}</td>
+                                <td>{{ eq.equipamento.numero_serie }}</td>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="equip_retorno_{{ eq.id }}"
+                                               id="equip_retorno_{{ eq.id }}"
+                                               value="1"
+                                               {% if eq.data_retorno %}checked{% endif %}
+                                               {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                        <label class="form-check-label" for="equip_retorno_{{ eq.id }}">
+                                            Confirmar
+                                        </label>
+                                    </div>
+                                </td>
+                                <td>{{ eq.data_retorno|date:"d/m/Y H:i"|default:"Pendente" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted mb-0">Nenhum equipamento enviado neste checklist.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="return-section">
+            <h4><i class="bi bi-tags"></i> TAGs</h4>
+            <div class="section-body">
+                {% if tags %}
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Rolo</th>
+                                <th>Faixa do lote</th>
+                                <th>Numero que saiu</th>
+                                <th>Numero que voltou</th>
+                                <th>Utilizadas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tag in tags %}
+                            <tr data-tag-row data-inicial="{{ tag.numero_inicial_utilizado }}">
+                                <td>
+                                    {% if tag.rolo %}
+                                        #{{ tag.rolo.codigo }}
+                                    {% else %}
+                                        #{{ tag.lote.id }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ tag.lote.numero_inicial }} ate {{ tag.lote.numero_final }}</td>
+                                <td>{{ tag.numero_inicial_utilizado }}</td>
+                                <td>
+                                    <input type="number"
+                                           name="tag_final_item_{{ tag.id }}"
+                                           value="{{ tag.numero_final_utilizado|default_if_none:'' }}"
+                                           min="{{ tag.numero_inicial_utilizado }}"
+                                           max="{{ tag.lote.numero_final }}"
+                                           step="1"
+                                           class="form-control number-input"
+                                           data-tag-final
+                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <span class="usage-pill" data-tag-usage>{{ tag.quantidade_utilizada }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted mb-0">Nenhum lote de TAG enviado neste checklist.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="actions-bar">
+            {% if checklist.status != 'FINALIZADO' %}
+                <button type="submit" name="acao" value="salvar" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Salvar retorno
+                </button>
+                <button type="submit" name="acao" value="finalizar" class="btn btn-success"
+                        onclick="return confirm('Salvar o retorno e finalizar o checklist #{{ checklist.id }}?')">
+                    <i class="bi bi-check-circle"></i> Salvar e finalizar
+                </button>
+            {% else %}
+                <span class="text-success"><i class="bi bi-check-circle-fill"></i> Checklist finalizado</span>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function parseDecimal(value) {
+    if (!value) return 0;
+    return parseFloat(String(value).replace(',', '.')) || 0;
+}
+
+function atualizarConferenciaInsumos() {
+    document.querySelectorAll('[data-insumo-row]').forEach(row => {
+        const enviado = parseDecimal(row.dataset.enviado);
+        const inputs = row.querySelectorAll('input[type="number"]');
+        const total = Array.from(inputs).reduce((acc, input) => acc + parseDecimal(input.value), 0);
+        const status = row.querySelector('[data-insumo-status]');
+
+        if (Math.abs(total - enviado) < 0.0001) {
+            status.textContent = 'OK';
+            status.style.background = '#e8f8ed';
+            status.style.color = '#1f7a3a';
+        } else {
+            status.textContent = `${total} / ${enviado}`;
+            status.style.background = '#fff4d6';
+            status.style.color = '#8a6500';
+        }
+    });
+}
+
+function atualizarTagsUsadas() {
+    let total = 0;
+
+    document.querySelectorAll('[data-tag-row]').forEach(row => {
+        const inicial = parseInt(row.dataset.inicial || '0', 10);
+        const finalInput = row.querySelector('[data-tag-final]');
+        const final = parseInt(finalInput?.value || '0', 10);
+        const usage = row.querySelector('[data-tag-usage]');
+        const usadas = final >= inicial ? final - inicial : 0;
+
+        usage.textContent = usadas;
+        total += usadas;
+    });
+
+    const totalBox = document.getElementById('totalTagsUsadas');
+    if (totalBox) totalBox.textContent = total;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-insumo-row] input').forEach(input => {
+        input.addEventListener('input', atualizarConferenciaInsumos);
+    });
+
+    document.querySelectorAll('[data-tag-final]').forEach(input => {
+        input.addEventListener('input', atualizarTagsUsadas);
+    });
+
+    atualizarConferenciaInsumos();
+    atualizarTagsUsadas();
+});
+</script>
+{% endblock %}

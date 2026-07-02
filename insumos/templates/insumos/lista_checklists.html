@@ -1,0 +1,114 @@
+{% extends "estoque/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Checklists" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table th {
+        background: #1e3c72;
+        color: #fff;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    .badge-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    .badge-aberto { background: #ffc107; color: #212529; }
+    .badge-execucao { background: #17a2b8; color: #fff; }
+    .badge-finalizado { background: #28a745; color: #fff; }
+    .btn-finalizar {
+        background: #dc3545;
+        color: #fff;
+        border: none;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .btn-finalizar:hover {
+        background: #c82333;
+    }
+    .btn-finalizar:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">
+        <i class="bi bi-list-check"></i> Checklists
+        <small class="text-muted fs-6">({{ checklists|length }} registros)</small>
+    </h1>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Inventário</th>
+                    <th>Cliente</th>
+                    <th>Base</th>
+                    <th>Data Início</th>
+                    <th>Status</th>
+                    <th>Criado por</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in checklists %}
+                <tr>
+                    <td><strong>#{{ c.id }}</strong></td>
+                    <td>{{ c.inventario }}</td>
+                    <td>{{ c.inventario.cliente.sigla }}</td>
+                    <td>{{ c.inventario.base.nome }}</td>
+                    <td>{{ c.data_inicio|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="badge-status
+                            {% if c.status == 'ABERTO' %}badge-aberto
+                            {% elif c.status == 'EM_EXECUCAO' %}badge-execucao
+                            {% elif c.status == 'FINALIZADO' %}badge-finalizado{% endif %}">
+                            {{ c.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ c.criado_por.username }}</td>
+                    <td class="text-center">
+                        <!-- Botão Finalizar (só aparece se não estiver finalizado) -->
+                        {% if c.status != 'FINALIZADO' %}
+                            <form method="POST" action="{% url 'insumos:finalizar_checklist' c.id %}" style="display:none;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-finalizar"
+                                        onclick="return confirm('Tem certeza que deseja finalizar o checklist #{{ c.id }}?')">
+                                    <i class="bi bi-check-circle"></i> Finalizar
+                                </button>
+                            </form>
+                        {% else %}
+                            <span class="text-muted"><i class="bi bi-check-circle-fill text-success"></i> Finalizado</span>
+                        {% endif %}
+
+                        <!-- Botão Detalhes -->
+                        <a href="{% url 'insumos:checklist_detail' c.id %}" class="btn btn-sm btn-outline-info" title="Abrir retorno">
+                            <i class="bi bi-eye"></i> Retorno
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block"></i>
+                        Nenhum checklist encontrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

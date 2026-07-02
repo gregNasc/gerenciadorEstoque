@@ -21,7 +21,7 @@ from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
 from estoque.models import Equipamento
 from insumos.models import ChecklistDiario
-from insumos.models import LoteTag
+from insumos.models import LoteTag, RoloTag
 from django.utils import timezone
 from datetime import datetime, time
 from django.db import IntegrityError, transaction
@@ -4246,6 +4246,7 @@ def editar_equipamento(request, equipamento_id):
 
 @login_required
 def checklist_view(request):
+    # --- POST: Criar checklist ---
     if request.method == 'POST':
         try:
             inventario_id = request.POST.get('inventario')
@@ -4253,45 +4254,89 @@ def checklist_view(request):
                 messages.error(request, 'É necessário selecionar um inventário.')
                 return redirect('estoque:checklist')
 
-            inventario = get_object_or_404(Inventario.objects.select_related('base', 'cliente'), id=inventario_id)
+            inventario = get_object_or_404(
+                Inventario.objects.select_related('base', 'cliente'),
+                id=inventario_id
+            )
 
-            if (
-                not request.user.perfil.is_admin
-                and not request.user.perfil.regionais.filter(id=inventario.base_id).exists()
-            ):
-                messages.error(request, 'Você não tem acesso à base deste inventário.')
-                return redirect('estoque:checklist')
+            # Verifica permissão de acesso à base
+            if not request.user.perfil.is_admin:
+                regionais_ids = request.user.perfil.regionais_ids
+                if inventario.base_id not in regionais_ids:
+                    messages.error(request, 'Você não tem acesso à base deste inventário.')
+                    return redirect('estoque:checklist')
 
+            # Captura equipamentos selecionados
             categorias_equipamentos = ['router', 'coletor', 'notebook', 'impressora']
             equipamentos_ids = []
-
             for categoria in categorias_equipamentos:
                 equipamentos_ids.extend(request.POST.getlist(f'equipamentos_{categoria}'))
 
+            # Captura insumos enviados pela tabela carregada via JavaScript.
             insumos_payload = []
-            for insumo_id in request.POST.getlist('insumo_ids'):
-                quantidade = request.POST.get(f'insumo_{insumo_id}_enviada')
-                if quantidade:
-                    insumos_payload.append((insumo_id, quantidade))
+            for key, quantidade in request.POST.items():
+                match = re.match(r'^insumo_(\d+)_enviada$', key)
+                if match and quantidade and float(quantidade) > 0:
+                    insumos_payload.append((match.group(1), quantidade))
 
-            if not equipamentos_ids and not insumos_payload:
-                messages.error(request, 'Selecione ao menos um equipamento ou informe um insumo.')
+            # Captura lotes de TAG. Cada lote guarda o ponto inicial no envio;
+            # o ponto final utilizado será informado no retorno do checklist.
+            tags_payload = []
+            for rolo_id in request.POST.getlist('rolo_tag_ids'):
+                numero_inicial = request.POST.get(f'tag_inicial_rolo_{rolo_id}')
+                if numero_inicial:
+                    tags_payload.append((rolo_id, numero_inicial))
+
+            if not equipamentos_ids and not insumos_payload and not tags_payload:
+                messages.error(request, 'Selecione ao menos um equipamento, informe um insumo ou adicione um lote de TAG.')
                 return redirect('estoque:checklist')
 
             with transaction.atomic():
-                checklist = ChecklistService.criar(inventario=inventario, usuario=request.user, observacao=request.POST.get('observacao', ''),)
+                checklist = ChecklistService.criar(
+                    inventario=inventario,
+                    usuario=request.user,
+                    observacao=request.POST.get('observacao', '')
+                )
 
-                equipamentos = (Equipamento.objects.select_related('regional', 'produto').filter(id__in=equipamentos_ids))
+                if equipamentos_ids:
+                    equipamentos = Equipamento.objects.select_related('regional', 'produto').filter(id__in=equipamentos_ids)
+                    for equipamento in equipamentos:
+                        ChecklistService.adicionar_equipamento(
+                            checklist=checklist,
+                            equipamento=equipamento,
+                            usuario=request.user
+                        )
 
-                for equipamento in equipamentos:
-                    ChecklistService.adicionar_equipamento(checklist=checklist, equipamento=equipamento, usuario=request.user,)
+                if insumos_payload:
+                    insumos_ids = [item[0] for item in insumos_payload]
+                    insumos_dict = {str(insumo.id): insumo for insumo in Insumo.objects.filter(id__in=insumos_ids)}
+                    for insumo_id, quantidade in insumos_payload:
+                        insumo = insumos_dict.get(insumo_id)
+                        if insumo:
+                            ChecklistService.registrar_envio_item(
+                                checklist=checklist,
+                                insumo=insumo,
+                                quantidade_enviada=quantidade,
+                                usuario=request.user
+                            )
 
-                insumos = {str(insumo.id): insumo
-                    for insumo in Insumo.objects.filter(id__in=[item[0] for item in insumos_payload])
-                }
+                if tags_payload:
+                    rolos_ids = [item[0] for item in tags_payload]
+                    rolos_dict = {
+                        str(rolo.id): rolo
+                        for rolo in RoloTag.objects.select_related('lote').filter(id__in=rolos_ids)
+                    }
+                    for rolo_id, numero_inicial in tags_payload:
+                        rolo = rolos_dict.get(rolo_id)
+                        if rolo:
+                            ChecklistService.adicionar_lote_tag(
+                                checklist=checklist,
+                                lote=rolo.lote,
+                                rolo=rolo,
+                                numero_inicial_utilizado=numero_inicial,
+                                usuario=request.user
+                            )
 
-                for insumo_id, quantidade in insumos_payload:
-                    ChecklistService.registrar_envio_item(checklist=checklist, insumo=insumos[insumo_id], quantidade_enviada=quantidade, usuario=request.user,)
                 checklist.status = 'EM_EXECUCAO'
                 checklist.save(update_fields=['status'])
 
@@ -4306,15 +4351,94 @@ def checklist_view(request):
             messages.error(request, f'Erro ao criar checklist: {str(e)}')
             return redirect('estoque:checklist')
 
+    # --- GET: Exibir formulário ---
     regionais_ids = request.user.perfil.regionais_ids
 
     if request.user.perfil.is_admin:
         equipamentos = Equipamento.objects.filter(status='ATIVO')
-        inventarios = Inventario.objects.filter(status='PLANEJADO', data_inicio=date.today())
+        inventarios = Inventario.objects.filter(
+            status='PLANEJADO',
+            data_inicio=date.today()
+        )
+        lotes_tags = RoloTag.objects.filter(status='DISPONIVEL', lote__ativo=True).select_related('lote', 'lote__base')
     else:
-        regionais_ids = request.user.perfil.regionais_ids
-        equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id__in=regionais_ids)
-        inventarios = Inventario.objects.filter(status='PLANEJADO', base__in=request.user.perfil.regionais.all(), data_inicio=date.today())
+        equipamentos = Equipamento.objects.filter(
+            status='ATIVO',
+            regional_id__in=regionais_ids
+        )
+        inventarios = Inventario.objects.filter(
+            status='PLANEJADO',
+            base__in=request.user.perfil.regionais.all(),
+            data_inicio=date.today()
+        )
+        lotes_tags = RoloTag.objects.filter(
+            status='DISPONIVEL',
+            lote__ativo=True,
+            lote__base_id__in=regionais_ids
+        ).select_related('lote', 'lote__base')
+
+    # ----- LISTA DE ITENS FIXOS DO CHECKLIST -----
+    ITENS_CHECKLIST = [
+        # DEPARTAMENTO PESSOAL (itens 1 a 26)
+        {"id": 1, "descricao": "Toner Impressora Laser", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 2, "descricao": "Marcador de Coleta - AZUL ESCURO", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 3, "descricao": "Marcador de Coleta - AZUL CLARO", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 4, "descricao": "Touca", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 5, "descricao": "Luva", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 6, "descricao": "Máscara", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 7, "descricao": "Grampeador", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 8, "descricao": "Durex", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 9, "descricao": "Papel Sulfite (Pacote)", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 10, "descricao": "Etiqueta Setor 0001", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 11, "descricao": "Etiqueta Setor 1000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 12, "descricao": "Etiqueta Setor 2000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 13, "descricao": "Etiqueta Setor 3000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 14, "descricao": "Etiqueta Setor 3500 - Peso Variável", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 15, "descricao": "Etiqueta Setor 4000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 16, "descricao": "Etiqueta Setor 5000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 17, "descricao": "Etiqueta Setor 6000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 18, "descricao": "Etiqueta Setor 7000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 19, "descricao": "Etiqueta Setor 8000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 20, "descricao": "Etiqueta Setor 9000", "grupo": "DEPARTAMENTO PESSOAL", "tag": True},
+        {"id": 21, "descricao": "Marcador Coletado", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 22, "descricao": "Calça Térmica", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 23, "descricao": "Capa Térmica", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 24, "descricao": "Capacete", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 25, "descricao": "Botas do 33/48", "grupo": "DEPARTAMENTO PESSOAL"},
+        {"id": 26, "descricao": "Cinto de segurança", "grupo": "DEPARTAMENTO PESSOAL"},
+        # FIOS E CABOS (itens 27 a 40)
+        {"id": 27, "descricao": "Access Point + Fonte", "grupo": "FIOS E CABOS"},
+        {"id": 28, "descricao": "Router Hap + Fonte", "grupo": "FIOS E CABOS", "equipamento": True},
+        {"id": 29, "descricao": "Switch Poe Pro", "grupo": "FIOS E CABOS"},
+        {"id": 30, "descricao": "Cabo Power", "grupo": "FIOS E CABOS"},
+        {"id": 31, "descricao": "Cabo USB (Impressora)", "grupo": "FIOS E CABOS"},
+        {"id": 32, "descricao": "Filtro de Linha", "grupo": "FIOS E CABOS"},
+        {"id": 33, "descricao": "Transformador", "grupo": "FIOS E CABOS"},
+        {"id": 34, "descricao": "Cabo Transformador", "grupo": "FIOS E CABOS"},
+        {"id": 35, "descricao": "Teste Voltagem", "grupo": "FIOS E CABOS"},
+        {"id": 36, "descricao": "Adaptador", "grupo": "FIOS E CABOS"},
+        {"id": 37, "descricao": "Extensão", "grupo": "FIOS E CABOS"},
+        {"id": 38, "descricao": "Cabo de Rede (RJ45)", "grupo": "FIOS E CABOS"},
+        {"id": 39, "descricao": "Extensor de Rede / Carrinho", "grupo": "FIOS E CABOS"},
+        {"id": 40, "descricao": "Cintos Coletor", "grupo": "FIOS E CABOS"},
+        # COLETOR DE DADOS (itens 41 a 56)
+        {"id": 41, "descricao": "Coletor de Dados", "grupo": "COLETOR DE DADOS", "equipamento": True},
+        {"id": 42, "descricao": "Carregador de Bateria", "grupo": "COLETOR DE DADOS"},
+        {"id": 43, "descricao": "Fonte Carregador de Bateria", "grupo": "COLETOR DE DADOS"},
+        {"id": 44, "descricao": "Bateria Coletor", "grupo": "COLETOR DE DADOS"},
+        {"id": 45, "descricao": "Carregador Tipo C (Coletor Android)", "grupo": "COLETOR DE DADOS"},
+        {"id": 46, "descricao": "Cabo USB (Berço)", "grupo": "COLETOR DE DADOS"},
+        {"id": 47, "descricao": "Berço + Cabo USB", "grupo": "COLETOR DE DADOS"},
+        {"id": 48, "descricao": "Mouse", "grupo": "COLETOR DE DADOS"},
+        {"id": 49, "descricao": "Placa 3G", "grupo": "COLETOR DE DADOS"},
+        {"id": 50, "descricao": "Tablet", "grupo": "COLETOR DE DADOS"},
+        {"id": 51, "descricao": "Notebook", "grupo": "COLETOR DE DADOS", "equipamento": True},
+        {"id": 52, "descricao": "Fonte Notebook", "grupo": "COLETOR DE DADOS"},
+        {"id": 53, "descricao": "Impressora Laser", "grupo": "COLETOR DE DADOS", "equipamento": True},
+        {"id": 54, "descricao": "Escada", "grupo": "COLETOR DE DADOS"},
+        {"id": 55, "descricao": "Balança", "grupo": "COLETOR DE DADOS"},
+        {"id": 56, "descricao": "Fonte Balança", "grupo": "COLETOR DE DADOS"},
+    ]
 
     context = {
         'coletores': equipamentos.filter(produto__categoria='Coletores'),
@@ -4322,7 +4446,9 @@ def checklist_view(request):
         'notebooks': equipamentos.filter(produto__categoria='Notebooks'),
         'routers': equipamentos.filter(produto__categoria='Routers'),
         'inventarios': inventarios,
-        'insumos': Insumo.objects.filter(ativo=True).select_related('categoria').order_by('categoria__nome', 'descricao'),
+        'insumos': [],  # será preenchido via JavaScript
+        'lotes_tags': lotes_tags,
+        'itens_checklist': ITENS_CHECKLIST,  # <--- ADICIONADO
         'url_name': 'checklist',
     }
     return render(request, 'estoque/checklist.html', context)
