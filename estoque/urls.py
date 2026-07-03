@@ -30,7 +30,7 @@ urlpatterns = [
 
 
     # ---------------- USUÁRIOS ----------------
-    path('usuarios/cadastro/', views.cadastrar_usuario, name='cadastrar_usuario'),
+    path('usuarios/cadastro/', views.gerenciar_usuarios, name='cadastrar_usuario'),
 
 
     # ---------------- SICK ----------------

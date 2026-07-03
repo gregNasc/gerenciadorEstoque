@@ -1,185 +1,314 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
-{% load static %}
 
-{% block title %}{% trans "Cadastrar Usuário - Gerenciador de Estoque" %}{% endblock %}
+{% block title %}{% trans "Usuarios - Gerenciador de Estoque" %}{% endblock %}
 
 {% block content %}
-{% if request.user.is_authenticated %}
-<div class="container-fluid px-4 py-3">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-7">
-
-            <!-- Cabeçalho -->
-            <div class="border-bottom pb-3 mb-4">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-person-plus fs-3 text-secondary"></i>
-                    <div>
-                        <h1 class="h3 fw-semibold mb-0">{% trans "Cadastrar Usuário" %}</h1>
-                        <p class="text-secondary small mt-1">{% trans "Preencha os dados abaixo para criar um novo usuário" %}</p>
-                    </div>
-                </div>
+<div class="container-fluid px-4 py-3 usuarios-page">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom pb-3 mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-people fs-3 text-secondary"></i>
+            <div>
+                <h1 class="h3 fw-semibold mb-0">{% trans "Usuarios" %}</h1>
+                <p class="text-secondary small mb-0">{% trans "Cadastro, acesso por empresa/base e contatos para comunicados." %}</p>
             </div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" id="btnNovoUsuario">
+            <i class="bi bi-plus-circle"></i>
+            {% trans "Novo usuario" %}
+        </button>
+    </div>
 
-            <!-- Card do Formulário -->
+    <div class="row g-4 align-items-start">
+        <div class="col-xl-5">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                        <div>
+                            <h2 class="h5 fw-semibold mb-1" id="formTitulo">{% trans "Cadastrar usuario" %}</h2>
+                            <p class="text-secondary small mb-0" id="formSubtitulo">{% trans "Preencha o essencial para liberar o acesso." %}</p>
+                        </div>
+                        <span class="badge text-bg-light border" id="modoBadge">{% trans "Novo" %}</span>
+                    </div>
 
-                    <form method="post" id="form-cadastro">
+                    <form method="post" id="formUsuario" novalidate>
                         {% csrf_token %}
+                        <input type="hidden" name="usuario_id" id="usuario_id">
 
-                        <!-- Dados de Acesso -->
-                        <div class="mb-4 pb-2 border-bottom">
-                            <h6 class="fw-semibold mb-3">
-                                <i class="bi bi-key me-2 text-secondary"></i>{% trans "Dados de Acesso" %}
-                            </h6>
-
-                            <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label for="username" class="form-label small text-secondary fw-semibold">
-                                        {% trans "Usuário" %} <span class="text-danger">*</span>
-                                    </label>
-                                    <input type="text"
-                                           name="username"
-                                           id="username"
-                                           class="form-control form-control-sm bg-white"
-                                           required
-                                           autofocus>
-                                    <small class="text-secondary">{% trans "Nome único para login" %}</small>
-                                </div>
-
-                                <div class="col-md-12">
-                                    <label for="password" class="form-label small text-secondary fw-semibold">
-                                        Senha <span class="text-danger">*</span>
-                                    </label>
-                                    <input type="password"
-                                           name="password"
-                                           id="password"
-                                           class="form-control form-control-sm bg-white"
-                                           required
-                                           minlength="6">
-                                    <small class="text-secondary">{% trans "Mínimo de 6 caracteres" %}</small>
-                                </div>
+                        <section class="form-section">
+                            <div class="section-title">
+                                <i class="bi bi-key"></i>
+                                <span>{% trans "Acesso" %}</span>
                             </div>
-                        </div>
-
-                        <!-- Dados Pessoais -->
-                        <div class="mb-4 pb-2 border-bottom">
-                            <h6 class="fw-semibold mb-3">
-                                <i class="bi bi-person me-2 text-secondary"></i>{% trans "Dados Pessoais" %}
-                            </h6>
 
                             <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label for="first_name" class="form-label small text-secondary fw-semibold">
-                                        {% trans "Nome completo" %}
-                                    </label>
-                                    <input type="text"
-                                           name="first_name"
-                                           id="first_name"
-                                           class="form-control form-control-sm bg-white">
+                                <div class="col-md-7">
+                                    <label for="username" class="form-label">{% trans "Usuario" %} <span class="text-danger">*</span></label>
+                                    <input type="text" name="username" id="username" class="form-control form-control-sm" required autocomplete="username">
                                 </div>
-
-                                <div class="col-md-12">
-                                    <label for="email" class="form-label small text-secondary fw-semibold">
-                                        {% trans "E-mail" %}
-                                    </label>
-                                    <input type="email"
-                                           name="email"
-                                           id="email"
-                                           class="form-control form-control-sm bg-white">
-                                    <small class="text-secondary">{% trans "Será usado para recuperação de senha" %}</small>
+                                <div class="col-md-5">
+                                    <label for="password" class="form-label">{% trans "Senha" %} <span class="text-danger password-required">*</span></label>
+                                    <input type="password" name="password" id="password" class="form-control form-control-sm" minlength="6" autocomplete="new-password" required>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Perfil de Acesso -->
-                        <div class="mb-4 pb-2 border-bottom">
-                            <h6 class="fw-semibold mb-3">
-                                <i class="bi bi-shield-lock me-2 text-secondary"></i>{% trans "Perfil de Acesso" %}
-                            </h6>
-
-                            <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label for="role" class="form-label small text-secondary fw-semibold">
-                                        Perfil <span class="text-danger">*</span>
-                                    </label>
-                                    <select name="role" id="role" class="form-select form-select-sm bg-white" required>
-                                        <option value="operador">{% trans "👤 Operador - Visualização e marcação de SICK" %}</option>
-                                        <option value="gestor">{% trans "📊 Gestor - Gerenciamento de equipamentos" %}</option>
-                                        {% if request.user.perfil.role == 'admin' %}
-                                            <option value="admin">{% trans "👑 Administrador - Acesso total ao sistema" %}</option>
-                                        {% endif %}
+                                <div class="col-md-7">
+                                    <label for="role" class="form-label">{% trans "Tipo de acesso" %} <span class="text-danger">*</span></label>
+                                    <select name="perfil_acesso" id="role" class="form-select form-select-sm" required>
+                                        {% for perfil in perfis_acesso %}
+                                            <option value="{{ perfil.value }}" data-global="{% if perfil.global %}1{% else %}0{% endif %}">{{ perfil.label }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Regionais -->
-                        <div class="mb-4" id="regional-group">
-                            <h6 class="fw-semibold mb-3">
-                                <i class="bi bi-geo-alt me-2 text-secondary"></i>{% trans "Regionais" %}
-                            </h6>
-
-                            <!-- Ações rápidas -->
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-light" id="btnSelecionarTodas">
-                                        {% trans "Selecionar todas" %}
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-light" id="btnLimpar">
-                                        {% trans "Limpar" %}
-                                    </button>
+                                <div class="col-md-5 d-flex align-items-end">
+                                    <div class="form-check form-switch mb-1">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="is_active" checked>
+                                        <label class="form-check-label small" for="is_active">{% trans "Usuario ativo" %}</label>
+                                    </div>
                                 </div>
+                            </div>
+                        </section>
 
-                                <input type="text"
-                                       id="searchRegional"
-                                       class="form-control form-control-sm w-auto"
-                                       placeholder="🔍 Buscar">
+                        <section class="form-section">
+                            <div class="section-title">
+                                <i class="bi bi-person"></i>
+                                <span>{% trans "Identificacao" %}</span>
                             </div>
 
-                            <!-- Grid -->
-                            <div class="regionais-grid" id="regionaisContainer">
-                                {% for r in regionais %}
-                                <label class="regional-card" data-nome="{{ r.nome|lower }}">
-                                    <input type="checkbox" name="regionais" value="{{ r.id }}">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="first_name" class="form-label">{% trans "Nome" %}</label>
+                                    <input type="text" name="first_name" id="first_name" class="form-control form-control-sm" autocomplete="given-name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="last_name" class="form-label">{% trans "Sobrenome" %}</label>
+                                    <input type="text" name="last_name" id="last_name" class="form-control form-control-sm" autocomplete="family-name">
+                                </div>
+                                <div class="col-12">
+                                    <label for="email" class="form-label">{% trans "E-mail" %}</label>
+                                    <input type="email" name="email" id="email" class="form-control form-control-sm" autocomplete="email">
+                                </div>
+                            </div>
+                        </section>
 
-                                    <div class="regional-content">
-                                        <div class="regional-header">
-                                            <span class="regional-nome">{{ r.nome }}</span>
-                                            <i class="bi bi-check-circle-fill check-icon"></i>
-                                        </div>
+                        <section class="form-section">
+                            <div class="section-title">
+                                <i class="bi bi-telephone"></i>
+                                <span>{% trans "Comunicacao" %}</span>
+                            </div>
 
-                                        <div class="regional-empresa">
-                                            {{ r.empresa.nome }}
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="telefone" class="form-label">{% trans "Telefone principal" %}</label>
+                                    <input type="tel" name="telefone" id="telefone" class="form-control form-control-sm" placeholder="(14) 99999-9999" autocomplete="tel">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="telefone_alternativo" class="form-label">{% trans "Telefone alternativo" %}</label>
+                                    <input type="tel" name="telefone_alternativo" id="telefone_alternativo" class="form-control form-control-sm" placeholder="(14) 99999-9999">
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="form-section mb-0" id="escopoAcesso">
+                            <div class="section-title">
+                                <i class="bi bi-building"></i>
+                                <span>{% trans "Empresa e bases operacionais" %}</span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="empresa" class="form-label">{% trans "Empresa" %} <span class="text-danger">*</span></label>
+                                    <select name="empresa" id="empresa" class="form-select form-select-sm">
+                                        <option value="">{% trans "Selecione a empresa" %}</option>
+                                        {% for empresa in empresas %}
+                                            <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="buscaBase" class="form-label mb-0">{% trans "Bases" %} <span class="text-danger">*</span></label>
+                                        <div class="d-flex align-items-center gap-2 base-actions">
+                                            <button type="button" class="btn btn-light btn-sm" id="btnBasesVisiveis" title="{% trans 'Selecionar bases visiveis' %}">
+                                                <i class="bi bi-check2-square"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-light btn-sm" id="btnLimparBases" title="{% trans 'Limpar bases' %}">
+                                                <i class="bi bi-eraser"></i>
+                                            </button>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                                <input type="search" id="buscaBase" class="form-control" placeholder="{% trans "Buscar base" %}">
+                                            </div>
                                         </div>
                                     </div>
-                                </label>
-                                {% endfor %}
+
+                                    <div class="bases-grid" id="basesGrid">
+                                        {% for base in regionais %}
+                                            <label class="base-option access-base-option"
+                                                   data-empresa="{{ base.empresa_id }}"
+                                                   data-nome="{{ base.nome|lower }}"
+                                                   data-empresa-nome="{{ base.empresa.nome|lower }}">
+                                                <input type="checkbox" name="regionais" value="{{ base.id }}">
+                                                <span>
+                                                    <strong>{{ base.nome }}</strong>
+                                                    <small>{{ base.empresa.nome }}</small>
+                                                </span>
+                                                <i class="bi bi-check-circle-fill"></i>
+                                            </label>
+                                        {% empty %}
+                                            <div class="text-secondary small py-3">{% trans "Nenhuma base cadastrada." %}</div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="small text-secondary mt-2" id="basesResumo">{% trans "Selecione uma empresa para filtrar as bases." %}</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                        <label for="buscaBaseChecklist" class="form-label mb-0">{% trans "Bases do checklist" %}</label>
+                                        <div class="d-flex align-items-center gap-2 base-actions">
+                                            <button type="button" class="btn btn-light btn-sm" id="btnCopiarBasesAcesso" title="{% trans 'Copiar bases de acesso' %}">
+                                                <i class="bi bi-copy"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-light btn-sm" id="btnLimparBasesChecklist" title="{% trans 'Limpar bases do checklist' %}">
+                                                <i class="bi bi-eraser"></i>
+                                            </button>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                                <input type="search" id="buscaBaseChecklist" class="form-control" placeholder="{% trans "Buscar base" %}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bases-grid bases-grid-compact" id="basesChecklistGrid">
+                                        {% for base in regionais %}
+                                            <label class="base-option checklist-base-option"
+                                                   data-empresa="{{ base.empresa_id }}"
+                                                   data-nome="{{ base.nome|lower }}"
+                                                   data-empresa-nome="{{ base.empresa.nome|lower }}">
+                                                <input type="checkbox" name="bases_checklist" value="{{ base.id }}">
+                                                <span>
+                                                    <strong>{{ base.nome }}</strong>
+                                                    <small>{{ base.empresa.nome }}</small>
+                                                </span>
+                                                <i class="bi bi-check-circle-fill"></i>
+                                            </label>
+                                        {% empty %}
+                                            <div class="text-secondary small py-3">{% trans "Nenhuma base cadastrada." %}</div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="small text-secondary mt-2" id="basesChecklistResumo">
+                                        {% trans "Opcional. Se vazio, o checklist usa todas as bases de acesso." %}
+                                    </div>
+                                </div>
                             </div>
+                        </section>
 
-                            <small class="text-secondary d-block mt-2">
-                                <i class="bi bi-info-circle"></i>
-                                {% trans "Selecione uma ou mais regionais" %}
-                            </small>
-                        </div>
-
-                        <!-- Botão Submit -->
-                        <div class="mt-4">
-                            <button type="submit"
-                                    id="btn-submit"
-                                    class="btn btn-secondary w-100 d-flex align-items-center justify-content-center gap-2">
-                                <span id="btn-text">{% trans "Criar Usuário" %}</span>
-                                <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        <div class="d-flex flex-wrap gap-2 mt-4">
+                            <button type="submit" id="btnSubmit" class="btn btn-secondary btn-sm d-flex align-items-center gap-2">
+                                <i class="bi bi-check2-circle"></i>
+                                <span id="btnSubmitTexto">{% trans "Salvar usuario" %}</span>
+                            </button>
+                            <button type="button" id="btnCancelarEdicao" class="btn btn-outline-secondary btn-sm d-none">
+                                {% trans "Cancelar edicao" %}
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
 
-                    <!-- Link Voltar -->
-                    <div class="mt-3 text-center">
-                        <a href="{% url 'estoque:index' %}" class="text-decoration-none small text-secondary">
-                            <i class="bi bi-arrow-left"></i> {% trans "Voltar ao Dashboard" %}
-                        </a>
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                        <div>
+                            <h2 class="h5 fw-semibold mb-1">{% trans "Usuarios cadastrados" %}</h2>
+                            <p class="text-secondary small mb-0">{% trans "Use a busca e clique em editar para atualizar acesso ou contatos." %}</p>
+                        </div>
+                        <div class="input-group input-group-sm usuarios-search">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="search" id="buscaUsuario" class="form-control" placeholder="{% trans "Buscar usuario" %}">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive usuarios-table-wrap">
+                        <table class="table table-sm align-middle mb-0 usuarios-table">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Usuario" %}</th>
+                                    <th>{% trans "Empresa" %}</th>
+                                    <th>{% trans "Acesso" %}</th>
+                                    <th>{% trans "Telefone" %}</th>
+                                    <th class="text-end">{% trans "Acao" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for usuario in usuarios %}
+                                    <tr class="usuario-row"
+                                        data-search="{{ usuario.username|lower }} {{ usuario.first_name|lower }} {{ usuario.last_name|lower }} {{ usuario.email|lower }} {{ usuario.perfil.empresa.nome|lower }}"
+                                        data-id="{{ usuario.id }}"
+                                        data-username="{{ usuario.username }}"
+                                        data-first-name="{{ usuario.first_name }}"
+                                        data-last-name="{{ usuario.last_name }}"
+                                        data-email="{{ usuario.email }}"
+                                        data-perfil-acesso="{% if usuario.perfil.role == 'admin' %}admin{% elif usuario.perfil.is_planejamento_insumos %}planejamento{% elif usuario.perfil.is_compras_insumos %}compras{% elif usuario.perfil.is_financeiro_insumos %}financeiro{% elif usuario.perfil.is_executivo_insumos %}executivo{% elif usuario.perfil.role == 'gestor' %}gestor{% else %}operador{% endif %}"
+                                        data-empresa="{{ usuario.perfil.empresa_id|default:'' }}"
+                                        data-telefone="{{ usuario.perfil.telefone }}"
+                                        data-telefone-alternativo="{{ usuario.perfil.telefone_alternativo }}"
+                                        data-active="{% if usuario.is_active %}1{% else %}0{% endif %}"
+                                        data-regionais="{% for base in usuario.perfil.regionais.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                                        data-bases-checklist="{% for base in usuario.perfil.bases_checklist.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                        <td>
+                                            <div class="fw-semibold">{{ usuario.get_full_name|default:usuario.username }}</div>
+                                            <div class="text-secondary small">{{ usuario.username }}{% if usuario.email %} · {{ usuario.email }}{% endif %}</div>
+                                        </td>
+                                        <td>
+                                            {% if usuario.perfil.pode_ver_empresas_globais %}
+                                                <span class="text-secondary small">{% trans "Todas" %}</span>
+                                            {% elif usuario.perfil.empresa %}
+                                                {{ usuario.perfil.empresa.nome }}
+                                            {% else %}
+                                                <span class="text-danger small">{% trans "Sem empresa" %}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if usuario.perfil.role == 'admin' %}
+                                                <span class="badge text-bg-light border">{% trans "Administrador" %}</span>
+                                            {% elif usuario.perfil.is_planejamento_insumos %}
+                                                <span class="badge text-bg-light border">{% trans "Planejamento" %}</span>
+                                            {% elif usuario.perfil.is_compras_insumos %}
+                                                <span class="badge text-bg-light border">{% trans "Compras" %}</span>
+                                            {% elif usuario.perfil.is_financeiro_insumos %}
+                                                <span class="badge text-bg-light border">{% trans "Financeiro" %}</span>
+                                            {% elif usuario.perfil.is_executivo_insumos %}
+                                                <span class="badge text-bg-light border">{% trans "Executivo" %}</span>
+                                            {% else %}
+                                                <span class="badge text-bg-light border">{{ usuario.perfil.get_role_display|default:"Sem perfil" }}</span>
+                                            {% endif %}
+                                            {% if not usuario.is_active %}
+                                                <span class="badge text-bg-warning border">{% trans "Inativo" %}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if usuario.perfil.telefone %}
+                                                <div>{{ usuario.perfil.telefone }}</div>
+                                            {% else %}
+                                                <span class="text-secondary small">{% trans "Nao informado" %}</span>
+                                            {% endif %}
+                                            {% if usuario.perfil.telefone_alternativo %}
+                                                <div class="text-secondary small">{{ usuario.perfil.telefone_alternativo }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-light btn-sm btn-editar" title="{% trans 'Editar usuario' %}">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-secondary py-4">{% trans "Nenhum usuario cadastrado." %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -189,225 +318,402 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('formUsuario');
+    const usuarioId = document.getElementById('usuario_id');
+    const role = document.getElementById('role');
+    const empresa = document.getElementById('empresa');
+    const senha = document.getElementById('password');
+    const active = document.getElementById('is_active');
+    const escopo = document.getElementById('escopoAcesso');
+    const buscaBase = document.getElementById('buscaBase');
+    const buscaBaseChecklist = document.getElementById('buscaBaseChecklist');
+    const bases = Array.from(document.querySelectorAll('.access-base-option'));
+    const basesChecklist = Array.from(document.querySelectorAll('.checklist-base-option'));
+    const checkboxes = Array.from(document.querySelectorAll('input[name="regionais"]'));
+    const checkboxesChecklist = Array.from(document.querySelectorAll('input[name="bases_checklist"]'));
+    const basesResumo = document.getElementById('basesResumo');
+    const basesChecklistResumo = document.getElementById('basesChecklistResumo');
+    const btnNovo = document.getElementById('btnNovoUsuario');
+    const btnCancelar = document.getElementById('btnCancelarEdicao');
+    const formTitulo = document.getElementById('formTitulo');
+    const formSubtitulo = document.getElementById('formSubtitulo');
+    const modoBadge = document.getElementById('modoBadge');
+    const btnSubmitTexto = document.getElementById('btnSubmitTexto');
+    const buscaUsuario = document.getElementById('buscaUsuario');
 
-    // ===============================
-    // ELEMENTOS
-    // ===============================
-    const form = document.getElementById('form-cadastro');
-    const selectRole = document.getElementById('role');
-    const regionalGroup = document.getElementById('regional-group');
+    function visibleBaseOptions() {
+        return bases.filter(base => base.style.display !== 'none');
+    }
 
-    const btnSubmit = document.getElementById('btn-submit');
-    const btnText = document.getElementById('btn-text');
-    const btnSpinner = document.getElementById('btn-spinner');
+    function visibleChecklistOptions() {
+        return basesChecklist.filter(base => base.style.display !== 'none');
+    }
 
-    const searchInput = document.getElementById('searchRegional');
-    const cards = document.querySelectorAll('.regional-card');
-    const checkboxes = document.querySelectorAll('input[name="regionais"]');
+    function isPerfilGlobal() {
+        return role.selectedOptions[0]?.dataset.global === '1';
+    }
 
-    const passwordInput = document.getElementById('password');
+    function updateBasesResumo() {
+        const selecionadas = checkboxes.filter(cb => cb.checked).length;
+        const visiveis = visibleBaseOptions().length;
 
-
-    // ===============================
-    // CONTROLE DE VISIBILIDADE (ROLE)
-    // ===============================
-    function toggleRegionalByRole() {
-        const role = selectRole?.value;
-
-        if (role === 'admin') {
-            regionalGroup.style.display = 'none';
-        } else {
-            regionalGroup.style.display = 'block';
+        if (isPerfilGlobal()) {
+            basesResumo.textContent = 'Perfil com visao geral de todas as empresas.';
+            return;
         }
+
+        if (!empresa.value) {
+            basesResumo.textContent = 'Selecione uma empresa para filtrar as bases.';
+            return;
+        }
+
+        basesResumo.textContent = `${selecionadas} selecionada(s) de ${visiveis} base(s) visiveis.`;
     }
 
-    if (selectRole) {
-        selectRole.addEventListener('change', toggleRegionalByRole);
-        toggleRegionalByRole();
+    function updateBasesChecklistResumo() {
+        const selecionadas = checkboxesChecklist.filter(cb => cb.checked).length;
+
+        if (isPerfilGlobal()) {
+            basesChecklistResumo.textContent = 'Perfil global sem restricao de base operacional.';
+            return;
+        }
+
+        basesChecklistResumo.textContent = selecionadas
+            ? `${selecionadas} base(s) usada(s) para criar checklist.`
+            : 'Opcional. Se vazio, o checklist usa todas as bases de acesso.';
     }
 
+    function filterBases(clearHidden) {
+        const empresaId = empresa.value;
+        const termo = (buscaBase.value || '').toLowerCase().trim();
 
-    // ===============================
-    // VALIDAÇÃO DE SENHA
-    // ===============================
-    if (passwordInput) {
-        passwordInput.addEventListener('input', function () {
-            if (this.value.length > 0 && this.value.length < 6) {
-                this.classList.add('is-invalid');
-            } else {
-                this.classList.remove('is-invalid');
+        bases.forEach(base => {
+            const matchEmpresa = !empresaId || base.dataset.empresa === empresaId;
+            const matchTermo = !termo || base.dataset.nome.includes(termo) || base.dataset.empresaNome.includes(termo);
+            const show = matchEmpresa && matchTermo;
+            base.style.display = show ? '' : 'none';
+
+            if (clearHidden && !show) {
+                const checkbox = base.querySelector('input[type="checkbox"]');
+                checkbox.checked = false;
             }
         });
+
+        updateBasesResumo();
     }
 
+    function filterChecklistBases(clearHidden) {
+        const empresaId = empresa.value;
+        const termo = (buscaBaseChecklist.value || '').toLowerCase().trim();
+        const regionaisSelecionadas = new Set(checkboxes.filter(cb => cb.checked).map(cb => cb.value));
 
-    // ===============================
-    // BUSCA DE REGIONAIS
-    // ===============================
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            const termo = this.value.toLowerCase();
+        basesChecklist.forEach(base => {
+            const checkbox = base.querySelector('input[type="checkbox"]');
+            const matchEmpresa = !empresaId || base.dataset.empresa === empresaId;
+            const matchTermo = !termo || base.dataset.nome.includes(termo) || base.dataset.empresaNome.includes(termo);
+            const matchAcesso = regionaisSelecionadas.size === 0 || regionaisSelecionadas.has(checkbox.value);
+            const show = matchEmpresa && matchTermo && matchAcesso;
+            base.style.display = show ? '' : 'none';
 
-            cards.forEach(card => {
-                const nome = card.dataset.nome || '';
-                card.style.display = nome.includes(termo) ? 'block' : 'none';
-            });
+            if (clearHidden && !show) {
+                checkbox.checked = false;
+            }
         });
+
+        updateBasesChecklistResumo();
     }
 
+    function toggleEscopo() {
+        const global = isPerfilGlobal();
+        escopo.classList.toggle('d-none', global);
+        empresa.required = !global;
+        checkboxes.forEach(cb => cb.required = false);
 
-    // ===============================
-    // AÇÕES EM LOTE
-    // ===============================
-    document.getElementById('btnSelecionarTodas')?.addEventListener('click', () => {
-        checkboxes.forEach(cb => cb.checked = true);
-    });
+        if (global) {
+            empresa.value = '';
+            checkboxes.forEach(cb => cb.checked = false);
+            checkboxesChecklist.forEach(cb => cb.checked = false);
+        }
 
-    document.getElementById('btnLimpar')?.addEventListener('click', () => {
+        filterBases(global);
+        filterChecklistBases(global);
+    }
+
+    function setModoEdicao(editando) {
+        senha.required = !editando;
+        senha.placeholder = editando ? 'Deixe em branco para manter a senha atual' : '';
+        document.querySelectorAll('.password-required').forEach(el => el.classList.toggle('d-none', editando));
+        btnCancelar.classList.toggle('d-none', !editando);
+        formTitulo.textContent = editando ? 'Editar usuario' : 'Cadastrar usuario';
+        formSubtitulo.textContent = editando ? 'Atualize dados, acesso, bases ou telefones.' : 'Preencha o essencial para liberar o acesso.';
+        modoBadge.textContent = editando ? 'Edicao' : 'Novo';
+        btnSubmitTexto.textContent = editando ? 'Salvar alteracoes' : 'Salvar usuario';
+    }
+
+    function resetForm() {
+        form.reset();
+        usuarioId.value = '';
+        active.checked = true;
         checkboxes.forEach(cb => cb.checked = false);
+        checkboxesChecklist.forEach(cb => cb.checked = false);
+        setModoEdicao(false);
+        toggleEscopo();
+        document.getElementById('username').focus();
+    }
+
+    function editarUsuario(row) {
+        usuarioId.value = row.dataset.id || '';
+        document.getElementById('username').value = row.dataset.username || '';
+        document.getElementById('first_name').value = row.dataset.firstName || '';
+        document.getElementById('last_name').value = row.dataset.lastName || '';
+        document.getElementById('email').value = row.dataset.email || '';
+        document.getElementById('telefone').value = row.dataset.telefone || '';
+        document.getElementById('telefone_alternativo').value = row.dataset.telefoneAlternativo || '';
+        role.value = row.dataset.perfilAcesso || 'operador';
+        empresa.value = row.dataset.empresa || '';
+        active.checked = row.dataset.active === '1';
+        senha.value = '';
+        checkboxes.forEach(cb => cb.checked = false);
+        checkboxesChecklist.forEach(cb => cb.checked = false);
+
+        const regionais = (row.dataset.regionais || '').split(',').filter(Boolean);
+        regionais.forEach(id => {
+            const checkbox = document.querySelector(`input[name="regionais"][value="${id}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        const basesChecklistIds = (row.dataset.basesChecklist || '').split(',').filter(Boolean);
+        basesChecklistIds.forEach(id => {
+            const checkbox = document.querySelector(`input[name="bases_checklist"][value="${id}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        setModoEdicao(true);
+        toggleEscopo();
+        filterBases(false);
+        filterChecklistBases(false);
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    role.addEventListener('change', toggleEscopo);
+    empresa.addEventListener('change', () => {
+        filterBases(true);
+        filterChecklistBases(true);
+    });
+    buscaBase.addEventListener('input', () => filterBases(false));
+    buscaBaseChecklist.addEventListener('input', () => filterChecklistBases(false));
+    checkboxes.forEach(cb => cb.addEventListener('change', () => {
+        updateBasesResumo();
+        filterChecklistBases(true);
+    }));
+    checkboxesChecklist.forEach(cb => cb.addEventListener('change', updateBasesChecklistResumo));
+
+    document.getElementById('btnBasesVisiveis').addEventListener('click', () => {
+        visibleBaseOptions().forEach(base => {
+            const checkbox = base.querySelector('input[type="checkbox"]');
+            checkbox.checked = true;
+        });
+        updateBasesResumo();
+        filterChecklistBases(false);
     });
 
+    document.getElementById('btnLimparBases').addEventListener('click', () => {
+        checkboxes.forEach(cb => cb.checked = false);
+        updateBasesResumo();
+        filterChecklistBases(true);
+    });
 
-    // ===============================
-    // VALIDAÇÃO DE REGIONAIS
-    // ===============================
-    function temRegionalSelecionada() {
-        return Array.from(checkboxes).some(cb => cb.checked);
-    }
-
-
-    // ===============================
-    // SUBMIT (VALIDAÇÃO + LOADING)
-    // ===============================
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            const role = selectRole?.value;
-
-            // 🔒 valida regionais
-            if (role !== 'admin') {
-                if (!temRegionalSelecionada()) {
-                    e.preventDefault();
-                    alert('Selecione pelo menos uma regional.');
-                    return;
-                }
-            }
-
-            // 🚀 loading (só executa se passou validação)
-            if (btnSubmit && btnText && btnSpinner) {
-                btnSubmit.disabled = true;
-                btnText.textContent = 'Criando usuário...';
-                btnSpinner.classList.remove('d-none');
-            }
+    document.getElementById('btnCopiarBasesAcesso').addEventListener('click', () => {
+        const regionaisSelecionadas = new Set(checkboxes.filter(cb => cb.checked).map(cb => cb.value));
+        checkboxesChecklist.forEach(cb => {
+            cb.checked = regionaisSelecionadas.has(cb.value);
         });
-    }
+        filterChecklistBases(false);
+    });
 
-    // ===============================
-    // CORREÇÃO: clique no card marca checkbox
-    // ===============================
-    document.querySelectorAll('.regional-card').forEach(card => {
-        card.addEventListener('click', function(e) {
+    document.getElementById('btnLimparBasesChecklist').addEventListener('click', () => {
+        checkboxesChecklist.forEach(cb => cb.checked = false);
+        updateBasesChecklistResumo();
+    });
 
-            // evita conflito se clicar direto no checkbox
-            if (e.target.tagName === 'INPUT') return;
+    document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', () => editarUsuario(btn.closest('.usuario-row')));
+    });
 
-            const checkbox = this.querySelector('input[type="checkbox"]');
+    btnNovo.addEventListener('click', resetForm);
+    btnCancelar.addEventListener('click', resetForm);
 
-            if (checkbox) {
-                checkbox.checked = !checkbox.checked;
-            }
+    buscaUsuario.addEventListener('input', function () {
+        const termo = this.value.toLowerCase().trim();
+        document.querySelectorAll('.usuario-row').forEach(row => {
+            row.style.display = !termo || row.dataset.search.includes(termo) ? '' : 'none';
         });
-});
+    });
 
+    form.addEventListener('submit', function (event) {
+        if (!isPerfilGlobal()) {
+            const algumaBase = checkboxes.some(cb => cb.checked);
+            const regionaisSelecionadas = new Set(checkboxes.filter(cb => cb.checked).map(cb => cb.value));
+            const checklistForaDoAcesso = checkboxesChecklist.some(cb => cb.checked && !regionaisSelecionadas.has(cb.value));
+            if (!empresa.value || !algumaBase) {
+                event.preventDefault();
+                alert('Selecione a empresa e ao menos uma base.');
+                return;
+            }
+            if (checklistForaDoAcesso) {
+                event.preventDefault();
+                alert('As bases do checklist precisam fazer parte das bases de acesso.');
+            }
+        }
+    });
 
+    toggleEscopo();
 });
 </script>
 
 <style>
-    .form-control:focus, .form-select:focus {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    .usuarios-page .card {
+        border-radius: 8px;
     }
 
-    .is-invalid {
-        border-color: #dc3545;
+    .form-section {
+        border-bottom: 1px solid #edf0f2;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
     }
 
-    .btn-secondary {
-        transition: all 0.2s;
-    }
-
-    .btn-secondary:hover:not(:disabled) {
-        transform: translateY(-1px);
-    }
-
-    .btn-secondary:active:not(:disabled) {
-        transform: translateY(0);
-
-    .regionais-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.75rem;
-    max-height: 320px;
-    overflow-y: auto;
-    }
-
-    .regional-card {
-        border: 1px solid #e9ecef;
-        border-radius: 0.5rem;
-        padding: 0.75rem;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        background: #fff;
-    }
-
-    .regional-card:hover {
-        border-color: #adb5bd;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-
-    .regional-card input {
-        display: none;
-    }
-
-    .regional-content {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .regional-header {
-        display: flex;
-        justify-content: space-between;
+    .section-title {
         align-items: center;
+        color: #495057;
+        display: flex;
+        font-size: .82rem;
+        font-weight: 700;
+        gap: .45rem;
+        margin-bottom: .8rem;
+        text-transform: uppercase;
     }
 
-    .regional-nome {
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: #2c3e50;
+    .usuarios-page .form-label {
+        color: #5f6b76;
+        font-size: .78rem;
+        font-weight: 700;
+        margin-bottom: .25rem;
     }
 
-    .regional-empresa {
-        font-size: 0.75rem;
+    .base-actions .input-group {
+        width: min(260px, 56vw);
+    }
+
+    .bases-grid {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        display: grid;
+        gap: .5rem;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        max-height: 300px;
+        overflow: auto;
+        padding: .65rem;
+    }
+
+    .bases-grid-compact {
+        max-height: 220px;
+    }
+
+    .base-option {
+        align-items: center;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        gap: .55rem;
+        min-height: 54px;
+        padding: .55rem .65rem;
+        transition: border-color .15s ease, background-color .15s ease;
+    }
+
+    .base-option:hover {
+        border-color: #b8c1ca;
+    }
+
+    .base-option input {
+        margin: 0;
+    }
+
+    .base-option span {
+        display: grid;
+        line-height: 1.15;
+        min-width: 0;
+    }
+
+    .base-option strong {
+        color: #27313b;
+        font-size: .86rem;
+        overflow-wrap: anywhere;
+    }
+
+    .base-option small {
         color: #6c757d;
+        font-size: .72rem;
+        margin-top: .2rem;
     }
 
-    .check-icon {
+    .base-option .bi-check-circle-fill {
+        color: #198754;
         display: none;
-        color: #198754;
+        margin-left: auto;
     }
 
-    /* Estado selecionado */
-    .regional-card input:checked + .regional-content {
-        background: #f0fdf4;
+    .base-option:has(input:checked) {
+        background: #f3fbf6;
+        border-color: #75b798;
     }
 
-    .regional-card input:checked + .regional-content .check-icon {
-        display: block;
+    .base-option:has(input:checked) .bi-check-circle-fill {
+        display: inline-block;
     }
 
-    .regional-card input:checked + .regional-content .regional-nome {
-        color: #198754;
+    .usuarios-search {
+        width: min(320px, 100%);
     }
 
+    .usuarios-table-wrap {
+        max-height: 620px;
+        overflow: auto;
+    }
+
+    .usuarios-table th {
+        background: #f8f9fa;
+        color: #5f6b76;
+        font-size: .76rem;
+        font-weight: 700;
+        position: sticky;
+        text-transform: uppercase;
+        top: 0;
+        z-index: 1;
+    }
+
+    .usuarios-table td {
+        font-size: .88rem;
+        vertical-align: middle;
+    }
+
+    @media (max-width: 767.98px) {
+        .container-fluid.usuarios-page {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        .base-actions {
+            width: 100%;
+        }
+
+        .base-actions .input-group {
+            width: 100%;
+        }
+
+        .bases-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
-{% endif %}{% endblock %}
+{% endblock %}

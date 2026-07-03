@@ -41,7 +41,10 @@ class Perfil(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="perfil")
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True, related_name="perfis")
     regionais = models.ManyToManyField(Base, blank=True, related_name="perfis")
+    bases_checklist = models.ManyToManyField(Base, blank=True, related_name="perfis_checklist")
     role = models.CharField(max_length=10, choices=Role.choices)
+    telefone = models.CharField(max_length=20, blank=True, default="")
+    telefone_alternativo = models.CharField(max_length=20, blank=True, default="")
 
     @property
     def grupos_insumos(self):
@@ -80,6 +83,19 @@ class Perfil(models.Model):
             name=GruposInsumos.EXECUTIVO
         ).exists()
 
+    @property
+    def is_funcional_global(self):
+        return (
+            self.is_compras_insumos or
+            self.is_planejamento_insumos or
+            self.is_financeiro_insumos or
+            self.is_executivo_insumos
+        )
+
+    @property
+    def pode_ver_empresas_globais(self):
+        return self.is_admin or self.is_funcional_global
+
     # -------- REGIONAIS --------
     @property
     def regionais_ids(self):
@@ -88,6 +104,18 @@ class Perfil(models.Model):
     @property
     def regionais_ativas(self):
         return self.regionais.all()
+
+    @property
+    def bases_checklist_ativas(self):
+        if self.bases_checklist.exists():
+            return self.bases_checklist.all()
+        return self.regionais.all()
+
+    @property
+    def bases_checklist_ids(self):
+        if self.bases_checklist.exists():
+            return list(self.bases_checklist.values_list('id', flat=True))
+        return self.regionais_ids
 
     # -------- ROLES --------
     @property

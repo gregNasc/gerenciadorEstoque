@@ -5,6 +5,9 @@ from insumos.models import SolicitacaoInsumo, ConsumoInsumo
 
 @login_required
 def dashboard_planejamento(request):
+    perfil = request.user.perfil
+    if not (perfil.is_admin or perfil.is_planejamento_insumos or perfil.is_executivo_insumos):
+        return render(request, "403.html")
 
     solicitacoes = SolicitacaoInsumo.objects.all()
     context = {

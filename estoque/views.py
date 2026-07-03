@@ -65,6 +65,9 @@ def index(request):
     regional_id = request.GET.get('regional')
     inventory_id = request.GET.get('inventory')
 
+    if not perfil.is_admin:
+        inventory_id = str(perfil.empresa_id) if perfil.empresa_id else ''
+
     if inventory_id and inventory_id.isdigit():
         equipamentos = equipamentos.filter(
             regional__empresa_id=inventory_id
@@ -204,15 +207,24 @@ def index(request):
     if categoria:
         produtos_lista = produtos_lista.filter(categoria=categoria)
 
-    regionais_select = Base.objects.all()
+    if perfil.is_admin:
+        regionais_select = Base.objects.all()
 
-    if inventory_id and inventory_id.isdigit():
-        regionais_select = regionais_select.filter(
-            empresa_id=inventory_id
+        if inventory_id and inventory_id.isdigit():
+            regionais_select = regionais_select.filter(
+                empresa_id=inventory_id
+            )
+    else:
+        regionais_select = perfil.regionais.filter(
+            empresa=perfil.empresa
         )
 
     regionais_select = regionais_select.order_by('nome')
-    empresas = Empresa.objects.all().order_by('nome')
+    empresas = (
+        Empresa.objects.all().order_by('nome')
+        if perfil.is_admin
+        else Empresa.objects.filter(id=perfil.empresa_id)
+    )
 
     context = {
         'produtos_na_categoria': produtos_na_categoria,
@@ -445,6 +457,179 @@ def cadastrar_usuario(request):
         'empresas': Empresa.objects.all().order_by('nome'),
         'regionais': Base.objects.select_related('empresa').all().order_by('empresa__nome', 'nome'),
         'roles': Perfil.Role.choices,
+    }
+
+    return render(request, 'estoque/cadastrar_usuarios.html', context)
+
+@login_required
+@role_required('admin')
+def gerenciar_usuarios(request):
+    from django.contrib.auth.models import Group, User
+    from .models import Perfil, Empresa, Base
+    from django.db import transaction
+    from insumos.constants import GruposInsumos
+
+    perfis_acesso = [
+        {'value': 'operador', 'label': 'Operador', 'role': Perfil.Role.OPERADOR, 'grupo': '', 'global': False},
+        {'value': 'gestor', 'label': 'Gestor', 'role': Perfil.Role.GESTOR, 'grupo': '', 'global': False},
+        {'value': 'admin', 'label': 'Administrador', 'role': Perfil.Role.ADMIN, 'grupo': '', 'global': True},
+        {'value': 'planejamento', 'label': 'Planejamento', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.PLANEJAMENTO, 'global': True},
+        {'value': 'compras', 'label': 'Compras', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.COMPRAS, 'global': True},
+        {'value': 'financeiro', 'label': 'Financeiro', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.FINANCEIRO, 'global': True},
+        {'value': 'executivo', 'label': 'Executivo', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.EXECUTIVO, 'global': True},
+    ]
+    perfis_acesso_map = {perfil['value']: perfil for perfil in perfis_acesso}
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                usuario_id = request.POST.get('usuario_id', '').strip()
+                username = request.POST.get('username', '').strip()
+                password = request.POST.get('password', '')
+                first_name = request.POST.get('first_name', '').strip()
+                last_name = request.POST.get('last_name', '').strip()
+                email = request.POST.get('email', '').strip()
+                perfil_acesso = request.POST.get('perfil_acesso', 'operador')
+                perfil_config = perfis_acesso_map.get(perfil_acesso)
+                role = perfil_config['role'] if perfil_config else Perfil.Role.OPERADOR
+                acesso_global = bool(perfil_config and perfil_config['global'])
+                empresa_id = request.POST.get('empresa', '').strip()
+                regionais_ids = request.POST.getlist('regionais')
+                bases_checklist_ids = request.POST.getlist('bases_checklist')
+                telefone = request.POST.get('telefone', '').strip()
+                telefone_alternativo = request.POST.get('telefone_alternativo', '').strip()
+                is_active = request.POST.get('is_active') == 'on'
+                editando = bool(usuario_id)
+
+                if not username:
+                    messages.error(request, "Informe o nome de usuario.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                if not perfil_config:
+                    messages.error(request, "Tipo de acesso invalido.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                if not editando and not password:
+                    messages.error(request, "Informe a senha.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                if password and len(password) < 6:
+                    messages.error(request, "Senha minima de 6 caracteres.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                usuarios_mesmo_login = User.objects.filter(username=username)
+                if editando:
+                    usuarios_mesmo_login = usuarios_mesmo_login.exclude(id=usuario_id)
+                if usuarios_mesmo_login.exists():
+                    messages.error(request, f"Usuario '{username}' ja existe.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                usuarios_mesmo_email = User.objects.filter(email=email)
+                if editando:
+                    usuarios_mesmo_email = usuarios_mesmo_email.exclude(id=usuario_id)
+                if email and usuarios_mesmo_email.exists():
+                    messages.error(request, f"E-mail '{email}' ja esta em uso.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                empresa = None
+                regionais = Base.objects.none()
+                bases_checklist = Base.objects.none()
+
+                if not acesso_global:
+                    if not empresa_id:
+                        messages.error(request, "Selecione a empresa do usuario.")
+                        return redirect('estoque:cadastrar_usuario')
+
+                    empresa = get_object_or_404(Empresa, id=empresa_id)
+
+                    if not regionais_ids:
+                        messages.error(request, "Selecione ao menos uma base.")
+                        return redirect('estoque:cadastrar_usuario')
+
+                    regionais = Base.objects.filter(id__in=regionais_ids, empresa=empresa).select_related('empresa')
+
+                    if regionais.count() != len(set(regionais_ids)):
+                        messages.error(request, "Existe base selecionada fora da empresa informada.")
+                        return redirect('estoque:cadastrar_usuario')
+
+                    if bases_checklist_ids:
+                        bases_checklist = Base.objects.filter(
+                            id__in=bases_checklist_ids,
+                            empresa=empresa
+                        ).select_related('empresa')
+
+                        if bases_checklist.count() != len(set(bases_checklist_ids)):
+                            messages.error(request, "Existe base de checklist fora da empresa informada.")
+                            return redirect('estoque:cadastrar_usuario')
+
+                        regionais_ids_set = {str(base_id) for base_id in regionais.values_list('id', flat=True)}
+                        bases_checklist_ids_set = {str(base_id) for base_id in bases_checklist.values_list('id', flat=True)}
+                        if not bases_checklist_ids_set.issubset(regionais_ids_set):
+                            messages.error(request, "As bases do checklist precisam fazer parte das bases de acesso.")
+                            return redirect('estoque:cadastrar_usuario')
+
+                if editando:
+                    user = get_object_or_404(User, id=usuario_id)
+                    if user == request.user and role != Perfil.Role.ADMIN:
+                        messages.error(request, "Voce nao pode remover seu proprio acesso de administrador.")
+                        return redirect('estoque:cadastrar_usuario')
+                    if user == request.user and not is_active:
+                        messages.error(request, "Voce nao pode desativar o proprio usuario.")
+                        return redirect('estoque:cadastrar_usuario')
+                else:
+                    user = User()
+
+                user.username = username
+                user.first_name = first_name
+                user.last_name = last_name
+                user.email = email
+                user.is_active = is_active
+                if password:
+                    user.set_password(password)
+                user.save()
+
+                perfil, _ = Perfil.objects.get_or_create(
+                    user=user,
+                    defaults={'role': Perfil.Role.OPERADOR}
+                )
+                perfil.role = role
+                perfil.empresa = empresa if not acesso_global else None
+                perfil.telefone = telefone
+                perfil.telefone_alternativo = telefone_alternativo
+                perfil.save()
+
+                grupos_insumos = Group.objects.filter(name__in=GruposInsumos.TODOS)
+                user.groups.remove(*grupos_insumos)
+                if perfil_config['grupo']:
+                    grupo, _ = Group.objects.get_or_create(name=perfil_config['grupo'])
+                    user.groups.add(grupo)
+
+                if not acesso_global:
+                    perfil.regionais.set(regionais)
+                    perfil.bases_checklist.set(bases_checklist)
+                else:
+                    perfil.regionais.clear()
+                    perfil.bases_checklist.clear()
+
+                acao = "atualizado" if editando else "criado"
+                messages.success(request, f"Usuario '{username}' {acao} com sucesso!")
+                return redirect('estoque:cadastrar_usuario')
+
+        except Exception as e:
+            messages.error(request, f"Erro ao salvar usuario: {str(e)}")
+            return redirect('estoque:cadastrar_usuario')
+
+    context = {
+        'empresas': Empresa.objects.all().order_by('nome'),
+        'regionais': Base.objects.select_related('empresa').all().order_by('empresa__nome', 'nome'),
+        'roles': Perfil.Role.choices,
+        'perfis_acesso': perfis_acesso,
+        'usuarios': (
+            User.objects
+            .select_related('perfil', 'perfil__empresa')
+            .prefetch_related('perfil__regionais', 'perfil__bases_checklist')
+            .order_by('first_name', 'username')
+        ),
     }
 
     return render(request, 'estoque/cadastrar_usuarios.html', context)
@@ -4260,11 +4445,22 @@ def checklist_view(request):
             )
 
             # Verifica permissão de acesso à base
-            if not request.user.perfil.is_admin:
-                regionais_ids = request.user.perfil.regionais_ids
-                if inventario.base_id not in regionais_ids:
+            perfil = request.user.perfil
+            if not perfil.is_admin:
+                regionais_ids = perfil.bases_checklist_ids
+                if (
+                    inventario.base_id not in regionais_ids or
+                    inventario.base.empresa_id != perfil.empresa_id
+                ):
                     messages.error(request, 'Você não tem acesso à base deste inventário.')
                     return redirect('estoque:checklist')
+
+            lider_atual = (inventario.lider or '').strip()
+            lider_informado = request.POST.get('lider', '').strip()
+            lider_editavel = (
+                not lider_atual or
+                lider_atual.lower() in ('a definir', 'a-definir')
+            )
 
             # Captura equipamentos selecionados
             categorias_equipamentos = ['router', 'coletor', 'notebook', 'impressora']
@@ -4292,6 +4488,10 @@ def checklist_view(request):
                 return redirect('estoque:checklist')
 
             with transaction.atomic():
+                if lider_informado and lider_editavel:
+                    inventario.lider = lider_informado
+                    inventario.save(update_fields=['lider'])
+
                 checklist = ChecklistService.criar(
                     inventario=inventario,
                     usuario=request.user,
@@ -4352,9 +4552,11 @@ def checklist_view(request):
             return redirect('estoque:checklist')
 
     # --- GET: Exibir formulário ---
-    regionais_ids = request.user.perfil.regionais_ids
+    perfil = request.user.perfil
+    bases_checklist = perfil.bases_checklist_ativas
+    regionais_ids = perfil.bases_checklist_ids
 
-    if request.user.perfil.is_admin:
+    if perfil.is_admin:
         equipamentos = Equipamento.objects.filter(status='ATIVO')
         inventarios = Inventario.objects.filter(
             status='PLANEJADO',
@@ -4368,7 +4570,8 @@ def checklist_view(request):
         )
         inventarios = Inventario.objects.filter(
             status='PLANEJADO',
-            base__in=request.user.perfil.regionais.all(),
+            base__in=bases_checklist,
+            base__empresa=perfil.empresa,
             data_inicio=date.today()
         )
         lotes_tags = RoloTag.objects.filter(
@@ -4460,6 +4663,11 @@ def get_equipamentos_disponiveis(request):
     if not regional_id or not categoria:
         return JsonResponse({'results': []})
 
+    if not request.user.perfil.is_admin:
+        regionais_ids = request.user.perfil.bases_checklist_ids
+        if int(regional_id) not in regionais_ids:
+            return JsonResponse({'results': []}, status=403)
+
     equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id=regional_id, produto__categoria=categoria).select_related('produto')
 
     data = [{
@@ -4479,7 +4687,7 @@ def get_lotes_tags_disponiveis(request):
         return JsonResponse({'results': []})
 
     if not request.user.perfil.is_admin:
-        regionais_ids = request.user.perfil.regionais_ids
+        regionais_ids = request.user.perfil.bases_checklist_ids
         if int(regional_id) not in regionais_ids:
             return JsonResponse({'results': []}, status=403)
 

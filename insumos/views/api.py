@@ -2,7 +2,7 @@ from django.db.models.functions import TruncMonth
 from django.db.models import (Q, Sum, F)
 from django.http import HttpResponse
 from insumos.models import ConsumoInsumo
-from insumos.models import (Inventario, ChecklistDiario, SolicitacaoInsumo, Insumo)
+from insumos.models import (Inventario, ChecklistDiario, SolicitacaoInsumo, Insumo, AlteracaoCalendario)
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -18,7 +18,9 @@ from django.db import transaction
 from django.utils import timezone
 from estoque.decorators import role_required
 import openpyxl
+import unicodedata
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
 from django.utils.timezone import make_aware
 from datetime import datetime, date, time
@@ -31,7 +33,7 @@ from insumos.services.checklist_service import ChecklistService
 def estoque_insumos(request):
 
     perfil = request.user.perfil
-    bases = Base.objects.all() if perfil.is_admin else perfil.regionais.all()
+    bases = Base.objects.all() if perfil.pode_ver_empresas_globais else perfil.regionais.all()
     categoria_id = request.GET.get('categoria')
     insumo_id = request.GET.get('insumo')
     insumos = (Insumo.objects.filter(ativo=True).select_related('categoria'))
@@ -78,7 +80,7 @@ def kpi_inventarios(request):
 
     qs = Inventario.objects.all()
 
-    if not perfil.is_admin:
+    if not perfil.pode_ver_empresas_globais:
         qs = qs.filter(base__in=perfil.regionais.all())
 
     data = {
@@ -177,7 +179,7 @@ def cadastrar_insumo(request):
 
 def get_equipamentos_disponiveis(request, categoria):
 
-    regionais_ids = request.user.perfil.regionais_ids
+    regionais_ids = request.user.perfil.bases_checklist_ids
 
     if request.user.perfil.is_admin:
         equipamentos = Equipamento.objects.filter(status='ATIVO', produto__categoria=categoria)
@@ -195,7 +197,7 @@ def get_equipamentos_disponiveis(request, categoria):
 
 def get_lotes_tags_disponiveis(request):
 
-    regionais_ids = request.user.perfil.regionais_ids
+    regionais_ids = request.user.perfil.bases_checklist_ids
 
     if request.user.perfil.is_admin:
         lotes = LoteTag.objects.filter(ativo=True, quantidade_disponivel__gt=0)
@@ -267,6 +269,185 @@ def serializar_valor(valor):
         return float(valor)
     return valor
 
+def normalizar_nome_base(valor):
+    valor = unicodedata.normalize('NFKD', str(valor or ''))
+    valor = ''.join(ch for ch in valor if not unicodedata.combining(ch))
+    return ' '.join(valor.upper().split())
+
+def regional_termina_com_x(valor):
+    partes = normalizar_nome_base(valor).split()
+    return bool(partes and partes[-1] == 'X')
+
+def normalizar_cabecalho_excel(valor):
+    valor = normalizar_nome_base(valor)
+    return valor.replace('º', '').replace('°', '')
+
+def encontrar_linha_cabecalho_calendario(sheet):
+    max_linhas = min(sheet.max_row, 30)
+    for row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=max_linhas, values_only=True), start=1):
+        valores = [normalizar_cabecalho_excel(valor) for valor in row if valor is not None]
+        if (
+            'SIGLA' in valores and
+            'DATA' in valores and
+            'REGIONAL' in valores and
+            any('LOJA' in valor for valor in valores)
+        ):
+            return row_idx
+
+    return None
+
+def resolver_nome_base_importada(regional_nome, regional_map):
+    nome_base = regional_map.get(regional_nome)
+    if nome_base is None:
+        regional_normalizado = normalizar_nome_base(regional_nome)
+        mapa_normalizado = {
+            normalizar_nome_base(chave): valor
+            for chave, valor in regional_map.items()
+        }
+        nome_base = mapa_normalizado.get(regional_normalizado, regional_nome)
+
+    if regional_termina_com_x(nome_base) and not normalizar_nome_base(nome_base).startswith('OXXO '):
+        nome_oxxo = f'OXXO {str(nome_base).strip()}'
+        nome_oxxo_normalizado = normalizar_nome_base(nome_oxxo)
+
+        base_existente = next(
+            (
+                base
+                for base in Base.objects.filter(empresa__nome__iexact='OXXO')
+                if normalizar_nome_base(base.nome) == nome_oxxo_normalizado
+            ),
+            None
+        )
+        return base_existente.nome if base_existente else nome_oxxo
+
+    return nome_base
+
+def empresa_para_base_importada(nome_base, empresa_padrao):
+    nome_normalizado = normalizar_nome_base(nome_base)
+    if nome_normalizado.startswith('OXXO ') or regional_termina_com_x(nome_base):
+        empresa_oxxo = Empresa.objects.filter(nome__iexact='OXXO').first()
+        if empresa_oxxo:
+            return empresa_oxxo
+
+    return empresa_padrao
+
+def texto_excel(valor):
+    if valor is None:
+        return ''
+    if isinstance(valor, float) and valor.is_integer():
+        return str(int(valor))
+    return str(valor).strip()
+
+def inteiro_excel(valor):
+    texto = texto_excel(valor)
+    if not texto:
+        return None
+    try:
+        return int(float(texto.replace(',', '.')))
+    except (TypeError, ValueError):
+        return None
+
+def data_excel_para_date(valor):
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+
+    texto = texto_excel(valor)
+    if not texto:
+        return None
+
+    data_parseada = parse_date(texto[:10])
+    if data_parseada:
+        return data_parseada
+
+    for formato in ('%d/%m/%Y', '%d/%m/%y'):
+        try:
+            return datetime.strptime(texto, formato).date()
+        except ValueError:
+            continue
+
+    return None
+
+def adicionar_aviso_importacao(resumo, mensagem, limite=50):
+    resumo['avisos_total'] = resumo.get('avisos_total', 0) + 1
+    if len(resumo['avisos']) < limite:
+        resumo['avisos'].append(mensagem)
+
+def importar_alteracoes_calendario(wb, arquivo_nome, usuario, regional_map, empresa_padrao, resumo):
+    abas_alteracoes = [
+        nome
+        for nome in wb.sheetnames
+        if normalizar_nome_base(nome) == 'ALTERACOES'
+    ]
+    if not abas_alteracoes:
+        return 0
+
+    total = 0
+    blocos = [
+        ('ATUAL', range(2, 10)),
+        ('HISTORICO', range(11, 19)),
+    ]
+
+    for aba_nome in abas_alteracoes:
+        sheet = wb[aba_nome]
+        for origem_bloco, colunas in blocos:
+            for row_idx in range(3, sheet.max_row + 1):
+                valores = [sheet.cell(row=row_idx, column=col).value for col in colunas]
+                if not any(valores):
+                    continue
+
+                revisao, data_valor, cliente_sigla, loja, descricao, regional_nome, solicitante, observacao = valores
+                cliente_sigla = texto_excel(cliente_sigla)
+                loja = texto_excel(loja)
+                descricao = texto_excel(descricao)
+                regional_nome = texto_excel(regional_nome)
+
+                if not any([cliente_sigla, loja, descricao, regional_nome]):
+                    continue
+
+                data_alteracao = data_excel_para_date(data_valor)
+                cliente = Cliente.objects.filter(sigla=cliente_sigla).first() if cliente_sigla else None
+                base = None
+
+                if regional_nome:
+                    nome_base = resolver_nome_base_importada(regional_nome, regional_map)
+                    empresa_base = empresa_para_base_importada(nome_base, empresa_padrao)
+                    base, base_created = Base.objects.get_or_create(
+                        nome=nome_base,
+                        empresa=empresa_base,
+                        defaults={'nome': nome_base, 'grupo_regional': None}
+                    )
+                    if base_created:
+                        resumo['bases_criadas'] += 1
+
+                AlteracaoCalendario.objects.update_or_create(
+                    origem_bloco=origem_bloco,
+                    revisao=inteiro_excel(revisao),
+                    data=data_alteracao,
+                    cliente_sigla=cliente_sigla,
+                    loja=loja,
+                    descricao=descricao,
+                    regional_nome=regional_nome,
+                    defaults={
+                        'cliente': cliente,
+                        'base': base,
+                        'solicitante': texto_excel(solicitante),
+                        'observacao': texto_excel(observacao),
+                        'arquivo': arquivo_nome,
+                        'importado_por': usuario,
+                    }
+                )
+                total += 1
+
+                if not cliente and cliente_sigla:
+                    adicionar_aviso_importacao(
+                        resumo,
+                        f'Aba Alteracoes, linha {row_idx}: cliente {cliente_sigla} nao encontrado.'
+                    )
+
+    return total
+
 @staff_member_required
 def importar_excel(request):
     if request.method == 'POST' and request.FILES.get('arquivo'):
@@ -336,17 +517,42 @@ def importar_excel(request):
             'CHAVE': 'chave',
         }
 
-        empresa = Empresa.objects.first()
-        if not empresa:
+        empresa_padrao = (
+            Empresa.objects.filter(nome__iexact='Inventory Brasil').first()
+            or Empresa.objects.first()
+        )
+        if not empresa_padrao:
             messages.error(request, 'Nenhuma empresa cadastrada.')
             return redirect('insumos:importar_excel')
 
-        ABAS_IGNORADAS = ['Siglas e Tipos', 'Alterações']
+        resumo_importacao = {
+            'arquivo': arquivo.name,
+            'clientes': 0,
+            'alteracoes': 0,
+            'inventarios_criados': 0,
+            'inventarios_atualizados': 0,
+            'bases_criadas': 0,
+            'removidos': 0,
+            'abas': [],
+            'avisos': [],
+            'avisos_total': 0,
+        }
+
+        abas_calendario = [
+            (nome, encontrar_linha_cabecalho_calendario(wb[nome]))
+            for nome in wb.sheetnames
+        ]
+        abas_calendario = [
+            (nome, linha)
+            for nome, linha in abas_calendario
+            if linha
+        ]
 
         with transaction.atomic():
             # 1. Processar aba "Siglas e Tipos" → Clientes
             if 'Siglas e Tipos' in wb.sheetnames:
                 sheet = wb['Siglas e Tipos']
+                clientes_processados = 0
                 for row in sheet.iter_rows(min_row=2, values_only=True):
                     sigla, nome, segmento, status = row[0], row[1], row[2], row[3]
                     if sigla and nome:
@@ -354,17 +560,30 @@ def importar_excel(request):
                             sigla=sigla,
                             defaults={'nome': nome, 'ativo': status == 'ATIVO'}
                         )
-                messages.success(request, 'Clientes importados/atualizados com sucesso.')
+                        clientes_processados += 1
+                resumo_importacao['clientes'] = clientes_processados
+
+            resumo_importacao['alteracoes'] = importar_alteracoes_calendario(
+                wb,
+                arquivo.name,
+                request.user,
+                REGIONAL_MAP,
+                empresa_padrao,
+                resumo_importacao,
+            )
 
             # 2. Processar abas de inventário
-            abas_inventario = [nome for nome in wb.sheetnames if nome not in ABAS_IGNORADAS]
-            if not abas_inventario:
-                messages.warning(request, 'Nenhuma aba de inventário encontrada.')
+            if not abas_calendario:
+                adicionar_aviso_importacao(resumo_importacao, 'Nenhuma aba de inventario encontrada.')
+                request.session['resumo_importacao_excel'] = resumo_importacao
+                messages.warning(request, 'Importacao finalizada sem abas de inventario. Confira o resumo abaixo.')
                 return redirect('insumos:importar_excel')
 
-            for aba_nome in abas_inventario:
+            inventarios_importados_ids = set()
+            escopos_importados = set()
+
+            for aba_nome, cabecalho in abas_calendario:
                 sheet = wb[aba_nome]
-                messages.info(request, f'Processando aba: {aba_nome}')
 
                 # Encontrar linha de cabeçalho (SIGLA na coluna B)
                 cabecalho = None
@@ -373,10 +592,11 @@ def importar_excel(request):
                         cabecalho = row_idx
                         break
 
-                if not cabecalho:
-                    messages.warning(request, f'Cabeçalho não encontrado na aba "{aba_nome}". Pulando.')
+                if not encontrar_linha_cabecalho_calendario(sheet):
+                    adicionar_aviso_importacao(resumo_importacao, f'Cabecalho nao encontrado na aba "{aba_nome}".')
                     continue
 
+                cabecalho = encontrar_linha_cabecalho_calendario(sheet)
                 header_row = list(sheet.iter_rows(min_row=cabecalho, max_row=cabecalho, values_only=True))[0]
 
                 # Mapear índices das colunas obrigatórias
@@ -397,13 +617,34 @@ def importar_excel(request):
                     elif col_name == 'REGIONAL':
                         col_map['regional'] = idx
 
+                for idx, col_name in enumerate(header_row):
+                    col_name_normalizado = normalizar_cabecalho_excel(col_name)
+                    if col_name_normalizado == 'SIGLA':
+                        col_map['sigla'] = idx
+                    elif 'LOJA' in col_name_normalizado and 'BAIRRO' not in col_name_normalizado:
+                        col_map['loja'] = idx
+                    elif col_name_normalizado == 'DATA':
+                        col_map['data'] = idx
+                    elif col_name_normalizado == 'ENDERECO':
+                        col_map['endereco'] = idx
+                    elif 'BAIRRO' in col_name_normalizado:
+                        col_map['bairro'] = idx
+                    elif col_name_normalizado == 'CIDADE':
+                        col_map['cidade'] = idx
+                    elif col_name_normalizado == 'REGIONAL':
+                        col_map['regional'] = idx
+
                 colunas_obrigatorias = ['sigla', 'loja', 'data', 'regional']
                 if not all(key in col_map for key in colunas_obrigatorias):
-                    messages.warning(request, f'Aba "{aba_nome}" não possui colunas obrigatórias.')
+                    adicionar_aviso_importacao(resumo_importacao, f'Aba "{aba_nome}" nao possui colunas obrigatorias.')
                     continue
 
                 contador = 0
-                for row in sheet.iter_rows(min_row=cabecalho + 1, values_only=True):
+                atualizados = 0
+                for row_idx, row in enumerate(
+                    sheet.iter_rows(min_row=cabecalho + 1, values_only=True),
+                    start=cabecalho + 1,
+                ):
                     if not row or not any(row):
                         continue
 
@@ -442,22 +683,34 @@ def importar_excel(request):
                     for col in colunas_extraidas:
                         dados_completos.pop(col, None)
 
+                    dados_completos['_importacao_calendario'] = {
+                        'arquivo': arquivo.name,
+                        'aba': aba_nome,
+                        'linha': row_idx,
+                        'regional_excel': regional_nome,
+                        'importado_em': timezone.now().isoformat(),
+                    }
+
                     # --- Buscar cliente ---
                     try:
                         cliente = Cliente.objects.get(sigla=sigla)
                     except Cliente.DoesNotExist:
-                        messages.warning(request, f'Cliente {sigla} não encontrado.')
+                        adicionar_aviso_importacao(
+                            resumo_importacao,
+                            f'Aba {aba_nome}, linha {row_idx}: cliente {sigla} nao encontrado.'
+                        )
                         continue
 
                     # --- Mapear regional ---
-                    nome_base = REGIONAL_MAP.get(regional_nome, regional_nome)
+                    nome_base = resolver_nome_base_importada(regional_nome, REGIONAL_MAP)
+                    empresa_base = empresa_para_base_importada(nome_base, empresa_padrao)
                     base, created = Base.objects.get_or_create(
                         nome=nome_base,
-                        empresa=empresa,
+                        empresa=empresa_base,
                         defaults={'nome': nome_base, 'grupo_regional': None}
                     )
                     if created:
-                        messages.info(request, f'Regional "{nome_base}" criada.')
+                        resumo_importacao['bases_criadas'] += 1
 
                     # --- Converter data ---
                     if isinstance(data_str, datetime):
@@ -465,7 +718,10 @@ def importar_excel(request):
                     else:
                         data_inicio = parse_date(str(data_str)) if data_str else None
                     if not data_inicio:
-                        messages.warning(request, f'Data inválida para {sigla} {loja}.')
+                        adicionar_aviso_importacao(
+                            resumo_importacao,
+                            f'Aba {aba_nome}, linha {row_idx}: data invalida para {sigla} loja {loja}.'
+                        )
                         continue
 
                     # --- Preparar defaults com campos extras ---
@@ -526,17 +782,53 @@ def importar_excel(request):
                         for key, value in defaults.items():
                             setattr(inventario, key, value)
                         inventario.save()
-                        messages.info(request, f'Inventário atualizado: {cliente.sigla} - Loja {loja}')
+                        atualizados += 1
                     else:
                         contador += 1
-                        messages.success(request, f'Inventário criado: {cliente.sigla} - Loja {loja}')
 
-                messages.success(request, f'Aba "{aba_nome}" processada: {contador} inventários criados.')
+                    inventarios_importados_ids.add(inventario.id)
+                    escopos_importados.add((data_inicio.year, data_inicio.month, base.id))
 
+                resumo_importacao['inventarios_criados'] += contador
+                resumo_importacao['inventarios_atualizados'] += atualizados
+                resumo_importacao['abas'].append({
+                    'nome': aba_nome,
+                    'criados': contador,
+                    'atualizados': atualizados,
+                })
+
+
+            removidos_revisao = 0
+            for ano, mes, base_id in escopos_importados:
+                obsoletos = (
+                    Inventario.objects
+                    .filter(
+                        base_id=base_id,
+                        data_inicio__year=ano,
+                        data_inicio__month=mes,
+                        status='PLANEJADO',
+                        checklists__isnull=True,
+                    )
+                    .exclude(id__in=inventarios_importados_ids)
+                )
+                quantidade = obsoletos.count()
+                if quantidade:
+                    obsoletos.delete()
+                    removidos_revisao += quantidade
+
+            if removidos_revisao:
+                messages.info(
+                    request,
+                    f'{removidos_revisao} inventários planejados ausentes da revisão atual foram removidos.'
+                )
+
+            resumo_importacao['removidos'] = removidos_revisao
+            request.session['resumo_importacao_excel'] = resumo_importacao
             messages.success(request, 'Importação concluída!')
             return redirect('insumos:importar_excel')
 
-    return render(request, 'insumos/importar_excel.html')
+    resumo_importacao = request.session.pop('resumo_importacao_excel', None)
+    return render(request, 'insumos/importar_excel.html', {'resumo_importacao': resumo_importacao})
 
 @login_required
 def inventario_detalhes(request, inventario_id):
@@ -549,6 +841,7 @@ def inventario_detalhes(request, inventario_id):
         'endereco': inventario.endereco or '',
         'bairro': inventario.bairro or '',
         'cidade': inventario.cidade or '',
+        'lider': inventario.lider or '',
     }
     return JsonResponse(data)
 
@@ -586,18 +879,34 @@ def planejamento_inventarios(request):
 
 @login_required
 def gerenciar_inventarios(request):
-    if not request.user.perfil.is_admin:
-        messages.error(request, 'Acesso restrito a administradores.')
+    perfil = request.user.perfil
+    if not (perfil.is_admin or perfil.is_planejamento_insumos):
+        messages.error(request, 'Acesso restrito a administradores e planejamento.')
         return redirect('estoque:index')
 
     # Filtros
     cliente_id = request.GET.get('cliente')
     regional_id = request.GET.get('regional')
     status_filter = request.GET.get('status')
+    hoje = timezone.localdate().isoformat()
+    data_dia = request.GET.get('data') or hoje
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
-    inventarios = Inventario.objects.select_related('cliente', 'base', 'criado_por').all()
+    inventarios = (
+        Inventario.objects
+        .select_related('cliente', 'base')
+        .only(
+            'id', 'cliente__sigla', 'cliente__nome', 'base__nome', 'criado_por_id',
+            'loja', 'data_inicio', 'status', 'endereco', 'bairro', 'cidade',
+            'lider', 'ponto_encontro', 'previsao_pecas', 'bid', 'cnpj', 'chave',
+        )
+    )
+
+    if perfil.pode_ver_empresas_globais:
+        inventarios = inventarios.all()
+    else:
+        inventarios = inventarios.filter(base__in=perfil.regionais.all())
 
     if cliente_id:
         inventarios = inventarios.filter(cliente_id=cliente_id)
@@ -605,23 +914,36 @@ def gerenciar_inventarios(request):
         inventarios = inventarios.filter(base_id=regional_id)
     if status_filter:
         inventarios = inventarios.filter(status=status_filter)
-    if data_inicio:
+    if data_dia and not data_inicio and not data_fim:
+        inventarios = inventarios.filter(data_inicio=data_dia)
+    elif data_inicio:
         inventarios = inventarios.filter(data_inicio__gte=data_inicio)
     if data_fim:
         inventarios = inventarios.filter(data_inicio__lte=data_fim)
 
-    inventarios = inventarios.order_by('-data_inicio')
+    inventarios = inventarios.order_by('-data_inicio', 'cliente__sigla', 'loja')
+    total_inventarios = inventarios.count()
+    paginator = Paginator(inventarios, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
 
     context = {
-        'inventarios': inventarios,
+        'inventarios': page_obj.object_list,
+        'page_obj': page_obj,
+        'total_inventarios': total_inventarios,
+        'querystring': query_params.urlencode(),
         'clientes': Cliente.objects.filter(ativo=True).order_by('sigla'),
-        'regionais': Base.objects.all().order_by('nome'),
+        'regionais': (
+            Base.objects.all().order_by('nome')
+            if perfil.pode_ver_empresas_globais
+            else perfil.regionais.all().order_by('nome')
+        ),
         'status_choices': Inventario.STATUS,
         'filtro_cliente': cliente_id,
         'filtro_regional': regional_id,
         'filtro_status': status_filter,
-        'filtro_data_inicio': data_inicio,
-        'filtro_data_fim': data_fim,
+        'filtro_data': data_dia,
     }
     return render(request, 'insumos/gerenciar_inventarios.html', context)
 
@@ -630,24 +952,33 @@ def lista_inventarios(request):
     # Filtros via GET
     sigla = request.GET.get('sigla', '')
     loja = request.GET.get('loja', '')
-    data_inicio = request.GET.get('data_inicio', '')
-    data_fim = request.GET.get('data_fim', '')
+    hoje = timezone.localdate().isoformat()
+    data_dia = request.GET.get('data') or hoje
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
     regional_id = request.GET.get('regional', '')
 
     # Base queryset com permissões do usuário
-    if request.user.perfil.is_admin:
+    if request.user.perfil.pode_ver_empresas_globais:
         inventarios = Inventario.objects.all().select_related('cliente', 'base')
     else:
         inventarios = Inventario.objects.filter(
             base__in=request.user.perfil.regionais.all()
         ).select_related('cliente', 'base')
+    inventarios = inventarios.only(
+        'id', 'cliente__sigla', 'cliente__nome', 'base__nome',
+        'loja', 'data_inicio', 'status', 'pessoas', 'tipo',
+        'lider', 'ponto_encontro', 'previsao_pecas', 'bid', 'cidade',
+    )
 
     # Aplicar filtros
     if sigla:
         inventarios = inventarios.filter(cliente__sigla__icontains=sigla)
     if loja:
         inventarios = inventarios.filter(loja__icontains=loja)
-    if data_inicio:
+    if data_dia and not data_inicio and not data_fim:
+        inventarios = inventarios.filter(data_inicio=data_dia)
+    elif data_inicio:
         inventarios = inventarios.filter(data_inicio__gte=data_inicio)
     if data_fim:
         inventarios = inventarios.filter(data_inicio__lte=data_fim)
@@ -655,23 +986,30 @@ def lista_inventarios(request):
         inventarios = inventarios.filter(base_id=regional_id)
 
     # Ordenar por data mais recente
-    inventarios = inventarios.order_by('-data_inicio')
+    inventarios = inventarios.order_by('-data_inicio', 'cliente__sigla', 'loja')
+    total_inventarios = inventarios.count()
+    paginator = Paginator(inventarios, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
 
     # Lista de regionais para o filtro
-    if request.user.perfil.is_admin:
+    if request.user.perfil.pode_ver_empresas_globais:
         regionais = Base.objects.all().order_by('nome')
     else:
         regionais = request.user.perfil.regionais.all().order_by('nome')
 
     context = {
-        'inventarios': inventarios,
+        'inventarios': page_obj.object_list,
+        'page_obj': page_obj,
+        'total_inventarios': total_inventarios,
+        'querystring': query_params.urlencode(),
         'regionais': regionais,
         'perfil': request.user.perfil,
         'filtros': {
             'sigla': sigla,
             'loja': loja,
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
+            'data': data_dia,
             'regional_id': regional_id,
         }
     }
@@ -680,8 +1018,13 @@ def lista_inventarios(request):
 @login_required
 def editar_inventario(request, pk):
     inventario = get_object_or_404(Inventario, pk=pk)
-    if not request.user.perfil.is_admin and not request.user.perfil.is_gestor:
+    perfil = request.user.perfil
+    pode_editar = perfil.is_admin or perfil.is_gestor or perfil.is_planejamento_insumos
+    if not pode_editar:
         messages.error(request, 'Você não tem permissão para editar.')
+        return redirect('insumos:lista_inventarios')
+    if not perfil.pode_ver_empresas_globais and not perfil.regionais.filter(id=inventario.base_id).exists():
+        messages.error(request, 'Sem permissao para editar esta base.')
         return redirect('insumos:lista_inventarios')
 
     if request.method == 'POST':
@@ -934,18 +1277,20 @@ def insumos_por_base(request):
 
 @login_required
 def lista_checklists(request):
+    perfil = request.user.perfil
     if request.user.perfil.is_admin:
         checklists = ChecklistDiario.objects.all().select_related('inventario__cliente', 'inventario__base')
     else:
         checklists = ChecklistDiario.objects.filter(
-            inventario__base__in=request.user.perfil.regionais.all()
+            inventario__base__in=perfil.regionais.all(),
+            inventario__base__empresa=perfil.empresa,
         ).select_related('inventario__cliente', 'inventario__base')
 
     checklists = checklists.order_by('-data_inicio')
 
     context = {
         'checklists': checklists,
-        'perfil': request.user.perfil,
+        'perfil': perfil,
     }
     return render(request, 'insumos/lista_checklists.html', context)
 
@@ -954,8 +1299,15 @@ def finalizar_checklist(request, pk):
     checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base', 'inventario__cliente'), pk=pk)
 
     # Verifica permissão (admin, gestor, ou responsável)
-    if not request.user.perfil.is_admin:
-        if not request.user.perfil.is_gestor and checklist.responsavel != request.user:
+    perfil = request.user.perfil
+    if not perfil.is_admin:
+        if (
+            checklist.inventario.base_id not in perfil.regionais_ids or
+            checklist.inventario.base.empresa_id != perfil.empresa_id
+        ):
+            messages.error(request, 'Voce nao tem acesso a este checklist.')
+            return redirect('insumos:lista_checklists')
+        if not perfil.is_gestor and checklist.responsavel != request.user:
             messages.error(request, 'Você não tem permissão para finalizar este checklist.')
             return redirect('insumos:lista_checklists')
 
@@ -982,8 +1334,12 @@ def checklist_detail(request, pk):
     ), pk=pk)
 
     # Verifica permissão
-    if not request.user.perfil.is_admin:
-        if checklist.inventario.base_id not in request.user.perfil.regionais_ids:
+    perfil = request.user.perfil
+    if not perfil.is_admin:
+        if (
+            checklist.inventario.base_id not in perfil.regionais_ids or
+            checklist.inventario.base.empresa_id != perfil.empresa_id
+        ):
             messages.error(request, 'Você não tem acesso a este checklist.')
             return redirect('insumos:lista_checklists')
 
@@ -1050,7 +1406,14 @@ def editar_itens_checklist(request, pk):
     checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base'), pk=pk)
 
     # Verifica permissão
-    if not request.user.perfil.is_admin and checklist.inventario.base_id not in request.user.perfil.regionais_ids:
+    perfil = request.user.perfil
+    if (
+        not perfil.is_admin and
+        (
+            checklist.inventario.base_id not in perfil.regionais_ids or
+            checklist.inventario.base.empresa_id != perfil.empresa_id
+        )
+    ):
         messages.error(request, 'Você não tem acesso a este checklist.')
         return redirect('insumos:lista_checklists')
 
@@ -1196,16 +1559,21 @@ def editar_checklist(request, pk):
     from estoque.models import Equipamento
     from insumos.models import Insumo
 
-    regionais_ids = request.user.perfil.regionais_ids
-    if request.user.perfil.is_admin:
+    regionais_ids = perfil.bases_checklist_ids
+    if perfil.is_admin:
         equipamentos = Equipamento.objects.filter(status='ATIVO')
         lotes_tags = RoloTag.objects.filter(status='DISPONIVEL', lote__ativo=True).select_related('lote', 'lote__base')
     else:
-        equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id__in=regionais_ids)
+        equipamentos = Equipamento.objects.filter(
+            status='ATIVO',
+            regional_id__in=regionais_ids,
+            regional__empresa=perfil.empresa,
+        )
         lotes_tags = RoloTag.objects.filter(
             status='DISPONIVEL',
             lote__ativo=True,
             lote__base_id__in=regionais_ids,
+            lote__base__empresa=perfil.empresa,
         ).select_related('lote', 'lote__base')
 
     # Obtém itens do checklist para pré-preencher

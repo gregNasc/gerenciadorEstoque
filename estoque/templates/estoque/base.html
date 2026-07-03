@@ -62,7 +62,7 @@
 
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 <!-- CHECKLIST -->
-                <!--li-- class="nav-item dropdown">
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
                        href="#"
                        id="checklistDropdown"
@@ -94,9 +94,7 @@
                         </li>
                         {% endif %}
                     </ul>
-                </li-->
-
-
+                </li>
 
                 <!-- ESTOQUE -->
                 <li class="nav-item dropdown">
@@ -128,7 +126,7 @@
 
                         </li>
 
-                        <!--li>
+                        <li>
 
                             <a class="dropdown-item"
                                href="{% url 'insumos:estoque_insumos' %}">
@@ -138,29 +136,45 @@
 
                             </a>
 
-                        </li-->
-                        {% if perfil.role == 'admin' %}
+                        </li>
+                        {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
+                                <i class="bi bi-calendar-range"></i>
+                                Planejamento
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if perfil.role == 'admin' or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'insumos:dashboard_financeiro' %}">
+                                <i class="bi bi-cash-coin"></i>
+                                Financeiro
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if perfil.role == 'admin' or perfil.is_planejamento_insumos %}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:lista_inventarios' %}">
                                 <i class="bi bi-list-ul"></i>
                                 Inventários
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
 
                           {% if perfil.role == 'admin' %}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:importar_excel' %}">
                                 <i class="bi bi-file-earmark-excel"></i>
                                 {% trans "Importar Excel" %}
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
 
                     </ul>
@@ -437,13 +451,13 @@
                             </a>
                         </li>
 
-                        <!--li>
+                        <li>
                             <a class="dropdown-item"
                                href="{% url 'insumos:cadastrar_insumos' %}">
                                 <i class="bi bi-box-seam"></i>
                                 Insumos
                             </a>
-                        </li-->
+                        </li>
 
                     </ul>
 
@@ -507,7 +521,7 @@
 <main class="container">
 
     <!-- ALERTAS -->
-    {% if messages %}
+    {% if messages and request.resolver_match.url_name != 'importar_excel' %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm">
 

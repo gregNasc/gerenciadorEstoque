@@ -134,7 +134,7 @@ class Inventario(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='inventarios',)
     loja = models.CharField(max_length=50, db_index=True,)
     base = models.ForeignKey(Base, on_delete=models.PROTECT)
-    data_inicio = models.DateField()
+    data_inicio = models.DateField(db_index=True)
     data_fim = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default='PLANEJADO')
     criado_por = models.ForeignKey(User, on_delete=models.PROTECT)
@@ -178,9 +178,48 @@ class Inventario(models.Model):
         )
 
     class Meta:
+        indexes = [
+            models.Index(fields=['base', 'data_inicio'], name='insumos_inv_base_da_6b2e3f_idx'),
+            models.Index(fields=['status', 'data_inicio'], name='insumos_inv_status__25ed2c_idx'),
+        ]
         permissions = [
             ('gerenciar_inventarios', 'Pode gerenciar inventários'),
         ]
+
+class AlteracaoCalendario(models.Model):
+    ORIGEM_CHOICES = [
+        ('ATUAL', 'Atual'),
+        ('HISTORICO', 'Historico'),
+    ]
+
+    revisao = models.IntegerField(null=True, blank=True)
+    data = models.DateField(null=True, blank=True)
+    cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.SET_NULL, related_name='alteracoes_calendario')
+    cliente_sigla = models.CharField(max_length=20, db_index=True)
+    loja = models.CharField(max_length=50, db_index=True)
+    descricao = models.TextField(blank=True)
+    regional_nome = models.CharField(max_length=100, blank=True)
+    base = models.ForeignKey(Base, null=True, blank=True, on_delete=models.SET_NULL, related_name='alteracoes_calendario')
+    solicitante = models.CharField(max_length=100, blank=True)
+    observacao = models.TextField(blank=True)
+    origem_bloco = models.CharField(max_length=20, choices=ORIGEM_CHOICES, default='ATUAL')
+    arquivo = models.CharField(max_length=255, blank=True)
+    importado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='alteracoes_calendario_importadas')
+    importado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Alteracao do calendario'
+        verbose_name_plural = 'Alteracoes do calendario'
+        indexes = [
+            models.Index(fields=['data'], name='insumos_alt_data_b19931_idx'),
+            models.Index(fields=['cliente_sigla', 'loja'], name='insumos_alt_cliente_163588_idx'),
+            models.Index(fields=['origem_bloco', 'revisao'], name='insumos_alt_origem__a44284_idx'),
+            models.Index(fields=['base', 'data'], name='insumos_alt_base_id_1b3c50_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.cliente_sigla} - Loja {self.loja} | Rev {self.revisao or "-"}'
+
 
 class ChecklistDiario(models.Model):
     STATUS = [
@@ -400,8 +439,8 @@ class RoloTag(models.Model):
     class Meta:
         unique_together = (('lote', 'codigo'),)
         indexes = [
-            models.Index(fields=['status']),
-            models.Index(fields=['lote', 'status']),
+            models.Index(fields=['status'], name='insumos_rol_status_f17a57_idx'),
+            models.Index(fields=['lote', 'status'], name='insumos_rol_lote_id_d5c504_idx'),
         ]
 
     def __str__(self):

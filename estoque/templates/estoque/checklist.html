@@ -112,6 +112,11 @@
         color: #495057;
     }
 
+    .info-grid input.is-editable {
+        background: #fff;
+        border-bottom-color: #198754;
+    }
+
     /* ================================
        OBS / SIGNATURES
     =================================*/
@@ -452,6 +457,9 @@
 
             <label for="cidade">CIDADE</label>
             <input type="text" id="cidade" name="cidade" placeholder="Preenchido automaticamente" value="" readonly>
+
+            <label for="lider">LIDER</label>
+            <input type="text" id="lider" name="lider" placeholder="Preenchido automaticamente" value="" readonly>
 
             <label for="inventario">INVENTÁRIO</label>
             <select id="inventario" name="inventario" required>
@@ -1320,6 +1328,22 @@ function atualizarInputsEquipamentosETags() {
     });
 }
 
+function liderPodeSerEditado(valor) {
+    const normalizado = String(valor || '').trim().toLowerCase();
+    return !normalizado || normalizado === 'a definir' || normalizado === 'a-definir';
+}
+
+function aplicarLider(valor) {
+    const campoLider = document.getElementById('lider');
+    if (!campoLider) return;
+
+    const editavel = liderPodeSerEditado(valor);
+    campoLider.value = valor || '';
+    campoLider.readOnly = !editavel;
+    campoLider.classList.toggle('is-editable', editavel);
+    campoLider.placeholder = editavel ? 'Informe o lider' : 'Preenchido automaticamente';
+}
+
 function carregarDadosInventario(inventarioId) {
     const campoCliente = document.getElementById('cliente');
     const campoData = document.getElementById('data');
@@ -1334,6 +1358,7 @@ function carregarDadosInventario(inventarioId) {
         campoEndereco.value = '';
         campoBairro.value = '';
         campoCidade.value = '';
+        aplicarLider('');
         document.getElementById('insumosContainer').style.display = 'none';
         return;
     }
@@ -1346,6 +1371,7 @@ function carregarDadosInventario(inventarioId) {
             campoEndereco.value = data.endereco || '';
             campoBairro.value = data.bairro || '';
             campoCidade.value = data.cidade || '';
+            aplicarLider(data.lider || '');
 
             const baseId = selectInventario.options[selectInventario.selectedIndex].dataset.base;
             carregarInsumos(baseId);
