@@ -210,7 +210,8 @@ class MovimentacaoService:
                 f'{insumo.unidade_medida}'
             ),
             dados={
-                'base': base,
+                'base_id': base.id,
+                'base_nome': base.nome,
                 'insumo': insumo.descricao,
                 'saldo_sistema': str(saldo_sistema),
                 'saldo_real': str(saldo_real),

@@ -2,6 +2,7 @@ from django.db import models
 from estoque.models import Base
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 class CategoriaInsumo(models.Model):
     nome = models.CharField(max_length=100, unique=True)
@@ -252,6 +253,10 @@ class ChecklistDiario(models.Model):
         ]
 
 class ItemChecklist(models.Model):
+    STATUS_RETORNO = [
+        ('PENDENTE', 'Pendente'),
+        ('CONFERIDO', 'Conferido'),
+    ]
 
     checklist = models.ForeignKey(ChecklistDiario, on_delete=models.CASCADE, related_name='itens')
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT)
@@ -259,16 +264,30 @@ class ItemChecklist(models.Model):
     quantidade_utilizada = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantidade_retornada = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantidade_perdida = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status_retorno = models.CharField(max_length=20, choices=STATUS_RETORNO, default='PENDENTE')
 
     class Meta:
         unique_together = (('checklist', 'insumo'),)
 
 class ChecklistEquipamento(models.Model):
+    STATUS_RETORNO = [
+        ('PENDENTE', 'Pendente'),
+        ('RETORNADO', 'Retornado'),
+        ('SICK', 'SICK'),
+        ('DANO', 'Dano'),
+        ('PERDA', 'Perda'),
+        ('ROUBO', 'Roubo'),
+    ]
+
     checklist = models.ForeignKey('ChecklistDiario', on_delete=models.CASCADE, related_name='equipamentos_utilizados')
     equipamento = models.ForeignKey('estoque.Equipamento', on_delete=models.PROTECT)
     tag_saida = models.CharField(max_length=100, verbose_name="Nº Tag na Saída")
     tag_volta = models.CharField(max_length=100, null=True, blank=True, verbose_name="Nº Tag na Volta")
     data_retorno = models.DateTimeField(null=True, blank=True)
+    status_retorno = models.CharField(max_length=20, choices=STATUS_RETORNO, default='PENDENTE')
+    motivo_observacao = models.TextField(blank=True)
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+    resolvido_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name='checklist_equipamentos_resolvidos')
     observacao = models.TextField(blank=True)
 
     class Meta:

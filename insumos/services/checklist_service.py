@@ -15,7 +15,8 @@ from insumos.models import (
 )
 from insumos.services.consumo_service import ConsumoService
 from insumos.services.movimentacao_service import MovimentacaoService
-from estoque.models import Equipamento
+from estoque.models import Comunicado, Equipamento, Historico, Sick
+from django.contrib.auth.models import User
 
 
 class ChecklistService:
@@ -123,6 +124,27 @@ class ChecklistService:
         ])
         return item
 
+    @staticmethod
+    @transaction.atomic
+    def atualizar_retorno_item(*, item, retornada):
+        retornada = Decimal(str(retornada or '0'))
+
+        if retornada < 0:
+            raise ValueError('A quantidade retornada nÃ£o pode ser negativa.')
+
+        if retornada > item.quantidade_enviada:
+            raise ValueError('A quantidade retornada nÃ£o pode exceder a quantidade enviada.')
+
+        item.quantidade_retornada = retornada
+        item.quantidade_perdida = Decimal('0')
+        item.quantidade_utilizada = item.quantidade_enviada - retornada
+        item.status_retorno = 'CONFERIDO'
+        item.save(update_fields=[
+            'quantidade_utilizada', 'quantidade_retornada',
+            'quantidade_perdida', 'status_retorno'
+        ])
+        return item
+
 
     # EQUIPAMENTOS
     @staticmethod
@@ -161,6 +183,102 @@ class ChecklistService:
         )
         return item
 
+    @staticmethod
+    def _comunicar_admins_equipamento(item_equip, usuario):
+        admins = User.objects.filter(perfil__role='admin', is_active=True).distinct()
+        if not admins.exists():
+            return None
+
+        equipamento = item_equip.equipamento
+        descricao = equipamento.produto.descricao if equipamento.produto else str(equipamento.id)
+        comunicado = Comunicado.objects.create(
+            titulo=f'OcorrÃªncia no checklist #{item_equip.checklist_id}',
+            mensagem=(
+                f'O equipamento {descricao} '
+                f'(PatrimÃ´nio: {equipamento.patrimonio}, SÃ©rie: {equipamento.numero_serie}) '
+                f'foi resolvido como {item_equip.get_status_retorno_display()} no retorno do checklist '
+                f'#{item_equip.checklist_id}.\n\n'
+                f'ObservaÃ§Ã£o: {item_equip.motivo_observacao or "-"}'
+            ),
+            tipo='URGENTE',
+            criado_por=usuario,
+            enviar_para_todos=False,
+            permitir_limpar=False,
+        )
+        comunicado.usuarios.set(admins)
+        return comunicado
+
+    @staticmethod
+    @transaction.atomic
+    def resolver_retorno_equipamento(*, item_equip, status_retorno, observacao, usuario):
+        status_retorno = (status_retorno or 'PENDENTE').upper()
+        observacao = (observacao or '').strip()
+        status_validos = {codigo for codigo, _ in ChecklistEquipamento.STATUS_RETORNO}
+
+        if status_retorno not in status_validos:
+            raise ValueError('Status de retorno do equipamento invÃ¡lido.')
+
+        equipamento = item_equip.equipamento
+        identificacao = f'{equipamento.patrimonio} ({equipamento.numero_serie})'
+        status_anterior = item_equip.status_retorno
+        gerar_ocorrencia = status_retorno != status_anterior or not item_equip.resolvido_em
+
+        if status_retorno not in ('RETORNADO', 'PENDENTE') and not observacao:
+            raise ValueError(f'Informe a observaÃ§Ã£o para o equipamento {identificacao}.')
+
+        agora = timezone.now()
+        item_equip.status_retorno = status_retorno
+        item_equip.motivo_observacao = observacao
+        item_equip.resolvido_por = usuario if status_retorno != 'PENDENTE' else None
+        item_equip.resolvido_em = agora if status_retorno != 'PENDENTE' else None
+
+        if status_retorno == 'RETORNADO':
+            item_equip.data_retorno = item_equip.data_retorno or agora
+            equipamento.status = 'ATIVO'
+            equipamento.save(update_fields=['status', 'data_atualizacao'])
+        elif status_retorno in ('SICK', 'DANO'):
+            item_equip.data_retorno = None
+            equipamento.status = 'SICK'
+            equipamento.save(update_fields=['status', 'data_atualizacao'])
+            if gerar_ocorrencia:
+                Sick.objects.create(
+                    equipamento=equipamento,
+                    categoria=status_retorno,
+                    motivo=observacao,
+                    descricao=f'OcorrÃªncia registrada no retorno do checklist #{item_equip.checklist_id}.',
+                    ativo=True,
+                )
+                ChecklistService._comunicar_admins_equipamento(item_equip, usuario)
+        elif status_retorno in ('PERDA', 'ROUBO'):
+            item_equip.data_retorno = None
+            equipamento.status = 'INATIVO'
+            equipamento.save(update_fields=['status', 'data_atualizacao'])
+            if gerar_ocorrencia:
+                ChecklistService._comunicar_admins_equipamento(item_equip, usuario)
+        else:
+            item_equip.data_retorno = None
+
+        item_equip.save(update_fields=[
+            'status_retorno', 'motivo_observacao', 'resolvido_por',
+            'resolvido_em', 'data_retorno'
+        ])
+
+        if status_retorno != 'PENDENTE' and gerar_ocorrencia:
+            Historico.objects.create(
+                equipamento=equipamento,
+                usuario=usuario,
+                tipo_acao='STATUS',
+                detalhes={
+                    'origem': 'checklist',
+                    'checklist': item_equip.checklist_id,
+                    'status_retorno': status_retorno,
+                    'observacao': observacao,
+                    'status_equipamento': equipamento.status,
+                },
+            )
+
+        return item_equip
+
 
     # TAGS
     @staticmethod
@@ -180,7 +298,7 @@ class ChecklistService:
 
     @staticmethod
     @transaction.atomic
-    def adicionar_lote_tag(*, checklist, lote, numero_inicial_utilizado, usuario, rolo=None):
+    def adicionar_lote_tag(*, checklist, lote, numero_inicial_utilizado, usuario, rolo=None, modo_rolo=None):
         """
         Na criação/execução do checklist, a TAG registra apenas o início do intervalo consumido.
         O número final será informado na finalização.
@@ -191,10 +309,19 @@ class ChecklistService:
         if rolo:
             if rolo.lote_id != lote.id:
                 raise ValueError('O rolo informado não pertence ao lote selecionado.')
-            if rolo.status != 'DISPONIVEL':
+            if rolo.status not in ('DISPONIVEL', 'EM_USO'):
                 raise ValueError(
                     f'O rolo {rolo.codigo} do lote {lote.numero_inicial}-{lote.numero_final} não está disponível.'
                 )
+
+            if not modo_rolo:
+                modo_rolo = 'NOVO' if rolo.status == 'DISPONIVEL' else 'REUTILIZACAO'
+
+            if modo_rolo == 'NOVO' and rolo.status != 'DISPONIVEL':
+                raise ValueError('Um novo rolo precisa estar disponÃ­vel em estoque.')
+
+            if modo_rolo == 'REUTILIZACAO' and rolo.status != 'EM_USO':
+                raise ValueError('A reutilizaÃ§Ã£o deve selecionar um rolo que jÃ¡ esteja em uso.')
 
         numero_inicial_utilizado = int(numero_inicial_utilizado)
 
@@ -226,6 +353,14 @@ class ChecklistService:
         )
 
         if rolo:
+            if modo_rolo == 'NOVO':
+                if lote.quantidade_disponivel <= 0:
+                    raise ValueError(
+                        f'O lote {lote.numero_inicial}-{lote.numero_final} nÃ£o possui rolos novos disponÃ­veis.'
+                    )
+                lote.quantidade_disponivel -= 1
+                lote.save(update_fields=['quantidade_disponivel'])
+
             rolo.status = 'EM_USO'
             rolo.save(update_fields=['status'])
 
@@ -239,6 +374,8 @@ class ChecklistService:
                 'base': checklist.inventario.base.nome,
                 'lote_id': lote.id,
                 'lote_faixa': f'{lote.numero_inicial}-{lote.numero_final}',
+                'rolo': rolo.codigo if rolo else None,
+                'modo_rolo': modo_rolo,
                 'numero_inicial_utilizado': numero_inicial_utilizado,
             },
         )
@@ -272,7 +409,7 @@ class ChecklistService:
             rolo.status = (
                 'ESGOTADO'
                 if numero_final_utilizado >= item_lote.lote.numero_final
-                else 'DISPONIVEL'
+                else 'EM_USO'
             )
             rolo.save(update_fields=['numero_atual', 'status'])
 
@@ -314,6 +451,11 @@ class ChecklistService:
         # 1. INSUMOS
         # ==========================================
         for item in checklist.itens.select_related('insumo'):
+            if item.status_retorno == 'PENDENTE':
+                raise ValueError(
+                    f'O item "{item.insumo.descricao}" ainda estÃ¡ pendente de conferÃªncia.'
+                )
+
             total = (
                 item.quantidade_utilizada
                 + item.quantidade_retornada
@@ -340,7 +482,7 @@ class ChecklistService:
         # ==========================================
         # 2. EQUIPAMENTOS
         # ==========================================
-        equipamentos_pendentes = checklist.equipamentos_utilizados.filter(data_retorno__isnull=True)
+        equipamentos_pendentes = checklist.equipamentos_utilizados.filter(status_retorno='PENDENTE')
         if equipamentos_pendentes.exists():
             pendentes = ', '.join([
                 f'{e.equipamento.patrimonio} ({e.equipamento.numero_serie})'
@@ -353,8 +495,9 @@ class ChecklistService:
 
         for item_equip in checklist.equipamentos_utilizados.select_related('equipamento'):
             equipamento = item_equip.equipamento
-            equipamento.status = 'ATIVO'
-            equipamento.save(update_fields=['status', 'data_atualizacao'])
+            if item_equip.status_retorno == 'RETORNADO':
+                equipamento.status = 'ATIVO'
+                equipamento.save(update_fields=['status', 'data_atualizacao'])
 
         # ==========================================
         # 3. TAGS

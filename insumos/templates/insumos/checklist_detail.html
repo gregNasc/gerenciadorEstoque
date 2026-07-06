@@ -195,9 +195,8 @@
                             <tr>
                                 <th>Insumo</th>
                                 <th>Enviado</th>
-                                <th>Utilizado</th>
                                 <th>Retornado</th>
-                                <th>Perdido</th>
+                                <th>Utilizado</th>
                                 <th>Conferencia</th>
                             </tr>
                         </thead>
@@ -210,22 +209,14 @@
                                 </td>
                                 <td>{{ item.quantidade_enviada }}</td>
                                 <td>
-                                    <input type="number" name="utilizada_{{ item.id }}"
-                                           value="{{ item.quantidade_utilizada|default_if_none:0 }}"
-                                           step="0.01" min="0" class="form-control number-input"
-                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
-                                </td>
-                                <td>
                                     <input type="number" name="retornada_{{ item.id }}"
-                                           value="{{ item.quantidade_retornada|default_if_none:0 }}"
+                                           value="{% if item.status_retorno == 'CONFERIDO' %}{{ item.quantidade_retornada }}{% endif %}"
                                            step="0.01" min="0" class="form-control number-input"
+                                           data-retornada-input
                                            {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
                                 </td>
                                 <td>
-                                    <input type="number" name="perdida_{{ item.id }}"
-                                           value="{{ item.quantidade_perdida|default_if_none:0 }}"
-                                           step="0.01" min="0" class="form-control number-input"
-                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                    <span class="usage-pill" data-insumo-utilizado>{{ item.quantidade_utilizada }}</span>
                                 </td>
                                 <td>
                                     <span class="usage-pill" data-insumo-status>Pendente</span>
@@ -244,38 +235,94 @@
         <div class="return-section">
             <h4><i class="bi bi-pc-display"></i> Equipamentos</h4>
             <div class="section-body">
-                {% if equipamentos %}
+                {% if equipamentos_grupos %}
                 <div class="table-responsive">
                     <table class="table table-striped align-middle">
                         <thead>
                             <tr>
-                                <th>Equipamento</th>
-                                <th>Patrimonio</th>
-                                <th>Serie</th>
-                                <th>Retornou</th>
-                                <th>Data retorno</th>
+                                <th>Categoria</th>
+                                <th>Enviado</th>
+                                <th>Retornado</th>
+                                <th>Divergencia</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for eq in equipamentos %}
-                            <tr>
-                                <td>{{ eq.equipamento.produto.descricao }}</td>
-                                <td>{{ eq.equipamento.patrimonio }}</td>
-                                <td>{{ eq.equipamento.numero_serie }}</td>
+                            {% for grupo in equipamentos_grupos %}
+                            <tr data-equip-group data-enviado="{{ grupo.enviados }}" data-key="{{ grupo.key }}">
+                                <td><strong>{{ grupo.categoria }}</strong></td>
+                                <td>{{ grupo.enviados }}</td>
                                 <td>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               name="equip_retorno_{{ eq.id }}"
-                                               id="equip_retorno_{{ eq.id }}"
-                                               value="1"
-                                               {% if eq.data_retorno %}checked{% endif %}
-                                               {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
-                                        <label class="form-check-label" for="equip_retorno_{{ eq.id }}">
-                                            Confirmar
-                                        </label>
+                                    <input type="number"
+                                           name="equip_qtd_retornada_{{ grupo.key }}"
+                                           value="{{ grupo.retornados }}"
+                                           min="0"
+                                           max="{{ grupo.enviados }}"
+                                           step="1"
+                                           class="form-control number-input"
+                                           data-equip-returned
+                                           {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <span class="usage-pill" data-equip-diff>0</span>
+                                </td>
+                            </tr>
+                            <tr data-equip-occurrence-panel data-key="{{ grupo.key }}">
+                                <td colspan="4">
+                                    <div class="small text-muted mb-2">
+                                        Marque exatamente os equipamentos que tiveram ocorrencia e informe motivo e observacao.
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Ocorrencia</th>
+                                                    <th>Equipamento</th>
+                                                    <th>Patrimonio</th>
+                                                    <th>Serie</th>
+                                                    <th>Motivo</th>
+                                                    <th>Observacao</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for eq in grupo.itens %}
+                                                <tr>
+                                                    <td>
+                                                        <input type="checkbox"
+                                                               name="equip_ocorrencia_{{ grupo.key }}"
+                                                               value="{{ eq.id }}"
+                                                               class="form-check-input"
+                                                               data-equip-occurrence
+                                                               {% if eq.status_retorno != 'PENDENTE' and eq.status_retorno != 'RETORNADO' %}checked{% endif %}
+                                                               {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                                    </td>
+                                                    <td>{{ eq.equipamento.produto.descricao }}</td>
+                                                    <td>{{ eq.equipamento.patrimonio }}</td>
+                                                    <td>{{ eq.equipamento.numero_serie }}</td>
+                                                    <td>
+                                                        <select name="equip_ocorrencia_status_{{ eq.id }}"
+                                                                class="form-select form-select-sm"
+                                                                data-equip-occurrence-status
+                                                                {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                                            <option value="">Selecione</option>
+                                                            <option value="SICK" {% if eq.status_retorno == 'SICK' %}selected{% endif %}>SICK</option>
+                                                            <option value="DANO" {% if eq.status_retorno == 'DANO' %}selected{% endif %}>Dano</option>
+                                                            <option value="PERDA" {% if eq.status_retorno == 'PERDA' %}selected{% endif %}>Perda</option>
+                                                            <option value="ROUBO" {% if eq.status_retorno == 'ROUBO' %}selected{% endif %}>Roubo</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <textarea name="equip_ocorrencia_obs_{{ eq.id }}"
+                                                                  class="form-control form-control-sm"
+                                                                  rows="2"
+                                                                  data-equip-occurrence-obs
+                                                                  {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>{{ eq.motivo_observacao }}</textarea>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </td>
-                                <td>{{ eq.data_retorno|date:"d/m/Y H:i"|default:"Pendente" }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -366,20 +413,127 @@ function parseDecimal(value) {
 function atualizarConferenciaInsumos() {
     document.querySelectorAll('[data-insumo-row]').forEach(row => {
         const enviado = parseDecimal(row.dataset.enviado);
-        const inputs = row.querySelectorAll('input[type="number"]');
-        const total = Array.from(inputs).reduce((acc, input) => acc + parseDecimal(input.value), 0);
+        const retornadaInput = row.querySelector('[data-retornada-input]');
+        const utilizado = row.querySelector('[data-insumo-utilizado]');
         const status = row.querySelector('[data-insumo-status]');
+        const valorInformado = retornadaInput && retornadaInput.value !== '';
+        const retornada = parseDecimal(retornadaInput ? retornadaInput.value : 0);
 
-        if (Math.abs(total - enviado) < 0.0001) {
+        if (!valorInformado) {
+            if (utilizado) utilizado.textContent = 'Pendente';
+            status.textContent = 'Pendente';
+            status.style.background = '#fff4d6';
+            status.style.color = '#8a6500';
+        } else if (retornada <= enviado) {
+            if (utilizado) utilizado.textContent = (enviado - retornada).toFixed(2);
             status.textContent = 'OK';
             status.style.background = '#e8f8ed';
             status.style.color = '#1f7a3a';
         } else {
-            status.textContent = `${total} / ${enviado}`;
-            status.style.background = '#fff4d6';
-            status.style.color = '#8a6500';
+            if (utilizado) utilizado.textContent = 'Inválido';
+            status.textContent = 'Maior que enviado';
+            status.style.background = '#fdeaea';
+            status.style.color = '#842029';
         }
     });
+}
+
+function validarEquipamentos() {
+    let ok = true;
+    document.querySelectorAll('[data-equip-group]').forEach(row => {
+        const enviado = parseInt(row.dataset.enviado || '0', 10);
+        const key = row.dataset.key;
+        const returnedInput = row.querySelector('[data-equip-returned]');
+        const retornado = parseInt(returnedInput?.value || '0', 10);
+        const divergencia = enviado - retornado;
+        const panel = document.querySelector(`[data-equip-occurrence-panel][data-key="${key}"]`);
+        const checked = panel ? panel.querySelectorAll('[data-equip-occurrence]:checked') : [];
+
+        if (retornado < 0 || retornado > enviado) {
+            if (returnedInput) returnedInput.classList.add('is-invalid');
+            ok = false;
+        } else if (returnedInput) {
+            returnedInput.classList.remove('is-invalid');
+        }
+
+        if (checked.length !== Math.max(divergencia, 0)) {
+            ok = false;
+        }
+
+        checked.forEach(check => {
+            const itemRow = check.closest('tr');
+            const status = itemRow ? itemRow.querySelector('[data-equip-occurrence-status]') : null;
+            const obs = itemRow ? itemRow.querySelector('[data-equip-occurrence-obs]') : null;
+            const statusOk = status && status.value;
+            const obsOk = obs && obs.value.trim();
+
+            if (status) status.classList.toggle('is-invalid', !statusOk);
+            if (obs) obs.classList.toggle('is-invalid', !obsOk);
+
+            if (!statusOk || !obsOk) {
+                ok = false;
+            }
+        });
+    });
+    return ok;
+}
+
+function atualizarEquipamentos() {
+    document.querySelectorAll('[data-equip-group]').forEach(row => {
+        const enviado = parseInt(row.dataset.enviado || '0', 10);
+        const key = row.dataset.key;
+        const returnedInput = row.querySelector('[data-equip-returned]');
+        const retornado = parseInt(returnedInput?.value || '0', 10);
+        const divergencia = Math.max(enviado - retornado, 0);
+        const diff = row.querySelector('[data-equip-diff]');
+        const panel = document.querySelector(`[data-equip-occurrence-panel][data-key="${key}"]`);
+
+        if (diff) {
+            diff.textContent = divergencia ? `${divergencia} pendente(s)` : 'OK';
+            diff.style.background = divergencia ? '#fff4d6' : '#e8f8ed';
+            diff.style.color = divergencia ? '#8a6500' : '#1f7a3a';
+        }
+
+        if (panel) {
+            panel.style.display = divergencia ? '' : 'none';
+            if (!divergencia) {
+                panel.querySelectorAll('[data-equip-occurrence]').forEach(check => {
+                    check.checked = false;
+                });
+            }
+        }
+    });
+    atualizarCamposOcorrencia();
+}
+
+function atualizarCamposOcorrencia() {
+    document.querySelectorAll('[data-equip-occurrence]').forEach(check => {
+        const row = check.closest('tr');
+        const status = row ? row.querySelector('[data-equip-occurrence-status]') : null;
+        const obs = row ? row.querySelector('[data-equip-occurrence-obs]') : null;
+
+        if (check.disabled) {
+            if (status) status.classList.remove('is-invalid');
+            if (obs) obs.classList.remove('is-invalid');
+            return;
+        }
+
+        if (status) status.disabled = false;
+        if (obs) obs.disabled = false;
+
+        if (!check.checked) {
+            if (status) status.classList.remove('is-invalid');
+            if (obs) obs.classList.remove('is-invalid');
+        }
+    });
+}
+
+function validarEquipamentosComMensagem() {
+    if (!validarEquipamentos()) {
+        alert('Revise os equipamentos: a quantidade de ocorrencias deve bater com a diferenca e cada ocorrencia precisa de motivo e observacao.');
+        return false;
+    }
+    return true;
 }
 
 function atualizarTagsUsadas() {
@@ -409,8 +563,48 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('input', atualizarTagsUsadas);
     });
 
+    document.querySelectorAll('[data-equip-returned]').forEach(input => {
+        input.addEventListener('input', atualizarEquipamentos);
+    });
+
+    document.querySelectorAll('[data-equip-occurrence]').forEach(input => {
+        input.addEventListener('change', atualizarCamposOcorrencia);
+    });
+
+    document.querySelectorAll('[data-equip-occurrence-status], [data-equip-occurrence-obs]').forEach(input => {
+        input.addEventListener('input', function() {
+            const row = this.closest('tr');
+            const check = row ? row.querySelector('[data-equip-occurrence]') : null;
+            if (check && !check.disabled && (this.value || this.value === undefined)) {
+                check.checked = true;
+            }
+            atualizarCamposOcorrencia();
+        });
+        input.addEventListener('change', function() {
+            const row = this.closest('tr');
+            const check = row ? row.querySelector('[data-equip-occurrence]') : null;
+            if (check && !check.disabled && this.value) {
+                check.checked = true;
+            }
+            atualizarCamposOcorrencia();
+        });
+    });
+
     atualizarConferenciaInsumos();
+    atualizarEquipamentos();
+    atualizarCamposOcorrencia();
     atualizarTagsUsadas();
+
+    const form = document.getElementById('retornoChecklistForm');
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            atualizarEquipamentos();
+            atualizarCamposOcorrencia();
+            if (!validarEquipamentosComMensagem()) {
+                event.preventDefault();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -36,4 +36,5 @@ urlpatterns = [
     path('checklist/<int:pk>/editar-itens/', api.editar_itens_checklist, name='editar_itens_checklist'),
     path('checklist/<int:pk>/editar/', api.editar_checklist, name='editar_checklist'),
     path('api/ultimo-checklist/', api.ultimo_checklist_por_loja, name='api_ultimo_checklist'),
+    path('estoque/ajustar/', api.ajustar_estoque_insumo, name='ajustar_estoque_insumo'),
 ]

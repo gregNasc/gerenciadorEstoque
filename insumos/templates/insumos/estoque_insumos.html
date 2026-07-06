@@ -2,121 +2,186 @@
 {% block content %}
 
 <div class="container mt-4">
+
     <div class="card shadow-sm">
+
         <div class="card-header bg-dark text-white">
             📦 Estoque de Insumos
         </div>
+
         <div class="card-body">
-
-            <div class="table-responsive">
-
-                <table class="table table-striped table-hover">
-
-                <div class="card shadow-sm mb-3">
-
-                    <div class="card-header bg-light">
-                        <strong>🔎 Filtros</strong>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }}">
+                        {{ message }}
                     </div>
+                {% endfor %}
+            {% endif %}
 
-                    <div class="card-body">
-                        <form method="get">
-                            <div class="row g-3 align-items-end">
-                                <div class="col-md-5">
-                                    <label class="form-label fw-bold">
-                                        Categoria
-                                    </label>
-                                    {{ form.categoria }}
-                                </div>
-                                <!--div class="col-md-5">
-                                    <label class="form-label fw-bold">
-                                        Insumo
-                                    </label>
-                                    {{ form.insumo }}
-                                </div-->
-                                <div class="col-md-1">
-                                    <button type="submit"
-                                            class="btn btn-primary w-120">
-                                        Pesquisar
-                                    </button>
-                                </div>
-                                <!--div class="col-md-1">
-                                    <a href="{% url 'insumos:estoque_insumos' %}"
-                                       class="btn btn-outline-secondary w-100">
-                                        ✖
-                                    </a>
-                                </div-->
-                            </div>
-
-                        </form>
-
-                    </div>
-
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <strong>🔎 Filtros</strong>
                 </div>
 
-                    <thead>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="row g-3 align-items-end">
 
-                        <tr>
-                            <th>Base</th>
-                            <th>Categoria</th>
-                            <th>Insumo</th>
-                            <th>Unidade</th>
-                            <th>Saldo</th>
-                            <!--th>Mínimo</th-->
-                            <th>Status</th>
-                        </tr>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">Categoria</label>
+                                {{ form.categoria }}
+                            </div>
 
-                    </thead>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    Pesquisar
+                                </button>
+                            </div>
 
-                    <tbody>
-                        {% for item in estoque %}
-                        <tr>
+                            <div class="col-md-2">
+                                <a href="{% url 'insumos:estoque_insumos' %}"
+                                   class="btn btn-outline-secondary w-100">
+                                    Limpar
+                                </a>
+                            </div>
 
-                            <td>{{ item.base }}</td>
-                            <td>
-                                {{ item.insumo.categoria.nome }}
-                            </td>
-                            <td>
-                                {{ item.insumo.descricao }}
-                            </td>
-                            <td>
-                                {{ item.insumo.unidade_medida }}
-                            </td>
-                            <td>
-                                {{ item.saldo }}
-                            </td>
-                            <!--td>
-                                {{ item.minimo }}
-                            </td-->
-                            <td>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
-                                {% if item.critico %}
-                                    <span class="badge bg-danger">
-                                        CRÍTICO
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-success">
-                                        OK
-                                    </span>
-                                {% endif %}
+            <ul class="nav nav-tabs mb-3" id="abasCategorias" role="tablist">
+                {% for categoria, itens in estoque_por_categoria.items %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if forloop.first %}active{% endif %}"
+                                id="tab-{{ forloop.counter }}"
+                                data-bs-toggle="tab"
+                                data-bs-target="#categoria-{{ forloop.counter }}"
+                                type="button"
+                                role="tab"
+                                aria-controls="categoria-{{ forloop.counter }}"
+                                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                            {{ categoria }}
+                            <span class="badge bg-secondary ms-1">
+                                {{ itens|length }}
+                            </span>
+                        </button>
+                    </li>
+                {% endfor %}
+            </ul>
 
-                            </td>
+            <div class="tab-content">
+                {% for categoria, itens in estoque_por_categoria.items %}
 
-                        </tr>
+                    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+                         id="categoria-{{ forloop.counter }}"
+                         role="tabpanel"
+                         aria-labelledby="tab-{{ forloop.counter }}">
 
-                        {% empty %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle">
 
-                        <tr>
-                            <td colspan="7">
-                                Nenhum item encontrado.
-                            </td>
-                        </tr>
+                                <thead>
+                                    <tr>
+                                        <th>Base</th>
+                                        <th>Categoria</th>
+                                        <th>Insumo</th>
+                                        <th>Unidade</th>
+                                        <th>Saldo</th>
+                                        <th>Status</th>
+                                        {% if user.perfil.is_admin or user.perfil.is_gestor %}
+                                            <th>Acoes</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
 
-                        {% endfor %}
+                                <tbody>
+                                    {% for item in itens %}
+                                        <tr>
+                                            <td>{{ item.base }}</td>
+                                            <td>{{ item.insumo.categoria.nome }}</td>
+                                            <td>{{ item.insumo.descricao }}</td>
+                                            <td>{{ item.insumo.unidade_medida }}</td>
+                                            <td>{{ item.saldo }}</td>
+                                            <td>
+                                                {% if item.critico %}
+                                                    <span class="badge bg-danger">CRÍTICO</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">OK</span>
+                                                {% endif %}
+                                            </td>
+                                            {% if user.perfil.is_admin or user.perfil.is_gestor %}
+                                                <td>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-primary"
+                                                            data-ajuste-toggle
+                                                            data-target="ajuste-{{ item.base.id }}-{{ item.insumo.id }}">
+                                                        Ajustar
+                                                    </button>
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                        {% if user.perfil.is_admin or user.perfil.is_gestor %}
+                                            <tr id="ajuste-{{ item.base.id }}-{{ item.insumo.id }}" data-ajuste-row style="display:none;">
+                                                <td colspan="7">
+                                                    <form method="post"
+                                                          action="{% url 'insumos:ajustar_estoque_insumo' %}"
+                                                          class="row g-2 align-items-end">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="base_id" value="{{ item.base.id }}">
+                                                        <input type="hidden" name="insumo_id" value="{{ item.insumo.id }}">
 
-                    </tbody>
+                                                        <div class="col-md-3">
+                                                            <label class="form-label small fw-bold">Item</label>
+                                                            <input type="text" class="form-control form-control-sm" value="{{ item.insumo.descricao }}" readonly>
+                                                        </div>
+                                                        <div class="col-md-2">
+                                                            <label class="form-label small fw-bold">Saldo atual</label>
+                                                            <input type="text" class="form-control form-control-sm" value="{{ item.saldo }}" readonly>
+                                                        </div>
+                                                        <div class="col-md-2">
+                                                            <label class="form-label small fw-bold">Saldo real</label>
+                                                            <input type="number" name="saldo_real" class="form-control form-control-sm" value="{{ item.saldo }}" step="0.01" min="0" required>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <label class="form-label small fw-bold">Motivo</label>
+                                                            <input type="text" name="motivo" class="form-control form-control-sm" required>
+                                                        </div>
+                                                        <div class="col-md-2">
+                                                            <label class="form-label small fw-bold">Senha</label>
+                                                            <input type="password" name="senha" class="form-control form-control-sm" autocomplete="current-password" required>
+                                                        </div>
+                                                        <div class="col-12 d-flex justify-content-end gap-2">
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-ajuste-cancel>
+                                                                Cancelar
+                                                            </button>
+                                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                                Salvar ajuste
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="{% if user.perfil.is_admin or user.perfil.is_gestor %}7{% else %}6{% endif %}" class="text-center text-muted">
+                                                Nenhum item encontrado nesta categoria.
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
 
-                </table>
+                            </table>
+                        </div>
 
+                    </div>
+
+                {% empty %}
+                    <div class="alert alert-info mb-0">
+                        Nenhum item encontrado.
+                    </div>
+                {% endfor %}
             </div>
 
         </div>
@@ -124,5 +189,29 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-ajuste-toggle]').forEach(button => {
+        button.addEventListener('click', function() {
+            const target = document.getElementById(this.dataset.target);
+            if (!target) return;
+
+            document.querySelectorAll('[data-ajuste-row]').forEach(row => {
+                if (row !== target) row.style.display = 'none';
+            });
+
+            target.style.display = target.style.display === 'none' ? '' : 'none';
+        });
+    });
+
+    document.querySelectorAll('[data-ajuste-cancel]').forEach(button => {
+        button.addEventListener('click', function() {
+            const row = this.closest('[data-ajuste-row]');
+            if (row) row.style.display = 'none';
+        });
+    });
+});
+</script>
 
 {% endblock %}

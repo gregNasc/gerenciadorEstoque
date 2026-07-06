@@ -206,12 +206,13 @@ class Equipamento(models.Model):
         ]
     STATUS_CHOICES = [
         ('ATIVO', _('Ativo')),
-        ('RESERVADO_TRANSFERENCIA', _('Reservado para Transferência')),
-        ('EM_TRANSITO', _('Em Trânsito')),
-        ('MANUTENCAO', _('Manutenção')),
+        ('RESERVADO_TRANSFERENCIA', _('Reservado para Transferencia')),
+        ('EM_TRANSITO', _('Em Transito')),
+        ('MANUTENCAO', _('Manutencao')),
         ('SICK', _('Sick')),
         ('EM_USO', _('Em Uso')),
         ('BAIXA', _('Baixa')),
+        ('INATIVO', _('Inativo')),
     ]
 
     produto = models.ForeignKey(Produto, null=True, on_delete=models.SET_NULL)

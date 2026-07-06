@@ -49,6 +49,24 @@ from .services.estoque_service import get_estoque_por_produto
 from django.contrib.auth import authenticate
 
 
+def _normalizar_nome_base(valor):
+    return re.sub(r'\s+', ' ', str(valor or '').strip()).upper()
+
+
+def _bases_agrupadas_por_nome(queryset):
+    bases_por_nome = OrderedDict()
+    for base in queryset.select_related('empresa').order_by('nome', 'id'):
+        chave = _normalizar_nome_base(base.nome)
+        if not chave:
+            continue
+        bases_por_nome.setdefault(chave, []).append(base)
+    return bases_por_nome
+
+
+def _bases_unicas_por_nome(queryset):
+    return [bases[0] for bases in _bases_agrupadas_por_nome(queryset).values()]
+
+
 # ----------------- DASHBOARD -----------------
 @login_required
 #@cache_page(60 * 5)
@@ -87,6 +105,12 @@ def index(request):
         equipamentos = equipamentos.filter(regional_id=regional_id)
 
     # KPI SUPERIOR
+    total_filtrado = equipamentos.count()
+    ativos_filtrado = equipamentos.filter(status='ATIVO').count()
+    sick_filtrado = equipamentos.filter(status='SICK').count()
+    inativos_filtrado = equipamentos.filter(status='INATIVO').count()
+    manutencao_filtrado = equipamentos.filter(status='MANUTENCAO').count()
+    disponibilidade_filtrada = round((ativos_filtrado / total_filtrado * 100), 2) if total_filtrado else 0
 
     if categoria:
         # Por produto
@@ -137,12 +161,14 @@ def index(request):
 
     # KPIs REGIONAIS
     regionais_ids = equipamentos.values_list('regional_id', flat=True).distinct()
-    regionais_lista = Base.objects.filter(id__in=regionais_ids).order_by('nome')
+    regionais_por_nome = _bases_agrupadas_por_nome(Base.objects.filter(id__in=regionais_ids))
 
     kpis_regionais = []
 
-    for regional in regionais_lista:
-        equip_regional = equipamentos.filter(regional=regional)
+    for bases_grupo in regionais_por_nome.values():
+        regional = bases_grupo[0]
+        bases_ids = [base.id for base in bases_grupo]
+        equip_regional = equipamentos.filter(regional_id__in=bases_ids)
 
         total = equip_regional.count()
         ativos = equip_regional.filter(status='ATIVO').count()
@@ -219,7 +245,7 @@ def index(request):
             empresa=perfil.empresa
         )
 
-    regionais_select = regionais_select.order_by('nome')
+    regionais_select = _bases_unicas_por_nome(regionais_select)
     empresas = (
         Empresa.objects.all().order_by('nome')
         if perfil.is_admin
@@ -228,6 +254,14 @@ def index(request):
 
     context = {
         'produtos_na_categoria': produtos_na_categoria,
+        'kpis_totais': {
+            'total': total_filtrado,
+            'ativos': ativos_filtrado,
+            'sick': sick_filtrado,
+            'inativos': inativos_filtrado,
+            'manutencao': manutencao_filtrado,
+            'disponibilidade': disponibilidade_filtrada,
+        },
         'categoria_selecionada': categoria,
         'kpis_regionais': kpis_regionais,
         'produtos_lista': produtos_lista,
@@ -279,7 +313,7 @@ def detalhes_regional_api(request, regional_id):
     equipamentos = secure_queryset(
         Equipamento.objects.select_related('regional', 'produto'),
         request.user
-    ).filter(regional_id=regional_id)
+    ).filter(regional_id__in=[regional_id])
 
     regional = Base.objects.filter(id=regional_id).only('id', 'nome').first()
     if not regional:
@@ -772,6 +806,11 @@ def estoque_view(request):
             regional_id=regional_id
         )
 
+    total_estoque = equipamentos.count()
+    ativos_estoque = equipamentos.filter(status='ATIVO').count()
+    sick_estoque = equipamentos.filter(status='SICK').count()
+    manutencao_estoque = equipamentos.filter(status='MANUTENCAO').count()
+
     status_em_transito = [
         'PENDENTE',
         'ENVIADO',
@@ -856,7 +895,14 @@ def estoque_view(request):
         {
             'produtos_agrupados': produtos_processados,
             'regionais': regionais,
-            'regional_selecionada': regional_id
+            'regional_selecionada': regional_id,
+            'kpis_estoque': {
+                'total': total_estoque,
+                'ativos': ativos_estoque,
+                'sick': sick_estoque,
+                'manutencao': manutencao_estoque,
+                'disponibilidade': int((ativos_estoque / total_estoque) * 100) if total_estoque else 0,
+            }
         }
     )
 
@@ -4480,8 +4526,9 @@ def checklist_view(request):
             tags_payload = []
             for rolo_id in request.POST.getlist('rolo_tag_ids'):
                 numero_inicial = request.POST.get(f'tag_inicial_rolo_{rolo_id}')
+                modo_rolo = request.POST.get(f'tag_modo_rolo_{rolo_id}', 'REUTILIZACAO')
                 if numero_inicial:
-                    tags_payload.append((rolo_id, numero_inicial))
+                    tags_payload.append((rolo_id, numero_inicial, modo_rolo))
 
             if not equipamentos_ids and not insumos_payload and not tags_payload:
                 messages.error(request, 'Selecione ao menos um equipamento, informe um insumo ou adicione um lote de TAG.')
@@ -4526,7 +4573,7 @@ def checklist_view(request):
                         str(rolo.id): rolo
                         for rolo in RoloTag.objects.select_related('lote').filter(id__in=rolos_ids)
                     }
-                    for rolo_id, numero_inicial in tags_payload:
+                    for rolo_id, numero_inicial, modo_rolo in tags_payload:
                         rolo = rolos_dict.get(rolo_id)
                         if rolo:
                             ChecklistService.adicionar_lote_tag(
@@ -4534,6 +4581,7 @@ def checklist_view(request):
                                 lote=rolo.lote,
                                 rolo=rolo,
                                 numero_inicial_utilizado=numero_inicial,
+                                modo_rolo=modo_rolo,
                                 usuario=request.user
                             )
 
@@ -4562,7 +4610,7 @@ def checklist_view(request):
             status='PLANEJADO',
             data_inicio=date.today()
         )
-        lotes_tags = RoloTag.objects.filter(status='DISPONIVEL', lote__ativo=True).select_related('lote', 'lote__base')
+        lotes_tags = RoloTag.objects.filter(status__in=['DISPONIVEL', 'EM_USO'], lote__ativo=True).select_related('lote', 'lote__base')
     else:
         equipamentos = Equipamento.objects.filter(
             status='ATIVO',
@@ -4575,7 +4623,7 @@ def checklist_view(request):
             data_inicio=date.today()
         )
         lotes_tags = RoloTag.objects.filter(
-            status='DISPONIVEL',
+            status__in=['DISPONIVEL', 'EM_USO'],
             lote__ativo=True,
             lote__base_id__in=regionais_ids
         ).select_related('lote', 'lote__base')

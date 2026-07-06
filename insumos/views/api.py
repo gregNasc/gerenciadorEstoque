@@ -26,17 +26,40 @@ from django.utils.timezone import make_aware
 from datetime import datetime, date, time
 from insumos.models import Inventario, Cliente
 from estoque.models import Base, Empresa
+from estoque.models import Comunicado
+from django.contrib.auth.models import User
 from insumos.services.checklist_service import ChecklistService
+from insumos.services.movimentacao_service import MovimentacaoService
+from collections import defaultdict
 
 @login_required
 @role_required('admin', 'gestor', 'operador')
 def estoque_insumos(request):
 
     perfil = request.user.perfil
-    bases = Base.objects.all() if perfil.pode_ver_empresas_globais else perfil.regionais.all()
+
+    bases = (
+        Base.objects.all()
+        if perfil.pode_ver_empresas_globais
+        else perfil.regionais.all()
+    )
+
     categoria_id = request.GET.get('categoria')
     insumo_id = request.GET.get('insumo')
-    insumos = (Insumo.objects.filter(ativo=True).select_related('categoria'))
+    base_id = request.GET.get('base')
+
+    insumos = (
+        Insumo.objects
+        .filter(ativo=True)
+        .select_related('categoria')
+        .order_by('categoria__nome', 'descricao')
+    )
+
+    bases = bases.order_by('nome')
+    bases_filtro = bases
+
+    if base_id:
+        bases = bases.filter(id=base_id)
 
     if categoria_id:
         insumos = insumos.filter(categoria_id=categoria_id)
@@ -47,7 +70,6 @@ def estoque_insumos(request):
     estoque = []
 
     for base in bases:
-
         for insumo in insumos:
             saldo = MovimentacaoService.saldo(base, insumo)
 
@@ -59,8 +81,22 @@ def estoque_insumos(request):
                 'insumo': insumo,
                 'saldo': saldo,
                 'minimo': insumo.estoque_minimo,
-                'critico': saldo <= insumo.estoque_minimo
+                'critico': saldo <= insumo.estoque_minimo,
             })
+
+    total_itens = len(estoque)
+    criticos = sum(1 for item in estoque if item['critico'])
+    bases_com_saldo = len({item['base'].id for item in estoque})
+    categorias_com_saldo = len({
+        item['insumo'].categoria_id
+        for item in estoque
+    })
+
+    estoque_por_categoria = defaultdict(list)
+
+    for item in estoque:
+        categoria_nome = item['insumo'].categoria.nome
+        estoque_por_categoria[categoria_nome].append(item)
 
     form = FiltroEstoqueInsumoForm(request.GET or None)
 
@@ -69,7 +105,15 @@ def estoque_insumos(request):
         'insumos/estoque_insumos.html',
         {
             'estoque': estoque,
+            'estoque_por_categoria': dict(estoque_por_categoria),
             'form': form,
+            'total_itens': total_itens,
+            'criticos': criticos,
+            'ok_count': total_itens - criticos,
+            'bases_com_saldo': bases_com_saldo,
+            'categorias_com_saldo': categorias_com_saldo,
+            'bases': bases_filtro,
+            'filtro_base_id': base_id,
         }
     )
 
@@ -1343,6 +1387,17 @@ def checklist_detail(request, pk):
             messages.error(request, 'Você não tem acesso a este checklist.')
             return redirect('insumos:lista_checklists')
 
+    equipamentos_checklist = list(
+        checklist.equipamentos_utilizados
+        .select_related('equipamento__produto')
+        .order_by('equipamento__produto__categoria', 'equipamento__patrimonio')
+    )
+    equipamentos_por_categoria = defaultdict(list)
+    for item_equip in equipamentos_checklist:
+        categoria = item_equip.equipamento.produto.categoria if item_equip.equipamento.produto else 'Equipamentos'
+        chave = categoria.lower().replace(' ', '_')
+        equipamentos_por_categoria[chave].append(item_equip)
+
     if request.method == 'POST':
         if checklist.status == 'FINALIZADO':
             messages.warning(request, 'Este checklist já foi finalizado.')
@@ -1351,18 +1406,60 @@ def checklist_detail(request, pk):
         try:
             with transaction.atomic():
                 for item in checklist.itens.select_related('insumo'):
-                    ChecklistService.atualizar_item(
-                        item=item,
-                        utilizada=request.POST.get(f'utilizada_{item.id}', 0),
-                        retornada=request.POST.get(f'retornada_{item.id}', 0),
-                        perdida=request.POST.get(f'perdida_{item.id}', 0),
-                    )
+                    retornada = request.POST.get(f'retornada_{item.id}', '').strip()
+                    if retornada != '':
+                        ChecklistService.atualizar_retorno_item(
+                            item=item,
+                            retornada=retornada,
+                        )
 
-                for item_equip in checklist.equipamentos_utilizados.select_related('equipamento'):
-                    retorno_confirmado = request.POST.get(f'equip_retorno_{item_equip.id}')
-                    if retorno_confirmado and not item_equip.data_retorno:
-                        item_equip.data_retorno = timezone.now()
-                        item_equip.save(update_fields=['data_retorno'])
+                for chave, itens_categoria in equipamentos_por_categoria.items():
+                    valor_retornado = request.POST.get(f'equip_qtd_retornada_{chave}', '').strip()
+                    if valor_retornado == '':
+                        continue
+
+                    try:
+                        quantidade_retornada = int(valor_retornado)
+                    except ValueError:
+                        raise ValueError('Quantidade retornada de equipamentos invalida.')
+
+                    quantidade_enviada = len(itens_categoria)
+                    if quantidade_retornada < 0 or quantidade_retornada > quantidade_enviada:
+                        raise ValueError('Quantidade retornada de equipamentos deve ficar entre zero e a quantidade enviada.')
+
+                    ids_ocorrencia = {
+                        int(equip_id)
+                        for equip_id in request.POST.getlist(f'equip_ocorrencia_{chave}')
+                        if str(equip_id).isdigit()
+                    }
+                    quantidade_divergente = quantidade_enviada - quantidade_retornada
+
+                    if len(ids_ocorrencia) != quantidade_divergente:
+                        produto = itens_categoria[0].equipamento.produto
+                        categoria_label = produto.get_categoria_display() if produto else 'Equipamentos'
+                        raise ValueError(
+                            f'Informe exatamente {quantidade_divergente} equipamento(s) com ocorrencia em {categoria_label}.'
+                        )
+
+                    for item_equip in itens_categoria:
+                        if item_equip.id in ids_ocorrencia:
+                            status_retorno = request.POST.get(f'equip_ocorrencia_status_{item_equip.id}', '')
+                            observacao = request.POST.get(f'equip_ocorrencia_obs_{item_equip.id}', '')
+                            if status_retorno in ('', 'PENDENTE', 'RETORNADO'):
+                                raise ValueError('Selecione o motivo da ocorrencia do equipamento.')
+                            ChecklistService.resolver_retorno_equipamento(
+                                item_equip=item_equip,
+                                status_retorno=status_retorno,
+                                observacao=observacao,
+                                usuario=request.user,
+                            )
+                        else:
+                            ChecklistService.resolver_retorno_equipamento(
+                                item_equip=item_equip,
+                                status_retorno='RETORNADO',
+                                observacao='',
+                                usuario=request.user,
+                            )
 
                 if request.POST.get('acao') == 'finalizar':
                     ChecklistService.atualizar_tags_finalizacao(
@@ -1391,11 +1488,27 @@ def checklist_detail(request, pk):
         return redirect('insumos:checklist_detail', pk=checklist.pk)
 
     tags = checklist.lotes_tags_movimentados.select_related('lote', 'rolo')
+    equipamentos_grupos = []
+    for chave, itens_categoria in equipamentos_por_categoria.items():
+        resolvidos = [item for item in itens_categoria if item.status_retorno != 'PENDENTE']
+        retornados = sum(1 for item in itens_categoria if item.status_retorno == 'RETORNADO')
+        equipamentos_grupos.append({
+            'key': chave,
+            'categoria': (
+                itens_categoria[0].equipamento.produto.get_categoria_display()
+                if itens_categoria[0].equipamento.produto
+                else 'Equipamentos'
+            ),
+            'enviados': len(itens_categoria),
+            'retornados': retornados if resolvidos else len(itens_categoria),
+            'itens': itens_categoria,
+        })
 
     context = {
         'checklist': checklist,
         'itens': checklist.itens.select_related('insumo'),
-        'equipamentos': checklist.equipamentos_utilizados.select_related('equipamento__produto'),
+        'equipamentos': equipamentos_checklist,
+        'equipamentos_grupos': equipamentos_grupos,
         'tags': tags,
         'total_tags_utilizadas': sum(tag.quantidade_utilizada for tag in tags),
     }
@@ -1423,16 +1536,15 @@ def editar_itens_checklist(request, pk):
 
     if request.method == 'POST':
         for item in checklist.itens.select_related('insumo'):
-            utilizada = request.POST.get(f'utilizada_{item.id}', 0)
-            retornada = request.POST.get(f'retornada_{item.id}', 0)
-            perdida = request.POST.get(f'perdida_{item.id}', 0)
+            retornada = request.POST.get(f'retornada_{item.id}', '').strip()
 
             try:
-                ChecklistService.atualizar_item(
+                if retornada == '':
+                    continue
+
+                ChecklistService.atualizar_retorno_item(
                     item=item,
-                    utilizada=utilizada,
                     retornada=retornada,
-                    perdida=perdida
                 )
             except ValueError as e:
                 messages.error(request, f'Erro no item "{item.insumo.descricao}": {str(e)}')
@@ -1562,7 +1674,7 @@ def editar_checklist(request, pk):
     regionais_ids = perfil.bases_checklist_ids
     if perfil.is_admin:
         equipamentos = Equipamento.objects.filter(status='ATIVO')
-        lotes_tags = RoloTag.objects.filter(status='DISPONIVEL', lote__ativo=True).select_related('lote', 'lote__base')
+        lotes_tags = RoloTag.objects.filter(status__in=['DISPONIVEL', 'EM_USO'], lote__ativo=True).select_related('lote', 'lote__base')
     else:
         equipamentos = Equipamento.objects.filter(
             status='ATIVO',
@@ -1570,7 +1682,7 @@ def editar_checklist(request, pk):
             regional__empresa=perfil.empresa,
         )
         lotes_tags = RoloTag.objects.filter(
-            status='DISPONIVEL',
+            status__in=['DISPONIVEL', 'EM_USO'],
             lote__ativo=True,
             lote__base_id__in=regionais_ids,
             lote__base__empresa=perfil.empresa,
@@ -1597,3 +1709,68 @@ def editar_checklist(request, pk):
         'equipamentos_selecionados': checklist.equipamentos_utilizados.all(),
     }
     return render(request, 'estoque/checklist.html', context)
+
+@login_required
+@role_required('admin', 'gestor')
+def ajustar_estoque_insumo(request):
+
+    if request.method != 'POST':
+        return redirect('insumos:estoque_insumos')
+
+    base_id = request.POST.get('base_id')
+    insumo_id = request.POST.get('insumo_id')
+    saldo_real = request.POST.get('saldo_real')
+    motivo = request.POST.get('motivo')
+    senha = request.POST.get('senha')
+
+    if not request.user.check_password(senha):
+        messages.error(request, 'Senha inválida. Ajuste não realizado.')
+        return redirect('insumos:estoque_insumos')
+
+    if not motivo:
+        messages.error(request, 'Informe o motivo do ajuste.')
+        return redirect('insumos:estoque_insumos')
+
+    try:
+        saldo_real = Decimal(saldo_real)
+    except:
+        messages.error(request, 'Saldo informado inválido.')
+        return redirect('insumos:estoque_insumos')
+
+    base = get_object_or_404(Base, id=base_id)
+    insumo = get_object_or_404(Insumo, id=insumo_id)
+    saldo_anterior = MovimentacaoService.saldo(base, insumo)
+
+    MovimentacaoService.ajuste(
+        base=base,
+        insumo=insumo,
+        saldo_real=saldo_real,
+        usuario=request.user,
+        observacao=motivo,
+    )
+
+    admins = User.objects.filter(perfil__role='admin', is_active=True).distinct()
+    if admins.exists():
+        comunicado = Comunicado.objects.create(
+            titulo='Ajuste de estoque de insumo',
+            mensagem=(
+                f'O estoque do insumo {insumo.descricao} foi ajustado.\n\n'
+                f'Base: {base.nome}\n'
+                f'Saldo anterior: {saldo_anterior}\n'
+                f'Saldo ajustado: {saldo_real}\n'
+                f'Motivo: {motivo}\n'
+                f'UsuÃ¡rio: {request.user.get_username()}'
+            ),
+            tipo='OPERACIONAL',
+            criado_por=request.user,
+            enviar_para_todos=False,
+            permitir_limpar=False,
+        )
+        comunicado.usuarios.set(admins)
+
+    messages.success(
+        request,
+        f'Estoque de {insumo.descricao} ajustado com sucesso.'
+    )
+
+    return redirect('insumos:estoque_insumos')

@@ -2,403 +2,249 @@
 {% load i18n %}
 
 {% block content %}
-
-<div class="container-fluid px-4 py-4">
-
-    <!-- HEADER -->
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-5">
-
-        <div class="d-flex align-items-center gap-3">
-
-            <div class="bg-gradient-primary rounded-3 d-flex align-items-center justify-content-center shadow-sm"
-                 style="width: 48px; height: 48px; background: linear-gradient(135deg, #1e2a3a 0%, #0d1c2c 100%);">
-
-                <i class="bi bi-megaphone-fill text-white fs-5"></i>
-
-            </div>
-
+<div class="container-fluid px-4 py-3 comunicado-page">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom pb-3 mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-megaphone fs-3 text-secondary"></i>
             <div>
-
-                <h1 class="h3 fw-semibold mb-1">
-                    {% trans "Novo Comunicado" %}
-                </h1>
-
-                <p class="text-secondary-emphasis mb-0 small">
-                    {% trans "Envie avisos, arquivos e comunicados para usuários e regionais." %}
-                </p>
-
+                <h1 class="h3 fw-semibold mb-0">{% trans "Novo Comunicado" %}</h1>
+                <p class="text-secondary small mb-0">{% trans "Envio rapido para empresas, bases ou todos os usuarios." %}</p>
             </div>
-
         </div>
-
-        <a href="{% url 'estoque:caixa_comunicados' %}"
-           class="btn btn-outline-secondary rounded-pill px-4">
-
-            <i class="bi bi-arrow-left me-2"></i>
-
+        <a href="{% url 'estoque:caixa_comunicados' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+            <i class="bi bi-arrow-left"></i>
             {% trans "Voltar" %}
-
         </a>
-
     </div>
 
     <form method="post" enctype="multipart/form-data" novalidate>
-
         {% csrf_token %}
-
-        <div class="row g-4">
-
-            <!-- COLUNA PRINCIPAL -->
+        <div class="row g-4 align-items-start">
             <div class="col-xl-8">
-
-                <div class="card border-0 shadow-sm rounded-4">
-
-                    <div class="card-header bg-white border-bottom px-4 py-3 rounded-top-4">
-
-                        <h5 class="fw-semibold mb-0">
-                            <i class="bi bi-file-text me-2 text-secondary"></i>
-                            {% trans "Conteúdo do comunicado" %}
-                        </h5>
-
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="bi bi-file-text"></i>
+                        <span>{% trans "Conteudo" %}</span>
                     </div>
 
-                    <div class="card-body p-4">
-
-                        <!-- TÍTULO -->
-                        <div class="mb-4">
-
-                            <label class="form-label fw-semibold small text-uppercase text-secondary">
-                                {% trans "Título" %}
-                            </label>
-
-                            <input type="text"
-                                   name="titulo"
-                                   class="form-control form-control-lg rounded-3"
-                                   placeholder="{% trans 'Ex.: Atualização de Sistema' %}"
-                                   required>
-
-                        </div>
-
-                        <!-- MENSAGEM -->
-                        <div class="mb-4">
-
-                            <label class="form-label fw-semibold small text-uppercase text-secondary">
-                                {% trans "Mensagem" %}
-                            </label>
-
-                            <textarea name="mensagem"
-                                      rows="10"
-                                      class="form-control rounded-3"
-                                      placeholder="{% trans '' %}"
-                                      required></textarea>
-
-                        </div>
-
-                        <!-- ANEXOS -->
-                        <div>
-
-                            <label class="form-label fw-semibold small text-uppercase text-secondary mb-3">
-                                {% trans "Anexos" %}
-                            </label>
-
-                            <div class="border rounded-3 bg-light p-4">
-
-                                <div class="d-flex align-items-center gap-3 mb-3">
-
-                                    <i class="bi bi-paperclip fs-3 text-secondary"></i>
-
-                                    <div>
-
-                                        <div class="fw-semibold">
-                                            {% trans "Adicionar arquivos" %}
-                                        </div>
-
-                                        <!--div class="small text-secondary">
-                                            PDF, XLSX, CSV, ZIP, RAR, TXT
-                                        </div-->
-
-                                    </div>
-
-                                </div>
-
-                                <input type="file"
-                                       name="arquivos"
-                                       multiple
-                                       class="form-control mb-3"
-                                       accept=".pdf,.xlsx,.csv,.zip,.rar,.txt">
-
-                                <div class="row g-2">
-
-                                    <div class="col-6 col-md-3">
-
-                                        <div class="bg-white border rounded-2 p-2 text-center">
-
-                                            <i class="bi bi-file-earmark-pdf fs-4 text-danger"></i>
-
-                                            <div class="small fw-semibold">
-                                                PDF
-                                            </div>
-
-                                            <small class="text-secondary">
-                                                Documentos
-                                            </small>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-6 col-md-3">
-
-                                        <div class="bg-white border rounded-2 p-2 text-center">
-
-                                            <i class="bi bi-file-earmark-excel fs-4 text-success"></i>
-
-                                            <div class="small fw-semibold">
-                                                XLSX / CSV
-                                            </div>
-
-                                            <small class="text-secondary">
-                                                Planilhas
-                                            </small>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-6 col-md-3">
-
-                                        <div class="bg-white border rounded-2 p-2 text-center">
-
-                                            <i class="bi bi-file-earmark-zip fs-4 text-warning"></i>
-
-                                            <div class="small fw-semibold">
-                                                ZIP / RAR
-                                            </div>
-
-                                            <small class="text-secondary">
-                                                Compactados
-                                            </small>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-6 col-md-3">
-
-                                        <div class="bg-white border rounded-2 p-2 text-center">
-
-                                            <i class="bi bi-file-earmark-text fs-4 text-primary"></i>
-
-                                            <div class="small fw-semibold">
-                                                TXT
-                                            </div>
-
-                                            <small class="text-secondary">
-                                                Texto
-                                            </small>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Titulo" %}</label>
+                        <input type="text" name="titulo" class="form-control" placeholder="{% trans 'Ex.: Atualizacao de sistema' %}" required>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Mensagem" %}</label>
+                        <textarea name="mensagem" rows="9" class="form-control" required></textarea>
+                    </div>
+
+                    <div>
+                        <label class="form-label">{% trans "Anexos" %}</label>
+                        <div class="file-box">
+                            <i class="bi bi-paperclip"></i>
+                            <input type="file" name="arquivos" multiple class="form-control" accept=".pdf,.xlsx,.csv,.zip,.rar,.txt">
+                        </div>
+                    </div>
                 </div>
-
             </div>
 
-            <!-- COLUNA LATERAL -->
             <div class="col-xl-4">
-
-                <div class="card border-0 shadow-sm rounded-4 sticky-lg-top" style="top: 1.5rem;">
-
-                    <div class="card-header bg-white border-bottom px-4 py-3 rounded-top-4">
-
-                        <h5 class="fw-semibold mb-0">
-                            <i class="bi bi-gear me-2 text-secondary"></i>
-                            {% trans "Configurações avançadas" %}
-                        </h5>
-
+                <div class="panel sticky-lg-top" style="top: 1rem;">
+                    <div class="panel-title">
+                        <i class="bi bi-send"></i>
+                        <span>{% trans "Destino e envio" %}</span>
                     </div>
 
-                    <div class="card-body p-4">
-
-                        <!-- TIPO -->
-                        <div class="mb-4">
-
-                            <label class="form-label fw-semibold small text-uppercase text-secondary">
-                                {% trans "Tipo" %}
-                            </label>
-
-                            <select name="tipo" class="form-select rounded-3">
-
-                                {% for value, label in tipos %}
-
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Tipo" %}</label>
+                        <select name="tipo" class="form-select">
+                            {% for value, label in tipos %}
                                 <option value="{{ value }}">{{ label }}</option>
-
-                                {% endfor %}
-
-                            </select>
-
-                        </div>
-
-                        <!-- EMPRESA -->
-                        <div class="mb-4">
-
-                            <label class="form-label fw-semibold small text-uppercase text-secondary">
-                                {% trans "Empresa" %}
-                            </label>
-
-                            <select name="empresa" id="selectEmpresa" class="form-select rounded-3">
-
-                                <option value="">{% trans "Todas as empresas" %}</option>
-
-                                {% for e in empresas %}
-
-                                <option value="{{ e.id }}">{{ e.nome }}</option>
-
-                                {% endfor %}
-
-                            </select>
-
-                        </div>
-
-                        <!-- REGIONAIS -->
-                        <div class="mb-4">
-
-                            <label class="form-label fw-semibold small text-uppercase text-secondary">
-                                {% trans "Regionais" %}
-                            </label>
-
-                            <select name="regionais"
-                                    id="selectRegionais"
-                                    multiple
-                                    class="form-select rounded-3"
-                                    style="height: 240px;">
-
-                                {% for r in regionais %}
-
-                                <option value="{{ r.id }}" data-empresa="{{ r.empresa_id }}">
-                                    {{ r.nome }}
-                                </option>
-
-                                {% endfor %}
-
-                            </select>
-
-                            <div class="form-text mt-2">
-                                <i class="bi bi-info-circle-fill me-1 small"></i>
-                                {% trans "Usuários vinculados às regionais selecionadas receberão o comunicado." %}
-                            </div>
-
-                        </div>
-
-                        <!-- OPÇÕES EXTRAS -->
-                        <div class="border rounded-3 p-3 mb-4 bg-light">
-
-                            <div class="form-check form-switch mb-3">
-
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       name="enviar_para_todos"
-                                       id="todos">
-
-                                <label class="form-check-label fw-semibold" for="todos">
-                                    {% trans "Enviar para todos" %}
-                                </label>
-
-                            </div>
-
-                            <div class="mb-3">
-
-                                <label class="form-label fw-semibold small text-uppercase text-secondary">
-                                    {% trans "Expira em" %}
-                                </label>
-
-                                <input type="date"
-                                       name="expira_em"
-                                       class="form-control rounded-3">
-
-                                <div class="form-text">
-                                    {% trans "Opcional. Após esta data o comunicado será ocultado automaticamente." %}
-                                </div>
-
-                            </div>
-
-                            <div class="form-check">
-
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       name="permitir_limpar"
-                                       checked
-                                       id="permitir_limpar">
-
-                                <label class="form-check-label" for="permitir_limpar">
-                                    {% trans "Usuário pode remover da caixa" %}
-                                </label>
-
-                            </div>
-
-                        </div>
-
-                        <!-- BOTÃO DE ENVIO -->
-                        <div class="d-grid">
-
-                            <button type="submit" class="btn btn-dark rounded-pill py-2 fw-semibold">
-                                <i class="bi bi-send me-2"></i>
-                                {% trans "Enviar comunicado" %}
-                            </button>
-
-                        </div>
-
+                            {% endfor %}
+                        </select>
                     </div>
 
+                    <div class="form-check form-switch send-all">
+                        <input class="form-check-input" type="checkbox" name="enviar_para_todos" id="todos">
+                        <label class="form-check-label fw-semibold" for="todos">{% trans "Enviar para todos" %}</label>
+                    </div>
+
+                    <div id="destinosSegmento">
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Empresa" %}</label>
+                            <select name="empresa" id="selectEmpresa" class="form-select">
+                                <option value="">{% trans "Todas as empresas" %}</option>
+                                {% for e in empresas %}
+                                    <option value="{{ e.id }}">{{ e.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                                <label class="form-label mb-0">{% trans "Bases" %}</label>
+                                <button type="button" class="btn btn-light btn-sm" id="limparRegionais" title="{% trans 'Limpar bases' %}">
+                                    <i class="bi bi-eraser"></i>
+                                </button>
+                            </div>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="search" id="buscarRegional" class="form-control" placeholder="{% trans 'Buscar base' %}">
+                            </div>
+                            <select name="regionais" id="selectRegionais" multiple class="form-select regionais-select">
+                                {% for r in regionais %}
+                                    <option value="{{ r.id }}" data-empresa="{{ r.empresa_id }}" data-nome="{{ r.nome|lower }}">{{ r.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text" id="regionaisResumo">{% trans "Sem base selecionada: envia para usuarios da empresa escolhida." %}</div>
+                        </div>
+                    </div>
+
+                    <div class="options-box mb-3">
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Expira em" %}</label>
+                            <input type="date" name="expira_em" class="form-control">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="permitir_limpar" checked id="permitir_limpar">
+                            <label class="form-check-label" for="permitir_limpar">{% trans "Usuario pode remover da caixa" %}</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark w-100 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-send"></i>
+                        {% trans "Enviar comunicado" %}
+                    </button>
                 </div>
-
             </div>
-
         </div>
-
     </form>
-
 </div>
 
 <script>
-
 document.addEventListener('DOMContentLoaded', function () {
-
     const empresa = document.getElementById('selectEmpresa');
     const regionais = document.getElementById('selectRegionais');
+    const todos = document.getElementById('todos');
+    const destinos = document.getElementById('destinosSegmento');
+    const busca = document.getElementById('buscarRegional');
+    const resumo = document.getElementById('regionaisResumo');
 
-    if (empresa && regionais) {
-
-        empresa.addEventListener('change', function () {
-
-            const empresaId = this.value;
-
-            Array.from(regionais.options).forEach(option => {
-
-                if (!empresaId) {
-                    option.hidden = false;
-                    return;
-                }
-
-                option.hidden = (option.dataset.empresa !== empresaId);
-
-            });
-
+    function atualizarRegionais() {
+        const empresaId = empresa.value;
+        const termo = (busca.value || '').toLowerCase().trim();
+        Array.from(regionais.options).forEach(option => {
+            const showEmpresa = !empresaId || option.dataset.empresa === empresaId;
+            const showBusca = !termo || option.dataset.nome.includes(termo);
+            option.hidden = !(showEmpresa && showBusca);
+            if (option.hidden) option.selected = false;
         });
-
+        atualizarResumo();
     }
 
-});
+    function atualizarResumo() {
+        const total = Array.from(regionais.selectedOptions).length;
+        resumo.textContent = total
+            ? `${total} base(s) selecionada(s).`
+            : 'Sem base selecionada: envia para usuarios da empresa escolhida.';
+    }
 
+    todos.addEventListener('change', function () {
+        destinos.classList.toggle('is-disabled', this.checked);
+        empresa.disabled = this.checked;
+        busca.disabled = this.checked;
+        regionais.disabled = this.checked;
+    });
+
+    empresa.addEventListener('change', atualizarRegionais);
+    busca.addEventListener('input', atualizarRegionais);
+    regionais.addEventListener('change', atualizarResumo);
+    document.getElementById('limparRegionais').addEventListener('click', () => {
+        Array.from(regionais.options).forEach(option => option.selected = false);
+        atualizarResumo();
+    });
+});
 </script>
 
+<style>
+    .comunicado-page .form-label {
+        color: #5f6b76;
+        font-size: .76rem;
+        font-weight: 700;
+        margin-bottom: .25rem;
+        text-transform: uppercase;
+    }
+
+    .panel {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        box-shadow: 0 .125rem .35rem rgba(0, 0, 0, .04);
+        padding: 1rem;
+    }
+
+    .panel-title {
+        align-items: center;
+        color: #495057;
+        display: flex;
+        font-size: .84rem;
+        font-weight: 800;
+        gap: .5rem;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+    }
+
+    .file-box {
+        align-items: center;
+        background: #f8f9fa;
+        border: 1px dashed #cfd6dd;
+        border-radius: 8px;
+        display: flex;
+        gap: .75rem;
+        padding: .85rem;
+    }
+
+    .file-box i {
+        color: #6c757d;
+        font-size: 1.5rem;
+    }
+
+    .send-all,
+    .options-box {
+        background: #f8f9fa;
+        border: 1px solid #eef1f3;
+        border-radius: 8px;
+        padding: .85rem;
+    }
+
+    .send-all {
+        margin-bottom: 1rem;
+    }
+
+    .regionais-select {
+        min-height: 220px;
+    }
+
+    .is-disabled {
+        opacity: .55;
+    }
+
+    @media (max-width: 767.98px) {
+        .container-fluid.comunicado-page {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        .panel {
+            padding: .85rem;
+        }
+
+        textarea[name="mensagem"] {
+            min-height: 220px;
+        }
+
+        .regionais-select {
+            min-height: 180px;
+        }
+    }
+</style>
 {% endblock %}

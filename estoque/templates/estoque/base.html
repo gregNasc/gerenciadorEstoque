@@ -71,7 +71,7 @@
                        aria-expanded="false">
                         <i class="bi bi-plus-circle"></i>
                         {% trans "Checklist" %}
-                    </a>
+                    </a-->
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="checklistDropdown">
                         <li>
@@ -94,7 +94,7 @@
                         </li>
                         {% endif %}
                     </ul>
-                </li-->
+                </li>
 
                 <!-- ESTOQUE -->
                 <li class="nav-item dropdown">
@@ -136,40 +136,40 @@
 
                             </a>
 
-                        </li>
+                        </li-->
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
-                        <li>
+                        <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
                                 <i class="bi bi-calendar-range"></i>
                                 Planejamento
                             </a>
-                        </li>
+                        </li-->
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
-                        <li>
+                        <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_financeiro' %}">
                                 <i class="bi bi-cash-coin"></i>
                                 Financeiro
                             </a>
-                        </li>
+                        </li-->
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos %}
-                        <li>
+                        <!--li>
                             <hr class="dropdown-divider">
-                        </li>
-                        <li>
+                        </li-->
+                        <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:lista_inventarios' %}">
                                 <i class="bi bi-list-ul"></i>
                                 Inventários
                             </a>
-                        </li>
+                        </li-->
                         {% endif %}
 
                           {% if perfil.role == 'admin' %}
-                        <li>
+                        <!--li>
                             <hr class="dropdown-divider">
-                        </li>
-                        <li>
+                        </li-->
+                        <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:importar_excel' %}">
                                 <i class="bi bi-file-earmark-excel"></i>
                                 {% trans "Importar Excel" %}
