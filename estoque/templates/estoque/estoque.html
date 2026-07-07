@@ -44,7 +44,7 @@
             </div>
             {% endif %}
 
-            <!-- FILTRO -->
+            <!-- FILTROS -->
             <div class="bg-light p-3 rounded mb-4">
                 <form method="get" class="row g-3 align-items-end">
                     <div class="col-auto">
@@ -53,7 +53,7 @@
                         </label>
                         <select name="regional"
                                 class="form-select form-select-sm"
-                                style="width:200px;">
+                                style="width:220px;">
                             <option value="">{% trans "Todas" %}</option>
                             {% for r in regionais %}
                                 <option value="{{ r.id }}"
@@ -63,17 +63,101 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-auto">
+
+                    <div class="col-auto d-flex gap-2">
                         <button type="submit" class="btn btn-secondary btn-sm px-4">
                             {% trans "Aplicar" %}
                         </button>
+
+                        <a href="{% url 'estoque:estoque' %}"
+                           class="btn btn-outline-secondary btn-sm px-4">
+                            {% trans "Limpar" %}
+                        </a>
                     </div>
                 </form>
             </div>
 
+            <!-- RESUMO -->
+            <div class="row g-3 mb-4" id="cardsResumoEstoque">
+                <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card active" data-status-filter="total">
+                        <span>{% trans "Total" %}</span>
+                        <strong id="kpiTotal">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card" data-status-filter="ativos">
+                        <span>{% trans "Ativos" %}</span>
+                        <strong id="kpiAtivos">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card" data-status-filter="sick">
+                        <span>{% trans "Sick" %}</span>
+                        <strong id="kpiSick">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card" data-status-filter="transito">
+                        <span>{% trans "Em trânsito" %}</span>
+                        <strong id="kpiTransito">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card" data-status-filter="manutencao">
+                        <span>{% trans "Manutenção" %}</span>
+                        <strong id="kpiManutencao">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card" data-status-filter="inativos">
+                        <span>{% trans "Inativos" %}</span>
+                        <strong id="kpiInativos">0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUSCA RÁPIDA -->
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+                <div>
+                    <h6 class="fw-semibold mb-1">{% trans "Equipamentos por modelo" %}</h6>
+                    <small class="text-secondary">{% trans "Clique em uma linha para abrir o detalhamento por regional. Use os cards para filtrar por status." %}</small>
+                    <div class="small mt-2" id="filtroStatusInfo">
+                        <span class="badge bg-primary">{% trans "Filtro: Todos" %}</span>
+                        <span class="text-secondary ms-1" id="contadorModelosVisiveis"></span>
+                    </div>
+                </div>
+                <div style="min-width: 280px;">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        {% trans "Busca rápida" %}
+                    </label>
+                    <input type="search"
+                           id="buscaTabelaEstoque"
+                           class="form-control form-control-sm"
+                           placeholder="{% trans 'Filtrar por descrição...' %}">
+                </div>
+            </div>
+
             <!-- TABELA -->
+            <ul class="nav nav-tabs mb-3" id="abasCategoriasEquipamentos" role="tablist">
+                {% for categoria in categorias_estoque %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if forloop.first %}active{% endif %}"
+                                type="button"
+                                role="tab"
+                                data-categoria-tab="{{ categoria.nome }}"
+                                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                            {% trans categoria.nome %}
+                            <span class="badge bg-secondary ms-1">
+                                {{ categoria.total_modelos }}
+                            </span>
+                        </button>
+                    </li>
+                {% endfor %}
+            </ul>
+
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle" id="tabelaEstoque">
                     <thead class="table-light">
                         <tr class="small">
                             <th>{% trans "Descrição" %}</th>
@@ -84,13 +168,22 @@
                             <th class="text-center">{% trans "Manutenção" %}</th>
                             <th class="text-center">{% trans "Inativos" %}</th>
                             <th class="text-center">{% trans "Disponibilidade" %}</th>
+                            <th class="text-end">{% trans "Ação" %}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in produtos_agrupados %}
                         <tr class="row-click"
                             data-id="{{ item.produto__id }}"
-                            data-nome="{{ item.produto__descricao }}"
+                            data-nome="{{ item.produto__descricao|lower }}"
+                            data-titulo="{{ item.produto__descricao }}"
+                            data-categoria="{{ item.produto__categoria|default:'' }}"
+                            data-total="{{ item.total }}"
+                            data-ativos="{{ item.ativos }}"
+                            data-sick="{{ item.sick }}"
+                            data-transito="{{ item.em_transito|default:0 }}"
+                            data-manutencao="{{ item.manutencao|default:0 }}"
+                            data-inativos="{{ item.inativos }}"
                             style="cursor:pointer;">
                             <td class="fw-semibold">{{ item.produto__descricao }}</td>
                             <td class="text-center fw-semibold">{{ item.total }}</td>
@@ -113,14 +206,22 @@
                                     <small class="fw-semibold">{{ item.disponibilidade }}%</small>
                                 </div>
                             </td>
+                            <td class="text-end text-secondary small text-nowrap">
+                                {% trans "Detalhar" %} →
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center py-5">
+                            <td colspan="9" class="text-center py-5">
                                 {% trans "Nenhum equipamento encontrado." %}
                             </td>
                         </tr>
                         {% endfor %}
+                        <tr id="linhaSemModelosCategoria" style="display:none;">
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                {% trans "Nenhum equipamento encontrado nesta categoria." %}
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -141,6 +242,38 @@
         </div>
         <div id="modal-body" class="p-4">
             <div class="text-center py-5">{% trans "Carregando..." %}</div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL SICK -->
+<div id="sickModal" class="modal hidden">
+    <div class="sick-modal-content card border-0 shadow-lg">
+        <div class="modal-header bg-light px-4 py-3 border-0 d-flex justify-content-between align-items-center">
+            <h5 class="fw-semibold mb-0">{% trans "Marcar equipamento como SICK" %}</h5>
+            <button type="button" id="closeSickModal" class="btn-close"></button>
+        </div>
+        <div class="p-4">
+            <p class="text-secondary small mb-2">
+                {% trans "Informe o motivo para registrar a ocorrência do equipamento." %}
+            </p>
+            <div class="alert alert-light border small mb-3">
+                <strong>{% trans "Equipamento" %}:</strong>
+                <span id="sickEquipamentoLabel">-</span>
+            </div>
+            <label class="form-label fw-semibold">{% trans "Motivo" %}</label>
+            <textarea id="sickMotivo" class="form-control" rows="4" required></textarea>
+            <div id="sickMotivoErro" class="text-danger small mt-2" style="display:none;">
+                {% trans "Informe o motivo antes de confirmar." %}
+            </div>
+        </div>
+        <div class="px-4 pb-4 d-flex justify-content-end gap-2">
+            <button type="button" id="cancelSickModal" class="btn btn-outline-secondary">
+                {% trans "Cancelar" %}
+            </button>
+            <button type="button" id="confirmSickModal" class="btn btn-danger">
+                {% trans "Confirmar SICK" %}
+            </button>
         </div>
     </div>
 </div>
@@ -175,6 +308,53 @@
         overflow-y: auto;
         padding: 1.25rem;
     }
+
+    .kpi-card {
+        border: 1px solid #e9ecef;
+        border-radius: 14px;
+        background: #fff;
+        padding: 0.9rem 1rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+    .filtro-card {
+        cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .filtro-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0,0,0,.08);
+    }
+    .filtro-card.active {
+        background: #1e3c72;
+        border-color: #1e3c72;
+    }
+    .filtro-card.active span,
+    .filtro-card.active strong {
+        color: #fff;
+    }
+    .kpi-card span {
+        display: block;
+        color: #6c757d;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 0.2rem;
+    }
+    .kpi-card strong {
+        display: block;
+        color: #1e3c72;
+        font-size: 1.35rem;
+        line-height: 1.1;
+    }
+    .row-click:hover td {
+        background: #f8fafc;
+    }
+    .sick-modal-content {
+        width: min(560px, 95vw);
+        border-radius: 16px;
+        background: #fff;
+    }
+
     /* Melhorias visuais para os cards regionais */
     .regional-card {
         cursor: pointer;
@@ -236,6 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modal-title');
     const closeBtn = document.getElementById('closeModal');
     const backBtn = document.getElementById('modalBackBtn');
+    const sickModalEl = document.getElementById('sickModal');
+    const closeSickModalBtn = document.getElementById('closeSickModal');
+    const cancelSickModalBtn = document.getElementById('cancelSickModal');
+    const confirmSickModalBtn = document.getElementById('confirmSickModal');
+    const sickMotivoInput = document.getElementById('sickMotivo');
+    const sickMotivoErro = document.getElementById('sickMotivoErro');
+    const sickEquipamentoLabel = document.getElementById('sickEquipamentoLabel');
 
    // CONFIGURAÇÕES
     const STATUS_BLOQUEADOS_SICK = [
@@ -250,6 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
    // ESTADO
     let navigationStack = [];
+    let sickPendente = null;
 
    // HELPERS
     const escapeHtml = (str = '') => {
@@ -288,6 +476,22 @@ document.addEventListener('DOMContentLoaded', () => {
         modalEl.classList.add('hidden');
         navigationStack = [];
         resetModal();
+    };
+
+    const abrirSickModal = ({ equipamentoId, serie, produtoId, regionalId, regionalNome }) => {
+        sickPendente = { equipamentoId, serie, produtoId, regionalId, regionalNome };
+        sickEquipamentoLabel.innerText = serie || '-';
+        sickMotivoInput.value = '';
+        sickMotivoErro.style.display = 'none';
+        sickModalEl.classList.remove('hidden');
+        setTimeout(() => sickMotivoInput.focus(), 80);
+    };
+
+    const fecharSickModal = () => {
+        sickModalEl.classList.add('hidden');
+        sickPendente = null;
+        sickMotivoInput.value = '';
+        sickMotivoErro.style.display = 'none';
     };
 
     const setLoading = () => {
@@ -635,7 +839,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <thead class="table-light">
                             <tr>
-                                <th width="40"></th>
                                 <th>{% trans "Série" %}</th>
                                 <th>{% trans "Patrimônio" %}</th>
                                 <th>{% trans "Status" %}</th>
@@ -655,12 +858,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <tr
                         class="eq-row"
                         data-id="${eq.id}">
-
-                        <td>
-                            <input
-                                type="checkbox"
-                                value="${eq.id}">
-                        </td>
 
                         <td class="text-nowrap fw-semibold">
                             ${escapeHtml(eq.numero_serie || '-')}
@@ -737,10 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     row.addEventListener('click', (e) => {
 
-                        if (
-                            e.target.closest('button') ||
-                            e.target.type === 'checkbox'
-                        ) {
+                        if (e.target.closest('button')) {
                             return;
                         }
 
@@ -753,50 +947,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
 
-            // SICK - MODIFICADO: coleta o motivo via prompt
+            // SICK - abre modal para coletar motivo
             document
                 .querySelectorAll('.btn-sick')
                 .forEach((button) => {
 
-                    button.addEventListener('click', async (e) => {
+                    button.addEventListener('click', (e) => {
 
                         e.stopPropagation();
 
-                        const equipamentoId =
-                            button.dataset.id;
-
-                        const serie =
-                            button.dataset.serie;
-
-                        // Substitui o confirm por um prompt para capturar o motivo
-                        const motivo = prompt(
-                            `Digite o motivo para marcar o equipamento ${serie} como SICK:`
-                        );
-
-                        if (motivo === null || motivo.trim() === '') {
-                            // Usuário cancelou ou não informou motivo
-                            return;
-                        }
-
-                        try {
-
-                            await api.marcarSick(
-                                equipamentoId,
-                                motivo.trim()
-                            );
-
-                            await loadEquipamentos(
-                                produtoId,
-                                regionalId,
-                                regionalNome
-                            );
-
-                        } catch (error) {
-
-                            console.error(error);
-
-                            alert(error.message);
-                        }
+                        abrirSickModal({
+                            equipamentoId: button.dataset.id,
+                            serie: button.dataset.serie,
+                            produtoId,
+                            regionalId,
+                            regionalNome
+                        });
                     });
                 });
 
@@ -879,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.dataset.id;
 
                 const produtoNome =
-                    row.dataset.nome;
+                    row.dataset.titulo || row.dataset.nome;
 
                 if (!produtoId) return;
 
@@ -893,6 +1059,170 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             });
         });
+
+
+    let filtroStatusAtual = 'total';
+    let categoriaAtual =
+        document.querySelector('[data-categoria-tab].active')?.dataset.categoriaTab || '';
+
+    const labelsFiltroStatus = {
+        total: '{% trans "Todos" %}',
+        ativos: '{% trans "Ativos" %}',
+        sick: '{% trans "Sick" %}',
+        transito: '{% trans "Em trânsito" %}',
+        manutencao: '{% trans "Manutenção" %}',
+        inativos: '{% trans "Inativos" %}'
+    };
+
+    const atualizarResumoEstoque = () => {
+        const rows = Array.from(document.querySelectorAll('#tabelaEstoque tbody tr.row-click'))
+            .filter(row => !categoriaAtual || row.dataset.categoria === categoriaAtual);
+
+        const totais = rows.reduce((acc, row) => {
+            acc.total += parseInt(row.dataset.total || '0', 10) || 0;
+            acc.ativos += parseInt(row.dataset.ativos || '0', 10) || 0;
+            acc.sick += parseInt(row.dataset.sick || '0', 10) || 0;
+            acc.transito += parseInt(row.dataset.transito || '0', 10) || 0;
+            acc.manutencao += parseInt(row.dataset.manutencao || '0', 10) || 0;
+            acc.inativos += parseInt(row.dataset.inativos || '0', 10) || 0;
+            return acc;
+        }, { total: 0, ativos: 0, sick: 0, transito: 0, manutencao: 0, inativos: 0 });
+
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = value;
+        };
+
+        setText('kpiTotal', totais.total);
+        setText('kpiAtivos', totais.ativos);
+        setText('kpiSick', totais.sick);
+        setText('kpiTransito', totais.transito);
+        setText('kpiManutencao', totais.manutencao);
+        setText('kpiInativos', totais.inativos);
+    };
+
+    const atualizarInfoFiltroStatus = (visiveis) => {
+        const info = document.getElementById('filtroStatusInfo');
+        const contador = document.getElementById('contadorModelosVisiveis');
+        if (info) {
+            const label = labelsFiltroStatus[filtroStatusAtual] || labelsFiltroStatus.total;
+            info.querySelector('.badge').innerText = `{% trans "Filtro" %}: ${label}`;
+        }
+        if (contador) {
+            contador.innerText = `${visiveis} {% trans "modelo(s) visível(is)" %}`;
+        }
+    };
+
+    const aplicarFiltrosTabelaPrincipal = () => {
+        const busca = document.getElementById('buscaTabelaEstoque');
+        const termo = busca ? busca.value.toLowerCase().trim() : '';
+        const linhaSemModelos = document.getElementById('linhaSemModelosCategoria');
+        let visiveis = 0;
+
+        document.querySelectorAll('#tabelaEstoque tbody tr.row-click').forEach(row => {
+            const nome = (row.dataset.nome || row.innerText || '').toLowerCase();
+            const okCategoria = !categoriaAtual || row.dataset.categoria === categoriaAtual;
+            const okBusca = nome.includes(termo);
+
+            let okStatus = true;
+            if (filtroStatusAtual && filtroStatusAtual !== 'total') {
+                okStatus = (parseInt(row.dataset[filtroStatusAtual] || '0', 10) || 0) > 0;
+            }
+
+            const exibir = okCategoria && okBusca && okStatus;
+            row.style.display = exibir ? '' : 'none';
+            if (exibir) visiveis += 1;
+        });
+
+        if (linhaSemModelos) {
+            linhaSemModelos.style.display = visiveis === 0 ? '' : 'none';
+        }
+
+        atualizarResumoEstoque();
+        atualizarInfoFiltroStatus(visiveis);
+    };
+
+    const configurarBuscaTabelaPrincipal = () => {
+        const busca = document.getElementById('buscaTabelaEstoque');
+        if (!busca) return;
+        busca.addEventListener('input', aplicarFiltrosTabelaPrincipal);
+    };
+
+    const configurarCardsFiltroStatus = () => {
+        document.querySelectorAll('[data-status-filter]').forEach(card => {
+            card.addEventListener('click', function () {
+                const filtroClicado = this.dataset.statusFilter || 'total';
+
+                if (filtroStatusAtual === filtroClicado && filtroClicado !== 'total') {
+                    filtroStatusAtual = 'total';
+                } else {
+                    filtroStatusAtual = filtroClicado;
+                }
+
+                document.querySelectorAll('[data-status-filter]').forEach(c => {
+                    c.classList.toggle('active', c.dataset.statusFilter === filtroStatusAtual);
+                });
+
+                aplicarFiltrosTabelaPrincipal();
+            });
+        });
+    };
+
+    const configurarAbasCategorias = () => {
+        document.querySelectorAll('[data-categoria-tab]').forEach(tab => {
+            tab.addEventListener('click', function () {
+                categoriaAtual = this.dataset.categoriaTab || '';
+
+                document.querySelectorAll('[data-categoria-tab]').forEach(item => {
+                    const ativo = item === this;
+                    item.classList.toggle('active', ativo);
+                    item.setAttribute('aria-selected', ativo ? 'true' : 'false');
+                });
+
+                aplicarFiltrosTabelaPrincipal();
+            });
+        });
+    };
+
+    configurarBuscaTabelaPrincipal();
+    configurarCardsFiltroStatus();
+    configurarAbasCategorias();
+    aplicarFiltrosTabelaPrincipal();
+
+    closeSickModalBtn.addEventListener('click', fecharSickModal);
+    cancelSickModalBtn.addEventListener('click', fecharSickModal);
+    sickModalEl.addEventListener('click', (e) => {
+        if (e.target === sickModalEl) {
+            fecharSickModal();
+        }
+    });
+
+    confirmSickModalBtn.addEventListener('click', async () => {
+        if (!sickPendente) return;
+
+        const motivo = sickMotivoInput.value.trim();
+        if (!motivo) {
+            sickMotivoErro.style.display = 'block';
+            sickMotivoInput.focus();
+            return;
+        }
+
+        confirmSickModalBtn.disabled = true;
+        confirmSickModalBtn.innerText = '{% trans "Salvando..." %}';
+
+        try {
+            await api.marcarSick(sickPendente.equipamentoId, motivo);
+            const { produtoId, regionalId, regionalNome } = sickPendente;
+            fecharSickModal();
+            await loadEquipamentos(produtoId, regionalId, regionalNome);
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+        } finally {
+            confirmSickModalBtn.disabled = false;
+            confirmSickModalBtn.innerText = '{% trans "Confirmar SICK" %}';
+        }
+    });
 
     closeBtn.addEventListener(
         'click',

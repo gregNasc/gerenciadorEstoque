@@ -489,7 +489,7 @@
             <h5>
                 <i class="bi bi-box"></i> Insumos Disponíveis na Base
                 <small style="font-weight:normal; font-size:.8rem;">
-                    (para TAGs, informe reutilizacao/novo rolo e Tag Inicial)
+                    (TAGs são controladas separadamente na seção de lotes)
                 </small>
             </h5>
 
@@ -551,7 +551,6 @@
             </div>
         </div>
 
-        <!-- TAGS / LOTES -->
         <!-- TAGS / LOTES -->
 {% if lotes_tags %}
 <div class="accordion-item" style="margin-top:20px;">
@@ -823,163 +822,36 @@ function isCategoriaTags(categoria) {
     return normalizarTexto(categoria) === 'tags';
 }
 
-function tagInicialPadrao(insumo) {
-    const match = String(insumo.descricao || '').match(/(\d+)/);
-    if (!match) return '';
-
-    const numero = parseInt(match[1], 10);
-    if (!numero || numero <= 1) return 1;
-    return numero + 1;
-}
-
-function rolosParaInsumoTag(insumo, modo) {
-    const inicial = tagInicialPadrao(insumo);
-    return rolosTags.filter(rolo => {
-        const statusOk = modo === 'NOVO'
-            ? rolo.status === 'DISPONIVEL'
-            : rolo.status === 'EM_USO';
-        const faixaOk = inicial
-            ? inicial >= rolo.loteInicial && inicial <= rolo.loteFinal
-            : true;
-        return statusOk && faixaOk;
-    });
-}
-
-function atualizarLinhaTag(row) {
-    const modo = row.querySelector('[data-tag-insumo-modo]')?.value || '';
-    const roloSelect = row.querySelector('[data-tag-insumo-rolo]');
-    const inicialInput = row.querySelector('[data-tag-insumo-inicial]');
-    const insumo = {
-        id: row.dataset.insumoId,
-        descricao: row.dataset.insumoDesc,
-        saldo: row.dataset.saldo
-    };
-
-    if (!modo) {
-        row.dataset.selected = '0';
-        if (roloSelect) {
-            roloSelect.innerHTML = `<option value="">${rolosTags.length ? 'Selecione o modo' : 'Sem rolo cadastrado'}</option>`;
-            roloSelect.disabled = true;
-        }
-        inicialInput.value = '';
-        inicialInput.disabled = true;
-        inicialInput.readOnly = false;
-        atualizarInputsEquipamentosETags();
-        return;
-    }
-
-    const opcoes = rolosParaInsumoTag(insumo, modo);
-
-    if (roloSelect) {
-        const valorAnterior = roloSelect.value;
-        roloSelect.disabled = !rolosTags.length;
-        roloSelect.innerHTML = `<option value="">${rolosTags.length ? 'Selecione' : 'Sem rolo cadastrado'}</option>`;
-        opcoes.forEach(rolo => {
-            const option = document.createElement('option');
-            option.value = rolo.id;
-            option.dataset.numeroAtual = rolo.numeroAtual;
-            option.textContent = `Rolo #${rolo.codigo} | ${rolo.loteInicial}-${rolo.loteFinal} | ${rolo.statusLabel}`;
-            roloSelect.appendChild(option);
-        });
-
-        if (valorAnterior && opcoes.some(rolo => String(rolo.id) === valorAnterior)) {
-            roloSelect.value = valorAnterior;
-        } else if (opcoes.length === 1) {
-            roloSelect.value = opcoes[0].id;
-        }
-    }
-
-    inicialInput.disabled = false;
-    const roloSelecionado = roloSelect
-        ? opcoes.find(rolo => String(rolo.id) === String(roloSelect.value))
-        : null;
-
-    if (modo === 'NOVO') {
-        inicialInput.value = roloSelecionado ? roloSelecionado.numeroAtual : tagInicialPadrao(insumo);
-        inicialInput.readOnly = true;
-    } else {
-        if (roloSelecionado && !inicialInput.value) {
-            inicialInput.value = roloSelecionado.numeroAtual;
-        }
-        inicialInput.readOnly = false;
-    }
-
-    row.dataset.selected = inicialInput.value ? '1' : '0';
-    atualizarInputsEquipamentosETags();
-}
-
-function criarLinhaTagInsumo(insumo) {
-    const tr = document.createElement('tr');
-    tr.className = 'tag-inline-row';
-    tr.dataset.insumoId = insumo.id;
-    tr.dataset.insumoDesc = insumo.descricao;
-    tr.dataset.saldo = insumo.saldo;
-
-    tr.innerHTML = `
-        <td class="desc-col">${insumo.descricao}</td>
-        <td>${insumo.unidade || '-'}</td>
-        <td>
-            <span class="saldo-disponivel">${insumo.saldo}</span>
-            <span class="insumo-help">Disponivel na base</span>
-        </td>
-        <td class="input-cell">
-            <select data-tag-insumo-modo>
-                <option value="">Selecione</option>
-                <option value="REUTILIZACAO">Reutilizar</option>
-                <option value="NOVO">Novo</option>
-            </select>
-        </td>
-        <td class="input-cell">
-            <select data-tag-insumo-rolo ${rolosTags.length ? '' : 'disabled'}>
-                <option value="">${rolosTags.length ? 'Selecione' : 'Sem rolo cadastrado'}</option>
-            </select>
-        </td>
-        <td class="input-cell">
-            <input type="number"
-                   min="1"
-                   step="1"
-                   placeholder="Tag inicial"
-                   disabled
-                   data-tag-insumo-inicial>
-        </td>
-    `;
-
-    tr.querySelector('[data-tag-insumo-modo]').addEventListener('change', function() {
-        tr.querySelector('[data-tag-insumo-inicial]').value = '';
-        atualizarLinhaTag(tr);
-    });
-
-    tr.querySelector('[data-tag-insumo-rolo]').addEventListener('change', function() {
-        tr.querySelector('[data-tag-insumo-inicial]').value = '';
-        atualizarLinhaTag(tr);
-    });
-
-    tr.querySelector('[data-tag-insumo-inicial]').addEventListener('input', function() {
-        tr.dataset.selected = this.value ? '1' : '0';
-        atualizarInputsEquipamentosETags();
-    });
-
-    atualizarLinhaTag(tr);
-    return tr;
-}
-
 function renderizarInsumosAgrupados(insumos) {
     const accordion = obterContainerInsumos();
     if (!accordion) return;
 
     const grupos = new Map();
+
     insumos.forEach(insumo => {
         const categoria = insumo.categoria || 'Sem categoria';
+
+        // TAG não entra mais como insumo comum
+        if (isCategoriaTags(categoria)) {
+            return;
+        }
+
         if (!grupos.has(categoria)) grupos.set(categoria, []);
         grupos.get(categoria).push(insumo);
     });
 
     accordion.innerHTML = '';
 
+    if (grupos.size === 0) {
+        accordion.innerHTML = '<div class="text-muted p-3">Nenhum insumo comum disponível para esta base.</div>';
+        return;
+    }
+
     Array.from(grupos.keys()).sort((a, b) => a.localeCompare(b)).forEach((categoria, index) => {
         const itens = grupos.get(categoria).sort((a, b) =>
             String(a.descricao || '').localeCompare(String(b.descricao || ''))
         );
+
         const collapseId = `insumosCategoria${index}`;
         const item = document.createElement('div');
         item.className = 'accordion-item';
@@ -1006,24 +878,7 @@ function renderizarInsumosAgrupados(insumos) {
 
         const wrap = document.createElement('div');
         wrap.className = 'table-wrap';
-        if (isCategoriaTags(categoria)) {
-            wrap.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="th-sub" style="text-align:left;">Insumo</th>
-                            <th class="th-sub">Unidade</th>
-                            <th class="th-sub">Saldo</th>
-                            <th class="th-sub">Modo</th>
-                            <th class="th-sub">Rolo</th>
-                            <th class="th-sub">Tag Inicial</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            `;
-        } else {
-            wrap.innerHTML = `
+        wrap.innerHTML = `
             <table>
                 <thead>
                     <tr>
@@ -1036,17 +891,16 @@ function renderizarInsumosAgrupados(insumos) {
                 <tbody></tbody>
             </table>
         `;
-        }
 
         const tbody = wrap.querySelector('tbody');
+
         itens.forEach(insumo => {
-            const linha = isCategoriaTags(categoria)
-                ? criarLinhaTagInsumo(insumo)
-                : criarLinhaInsumo(insumo);
-            if (!isCategoriaTags(categoria)) {
-                const categoriaCell = linha.children[1];
-                if (categoriaCell) categoriaCell.remove();
-            }
+            const linha = criarLinhaInsumo(insumo);
+
+            // remove a coluna categoria, pois o accordion já representa a categoria
+            const categoriaCell = linha.children[1];
+            if (categoriaCell) categoriaCell.remove();
+
             tbody.appendChild(linha);
         });
 
@@ -1397,156 +1251,51 @@ function alternarCampoTag(check) {
     if (!check.checked) inputInicial.value = '';
 }
 
-function validarTags() {
-    limparErro('tagsAlert');
-
-    const radio = document.querySelector('.tag-lote-check:checked');
-    if (!radio) return true;
-
-    const loteId = radio.value;
-    const disponivel = parseInt(radio.dataset.disponivel || '0', 10);
-    const inicialLote = parseInt(radio.dataset.inicial || '0', 10);
-
-    const inputInicial = document.getElementById(`tag_inicial_rolo_${loteId}`);
-    const inicial = parseInt(inputInicial?.value || '0', 10);
-
-    if (!inicial) {
-        mostrarErro('tagsAlert', 'Informe a TAG inicial utilizada.');
-        return false;
-    }
-
-    if (inicial < inicialLote) {
-        mostrarErro('tagsAlert', 'A TAG inicial não pode ser menor que o início do lote.');
-        return false;
-    }
-
-    if (disponivel <= 0) {
-        mostrarErro('tagsAlert', 'Este lote não possui saldo disponível.');
-        return false;
-    }
-
-    return true;
-}
-
-/*    PAYLOAD HIDDEN
-*/
-function atualizarInputsEquipamentosETags() {
-    const container = document.getElementById('payloadHiddenContainer');
-    container.innerHTML = '';
-
-    // Equipamentos
-    Object.entries(selecionados).forEach(([categoria, ids]) => {
-        ids.forEach(id => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'equipamentos_' + categoria;
-            input.value = id;
-            container.appendChild(input);
-        });
-    });
-
-    // Tags
-    const radio = document.querySelector('.tag-lote-check:checked');
-if (radio) {
-    const loteId = radio.value;
-    const inputInicialTela = document.getElementById(`tag_inicial_rolo_${loteId}`);
-
-    const loteInput = document.createElement('input');
-    loteInput.type = 'hidden';
-    loteInput.name = 'rolo_tag_ids';
-    loteInput.value = loteId;
-    container.appendChild(loteInput);
-
-    const inicialInput = document.createElement('input');
-    inicialInput.type = 'hidden';
-    inicialInput.name = `tag_inicial_rolo_${loteId}`;
-    inicialInput.value = inputInicialTela ? inputInicialTela.value : '';
-    container.appendChild(inicialInput);
- }
-}
-
 /*    INVENTÁRIO / PREENCHIMENTO
 */
 function validarTags() {
     limparErro('tagsAlert');
 
     const checks = document.querySelectorAll('.tag-lote-check:checked');
+
     for (const check of checks) {
-        const loteId = check.value;
+        const roloId = check.value;
         const disponivel = parseInt(check.dataset.disponivel || '0', 10);
-        const inicialLote = parseInt(check.dataset.inicial || '0', 10);
+        const inicialPermitido = parseInt(check.dataset.inicial || '0', 10);
         const finalLote = parseInt(check.dataset.final || '0', 10);
         const statusRolo = check.dataset.status || '';
-        const modo = document.getElementById(`tag_modo_rolo_${loteId}`)?.value || '';
-        const inputInicial = document.getElementById(`tag_inicial_rolo_${loteId}`);
+        const modo = document.getElementById(`tag_modo_rolo_${roloId}`)?.value || '';
+        const inputInicial = document.getElementById(`tag_inicial_rolo_${roloId}`);
         const inicial = parseInt(inputInicial?.value || '0', 10);
 
-        if (!inicial) {
-            mostrarErro('tagsAlert', 'Informe a TAG inicial utilizada em todos os lotes marcados.');
+        if (!modo) {
+            mostrarErro('tagsAlert', 'Selecione se o rolo será novo ou reutilização.');
             return false;
         }
 
-        if (inicial < inicialLote || inicial > finalLote) {
-            mostrarErro('tagsAlert', 'A TAG inicial deve estar dentro da faixa do lote selecionado.');
+        if (!inicial) {
+            mostrarErro('tagsAlert', 'Informe o número inicial enviado em todos os rolos marcados.');
+            return false;
+        }
+
+        if (inicial < inicialPermitido || inicial > finalLote) {
+            mostrarErro('tagsAlert', 'O número inicial deve estar dentro da faixa disponível do rolo selecionado.');
             return false;
         }
 
         if (disponivel <= 0) {
-            mostrarErro('tagsAlert', 'Um dos lotes selecionados não possui saldo disponível.');
+            mostrarErro('tagsAlert', 'Um dos rolos selecionados não possui saldo disponível.');
             return false;
         }
+
         if (modo === 'NOVO' && statusRolo !== 'DISPONIVEL') {
-            mostrarErro('tagsAlert', 'Novo rolo precisa estar disponivel em estoque.');
+            mostrarErro('tagsAlert', 'Novo rolo precisa estar disponível em estoque.');
             return false;
         }
 
         if (modo === 'REUTILIZACAO' && statusRolo !== 'EM_USO') {
-            mostrarErro('tagsAlert', 'Reutilizacao precisa selecionar um rolo em uso.');
+            mostrarErro('tagsAlert', 'Reutilização precisa selecionar um rolo em uso.');
             return false;
-        }
-    }
-
-    const linhasTags = document.querySelectorAll('.tag-inline-row[data-selected="1"]');
-    for (const linha of linhasTags) {
-        const modo = linha.querySelector('[data-tag-insumo-modo]')?.value || '';
-        const roloSelect = linha.querySelector('[data-tag-insumo-rolo]');
-        const roloId = roloSelect?.value || '';
-        const inicialInput = linha.querySelector('[data-tag-insumo-inicial]');
-        const inicial = parseInt(inicialInput?.value || '0', 10);
-
-        if (!modo) {
-            mostrarErro('tagsAlert', 'Selecione se a TAG sera reutilizacao ou novo rolo.');
-            return false;
-        }
-
-        if (!inicial) {
-            mostrarErro('tagsAlert', 'Informe a Tag Inicial nas TAGs selecionadas.');
-            return false;
-        }
-
-        if (roloSelect && !roloSelect.disabled && roloSelect.options.length > 1 && !roloId) {
-            mostrarErro('tagsAlert', 'Selecione o rolo da TAG informada.');
-            return false;
-        }
-
-        if (roloId) {
-            const rolo = rolosTags.find(item => String(item.id) === String(roloId));
-            if (!rolo) {
-                mostrarErro('tagsAlert', 'Rolo de TAG invalido.');
-                return false;
-            }
-            if (inicial < rolo.loteInicial || inicial > rolo.loteFinal) {
-                mostrarErro('tagsAlert', 'A Tag Inicial deve estar dentro da faixa do rolo selecionado.');
-                return false;
-            }
-            if (modo === 'NOVO' && rolo.status !== 'DISPONIVEL') {
-                mostrarErro('tagsAlert', 'Novo rolo precisa estar disponivel em estoque.');
-                return false;
-            }
-            if (modo === 'REUTILIZACAO' && rolo.status !== 'EM_USO') {
-                mostrarErro('tagsAlert', 'Reutilizacao precisa selecionar um rolo em uso.');
-                return false;
-            }
         }
     }
 
@@ -1572,33 +1321,13 @@ function atualizarInputsEquipamentosETags() {
     });
 
     document.querySelectorAll('.tag-lote-check:checked').forEach(check => {
-        const loteId = check.value;
-        const inputInicialTela = document.getElementById(`tag_inicial_rolo_${loteId}`);
-        const modoTela = document.getElementById(`tag_modo_rolo_${loteId}`);
+        const roloId = check.value;
+        const inputInicialTela = document.getElementById(`tag_inicial_rolo_${roloId}`);
+        const modoTela = document.getElementById(`tag_modo_rolo_${roloId}`);
 
-        adicionarHidden(container, 'rolo_tag_ids', loteId);
-        adicionarHidden(container, `tag_inicial_rolo_${loteId}`, inputInicialTela ? inputInicialTela.value : '');
-        adicionarHidden(container, `tag_modo_rolo_${loteId}`, modoTela ? modoTela.value : '');
-    });
-
-    document.querySelectorAll('.tag-inline-row[data-selected="1"]').forEach(linha => {
-        const modo = linha.querySelector('[data-tag-insumo-modo]')?.value || '';
-        const roloId = linha.querySelector('[data-tag-insumo-rolo]')?.value || '';
-        const inicial = linha.querySelector('[data-tag-insumo-inicial]')?.value || '';
-        const insumoId = linha.dataset.insumoId;
-
-        if (!modo || !inicial) return;
-
-        if (roloId) {
-            adicionarHidden(container, 'rolo_tag_ids', roloId);
-            adicionarHidden(container, `tag_inicial_rolo_${roloId}`, inicial);
-            adicionarHidden(container, `tag_modo_rolo_${roloId}`, modo);
-            return;
-        }
-
-        if (modo === 'NOVO') {
-            adicionarHidden(container, `insumo_${insumoId}_enviada`, '1');
-        }
+        adicionarHidden(container, 'rolo_tag_ids', roloId);
+        adicionarHidden(container, `tag_inicial_rolo_${roloId}`, inputInicialTela ? inputInicialTela.value : '');
+        adicionarHidden(container, `tag_modo_rolo_${roloId}`, modoTela ? modoTela.value : '');
     });
 }
 
@@ -1712,8 +1441,7 @@ function existeAlgumEnvioNoChecklist() {
 
     const algumEquipamento = Object.values(selecionados).some(lista => lista && lista.length > 0);
 
-    const algumaTag = document.querySelector('.tag-lote-check:checked') !== null
-        || document.querySelector('.tag-inline-row[data-selected="1"]') !== null;
+    const algumaTag = document.querySelector('.tag-lote-check:checked') !== null;
 
     return algumInsumo || algumEquipamento || algumaTag;
 }

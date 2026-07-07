@@ -7,74 +7,85 @@
 {% if request.user.is_authenticated %}
 <div class="container-fluid px-4">
 
-    <!-- Título -->
+    <!-- HEADER -->
     <div class="border-bottom pb-3 mb-4">
         <h1 class="h3 fw-semibold mb-0">{% trans "Equipamentos em SICK" %}</h1>
-        <p class="text-secondary small mt-1">{% trans "Gestão de equipamentos com problemas" %}</p>
+        <p class="text-secondary small mt-1 mb-0">{% trans "Gestão de equipamentos com problemas" %}</p>
     </div>
 
-    <!-- Estatísticas -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="text-secondary small text-uppercase fw-semibold">{% trans "Total SICK" %}</span>
-                            <h2 class="fw-bold mb-0 mt-1">{{ total_sick }}</h2>
-                        </div>
-                        <div class="text-secondary opacity-50"><i class="bi bi-exclamation-triangle fs-4"></i></div>
+    <!-- ESTATÍSTICAS / FILTROS RÁPIDOS -->
+    <div class="row g-3 mb-4" id="cardsResumoSick">
+        <div class="col-md-3 col-6">
+            <div class="sick-kpi-card filtro-card active" data-status-filter="todos" role="button" tabindex="0">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span>{% trans "Total SICK" %}</span>
+                        <strong>{{ total_sick }}</strong>
                     </div>
+                    <i class="bi bi-exclamation-triangle fs-4 opacity-50"></i>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="text-secondary small text-uppercase fw-semibold">{% trans "Em manutenção" %}</span>
-                            <h2 class="fw-bold mb-0 mt-1" style="color: #e67e22;">{{ total_manutencao }}</h2>
-                        </div>
-                        <div class="text-secondary opacity-50"><i class="bi bi-clock-history fs-4"></i></div>
+
+        <div class="col-md-3 col-6">
+            <div class="sick-kpi-card filtro-card" data-status-filter="manutencao" role="button" tabindex="0">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span>{% trans "Em manutenção" %}</span>
+                        <strong class="text-warning-custom">{{ total_manutencao }}</strong>
                     </div>
+                    <i class="bi bi-clock-history fs-4 opacity-50"></i>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="text-secondary small text-uppercase fw-semibold">{% trans "Inativos" %}</span>
-                            <h2 class="fw-bold mb-0 mt-1" style="color: #5f6368;">{{ total_inativos }}</h2>
-                        </div>
-                        <div class="text-secondary opacity-50"><i class="bi bi-check-circle fs-4"></i></div>
+
+        <div class="col-md-3 col-6">
+            <div class="sick-kpi-card filtro-card" data-status-filter="inativos" role="button" tabindex="0">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span>{% trans "Inativos" %}</span>
+                        <strong class="text-muted-custom">{{ total_inativos }}</strong>
                     </div>
+                    <i class="bi bi-ban fs-4 opacity-50"></i>
                 </div>
             </div>
         </div>
-         <div class="col-md-3">
-            <div class="card border-0 shadow-sm ">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="text-secondary small text-uppercase fw-semibold">{% trans "Resolvidos" %}</span>
-                            <h2 class="fw-bold mb-0 mt-1 text-success">{{ total_resolvidos }}</h2>
-                        </div>
-                        <div class="text-success opacity-50"><i class="bi bi-check2-circle fs-4"></i></div>
+
+        <div class="col-md-3 col-6">
+            <div class="sick-kpi-card filtro-card" data-status-filter="resolvidos" role="button" tabindex="0">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span>{% trans "Resolvidos" %}</span>
+                        <strong class="text-success">{{ total_resolvidos }}</strong>
                     </div>
+                    <i class="bi bi-check2-circle fs-4 opacity-50"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Filtros -->
+    <!-- FILTROS -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body bg-light">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Categoria" %}</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        {% trans "Regional" %}
+                    </label>
+                    <select name="regional" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">{% trans "Todas" %}</option>
+                        {% for r in regionais %}
+                            <option value="{{ r.id }}" {% if request.GET.regional|stringformat:"s" == r.id|stringformat:"s" %}selected{% endif %}>
+                                {{ r.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        {% trans "Categoria" %}
+                    </label>
                     <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">{% trans "Todas" %}</option>
                         <option value="Coletores" {% if request.GET.categoria == "Coletores" %}selected{% endif %}>{% trans "Coletores" %}</option>
@@ -83,26 +94,25 @@
                         <option value="Routers" {% if request.GET.categoria == "Routers" %}selected{% endif %}>{% trans "Routers" %}</option>
                     </select>
                 </div>
+
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Equipamento" %}</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        {% trans "Equipamento" %}
+                    </label>
                     <select name="produto" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">{% trans "Todos" %}</option>
                         {% for p in produtos_lista %}
-                        <option value="{{ p.id }}" {% if request.GET.produto|stringformat:"s" == p.id|stringformat:"s" %}selected{% endif %}>{{ p.descricao }}</option>
+                            <option value="{{ p.id }}" {% if request.GET.produto|stringformat:"s" == p.id|stringformat:"s" %}selected{% endif %}>
+                                {{ p.descricao }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
+
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Regional" %}</label>
-                    <select name="regional" class="form-select form-select-sm bg-white auto-submit">
-                        <option value="">{% trans "Todas" %}</option>
-                        {% for r in regionais %}
-                        <option value="{{ r.id }}" {% if request.GET.regional|stringformat:"s" == r.id|stringformat:"s" %}selected{% endif %}>{{ r.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small text-secondary fw-semibold mb-1">Situação</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        {% trans "Situação" %}
+                    </label>
                     <select name="status" class="form-select form-select-sm bg-white auto-submit">
                         <option value="todos" {% if request.GET.status == "todos" %}selected{% endif %}>{% trans "Todos" %}</option>
                         <option value="pendentes" {% if request.GET.status == "pendentes" %}selected{% endif %}>{% trans "Pendentes" %}</option>
@@ -111,21 +121,46 @@
                         <option value="resolvidos" {% if request.GET.status == "resolvidos" %}selected{% endif %}>{% trans "Resolvidos" %}</option>
                     </select>
                 </div>
-                <div class="col-12 text-end">
-                    <a href="{% url 'estoque:sick' %}" class="btn btn-outline-secondary btn-sm px-3">{% trans "Limpar Filtros" %}</a>
+
+                <div class="col-md-8">
+                    <label class="form-label small text-secondary fw-semibold mb-1">
+                        {% trans "Busca rápida" %}
+                    </label>
+                    <input type="search"
+                           id="buscaSick"
+                           class="form-control form-control-sm bg-white"
+                           placeholder="{% trans 'Filtrar por equipamento, série, patrimônio ou regional...' %}">
+                </div>
+
+                <div class="col-md-4 text-md-end">
+                    <a href="{% url 'estoque:sick' %}" class="btn btn-outline-secondary btn-sm px-3">
+                        {% trans "Limpar Filtros" %}
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Tabela -->
+    <!-- TABELA -->
     <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3 pb-2">
+            <div>
+                <h6 class="fw-semibold mb-0">{% trans "Lista de ocorrências" %}</h6>
+                <small class="text-secondary">
+                    <span id="contadorSickVisivel">0</span> {% trans "registro(s) visível(is)" %}
+                </small>
+            </div>
+            <small class="text-secondary">
+                {% trans "Clique na seta para ver histórico e detalhes da ocorrência." %}
+            </small>
+        </div>
+
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" id="tabelaSick">
                     <thead class="table-light">
                         <tr class="small text-secondary">
-                            <th class="py-3 px-2" style="width: 40px;"></th> <!-- Botão expandir -->
+                            <th class="py-3 px-2" style="width: 40px;"></th>
                             <th class="py-3 px-3">{% trans "Equipamento" %}</th>
                             <th class="py-3">{% trans "Nº Série" %}</th>
                             <th class="py-3">{% trans "Patrimônio" %}</th>
@@ -137,160 +172,191 @@
                             <th class="py-3 text-center">{% trans "Ações" %}</th>
                          </tr>
                     </thead>
+
                     <tbody>
                         {% for sick in sicks %}
-                        <!-- Linha principal -->
-                        <tr>
-                            <td class="text-center">
-                                <button type="button"
-                                        class="btn btn-sm btn-light border btn-expandir"
-                                        data-target="historico-{{ sick.id }}">
-                                    <i class="bi bi-chevron-down"></i>
-                                </button>
-                            </td>
-                            <td class="px-3 fw-semibold">{{ sick.equipamento.produto.descricao }}</td>
-                            <td><code class="small">{{ sick.equipamento.numero_serie }}</code></td>
-                            <td class="text-secondary">{{ sick.equipamento.patrimonio }}</td>
-                            <td>{{ sick.categoria }}</td>
-                            <td>{% if sick.equipamento.regional %}<span class="fw-semibold">{{ sick.equipamento.regional.nome }}</span>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
-                            <td class="text-secondary small">{{ sick.data_ocorrencia|date:"d/m/Y H:i" }}</td>
-                            <td class="text-secondary small">
-                                {% if sick.previsao_retorno %}
-                                    {{ sick.previsao_retorno|date:"d/m/Y" }}
-                                {% else %}
-                                    <span class="text-secondary small">—</span>
-                                {% endif %}
-                            </td>
-                            <!-- Status -->
-                            <td>
-                                {% if sick.status_final == 'MANUTENCAO' %}
-                                    <span class="badge" style="background-color: #fff3e0; color: #e67e22; padding: 4px 8px;">
-                                        <i class="bi bi-tools me-1"></i> {% trans "Manutenção" %}
-                                    </span>
-                                    {% if sick.previsao_retorno %}
-                                        <div class="small text-secondary mt-1">Previsão: {{ sick.previsao_retorno|date:"d/m/Y" }}</div>
-                                    {% endif %}
-                                {% elif sick.status_final == 'INATIVO' %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-ban me-1"></i> {% trans "Inativo" %}
-                                    </span>
-                                {% elif sick.status_final == 'SUCATA' %}
-                                    <span class="badge bg-dark">
-                                        <i class="bi bi-trash me-1"></i> {% trans "Sucata" %}
-                                    </span>
-                                {% elif sick.data_resolucao %}
-                                    <span class="badge" style="background-color: #e6f4ea; color: #137333; padding: 4px 8px;">
-                                        <i class="bi bi-check-circle-fill me-1"></i> {% trans "Resolvido" %}
-                                    </span>
-                                    <div class="small text-secondary mt-1">{{ sick.data_resolucao|date:"d/m/Y H:i" }}</div>
-                                {% else %}
-                                    <span class="badge" style="background-color: #fce8e6; color: #c5221f; padding: 4px 8px;">
-                                        <i class="bi bi-exclamation-circle-fill me-1"></i> {% trans "Pendente" %}
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <!-- Ações -->
-                            <td class="text-center" style="min-width: 220px;">
-                                {% if sick.ativo %}
-                                    <div class="d-grid gap-2">
-                                        <!-- Resolver -->
-                                        <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('{% trans "Retornar equipamento para ATIVO?" %}');">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="sick_id" value="{{ sick.id }}">
-                                            <button type="submit" name="novo_status" value="ATIVO" class="btn btn-outline-success btn-sm w-100">
-                                                <i class="bi bi-check-circle me-1"></i> {% trans "Resolver" %}
-                                            </button>
-                                        </form>
-                                        <!-- Manutenção (modal) -->
-                                        <button type="button"
-                                                class="btn btn-outline-warning btn-sm w-100 btn-manutencao"
-                                                data-sick-id="{{ sick.id }}"
-                                                data-equipamento="{{ sick.equipamento.produto.descricao }} - {{ sick.equipamento.numero_serie }}">
-                                            <i class="bi bi-tools me-1"></i> {% trans "Manutenção" %}
-                                        </button>
-                                        <!-- Inativar -->
-                                        <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('Inativar equipamento?');">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="sick_id" value="{{ sick.id }}">
-                                            <button type="submit" name="novo_status" value="INATIVO" class="btn btn-outline-danger btn-sm w-100">
-                                                <i class="bi bi-trash3 me-1"></i> {% trans "Inativar" %}
-                                            </button>
-                                        </form>
-                                    </div>
-                                {% else %}
-                                    <span class="text-secondary small">{% trans "Finalizado" %}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
+                            <tr class="sick-row"
+                                data-sick-id="{{ sick.id }}"
+                                data-status="{% if sick.status_final == 'MANUTENCAO' %}manutencao{% elif sick.status_final == 'INATIVO' or sick.status_final == 'SUCATA' %}inativos{% elif sick.data_resolucao %}resolvidos{% else %}pendentes{% endif %}"
+                                data-search="{{ sick.equipamento.produto.descricao|default:''|lower }} {{ sick.equipamento.numero_serie|default:''|lower }} {{ sick.equipamento.patrimonio|default:''|lower }} {{ sick.categoria|default:''|lower }} {{ sick.equipamento.regional.nome|default:''|lower }}">
+                                <td class="text-center">
+                                    <button type="button"
+                                            class="btn btn-sm btn-light border btn-expandir"
+                                            data-target="historico-{{ sick.id }}"
+                                            aria-label="{% trans 'Expandir histórico' %}">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                </td>
 
-                        <!-- Linha expansível com histórico -->
-                        <tr id="historico-{{ sick.id }}" class="d-none historico-row">
-                            <td colspan="10" class="bg-light p-4">
-                                <div class="row g-4">
-                                    <!-- Ocorrência Atual -->
-                                    <div class="col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-header bg-white">
-                                                <h6 class="fw-semibold mb-0">
-                                                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>
-                                                    Ocorrência Atual
-                                                </h6>
+                                <td class="px-3 fw-semibold">
+                                    {{ sick.equipamento.produto.descricao }}
+                                </td>
+
+                                <td>
+                                    <code class="small">{{ sick.equipamento.numero_serie }}</code>
+                                </td>
+
+                                <td class="text-secondary">
+                                    {{ sick.equipamento.patrimonio }}
+                                </td>
+
+                                <td>{{ sick.categoria }}</td>
+
+                                <td>
+                                    {% if sick.equipamento.regional %}
+                                        <span class="fw-semibold">{{ sick.equipamento.regional.nome }}</span>
+                                    {% else %}
+                                        <span class="text-secondary">—</span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="text-secondary small">
+                                    {{ sick.data_ocorrencia|date:"d/m/Y H:i" }}
+                                </td>
+
+                                <td class="text-secondary small">
+                                    {% if sick.previsao_retorno %}
+                                        {{ sick.previsao_retorno|date:"d/m/Y" }}
+                                    {% else %}
+                                        <span class="text-secondary small">—</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if sick.status_final == 'MANUTENCAO' %}
+                                        <span class="badge badge-manutencao">
+                                            <i class="bi bi-tools me-1"></i> {% trans "Manutenção" %}
+                                        </span>
+                                        {% if sick.previsao_retorno %}
+                                            <div class="small text-secondary mt-1">
+                                                {% trans "Previsão" %}: {{ sick.previsao_retorno|date:"d/m/Y" }}
                                             </div>
-                                            <div class="card-body">
-                                                {% if sick.motivo %}
-                                                <div class="mb-3">
-                                                    <small class="text-secondary d-block mb-1">Motivo do SICK</small>
-                                                    <div class="border rounded p-3 bg-light">{{ sick.motivo }}</div>
+                                        {% endif %}
+                                    {% elif sick.status_final == 'INATIVO' %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-ban me-1"></i> {% trans "Inativo" %}
+                                        </span>
+                                    {% elif sick.status_final == 'SUCATA' %}
+                                        <span class="badge bg-dark">
+                                            <i class="bi bi-trash me-1"></i> {% trans "Sucata" %}
+                                        </span>
+                                    {% elif sick.data_resolucao %}
+                                        <span class="badge badge-resolvido">
+                                            <i class="bi bi-check-circle-fill me-1"></i> {% trans "Resolvido" %}
+                                        </span>
+                                        <div class="small text-secondary mt-1">
+                                            {{ sick.data_resolucao|date:"d/m/Y H:i" }}
+                                        </div>
+                                    {% else %}
+                                        <span class="badge badge-pendente">
+                                            <i class="bi bi-exclamation-circle-fill me-1"></i> {% trans "Pendente" %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="text-center" style="min-width: 220px;">
+                                    {% if sick.ativo %}
+                                        <div class="d-grid gap-2">
+                                            <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('{% trans "Retornar equipamento para ATIVO?" %}');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="sick_id" value="{{ sick.id }}">
+                                                <button type="submit" name="novo_status" value="ATIVO" class="btn btn-outline-success btn-sm w-100">
+                                                    <i class="bi bi-check-circle me-1"></i> {% trans "Resolver" %}
+                                                </button>
+                                            </form>
+
+                                            <button type="button"
+                                                    class="btn btn-outline-warning btn-sm w-100 btn-manutencao"
+                                                    data-sick-id="{{ sick.id }}"
+                                                    data-equipamento="{{ sick.equipamento.produto.descricao }} - {{ sick.equipamento.numero_serie }}">
+                                                <i class="bi bi-tools me-1"></i> {% trans "Manutenção" %}
+                                            </button>
+
+                                            <form method="post" action="{% url 'estoque:sick' %}" onsubmit="return confirm('{% trans "Inativar equipamento?" %}');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="sick_id" value="{{ sick.id }}">
+                                                <button type="submit" name="novo_status" value="INATIVO" class="btn btn-outline-danger btn-sm w-100">
+                                                    <i class="bi bi-trash3 me-1"></i> {% trans "Inativar" %}
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-secondary small">{% trans "Finalizado" %}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <tr id="historico-{{ sick.id }}" class="d-none historico-row" data-parent-sick="{{ sick.id }}">
+                                <td colspan="10" class="bg-light p-4">
+                                    <div class="row g-4">
+                                        <div class="col-lg-6">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-header bg-white">
+                                                    <h6 class="fw-semibold mb-0">
+                                                        <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                                                        {% trans "Ocorrência Atual" %}
+                                                    </h6>
                                                 </div>
-                                                {% endif %}
-                                                {% if sick.motivo_manutencao %}
-                                                <div>
-                                                    <small class="text-secondary d-block mb-1">Motivo da manutenção</small>
-                                                    <div class="border rounded p-3 bg-light">{{ sick.motivo_manutencao }}</div>
+                                                <div class="card-body">
+                                                    {% if sick.motivo %}
+                                                        <div class="mb-3">
+                                                            <small class="text-secondary d-block mb-1">{% trans "Motivo do SICK" %}</small>
+                                                            <div class="border rounded p-3 bg-light">{{ sick.motivo }}</div>
+                                                        </div>
+                                                    {% endif %}
+
+                                                    {% if sick.motivo_manutencao %}
+                                                        <div>
+                                                            <small class="text-secondary d-block mb-1">{% trans "Motivo da manutenção" %}</small>
+                                                            <div class="border rounded p-3 bg-light">{{ sick.motivo_manutencao }}</div>
+                                                        </div>
+                                                    {% endif %}
                                                 </div>
-                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-lg-6">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-header bg-white">
+                                                    <h6 class="fw-semibold mb-0">
+                                                        <i class="bi bi-clock-history text-primary me-2"></i>
+                                                        {% trans "Histórico do Equipamento" %}
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    {% for historico in sick.equipamento.sicks.all %}
+                                                        <div class="border-start border-3 ps-3 pb-3 mb-3">
+                                                            <div class="fw-semibold">{{ historico.data_ocorrencia|date:"d/m/Y H:i" }}</div>
+
+                                                            {% if historico.motivo %}
+                                                                <div class="small text-secondary mt-1">{{ historico.motivo }}</div>
+                                                            {% endif %}
+
+                                                            {% if historico.data_resolucao %}
+                                                                <div class="small text-success mt-1">
+                                                                    {% trans "Resolvido em" %}: {{ historico.data_resolucao|date:"d/m/Y H:i" }}
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    {% empty %}
+                                                        <div class="text-center text-secondary py-4">
+                                                            <i class="bi bi-inbox fs-3"></i>
+                                                            <p class="mt-2 mb-0">{% trans "Nenhum histórico encontrado" %}</p>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Histórico do equipamento -->
-                                    <div class="col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-header bg-white">
-                                                <h6 class="fw-semibold mb-0">
-                                                    <i class="bi bi-clock-history text-primary me-2"></i>
-                                                    Histórico do Equipamento
-                                                </h6>
-                                            </div>
-                                            <div class="card-body">
-                                                {% for historico in sick.equipamento.sicks.all %}
-                                                <div class="border-start border-3 ps-3 pb-3 mb-3">
-                                                    <div class="fw-semibold">{{ historico.data_ocorrencia|date:"d/m/Y H:i" }}</div>
-                                                    {% if historico.motivo %}
-                                                    <div class="small text-secondary mt-1">{{ historico.motivo }}</div>
-                                                    {% endif %}
-                                                    {% if historico.data_resolucao %}
-                                                    <div class="small text-success mt-1">Resolvido em: {{ historico.data_resolucao|date:"d/m/Y H:i" }}</div>
-                                                    {% endif %}
-                                                </div>
-                                                {% empty %}
-                                                <div class="text-center text-secondary py-4">
-                                                    <i class="bi bi-inbox fs-3"></i>
-                                                    <p class="mt-2 mb-0">Nenhum histórico encontrado</p>
-                                                </div>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="10" class="text-center text-secondary py-5">
-                                <i class="bi bi-inbox fs-2"></i>
-                                <p class="mt-2 mb-0">{% trans "Nenhum equipamento SICK encontrado" %}</p>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td colspan="10" class="text-center text-secondary py-5">
+                                    <i class="bi bi-inbox fs-2"></i>
+                                    <p class="mt-2 mb-0">{% trans "Nenhum equipamento SICK encontrado" %}</p>
+                                </td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -298,66 +364,268 @@
         </div>
     </div>
 
-    <!-- Paginação -->
+    <!-- PAGINAÇÃO -->
     {% if is_paginated %}
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link text-secondary" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">← Anterior</a></li>
-            {% endif %}
-            {% for num in page_obj.paginator.page_range %}
-                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                    <a class="page-link {% if page_obj.number == num %}bg-secondary border-secondary{% else %}text-secondary{% endif %}" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
-                </li>
-            {% endfor %}
-            {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link text-secondary" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Próximo →</a></li>
-            {% endif %}
-        </ul>
-    </nav>
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link text-secondary" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            ← {% trans "Anterior" %}
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link {% if page_obj.number == num %}bg-secondary border-secondary{% else %}text-secondary{% endif %}" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link text-secondary" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            {% trans "Próximo" %} →
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
     {% endif %}
 </div>
 
 <style>
-    .badge { font-weight: 500; font-size: 0.75rem; border-radius: 4px; }
-    .table > :not(caption) > * > * { border-bottom-color: #e9ecef; }
-    .table-hover tbody tr:hover { background-color: #f8f9fa; }
-    .page-link { color: #5f6368; border-color: #e9ecef; }
-    .page-link:hover { background-color: #f8f9fa; border-color: #dee2e6; color: #3c4043; }
-    .page-item.active .page-link { background-color: #5f6368; border-color: #5f6368; }
-    .modal-content { border-radius: 16px; }
+    .badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+        border-radius: 4px;
+    }
 
-    /* Estilos para o botão expansível */
+    .table > :not(caption) > * > * {
+        border-bottom-color: #e9ecef;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .page-link {
+        color: #5f6368;
+        border-color: #e9ecef;
+    }
+
+    .page-link:hover {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        color: #3c4043;
+    }
+
+    .page-item.active .page-link {
+        background-color: #5f6368;
+        border-color: #5f6368;
+    }
+
+    .modal-content {
+        border-radius: 16px;
+    }
+
+    .sick-kpi-card {
+        border: 1px solid #e9ecef;
+        border-radius: 14px;
+        background: #fff;
+        padding: 0.95rem 1rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        cursor: pointer;
+        transition: all .2s ease;
+        height: 100%;
+    }
+
+    .sick-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.07);
+    }
+
+    .sick-kpi-card span {
+        display: block;
+        color: #6c757d;
+        font-size: .75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: .25rem;
+    }
+
+    .sick-kpi-card strong {
+        display: block;
+        color: #1e3c72;
+        font-size: 1.45rem;
+        line-height: 1.1;
+    }
+
+    .sick-kpi-card.active {
+        background: #1e3c72;
+        border-color: #1e3c72;
+    }
+
+    .sick-kpi-card.active span,
+    .sick-kpi-card.active strong,
+    .sick-kpi-card.active i,
+    .sick-kpi-card.active .text-warning-custom,
+    .sick-kpi-card.active .text-muted-custom,
+    .sick-kpi-card.active .text-success {
+        color: #fff !important;
+    }
+
+    .text-warning-custom {
+        color: #e67e22 !important;
+    }
+
+    .text-muted-custom {
+        color: #5f6368 !important;
+    }
+
+    .badge-manutencao {
+        background-color: #fff3e0;
+        color: #e67e22;
+        padding: 4px 8px;
+    }
+
+    .badge-resolvido {
+        background-color: #e6f4ea;
+        color: #137333;
+        padding: 4px 8px;
+    }
+
+    .badge-pendente {
+        background-color: #fce8e6;
+        color: #c5221f;
+        padding: 4px 8px;
+    }
+
     .btn-expandir {
         width: 34px;
         height: 34px;
         border-radius: 8px;
     }
+
     .btn-expandir i {
         transition: transform .2s ease;
     }
+
     .btn-expandir.active i {
         transform: rotate(180deg);
     }
+
     .historico-row td {
         border-top: 0 !important;
+    }
+
+    .sick-row[style*="display: none"] + .historico-row {
+        display: none !important;
     }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Auto-submit dos filtros
+    let filtroStatusAtual = 'todos';
+
+    const buscaInput = document.getElementById('buscaSick');
+    const contadorVisivel = document.getElementById('contadorSickVisivel');
+
+    function normalizarTexto(valor) {
+        return String(valor || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function atualizarContadorVisivel() {
+        const visiveis = Array.from(document.querySelectorAll('.sick-row'))
+            .filter(row => row.style.display !== 'none')
+            .length;
+
+        if (contadorVisivel) {
+            contadorVisivel.textContent = visiveis;
+        }
+    }
+
+    function fecharHistoricosOcultos() {
+        document.querySelectorAll('.sick-row').forEach(row => {
+            const sickId = row.dataset.sickId;
+            const historico = document.querySelector(`[data-parent-sick="${sickId}"]`);
+            const button = row.querySelector('.btn-expandir');
+
+            if (row.style.display === 'none' && historico) {
+                historico.classList.add('d-none');
+                if (button) button.classList.remove('active');
+            }
+        });
+    }
+
+    function aplicarFiltrosClientSide() {
+        const termo = normalizarTexto(buscaInput ? buscaInput.value : '');
+
+        document.querySelectorAll('.sick-row').forEach(row => {
+            const texto = normalizarTexto(row.dataset.search || row.innerText);
+            const status = row.dataset.status || 'pendentes';
+
+            const okBusca = !termo || texto.includes(termo);
+            const okStatus = filtroStatusAtual === 'todos' || status === filtroStatusAtual;
+
+            row.style.display = okBusca && okStatus ? '' : 'none';
+        });
+
+        fecharHistoricosOcultos();
+        atualizarContadorVisivel();
+    }
+
+    // Auto-submit dos filtros de servidor
     document.querySelectorAll('.auto-submit').forEach(select => {
         select.addEventListener('change', () => {
             select.closest('form').submit();
         });
     });
 
+    // Cards clicáveis
+    document.querySelectorAll('.filtro-card').forEach(card => {
+        const aplicarCard = () => {
+            const novoFiltro = card.dataset.statusFilter || 'todos';
+
+            document.querySelectorAll('.filtro-card').forEach(c => {
+                c.classList.remove('active');
+            });
+
+            if (filtroStatusAtual === novoFiltro && novoFiltro !== 'todos') {
+                filtroStatusAtual = 'todos';
+                document.querySelector('.filtro-card[data-status-filter="todos"]')?.classList.add('active');
+            } else {
+                filtroStatusAtual = novoFiltro;
+                card.classList.add('active');
+            }
+
+            aplicarFiltrosClientSide();
+        };
+
+        card.addEventListener('click', aplicarCard);
+        card.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                aplicarCard();
+            }
+        });
+    });
+
+    if (buscaInput) {
+        buscaInput.addEventListener('input', aplicarFiltrosClientSide);
+    }
+
     // Expansão do histórico
     document.querySelectorAll('.btn-expandir').forEach(button => {
         button.addEventListener('click', () => {
             const targetId = button.getAttribute('data-target');
             const row = document.getElementById(targetId);
+
             if (row) {
                 row.classList.toggle('d-none');
                 button.classList.toggle('active');
@@ -383,26 +651,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         {% csrf_token %}
                         <input type="hidden" name="sick_id" value="${sickId}">
                         <input type="hidden" name="novo_status" value="MANUTENCAO">
+
                         <div class="modal-header border-0">
                             <div>
-                                <h5 class="modal-title fw-bold">Enviar para Manutenção</h5>
+                                <h5 class="modal-title fw-bold">{% trans "Enviar para Manutenção" %}</h5>
                                 <small class="text-secondary">${escapeHtml(equipamentoInfo)}</small>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
+
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Motivo da manutenção *</label>
-                                <textarea name="motivo_manutencao" class="form-control" rows="3" required placeholder="Descreva o problema ou motivo da manutenção..."></textarea>
+                                <label class="form-label fw-semibold">{% trans "Motivo da manutenção" %} *</label>
+                                <textarea name="motivo_manutencao" class="form-control" rows="3" required placeholder="{% trans 'Descreva o problema ou motivo da manutenção...' %}"></textarea>
                             </div>
+
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Previsão de retorno *</label>
+                                <label class="form-label fw-semibold">{% trans "Previsão de retorno" %} *</label>
                                 <input type="date" name="previsao_retorno" class="form-control" required>
                             </div>
                         </div>
+
                         <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-dark">Enviar para manutenção</button>
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">{% trans "Cancelar" %}</button>
+                            <button type="submit" class="btn btn-dark">{% trans "Enviar para manutenção" %}</button>
                         </div>
                     </form>
                 </div>
@@ -417,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
+        return String(str).replace(/[&<>]/g, function(m) {
             if (m === '&') return '&amp;';
             if (m === '<') return '&lt;';
             if (m === '>') return '&gt;';
@@ -426,12 +698,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelectorAll('.btn-manutencao').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
             const sickId = btn.getAttribute('data-sick-id');
             const equipamento = btn.getAttribute('data-equipamento');
             createModal(sickId, equipamento);
         });
     });
+
+    aplicarFiltrosClientSide();
 });
 </script>
 

@@ -10,6 +10,7 @@
         </div>
 
         <div class="card-body">
+
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert alert-{{ message.tags|default:'info' }}">
@@ -18,37 +19,61 @@
                 {% endfor %}
             {% endif %}
 
-            <div class="card shadow-sm mb-3">
-                <div class="card-header bg-light">
-                    <strong>🔎 Filtros</strong>
+            {% if user.perfil.is_admin %}
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light">
+                        <strong>🔎 Filtros</strong>
+                    </div>
+
+                    <div class="card-body">
+                        <form method="get">
+                            <div class="row g-3 align-items-end">
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Empresa</label>
+                                    <select name="empresa" id="filtroEmpresa" class="form-select">
+                                        <option value="">Todas as empresas</option>
+                                        {% for empresa in empresas %}
+                                            <option value="{{ empresa.id }}"
+                                                {% if filtro_empresa_id|stringformat:"s" == empresa.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ empresa.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Base</label>
+                                    <select name="base" id="filtroBase" class="form-select">
+                                        <option value="">Todas as bases</option>
+                                        {% for base in bases %}
+                                            <option value="{{ base.id }}"
+                                                    data-empresa-id="{{ base.empresa.id }}"
+                                                {% if filtro_base_id|stringformat:"s" == base.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ base.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        Pesquisar
+                                    </button>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <a href="{% url 'insumos:estoque_insumos' %}"
+                                       class="btn btn-outline-secondary w-100">
+                                        Limpar
+                                    </a>
+                                </div>
+
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <div class="card-body">
-                    <form method="get">
-                        <div class="row g-3 align-items-end">
-
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold">Categoria</label>
-                                {{ form.categoria }}
-                            </div>
-
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    Pesquisar
-                                </button>
-                            </div>
-
-                            <div class="col-md-2">
-                                <a href="{% url 'insumos:estoque_insumos' %}"
-                                   class="btn btn-outline-secondary w-100">
-                                    Limpar
-                                </a>
-                            </div>
-
-                        </div>
-                    </form>
-                </div>
-            </div>
+            {% endif %}
 
             <ul class="nav nav-tabs mb-3" id="abasCategorias" role="tablist">
                 {% for categoria, itens in estoque_por_categoria.items %}
@@ -71,6 +96,7 @@
             </ul>
 
             <div class="tab-content">
+
                 {% for categoria, itens in estoque_por_categoria.items %}
 
                     <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
@@ -90,13 +116,15 @@
                                         <th>Saldo</th>
                                         <th>Status</th>
                                         {% if user.perfil.is_admin or user.perfil.is_gestor %}
-                                            <th>Acoes</th>
+                                            <th>Ações</th>
                                         {% endif %}
                                     </tr>
                                 </thead>
 
                                 <tbody>
+
                                     {% for item in itens %}
+
                                         <tr>
                                             <td>{{ item.base }}</td>
                                             <td>{{ item.insumo.categoria.nome }}</td>
@@ -110,6 +138,7 @@
                                                     <span class="badge bg-success">OK</span>
                                                 {% endif %}
                                             </td>
+
                                             {% if user.perfil.is_admin or user.perfil.is_gestor %}
                                                 <td>
                                                     <button type="button"
@@ -121,55 +150,93 @@
                                                 </td>
                                             {% endif %}
                                         </tr>
+
                                         {% if user.perfil.is_admin or user.perfil.is_gestor %}
-                                            <tr id="ajuste-{{ item.base.id }}-{{ item.insumo.id }}" data-ajuste-row style="display:none;">
+                                            <tr id="ajuste-{{ item.base.id }}-{{ item.insumo.id }}"
+                                                data-ajuste-row
+                                                style="display:none;">
                                                 <td colspan="7">
                                                     <form method="post"
                                                           action="{% url 'insumos:ajustar_estoque_insumo' %}"
                                                           class="row g-2 align-items-end">
                                                         {% csrf_token %}
+
                                                         <input type="hidden" name="base_id" value="{{ item.base.id }}">
                                                         <input type="hidden" name="insumo_id" value="{{ item.insumo.id }}">
 
                                                         <div class="col-md-3">
                                                             <label class="form-label small fw-bold">Item</label>
-                                                            <input type="text" class="form-control form-control-sm" value="{{ item.insumo.descricao }}" readonly>
+                                                            <input type="text"
+                                                                   class="form-control form-control-sm"
+                                                                   value="{{ item.insumo.descricao }}"
+                                                                   readonly>
                                                         </div>
+
                                                         <div class="col-md-2">
                                                             <label class="form-label small fw-bold">Saldo atual</label>
-                                                            <input type="text" class="form-control form-control-sm" value="{{ item.saldo }}" readonly>
+                                                            <input type="text"
+                                                                   class="form-control form-control-sm"
+                                                                   value="{{ item.saldo }}"
+                                                                   readonly>
                                                         </div>
+
                                                         <div class="col-md-2">
                                                             <label class="form-label small fw-bold">Saldo real</label>
-                                                            <input type="number" name="saldo_real" class="form-control form-control-sm" value="{{ item.saldo }}" step="0.01" min="0" required>
+                                                            <input type="number"
+                                                                   name="saldo_real"
+                                                                   class="form-control form-control-sm"
+                                                                   value="{{ item.saldo }}"
+                                                                   step="0.01"
+                                                                   min="0"
+                                                                   required>
                                                         </div>
+
                                                         <div class="col-md-3">
                                                             <label class="form-label small fw-bold">Motivo</label>
-                                                            <input type="text" name="motivo" class="form-control form-control-sm" required>
+                                                            <input type="text"
+                                                                   name="motivo"
+                                                                   class="form-control form-control-sm"
+                                                                   required>
                                                         </div>
+
                                                         <div class="col-md-2">
                                                             <label class="form-label small fw-bold">Senha</label>
-                                                            <input type="password" name="senha" class="form-control form-control-sm" autocomplete="current-password" required>
+                                                            <input type="password"
+                                                                   name="senha"
+                                                                   class="form-control form-control-sm"
+                                                                   autocomplete="current-password"
+                                                                   required>
                                                         </div>
+
                                                         <div class="col-12 d-flex justify-content-end gap-2">
-                                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-ajuste-cancel>
+                                                            <button type="button"
+                                                                    class="btn btn-sm btn-outline-secondary"
+                                                                    data-ajuste-cancel>
                                                                 Cancelar
                                                             </button>
-                                                            <button type="submit" class="btn btn-sm btn-primary">
+
+                                                            <button type="submit"
+                                                                    class="btn btn-sm btn-primary">
                                                                 Salvar ajuste
                                                             </button>
                                                         </div>
+
                                                     </form>
                                                 </td>
                                             </tr>
                                         {% endif %}
+
                                     {% empty %}
+
                                         <tr>
-                                            <td colspan="{% if user.perfil.is_admin or user.perfil.is_gestor %}7{% else %}6{% endif %}" class="text-center text-muted">
+                                            <td colspan="{% if user.perfil.is_admin or user.perfil.is_gestor %}7{% else %}6{% endif %}"
+                                                class="text-center text-muted">
                                                 Nenhum item encontrado nesta categoria.
                                             </td>
                                         </tr>
+
                                     {% endfor %}
+
                                 </tbody>
 
                             </table>
@@ -178,10 +245,13 @@
                     </div>
 
                 {% empty %}
+
                     <div class="alert alert-info mb-0">
                         Nenhum item encontrado.
                     </div>
+
                 {% endfor %}
+
             </div>
 
         </div>
@@ -191,24 +261,61 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-ajuste-toggle]').forEach(button => {
-        button.addEventListener('click', function() {
+document.addEventListener('DOMContentLoaded', function () {
+    const empresaSelect = document.getElementById('filtroEmpresa');
+    const baseSelect = document.getElementById('filtroBase');
+
+    function filtrarBasesPorEmpresa() {
+        if (!empresaSelect || !baseSelect) return;
+
+        const empresaId = empresaSelect.value;
+        const baseSelecionada = baseSelect.value;
+
+        Array.from(baseSelect.options).forEach(function (option) {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            const pertenceEmpresa = option.dataset.empresaId === empresaId;
+            option.hidden = empresaId && !pertenceEmpresa;
+        });
+
+        const optionAtual = baseSelect.querySelector(`option[value="${baseSelecionada}"]`);
+
+        if (optionAtual && optionAtual.hidden) {
+            baseSelect.value = '';
+        }
+    }
+
+    if (empresaSelect && baseSelect) {
+        empresaSelect.addEventListener('change', filtrarBasesPorEmpresa);
+        filtrarBasesPorEmpresa();
+    }
+
+    document.querySelectorAll('[data-ajuste-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
             const target = document.getElementById(this.dataset.target);
+
             if (!target) return;
 
-            document.querySelectorAll('[data-ajuste-row]').forEach(row => {
-                if (row !== target) row.style.display = 'none';
+            document.querySelectorAll('[data-ajuste-row]').forEach(function (row) {
+                if (row !== target) {
+                    row.style.display = 'none';
+                }
             });
 
             target.style.display = target.style.display === 'none' ? '' : 'none';
         });
     });
 
-    document.querySelectorAll('[data-ajuste-cancel]').forEach(button => {
-        button.addEventListener('click', function() {
+    document.querySelectorAll('[data-ajuste-cancel]').forEach(function (button) {
+        button.addEventListener('click', function () {
             const row = this.closest('[data-ajuste-row]');
-            if (row) row.style.display = 'none';
+
+            if (row) {
+                row.style.display = 'none';
+            }
         });
     });
 });

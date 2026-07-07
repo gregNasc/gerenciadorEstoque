@@ -821,7 +821,7 @@ def estoque_view(request):
 
     produtos_agrupados = (
         equipamentos
-        .values('produto__id', 'produto__descricao')
+        .values('produto__id', 'produto__descricao', 'produto__categoria')
         .annotate(
             total=Count('id'),
 
@@ -873,6 +873,20 @@ def estoque_view(request):
             'disponibilidade': disponibilidade,
         })
 
+    categorias_estoque = [
+        {'nome': 'Coletores', 'total_modelos': 0},
+        {'nome': 'Notebooks', 'total_modelos': 0},
+        {'nome': 'Impressoras', 'total_modelos': 0},
+        {'nome': 'Routers', 'total_modelos': 0},
+    ]
+
+    for categoria in categorias_estoque:
+        categoria['total_modelos'] = sum(
+            1
+            for produto in produtos_processados
+            if produto.get('produto__categoria') == categoria['nome']
+        )
+
     if perfil.is_admin:
 
         regionais = (
@@ -894,6 +908,7 @@ def estoque_view(request):
         'estoque/estoque.html',
         {
             'produtos_agrupados': produtos_processados,
+            'categorias_estoque': categorias_estoque,
             'regionais': regionais,
             'regional_selecionada': regional_id,
             'kpis_estoque': {
@@ -4558,14 +4573,24 @@ def checklist_view(request):
                     insumos_ids = [item[0] for item in insumos_payload]
                     insumos_dict = {str(insumo.id): insumo for insumo in Insumo.objects.filter(id__in=insumos_ids)}
                     for insumo_id, quantidade in insumos_payload:
+
                         insumo = insumos_dict.get(insumo_id)
-                        if insumo:
-                            ChecklistService.registrar_envio_item(
-                                checklist=checklist,
-                                insumo=insumo,
-                                quantidade_enviada=quantidade,
-                                usuario=request.user
-                            )
+
+                        if not insumo:
+                            continue
+
+                        if (
+                                insumo.categoria and
+                                insumo.categoria.nome.upper() == "TAGS"
+                        ):
+                            continue
+
+                        ChecklistService.registrar_envio_item(
+                            checklist=checklist,
+                            insumo=insumo,
+                            quantidade_enviada=quantidade,
+                            usuario=request.user,
+                        )
 
                 if tags_payload:
                     rolos_ids = [item[0] for item in tags_payload]
