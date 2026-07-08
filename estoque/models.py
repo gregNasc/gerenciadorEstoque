@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Q
@@ -627,6 +629,13 @@ class Comunicado(models.Model):
             self.expira_em and
             timezone.now() >= self.expira_em
         )
+
+    def save(self, *args, **kwargs):
+        if not self.expira_em:
+            from django.utils import timezone
+
+            self.expira_em = timezone.now() + timedelta(days=30)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.titulo

@@ -221,7 +221,6 @@ class AlteracaoCalendario(models.Model):
     def __str__(self):
         return f'{self.cliente_sigla} - Loja {self.loja} | Rev {self.revisao or "-"}'
 
-
 class ChecklistDiario(models.Model):
     STATUS = [
         ('ABERTO', 'Aberto'),
@@ -322,7 +321,7 @@ class ChecklistLoteTag(models.Model):
             self.numero_final_utilizado is not None and
             self.numero_final_utilizado >= self.numero_inicial_utilizado
         ):
-            return self.numero_final_utilizado - self.numero_inicial_utilizado
+            return self.numero_final_utilizado - self.numero_inicial_utilizado + 1
         return 0
 
     def validar_numero_inicial(self):

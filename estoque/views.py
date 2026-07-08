@@ -2,10 +2,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.core.paginator import Paginator
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from openpyxl import Workbook
 from .services.emprestimo_service import EmprestimoService
+from .services.comunicado_service import ComunicadoService
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
 from django.db import transaction
@@ -21,7 +23,7 @@ from django.db.models import Count, Q, F
 from django.utils.dateparse import parse_date
 from estoque.models import Equipamento
 from insumos.models import ChecklistDiario
-from insumos.models import LoteTag, RoloTag
+from insumos.models import ItemChecklist, LoteTag, RoloTag
 from django.utils import timezone
 from datetime import datetime, time
 from django.db import IntegrityError, transaction
@@ -52,7 +54,6 @@ from django.contrib.auth import authenticate
 def _normalizar_nome_base(valor):
     return re.sub(r'\s+', ' ', str(valor or '').strip()).upper()
 
-
 def _bases_agrupadas_por_nome(queryset):
     bases_por_nome = OrderedDict()
     for base in queryset.select_related('empresa').order_by('nome', 'id'):
@@ -61,7 +62,6 @@ def _bases_agrupadas_por_nome(queryset):
             continue
         bases_por_nome.setdefault(chave, []).append(base)
     return bases_por_nome
-
 
 def _bases_unicas_por_nome(queryset):
     return [bases[0] for bases in _bases_agrupadas_por_nome(queryset).values()]
@@ -1354,27 +1354,6 @@ def sick_view(request):
     categoria_filter = request.GET.get('categoria', '')
     regional_filter = request.GET.get('regional', '')
 
-    if status_filter == 'pendentes':
-        sicks = sicks.filter(
-            ativo=True,
-            status_final__isnull=True
-        )
-
-    elif status_filter == 'manutencao':
-        sicks = sicks.filter(
-            status_final='MANUTENCAO'
-        )
-
-    elif status_filter == 'inativos':
-        sicks = sicks.filter(
-            status_final='INATIVO'
-        )
-
-    elif status_filter == 'resolvidos':
-        sicks = sicks.filter(
-            status_final='ATIVO'
-        )
-
     if categoria_filter:
         sicks = sicks.filter(
             equipamento__produto__categoria=categoria_filter
@@ -1390,6 +1369,55 @@ def sick_view(request):
             equipamento__regional_id=regional_filter
         )
 
+    sicks_base_filtros = sicks
+
+    total_sick = sicks_base_filtros.filter(
+        ativo=True
+    ).count()
+
+    total_pendentes = sicks_base_filtros.filter(
+        ativo=True,
+        status_final__isnull=True
+    ).count()
+
+    total_manutencao = sicks_base_filtros.filter(
+        status_final='MANUTENCAO'
+    ).count()
+
+    total_inativos = sicks_base_filtros.filter(
+        status_final__in=['INATIVO', 'SUCATA']
+    ).count()
+
+    total_resolvidos = sicks_base_filtros.filter(
+        status_final='ATIVO'
+    ).count()
+
+    if status_filter == 'pendentes':
+        sicks = sicks.filter(
+            ativo=True,
+            status_final__isnull=True
+        )
+
+    elif status_filter == 'manutencao':
+        sicks = sicks.filter(
+            status_final='MANUTENCAO'
+        )
+
+    elif status_filter == 'inativos':
+        sicks = sicks.filter(
+            status_final__in=['INATIVO', 'SUCATA']
+        )
+
+    elif status_filter == 'resolvidos':
+        sicks = sicks.filter(
+            status_final='ATIVO'
+        )
+
+    elif status_filter == 'todos':
+        sicks = sicks.filter(
+            ativo=True
+        )
+
     sicks = sicks.order_by('-data_ocorrencia')
 
     for sick in sicks:
@@ -1401,30 +1429,6 @@ def sick_view(request):
             '-data_ocorrencia'
         ).first()
 
-
-    total_pendentes = sicks.filter(
-        ativo=True,
-        status_final__isnull=True
-    ).count()
-
-    total_manutencao = sicks.filter(
-        status_final='MANUTENCAO'
-    ).count()
-
-    total_inativos = sicks.filter(
-        status_final='INATIVO'
-    ).count()
-
-    total_resolvidos = sicks.filter(
-        status_final='ATIVO'
-    ).count()
-
-    if status_filter == 'todos':
-        sicks = sicks.exclude(
-            status_final='INATIVO'
-        ).exclude(
-            status_final='ATIVO'
-        )
     categorias = Produto.objects.values_list(
         'categoria',
         flat=True
@@ -1443,7 +1447,7 @@ def sick_view(request):
 
         'sicks': sicks,
 
-        'total_sick': total_pendentes,
+        'total_sick': total_sick,
         'total_pendentes': total_pendentes,
         'total_resolvidos': total_resolvidos,
         'total_manutencao': total_manutencao,
@@ -1587,10 +1591,21 @@ def detalhes_sick(request, sick_id):
 def historico_view(request):
     tipo_acao = request.GET.get('tipo_acao')
     equipamento_query = request.GET.get('equipamento')
+    protocolo_query = request.GET.get('protocolo', '').strip()
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
-    historico = Historico.objects.all().order_by('-data')
+    historico = (
+        Historico.objects
+        .select_related(
+            'equipamento',
+            'equipamento__produto',
+            'equipamento__regional',
+            'usuario'
+        )
+        .all()
+        .order_by('-data')
+    )
 
     if tipo_acao and tipo_acao != 'todos':
         historico = historico.filter(tipo_acao=tipo_acao)
@@ -1600,6 +1615,11 @@ def historico_view(request):
             Q(equipamento__numero_serie__icontains=equipamento_query) |
             Q(equipamento__patrimonio__icontains=equipamento_query) |
             Q(equipamento__produto__descricao__icontains=equipamento_query)
+        )
+
+    if protocolo_query:
+        historico = historico.filter(
+            detalhes__protocolo__icontains=protocolo_query
         )
 
     if data_inicio:
@@ -1625,14 +1645,19 @@ def historico_view(request):
         )
     ]
 
+    paginator = Paginator(historico, 25)
+    page_number = request.GET.get('page')
+    historicos = paginator.get_page(page_number)
+
     return render(request, 'estoque/historico.html', {
-        'historicos': historico,
+        'historicos': historicos,
         'total_registros': total_registros,
         'acoes_agrupadas': acoes_agrupadas,
         'tipos_acao': Historico.TIPO_ACOES,
         'filtros': {
             'tipo_acao': tipo_acao or 'todos',
             'equipamento_query': equipamento_query or '',
+            'protocolo_query': protocolo_query,
             'data_inicio': data_inicio or '',
             'data_fim': data_fim or '',
         }
@@ -1645,6 +1670,7 @@ def historico_detalhes_view(request, historico_id):
         Historico.objects.select_related(
             'equipamento',
             'equipamento__produto',
+            'equipamento__regional',
             'usuario'
         ),
         id=historico_id
@@ -2370,10 +2396,6 @@ def ocultar_comunicado(request, comunicado_id):
         Comunicado,
         id=comunicado_id
     )
-
-    if not comunicado.permitir_limpar:
-        messages.error(request, 'Este comunicado não pode ser removido.')
-        return redirect('estoque:caixa_comunicados')
 
     ComunicadoOculto.objects.get_or_create(
         comunicado=comunicado,
@@ -3526,13 +3548,20 @@ def finalizar_transferencia(transferencia, user):
     equipamento.save(update_fields=['regional', 'status'])
 
     Historico.objects.create(
-        equipamento=equipamento,
+        equipamento=eq,
         tipo_acao='TRANSFERENCIA',
-        usuario=user,
-        detalhes={
-            'origem': transferencia.regional_origem.nome,
-            'destino': transferencia.regional_destino.nome,
-        }
+        usuario=request.user,
+        detalhes=detalhes_transferencia(
+            transferencia=transferencia,
+            equipamento=eq,
+            usuario=request.user,
+            evento='TRANSFERENCIA_ENVIADA',
+            extras={
+                'data_transferencia': timezone.now().strftime('%d/%m/%Y %H:%M'),
+                'status_anterior_equipamento': 'ATIVO',
+                'status_atual_equipamento': 'TRANSFERENCIA',
+            }
+        )
     )
 
 @login_required
@@ -3632,7 +3661,8 @@ def transferencia_detalhe(request, id):
                     detalhes={
                         'origem': transferencia.regional_origem.nome,
                         'destino': transferencia.regional_destino.nome,
-                        'transferencia_id': transferencia.id
+                        'transferencia_id': transferencia.id,
+                        'protocolo': transferencia.protocolo,
                     }
                 )
 
@@ -3849,9 +3879,11 @@ def receber_transferencia(request, transferencia_id):
 
         divergencia_detectada = False
         pendencia_detectada = False
+        ocorrencias_transferencia = []
 
         usuarios = None
         comunicado = None
+        observacao_recebimento = request.POST.get('observacao_recebimento', '').strip()
 
         try:
 
@@ -3879,19 +3911,31 @@ def receber_transferencia(request, transferencia_id):
                             equipamento=equipamento,
                             tipo_acao='TRANSFERENCIA_RECEBIDA',
                             usuario=request.user,
-                            detalhes={
-                                'transferencia_id': transferencia.id,
-                                'protocolo': transferencia.protocolo,
-                            }
+                            detalhes=detalhes_transferencia(
+                                transferencia=transferencia,
+                                equipamento=equipamento,
+                                usuario=request.user,
+                                evento='TRANSFERENCIA_RECEBIDA',
+                                observacao=observacao_recebimento,
+                                extras={
+                                    'recebido_por': request.user.username,
+                                    'status_item': item.status,
+                                    'status_anterior_equipamento': 'TRANSFERENCIA',
+                                    'status_atual_equipamento': 'ATIVO',
+                                }
+                            )
                         )
 
                         total_recebidos += 1
 
                     elif status_item == 'DIVERGENTE':
 
-                        serie_recebida = request.POST.get(f'serie_recebida_{item.id}', '')
-                        patrimonio_recebido = request.POST.get(f'patrimonio_recebido_{item.id}', '')
-                        observacao = request.POST.get(f'observacao_item_{item.id}', '')
+                        serie_recebida = request.POST.get(f'serie_recebida_{item.id}', '').strip()
+                        patrimonio_recebido = request.POST.get(f'patrimonio_recebido_{item.id}', '').strip()
+                        observacao = (
+                            request.POST.get(f'observacao_item_{item.id}', '').strip()
+                            or observacao_recebimento
+                        )
 
                         equipamento.regional = transferencia.regional_destino
                         equipamento.status = 'ATIVO'
@@ -3908,26 +3952,49 @@ def receber_transferencia(request, transferencia_id):
                             item=item,
                             equipamento_enviado=equipamento,
                             serie_recebida=serie_recebida,
-                            patrimonio_recebido=patrimonio_recebido
+                            patrimonio_recebido=patrimonio_recebido,
+                            observacao=observacao,
                         )
 
                         Historico.objects.create(
                             equipamento=equipamento,
                             tipo_acao='TRANSFERENCIA_DIVERGENTE',
                             usuario=request.user,
-                            detalhes={
-                                'transferencia_id': transferencia.id,
-                                'protocolo': transferencia.protocolo,
-                                'serie_recebida': serie_recebida,
-                                'patrimonio_recebido': patrimonio_recebido,
-                                'observacao': observacao,
-                            }
+                            detalhes=detalhes_transferencia(
+                                transferencia=transferencia,
+                                equipamento=equipamento,
+                                usuario=request.user,
+                                evento='TRANSFERENCIA_DIVERGENTE',
+                                observacao=observacao,
+                                extras={
+                                    'recebido_por': request.user.username,
+                                    'status_item': item.status,
+                                    'serie_recebida': serie_recebida,
+                                    'patrimonio_recebido': patrimonio_recebido,
+                                    'serie_enviada': equipamento.numero_serie,
+                                    'patrimonio_enviado': equipamento.patrimonio,
+                                }
+                            )
                         )
 
                         divergencia_detectada = True
                         total_divergentes += 1
+                        ocorrencias_transferencia.append({
+                            "produto": equipamento.produto.descricao if equipamento.produto else "",
+                            "serie_enviada": getattr(equipamento, "numero_serie", "") or getattr(equipamento, "serial", ""),
+                            "patrimonio_enviado": getattr(equipamento, "patrimonio", ""),
+                            "status": item.status,
+                            "serie_recebida": serie_recebida,
+                            "patrimonio_recebido": patrimonio_recebido,
+                            "observacao": observacao,
+                        })
 
                     elif status_item == 'NAO_RECEBIDO':
+
+                        observacao = (
+                            request.POST.get(f'observacao_item_{item.id}', '').strip()
+                            or observacao_recebimento
+                        )
 
                         equipamento.regional = transferencia.regional_origem
                         equipamento.status = 'ATIVO'
@@ -3940,21 +4007,44 @@ def receber_transferencia(request, transferencia_id):
                             transferencia=transferencia,
                             item=item,
                             equipamento=equipamento,
-                            motivo='NAO_RECEBIDO'
+                            tipo='NAO_RECEBIDO',
+                            motivo='NAO_RECEBIDO',
+                            patrimonio_esperado=equipamento.patrimonio or '',
+                            serie_esperada=getattr(equipamento, "numero_serie", "") or getattr(equipamento, "serial", ""),
+                            descricao=observacao,
+                            criado_por=request.user,
                         )
 
                         Historico.objects.create(
                             equipamento=equipamento,
                             tipo_acao='ITEM_NAO_RECEBIDO',
                             usuario=request.user,
-                            detalhes={
-                                'transferencia_id': transferencia.id,
-                                'protocolo': transferencia.protocolo,
-                            }
+                            detalhes=detalhes_transferencia(
+                                transferencia=transferencia,
+                                equipamento=equipamento,
+                                usuario=request.user,
+                                evento='ITEM_NAO_RECEBIDO',
+                                observacao=observacao,
+                                extras={
+                                    'recebido_por': request.user.username,
+                                    'status_item': item.status,
+                                    'serie_esperada': equipamento.numero_serie,
+                                    'patrimonio_esperado': equipamento.patrimonio,
+                                }
+                            )
                         )
 
                         pendencia_detectada = True
                         total_nao_recebidos += 1
+                        ocorrencias_transferencia.append({
+                            "produto": equipamento.produto.descricao if equipamento.produto else "",
+                            "serie_enviada": getattr(equipamento, "numero_serie", "") or getattr(equipamento, "serial", ""),
+                            "patrimonio_enviado": getattr(equipamento, "patrimonio", ""),
+                            "status": item.status,
+                            "serie_recebida": "",
+                            "patrimonio_recebido": "",
+                            "observacao": observacao,
+                        })
 
                 transferencia.status = 'CONCLUIDA'
                 transferencia.data_recebimento = timezone.now()
@@ -4005,6 +4095,11 @@ def receber_transferencia(request, transferencia_id):
                 f"Destino: {transferencia.regional_destino.nome}\n\n"
                 f"Detalhamento por item:\n"
             )
+
+            if observacao_recebimento:
+                conteudo += f"\nObservaÃ§Ãµes gerais: {observacao_recebimento}\n"
+
+            itens_detalhados = ocorrencias_transferencia
 
             for i, item in enumerate(itens_detalhados, start=1):
                 conteudo += (
@@ -4096,6 +4191,8 @@ def cancelar_transferencia(request, transferencia_id):
 def lista_transferencias(request):
 
     perfil = request.user.perfil
+    busca = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
 
     base_qs = (
         Transferencia.objects
@@ -4117,6 +4214,20 @@ def lista_transferencias(request):
             Q(regional_destino__in=perfil.regionais_ids) |
             Q(regional_origem=perfil.regionais.first())
         )
+
+    if busca:
+        base_qs = base_qs.filter(
+            Q(protocolo__icontains=busca) |
+            Q(regional_origem__nome__icontains=busca) |
+            Q(regional_destino__nome__icontains=busca) |
+            Q(solicitado_por__username__icontains=busca) |
+            Q(itens__equipamento__numero_serie__icontains=busca) |
+            Q(itens__equipamento__patrimonio__icontains=busca) |
+            Q(itens__equipamento__produto__descricao__icontains=busca)
+        ).distinct()
+
+    if status:
+        base_qs = base_qs.filter(status=status)
 
     transferencias = list(base_qs)
 
@@ -4146,6 +4257,10 @@ def lista_transferencias(request):
         'total_em_transito': total_em_transito,
         'total_concluidas': total_concluidas,
         'total_canceladas': total_canceladas,
+        'filtros': {
+            'q': busca,
+            'status': status,
+        },
     })
 
 @login_required
@@ -4490,6 +4605,82 @@ def editar_equipamento(request, equipamento_id):
         )
     )
 
+def detalhes_transferencia(transferencia, equipamento=None, usuario=None, evento=None, observacao=None, extras=None):
+    detalhes = {
+        'evento': evento,
+        'transferencia_id': transferencia.id,
+        'protocolo': transferencia.protocolo,
+
+        'solicitado_por': (
+            transferencia.solicitado_por.username
+            if getattr(transferencia, 'solicitado_por', None)
+            else None
+        ),
+
+        'transmitido_por': (
+            usuario.username
+            if usuario
+            else None
+        ),
+
+        'data_envio': (
+            transferencia.data_envio.strftime('%d/%m/%Y %H:%M')
+            if transferencia.data_envio
+            else None
+        ),
+
+        'data_recebimento': (
+            transferencia.data_recebimento.strftime('%d/%m/%Y %H:%M')
+            if transferencia.data_recebimento
+            else None
+        ),
+
+        'regional_origem': (
+            transferencia.regional_origem.nome
+            if transferencia.regional_origem
+            else None
+        ),
+
+        'regional_destino': (
+            transferencia.regional_destino.nome
+            if transferencia.regional_destino
+            else None
+        ),
+
+        'status_transferencia': transferencia.status,
+
+        'produto': (
+            equipamento.produto.descricao
+            if equipamento and equipamento.produto
+            else None
+        ),
+
+        'numero_serie': (
+            equipamento.numero_serie
+            if equipamento
+            else None
+        ),
+
+        'patrimonio': (
+            equipamento.patrimonio
+            if equipamento
+            else None
+        ),
+
+        'status_equipamento': (
+            equipamento.status
+            if equipamento
+            else None
+        ),
+
+        'observacao': observacao,
+    }
+
+    if extras:
+        detalhes.update(extras)
+
+    return detalhes
+
 @login_required
 def checklist_view(request):
     # --- POST: Criar checklist ---
@@ -4580,17 +4771,28 @@ def checklist_view(request):
                             continue
 
                         if (
-                                insumo.categoria and
-                                insumo.categoria.nome.upper() == "TAGS"
+                            insumo.categoria and
+                            insumo.categoria.nome.upper() == "TAGS" and
+                            request.POST.get(f'insumo_{insumo_id}_modo_tag') == 'REUTILIZACAO'
                         ):
-                            continue
-
-                        ChecklistService.registrar_envio_item(
-                            checklist=checklist,
-                            insumo=insumo,
-                            quantidade_enviada=quantidade,
-                            usuario=request.user,
-                        )
+                            ItemChecklist.objects.get_or_create(
+                                checklist=checklist,
+                                insumo=insumo,
+                                defaults={
+                                    'quantidade_enviada': quantidade,
+                                    'quantidade_utilizada': quantidade,
+                                    'quantidade_retornada': 0,
+                                    'quantidade_perdida': 0,
+                                    'status_retorno': 'CONFERIDO',
+                                },
+                            )
+                        else:
+                            ChecklistService.registrar_envio_item(
+                                checklist=checklist,
+                                insumo=insumo,
+                                quantidade_enviada=quantidade,
+                                usuario=request.user,
+                            )
 
                 if tags_payload:
                     rolos_ids = [item[0] for item in tags_payload]
@@ -4616,6 +4818,8 @@ def checklist_view(request):
                 if inventario.status == 'PLANEJADO':
                     inventario.status = 'EM_ANDAMENTO'
                     inventario.save(update_fields=['status'])
+
+                ComunicadoService.checklist_criado(checklist, request.user)
 
             messages.success(request, 'Checklist criado e estoque movimentado com sucesso!')
             return redirect('estoque:checklist')

@@ -55,9 +55,9 @@
         <!-- FILTROS -->
         <div class="card-header bg-white border-0 p-4">
 
-            <div class="row g-3">
+            <form method="get" class="row g-3">
 
-                <div class="col-lg-8">
+                <div class="col-lg-6">
 
                     <div class="position-relative">
 
@@ -67,7 +67,9 @@
                             type="text"
                             class="form-control ps-5 filtro-input"
                             id="filtroTransferencia"
-                            placeholder="{% trans 'Pesquisar transferência, regional ou equipamento...' %}"
+                            name="q"
+                            value="{{ filtros.q }}"
+                            placeholder="{% trans 'Pesquisar protocolo, regional, usuario ou equipamento...' %}"
                         >
 
                     </div>
@@ -76,25 +78,25 @@
 
                 <div class="col-lg-4">
 
-                    <select class="form-select filtro-input" id="filtroStatus">
+                    <select class="form-select filtro-input" id="filtroStatus" name="status">
 
-                        <option value="">
+                        <option value="" {% if not filtros.status %}selected{% endif %}>
                             {% trans "Todos os status" %}
                         </option>
 
-                        <option value="PENDENTE">
+                        <option value="PENDENTE" {% if filtros.status == 'PENDENTE' %}selected{% endif %}>
                             {% trans "Pendente" %}
                         </option>
 
-                        <option value="EM_TRANSITO">
+                        <option value="EM_TRANSITO" {% if filtros.status == 'EM_TRANSITO' %}selected{% endif %}>
                             {% trans "Em trânsito" %}
                         </option>
 
-                        <option value="RECEBIDO">
+                        <option value="CONCLUIDA" {% if filtros.status == 'CONCLUIDA' %}selected{% endif %}>
                             {% trans "Concluída" %}
                         </option>
 
-                        <option value="CANCELADO">
+                        <option value="CANCELADO" {% if filtros.status == 'CANCELADO' %}selected{% endif %}>
                             {% trans "Cancelada" %}
                         </option>
 
@@ -102,7 +104,16 @@
 
                 </div>
 
-            </div>
+                <div class="col-lg-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <a href="{% url 'estoque:lista_transferencias' %}" class="btn btn-light border">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+
+            </form>
 
         </div>
 
@@ -504,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const bateTexto = texto.includes(termo);
 
-            const bateStatus = !statusSelecionado || texto.includes(statusSelecionado);
+            const bateStatus = !statusSelecionado || (linha.dataset.status || '').toLowerCase() === statusSelecionado;
 
             linha.style.display = (bateTexto && bateStatus)
                 ? ''

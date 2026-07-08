@@ -16,7 +16,7 @@
     <!-- ESTATÍSTICAS / FILTROS RÁPIDOS -->
     <div class="row g-3 mb-4" id="cardsResumoSick">
         <div class="col-md-3 col-6">
-            <div class="sick-kpi-card filtro-card active" data-status-filter="todos" role="button" tabindex="0">
+            <div class="sick-kpi-card filtro-card {% if status_filter == 'todos' %}active{% endif %}" data-status-filter="todos" role="button" tabindex="0">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <span>{% trans "Total SICK" %}</span>
@@ -28,7 +28,7 @@
         </div>
 
         <div class="col-md-3 col-6">
-            <div class="sick-kpi-card filtro-card" data-status-filter="manutencao" role="button" tabindex="0">
+            <div class="sick-kpi-card filtro-card {% if status_filter == 'manutencao' %}active{% endif %}" data-status-filter="manutencao" role="button" tabindex="0">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <span>{% trans "Em manutenção" %}</span>
@@ -40,7 +40,7 @@
         </div>
 
         <div class="col-md-3 col-6">
-            <div class="sick-kpi-card filtro-card" data-status-filter="inativos" role="button" tabindex="0">
+            <div class="sick-kpi-card filtro-card {% if status_filter == 'inativos' %}active{% endif %}" data-status-filter="inativos" role="button" tabindex="0">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <span>{% trans "Inativos" %}</span>
@@ -52,7 +52,7 @@
         </div>
 
         <div class="col-md-3 col-6">
-            <div class="sick-kpi-card filtro-card" data-status-filter="resolvidos" role="button" tabindex="0">
+            <div class="sick-kpi-card filtro-card {% if status_filter == 'resolvidos' %}active{% endif %}" data-status-filter="resolvidos" role="button" tabindex="0">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <span>{% trans "Resolvidos" %}</span>
@@ -528,7 +528,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let filtroStatusAtual = 'todos';
+    let filtroStatusAtual = '{{ status_filter|default:"todos"|escapejs }}';
 
     const buscaInput = document.getElementById('buscaSick');
     const contadorVisivel = document.getElementById('contadorSickVisivel');
@@ -588,23 +588,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Cards clicáveis
+    function navegarParaStatus(status) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('status', status || 'todos');
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+
     document.querySelectorAll('.filtro-card').forEach(card => {
         const aplicarCard = () => {
             const novoFiltro = card.dataset.statusFilter || 'todos';
-
-            document.querySelectorAll('.filtro-card').forEach(c => {
-                c.classList.remove('active');
-            });
-
-            if (filtroStatusAtual === novoFiltro && novoFiltro !== 'todos') {
-                filtroStatusAtual = 'todos';
-                document.querySelector('.filtro-card[data-status-filter="todos"]')?.classList.add('active');
-            } else {
-                filtroStatusAtual = novoFiltro;
-                card.classList.add('active');
-            }
-
-            aplicarFiltrosClientSide();
+            const statusDestino = filtroStatusAtual === novoFiltro && novoFiltro !== 'todos'
+                ? 'todos'
+                : novoFiltro;
+            navegarParaStatus(statusDestino);
         };
 
         card.addEventListener('click', aplicarCard);

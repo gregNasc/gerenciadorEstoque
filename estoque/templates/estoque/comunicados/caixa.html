@@ -159,8 +159,6 @@
 
                         </a>
 
-                        {% if c.permitir_limpar %}
-
                         <form method="post"
                               action="{% url 'estoque:ocultar_comunicado' c.id %}">
 
@@ -174,8 +172,6 @@
                             </button>
 
                         </form>
-
-                        {% endif %}
 
                     </div>
 

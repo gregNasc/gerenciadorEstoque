@@ -1418,9 +1418,6 @@ def checklist_detail(request, pk):
 
                 # INSUMOS
                 for item in checklist.itens.select_related('insumo'):
-                    if item.insumo.categoria and item.insumo.categoria.nome == 'TAGS':
-                        continue
-
                     retornada = request.POST.get(f'retornada_{item.id}', '').strip()
 
                     if retornada != '':
@@ -1547,6 +1544,12 @@ def checklist_detail(request, pk):
         .select_related('lote', 'rolo')
         .order_by('lote__numero_inicial', 'numero_inicial_utilizado')
     )
+    tags_insumos = (
+        checklist.itens
+        .select_related('insumo', 'insumo__categoria')
+        .filter(insumo__categoria__nome='TAGS')
+        .order_by('insumo__descricao')
+    )
 
     equipamentos_grupos = []
 
@@ -1585,9 +1588,13 @@ def checklist_detail(request, pk):
         'equipamentos': equipamentos_checklist,
         'equipamentos_grupos': equipamentos_grupos,
         'tags': tags,
+        'tags_insumos': tags_insumos,
         'total_tags_utilizadas': sum(
             tag.quantidade_utilizada or 0
             for tag in tags
+        ) + sum(
+            item.quantidade_utilizada or 0
+            for item in tags_insumos
         ),
     }
 
@@ -1835,7 +1842,7 @@ def ajustar_estoque_insumo(request):
                 f'Saldo anterior: {saldo_anterior}\n'
                 f'Saldo ajustado: {saldo_real}\n'
                 f'Motivo: {motivo}\n'
-                f'UsuÃ¡rio: {request.user.get_username()}'
+                f'Usuário: {request.user.get_username()}'
             ),
             tipo='OPERACIONAL',
             criado_por=request.user,

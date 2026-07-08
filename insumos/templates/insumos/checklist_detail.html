@@ -214,42 +214,40 @@
 
                             <tbody>
                                 {% for item in itens %}
-                                    {% if item.insumo.categoria.nome != "TAGS" %}
-                                        <tr data-insumo-row data-enviado="{{ item.quantidade_enviada }}">
-                                            <td>
-                                                <strong>{{ item.insumo.descricao }}</strong>
-                                                <small class="text-muted d-block">
-                                                    {{ item.insumo.unidade_medida }}
-                                                </small>
-                                            </td>
+                                    <tr data-insumo-row data-enviado="{{ item.quantidade_enviada }}">
+                                        <td>
+                                            <strong>{{ item.insumo.descricao }}</strong>
+                                            <small class="text-muted d-block">
+                                                {{ item.insumo.unidade_medida }}
+                                            </small>
+                                        </td>
 
-                                            <td>{{ item.quantidade_enviada }}</td>
+                                        <td>{{ item.quantidade_enviada }}</td>
 
-                                            <td>
-                                                <input type="number"
-                                                       name="retornada_{{ item.id }}"
-                                                       value="{% if item.status_retorno == 'CONFERIDO' %}{{ item.quantidade_retornada }}{% endif %}"
-                                                       step="0.01"
-                                                       min="0"
-                                                       max="{{ item.quantidade_enviada }}"
-                                                       class="form-control number-input"
-                                                       data-retornada-input
-                                                       {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
-                                            </td>
+                                        <td>
+                                            <input type="number"
+                                                   name="retornada_{{ item.id }}"
+                                                   value="{% if item.status_retorno == 'CONFERIDO' %}{{ item.quantidade_retornada }}{% endif %}"
+                                                   step="0.01"
+                                                   min="0"
+                                                   max="{{ item.quantidade_enviada }}"
+                                                   class="form-control number-input"
+                                                   data-retornada-input
+                                                   {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                        </td>
 
-                                            <td>
-                                                <span class="usage-pill" data-insumo-utilizado>
-                                                    {{ item.quantidade_utilizada|default:"Pendente" }}
-                                                </span>
-                                            </td>
+                                        <td>
+                                            <span class="usage-pill" data-insumo-utilizado>
+                                                {{ item.quantidade_utilizada|default:"Pendente" }}
+                                            </span>
+                                        </td>
 
-                                            <td>
-                                                <span class="usage-pill" data-insumo-status>
-                                                    Pendente
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    {% endif %}
+                                        <td>
+                                            <span class="usage-pill" data-insumo-status>
+                                                Pendente
+                                            </span>
+                                        </td>
+                                    </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -389,6 +387,59 @@
             <h4><i class="bi bi-tags"></i> TAGs</h4>
 
             <div class="section-body">
+                {% if tags_insumos %}
+                    <div class="table-responsive mb-3">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>TAG</th>
+                                    <th>Enviado</th>
+                                    <th>Retornado</th>
+                                    <th>Utilizado</th>
+                                    <th>Conferência</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for item in tags_insumos %}
+                                    <tr data-insumo-row data-enviado="{{ item.quantidade_enviada }}">
+                                        <td>
+                                            <strong>{{ item.insumo.descricao }}</strong>
+                                            <small class="text-muted d-block"></small>
+                                        </td>
+
+                                        <td>{{ item.quantidade_enviada }}</td>
+
+                                        <td>
+                                            <input type="number"
+                                                   name="retornada_{{ item.id }}"
+                                                   value="{% if item.status_retorno == 'CONFERIDO' %}{{ item.quantidade_retornada }}{% endif %}"
+                                                   step="0.01"
+                                                   min="0"
+                                                   max="{{ item.quantidade_enviada }}"
+                                                   class="form-control number-input"
+                                                   data-retornada-input
+                                                   {% if checklist.status == 'FINALIZADO' %}disabled{% endif %}>
+                                        </td>
+
+                                        <td>
+                                            <span class="usage-pill" data-insumo-utilizado>
+                                                {{ item.quantidade_utilizada|default:"Pendente" }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span class="usage-pill" data-insumo-status>
+                                                Pendente
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
                 {% if tags %}
                     <div class="table-responsive">
                         <table class="table table-striped align-middle">
@@ -449,9 +500,11 @@
                         </table>
                     </div>
                 {% else %}
-                    <p class="text-muted mb-0">
-                        Nenhum lote de TAG enviado neste checklist.
-                    </p>
+                    {% if not tags_insumos %}
+                        <p class="text-muted mb-0">
+                            Nenhum lote de TAG enviado neste checklist.
+                        </p>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>

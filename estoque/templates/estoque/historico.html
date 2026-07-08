@@ -3,51 +3,68 @@
 {% block title %}{% trans "Histórico de Movimentações" %}{% endblock %}
 
 {% block content %}
-<div class="container py-3">
+<style>
+    .historico-kpi-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
 
-    <!-- Cabeçalho -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0">{% trans "📜 Histórico de Movimentações" %}</h4>
-        <a href="{% url 'estoque:exportar_historico_csv' %}" class="btn btn-success btn-sm">
-            <i class="bi bi-download"></i> {% trans "Exportar CSV" %}
-        </a>
-    </div>
+    .historico-kpi-card {
+        transition: all .2s ease;
+        cursor: pointer;
+    }
 
-    <!-- Estatísticas -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
-                    <h6 class="mb-1 text-muted">{% trans "Total de Registros" %}</h6>
-                    <h3 class="fw-bold text-primary mb-0">
-                        {{ total_registros }}
-                    </h3>
-                </div>
+    .historico-kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .75rem 1.5rem rgba(0, 0, 0, .12) !important;
+    }
+</style>
+
+<!-- Estatísticas -->
+
+<div class="row g-3 mb-4">
+
+<div class="col-md-3">
+    <a href="{% url 'estoque:historico' %}" class="historico-kpi-link">
+        <div class="card shadow-sm text-center historico-kpi-card">
+            <div class="card-body">
+                <h6 class="mb-1 text-muted">{% trans "Total de Registros" %}</h6>
+                <h3 class="fw-bold text-primary mb-0">
+                    {{ total_registros }}
+                </h3>
             </div>
         </div>
+    </a>
+</div>
 
-        {% for acao in acoes_agrupadas %}
-        <div class="col-md-3">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
-                    <h6 class="mb-1 text-muted">
-                        {{ acao.descricao }}
-                    </h6>
-                    <h4 class="fw-bold mb-0">
-                        {{ acao.total }}
-                    </h4>
-                </div>
+{% for acao in acoes_agrupadas %}
+<div class="col-md-3">
+    <a href="{% url 'estoque:historico' %}?tipo_acao={{ acao.tipo_acao }}" class="historico-kpi-link">
+        <div class="card shadow-sm text-center historico-kpi-card
+            {% if filtros.tipo_acao == acao.tipo_acao %}border-primary border-2{% endif %}">
+            <div class="card-body">
+                <h6 class="mb-1 text-muted">
+                    {{ acao.descricao }}
+                </h6>
+                <h4 class="fw-bold mb-0">
+                    {{ acao.total }}
+                </h4>
             </div>
         </div>
-        {% endfor %}
-    </div>
+    </a>
+</div>
+{% endfor %}
+
+</div>
+
 
     <!-- Filtros -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
 
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-bold">{% trans "Tipo de Ação" %}</label>
                     <select name="tipo_acao" class="form-select">
                         <option value="">{% trans "Todos" %}</option>
@@ -60,13 +77,22 @@
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-bold">{% trans "Equipamento" %}</label>
                     <input type="text"
                            name="equipamento"
                            class="form-control"
                            value="{{ filtros.equipamento_query }}"
                            placeholder="Série ou patrimônio">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">{% trans "Protocolo" %}</label>
+                    <input type="text"
+                           name="protocolo"
+                           class="form-control"
+                           value="{{ filtros.protocolo_query }}"
+                           placeholder="">
                 </div>
 
                 <div class="col-md-2">

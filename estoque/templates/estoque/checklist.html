@@ -488,9 +488,6 @@
         <div class="insumos-block" id="insumosContainer" style="display:none;">
             <h5>
                 <i class="bi bi-box"></i> Insumos Disponíveis na Base
-                <small style="font-weight:normal; font-size:.8rem;">
-                    (TAGs são controladas separadamente na seção de lotes)
-                </small>
             </h5>
 
             <div class="table-wrap">
@@ -552,7 +549,6 @@
         </div>
 
         <!-- TAGS / LOTES -->
-{% if lotes_tags %}
 <div class="accordion-item" style="margin-top:20px;">
     <h2 class="accordion-header">
         <button class="accordion-button collapsed"
@@ -566,7 +562,7 @@
     <div id="collapseTags" class="accordion-collapse collapse" data-bs-parent="#accordionChecklist">
         <div class="accordion-body p-0">
             <div class="small-muted" style="padding: 12px 14px 0;">
-                Marque o rolo fisico e confirme o numero inicial enviado. No retorno, o numero conferido vira o proximo numero disponivel do rolo.
+                Marque o rolo fisico e informe se o envio e de um rolo novo ou reutilizacao. No retorno, o ultimo numero usado calcula as TAGs utilizadas.
             </div>
 
             <div class="table-wrap">
@@ -577,13 +573,14 @@
                             <th class="th-main">Base</th>
                             <th class="th-main">Rolo</th>
                             <th class="th-main">Status</th>
-                            <th class="th-main">Disponível</th>
-                            <th class="th-main">Numero inicial enviado</th>
+                            <th class="th-main">Proxima TAG</th>
+                            <th class="th-main">Envio</th>
                             <th class="th-main">Retorno</th>
                         </tr>
                     </thead>
 
                     <tbody>
+                        {% if lotes_tags %}
                         {% for lote in lotes_tags %}
                         <tr>
                             <td>{{ lote.lote.numero_inicial }} até {{ lote.lote.numero_final }}</td>
@@ -593,33 +590,30 @@
                             <td>{{ lote.numero_atual }}</td>
 
                             <td class="input-cell">
-                                <select id="tag_modo_rolo_{{ lote.id }}"
-                                        name="tag_modo_rolo_{{ lote.id }}"
-                                        disabled>
-                                    <option value="NOVO" {% if lote.status == 'DISPONIVEL' %}selected{% endif %}>Novo rolo</option>
-                                    <option value="REUTILIZACAO" {% if lote.status == 'EM_USO' %}selected{% endif %}>Reutilizacao</option>
-                                </select>
-
-                                <div style="margin-top:8px;">
-                                <input type="checkbox"
-                                       value="{{ lote.id }}"
-                                       data-lote="{{ lote.id }}"
-                                       data-disponivel="1"
-                                       data-inicial="{{ lote.numero_atual }}"
-                                       data-final="{{ lote.lote.numero_final }}"
-                                       data-status="{{ lote.status }}"
-                                       class="tag-lote-check">
+                                <div>
+                                    <input type="checkbox"
+                                           value="{{ lote.id }}"
+                                           data-lote="{{ lote.id }}"
+                                           data-disponivel="1"
+                                           data-inicial="{{ lote.numero_atual }}"
+                                           data-final="{{ lote.lote.numero_final }}"
+                                           data-status="{{ lote.status }}"
+                                           class="tag-lote-check">
+                                    <span class="small-muted">Enviar este rolo</span>
                                 </div>
 
                                 <div style="margin-top:8px;">
-                                    <input type="number"
+                                    <select id="tag_modo_rolo_{{ lote.id }}"
+                                            name="tag_modo_rolo_{{ lote.id }}"
+                                            disabled>
+                                        <option value="NOVO" {% if lote.status == 'DISPONIVEL' %}selected{% endif %}>Novo rolo</option>
+                                        <option value="REUTILIZACAO" {% if lote.status == 'EM_USO' %}selected{% endif %}>Reutilizacao</option>
+                                    </select>
+
+                                    <input type="hidden"
                                            name="tag_inicial_rolo_{{ lote.id }}"
                                            id="tag_inicial_rolo_{{ lote.id }}"
-                                           placeholder="Numero inicial enviado"
                                            value="{{ lote.numero_atual }}"
-                                           min="{{ lote.numero_atual }}"
-                                           max="{{ lote.lote.numero_final }}"
-                                           step="1"
                                            disabled>
                                 </div>
                             </td>
@@ -629,6 +623,13 @@
                             </td>
                         </tr>
                         {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-muted">
+                                Nenhum rolo de TAG disponivel para esta base.
+                            </td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -637,7 +638,6 @@
         </div>
     </div>
 </div>
-{% endif %}
 
         <!-- Assinaturas -->
         <div class="signature-area">
@@ -777,6 +777,16 @@ function obterContainerInsumos() {
 */
 function criarLinhaInsumo(insumo) {
     const tr = document.createElement('tr');
+    const ehTag = isCategoriaTags(insumo.categoria || '');
+    const modoTagHtml = ehTag ? `
+            <select
+                name="insumo_${insumo.id}_modo_tag"
+                class="mt-2">
+                <option value="NOVO">Novo</option>
+                <option value="REUTILIZACAO">Reutilizacao</option>
+            </select>
+            <span class="insumo-help">Novo baixa estoque; reutilizacao nao baixa.</span>
+    ` : '';
 
     tr.innerHTML = `
         <td class="desc-col">
@@ -800,6 +810,7 @@ function criarLinhaInsumo(insumo) {
                 data-insumo-id="${insumo.id}"
                 data-insumo-desc="${insumo.descricao}"
                 data-saldo="${insumo.saldo}">
+            ${modoTagHtml}
         </td>
     `;
 
@@ -831,11 +842,6 @@ function renderizarInsumosAgrupados(insumos) {
     insumos.forEach(insumo => {
         const categoria = insumo.categoria || 'Sem categoria';
 
-        // TAG não entra mais como insumo comum
-        if (isCategoriaTags(categoria)) {
-            return;
-        }
-
         if (!grupos.has(categoria)) grupos.set(categoria, []);
         grupos.get(categoria).push(insumo);
     });
@@ -843,7 +849,7 @@ function renderizarInsumosAgrupados(insumos) {
     accordion.innerHTML = '';
 
     if (grupos.size === 0) {
-        accordion.innerHTML = '<div class="text-muted p-3">Nenhum insumo comum disponível para esta base.</div>';
+        accordion.innerHTML = '<div class="text-muted p-3">Nenhum insumo disponível para esta base.</div>';
         return;
     }
 
@@ -991,7 +997,6 @@ function carregarInsumosLegado(baseId) {
             }
 
             renderizarInsumosAgrupados(data.insumos);
-
             container.style.display = 'block';
         })
         .catch(error => {
@@ -1248,7 +1253,9 @@ function alternarCampoTag(check) {
 
     inputInicial.disabled = !check.checked;
     if (modo) modo.disabled = !check.checked;
-    if (!check.checked) inputInicial.value = '';
+    if (check.checked && !inputInicial.value) {
+        inputInicial.value = check.dataset.inicial || '';
+    }
 }
 
 /*    INVENTÁRIO / PREENCHIMENTO
@@ -1329,6 +1336,7 @@ function atualizarInputsEquipamentosETags() {
         adicionarHidden(container, `tag_inicial_rolo_${roloId}`, inputInicialTela ? inputInicialTela.value : '');
         adicionarHidden(container, `tag_modo_rolo_${roloId}`, modoTela ? modoTela.value : '');
     });
+
 }
 
 function liderPodeSerEditado(valor) {

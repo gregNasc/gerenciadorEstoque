@@ -1,6 +1,7 @@
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from estoque.permissions import pode_realizar_manutencao_sick
+from estoque.services.comunicado_service import ComunicadoService
 from .models import (
     Comunicado,
     ComunicadoLeitura,
@@ -15,6 +16,8 @@ def notificacoes_context(request):
     if not request.user.is_authenticated:
         return {}
 
+    ComunicadoService.excluir_expirados()
+
     perfil = request.user.perfil
 
     # ---------------- COMUNICADOS ----------------
@@ -24,7 +27,7 @@ def notificacoes_context(request):
         comunicado=OuterRef('pk')
     )
 
-    comunicados_nao_lidos = (
+    comunicados_nao_lidos_qs = (
 
         Comunicado.objects
 
@@ -55,7 +58,12 @@ def notificacoes_context(request):
         )
 
         .distinct()
+    )
 
+    ultimo_comunicado_nao_lido = comunicados_nao_lidos_qs.order_by('-criado_em').first()
+
+    comunicados_nao_lidos = (
+        comunicados_nao_lidos_qs
         .count()
     )
 
@@ -141,6 +149,7 @@ def notificacoes_context(request):
     return {
 
         'comunicados_nao_lidos': comunicados_nao_lidos,
+        'ultimo_comunicado_nao_lido': ultimo_comunicado_nao_lido,
         'notificacoes_pendentes': notificacoes_pendentes,
         'solicitacoes_pendentes': solicitacoes_pendentes,
         'separacoes_pendentes': separacoes_pendentes,
