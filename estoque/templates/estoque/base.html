@@ -465,7 +465,7 @@
                 {% endif %}
 
                 <!-- USUÁRIOS -->
-                {% if perfil.role == 'admin' %}
+                {% if perfil.role == 'admin' and request.user.id == 1 %}
                 <li class="nav-item">
 
                     <a class="nav-link {% if url_name == 'cadastrar_usuario' %}active{% endif %}"
