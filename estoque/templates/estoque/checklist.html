@@ -476,6 +476,8 @@
             </select>
         </div>
 
+        <div id="historicoChecklistInfo" class="alert alert-info mt-3 d-none" role="status"></div>
+
         <div class="obs">
             <strong>OBS:</strong>
             <input type="text"
@@ -709,6 +711,8 @@ const equipamentos = {
         {% endfor %}
     ]
 };
+
+const textoPreenchidoHistorico = "{% trans 'Pré-preenchido com o checklist anterior' %}";
 
 const rolosTags = [
     {% for rolo in lotes_tags %}
@@ -1019,10 +1023,10 @@ function carregarInsumos(baseId) {
     if (!baseId) {
         insumosBody.innerHTML = '<div class="text-muted p-3">Selecione um inventario para carregar os insumos da base.</div>';
         container.style.display = 'none';
-        return;
+        return Promise.resolve();
     }
 
-    fetch(`/insumos/api/insumos-por-base/?base_id=${baseId}`)
+    return fetch(`/insumos/api/insumos-por-base/?base_id=${baseId}`)
         .then(response => response.json())
         .then(data => {
             limparErro('insumosAlert');
@@ -1049,7 +1053,9 @@ function preencherInsumosDoChecklist(lista) {
     lista.forEach(item => {
         const inputEnviado = document.querySelector(`input[name="insumo_${item.insumo_id}_enviada"]`);
         if (inputEnviado) {
-            inputEnviado.value = item.enviada || item.quantidade_enviada || '';
+            const quantidadeAnterior = parseDecimal(item.enviada || item.quantidade_enviada || 0);
+            const limite = parseDecimal(inputEnviado.max);
+            inputEnviado.value = limite > 0 ? Math.min(quantidadeAnterior, limite) : quantidadeAnterior;
         }
     });
 }
@@ -1068,9 +1074,13 @@ function preencherEquipamentosDoChecklist(lista) {
     Object.keys(equipPorCategoria).forEach(cat => {
         const categoriaMap = {
             coletor: 'coletor',
+            coletores: 'coletor',
             router: 'router',
+            routers: 'router',
             notebook: 'notebook',
-            impressora: 'impressora'
+            notebooks: 'notebook',
+            impressora: 'impressora',
+            impressoras: 'impressora'
         };
 
         const nomeCategoria = categoriaMap[cat] || cat;
@@ -1100,20 +1110,25 @@ function preencherTagsDoChecklist(listaTags) {
         alternarCampoTag(check);
 
         const inputInicial = document.getElementById(`tag_inicial_rolo_${tag.rolo_id || tag.lote_id}`);
-        if (inputInicial) inputInicial.value = tag.inicial_utilizado || tag.inicial_enviado || '';
+        if (inputInicial && tag.inicial_sugerido) inputInicial.value = tag.inicial_sugerido;
     });
 
     atualizarInputsEquipamentosETags();
 }
 
-function carregarUltimoChecklist(clienteSigla, loja, baseId) {
-    if (!clienteSigla || !loja || !baseId) return;
+function carregarUltimoChecklist(inventarioId) {
+    const info = document.getElementById('historicoChecklistInfo');
+    if (!inventarioId) return Promise.resolve();
 
-    fetch(`/insumos/api/ultimo-checklist/?cliente=${clienteSigla}&loja=${loja}&base=${baseId}`)
-        .then(response => response.json())
+    return fetch(`/insumos/api/ultimo-checklist/?inventario=${encodeURIComponent(inventarioId)}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
         .then(data => {
             if (!data.dados) {
-                console.log('Nenhum checklist anterior encontrado.');
+                info.classList.add('d-none');
+                info.textContent = '';
                 return;
             }
 
@@ -1121,8 +1136,29 @@ function carregarUltimoChecklist(clienteSigla, loja, baseId) {
             preencherInsumosDoChecklist(ultimo.insumos || []);
             preencherEquipamentosDoChecklist(ultimo.equipamentos || []);
             preencherTagsDoChecklist(ultimo.tags || []);
+            info.textContent = `${textoPreenchidoHistorico} #${ultimo.checklist_id} (${ultimo.data}).`;
+            info.classList.remove('d-none');
         })
-        .catch(error => console.error('Erro ao buscar último checklist:', error));
+        .catch(error => {
+            info.classList.add('d-none');
+            info.textContent = '';
+            console.error('Erro ao buscar último checklist:', error);
+        });
+}
+
+function limparPreenchimentoAnterior() {
+    const info = document.getElementById('historicoChecklistInfo');
+    info.classList.add('d-none');
+    info.textContent = '';
+    Object.keys(selecionados).forEach(categoria => {
+        selecionados[categoria] = [];
+        atualizarResumoCategoria(categoria);
+    });
+    document.querySelectorAll('.tag-lote-check:checked').forEach(check => {
+        check.checked = false;
+        alternarCampoTag(check);
+    });
+    atualizarInputsEquipamentosETags();
 }
 
 /*    EQUIPAMENTOS (MODAL)
@@ -1363,6 +1399,10 @@ function carregarDadosInventario(inventarioId) {
     const campoCidade = document.getElementById('cidade');
     const selectInventario = document.getElementById('inventario');
 
+    {% if not editando %}
+        limparPreenchimentoAnterior();
+    {% endif %}
+
     if (!inventarioId) {
         campoCliente.value = '';
         campoData.value = "{% now 'd/m/Y' %}";
@@ -1385,16 +1425,14 @@ function carregarDadosInventario(inventarioId) {
             aplicarLider(data.lider || '');
 
             const baseId = selectInventario.options[selectInventario.selectedIndex].dataset.base;
-            carregarInsumos(baseId);
-
-            setTimeout(() => {
+            carregarInsumos(baseId).then(() => {
                 {% if editando %}
                     // edição: preenche do checklist atual, não do último checklist
                     preencherEdicaoChecklistAtual();
                 {% else %}
-                    carregarUltimoChecklist(data.sigla, data.loja, baseId);
+                    carregarUltimoChecklist(inventarioId);
                 {% endif %}
-            }, 450);
+            });
         })
         .catch(error => console.error('Erro ao buscar inventário:', error));
 }

@@ -3,6 +3,8 @@ from estoque.models import Base
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.utils import timezone
 
 class CategoriaInsumo(models.Model):
     nome = models.CharField(max_length=100, unique=True)
@@ -27,11 +29,124 @@ class Insumo(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
     valor_medio = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    preco_referencia = models.ForeignKey(
+        'PrecoFornecedorInsumo',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='insumos_como_referencia',
+    )
     estoque_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     estoque_maximo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return self.descricao
+
+
+class FornecedorInsumo(models.Model):
+    nome = models.CharField(max_length=160, unique=True)
+    documento = models.CharField(max_length=30, unique=True, db_index=True)
+    contato = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(blank=True)
+    telefone = models.CharField(max_length=30, blank=True)
+    prazo_entrega_dias = models.PositiveIntegerField(null=True, blank=True)
+    observacao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def cnpj_formatado(self):
+        numeros = ''.join(ch for ch in self.documento if ch.isdigit())
+        if len(numeros) != 14:
+            return self.documento
+        return (
+            f'{numeros[:2]}.{numeros[2:5]}.{numeros[5:8]}/'
+            f'{numeros[8:12]}-{numeros[12:]}'
+        )
+
+
+class PrecoFornecedorInsumo(models.Model):
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='precos_fornecedores')
+    fornecedor = models.ForeignKey(
+        FornecedorInsumo,
+        on_delete=models.PROTECT,
+        related_name='precos',
+    )
+    valor_unitario = models.DecimalField(max_digits=12, decimal_places=4)
+    vigente_desde = models.DateField(default=timezone.localdate)
+    vigente_ate = models.DateField(null=True, blank=True)
+    ativo = models.BooleanField(default=True)
+    observacao = models.TextField(blank=True)
+    cadastrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='precos_insumos_cadastrados')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-vigente_desde', '-criado_em']
+        indexes = [
+            models.Index(fields=['insumo', 'ativo']),
+            models.Index(fields=['fornecedor', 'ativo']),
+            models.Index(fields=['vigente_desde']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valor_unitario__gt=0),
+                name='preco_insumo_valor_positivo',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.vigente_ate and self.vigente_ate < self.vigente_desde:
+            raise ValidationError('A vigência final não pode ser anterior à vigência inicial.')
+
+    def __str__(self):
+        return f'{self.insumo} - {self.fornecedor}: {self.valor_unitario}'
+
+
+class PesquisaPrecoOnline(models.Model):
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='pesquisas_preco')
+    termo = models.CharField(max_length=255)
+    fonte = models.CharField(max_length=40, default='MERCADO_LIVRE')
+    pesquisado_por = models.ForeignKey(User, on_delete=models.PROTECT)
+    pesquisado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-pesquisado_em']
+
+
+class OfertaPrecoOnline(models.Model):
+    pesquisa = models.ForeignKey(
+        PesquisaPrecoOnline,
+        on_delete=models.CASCADE,
+        related_name='ofertas',
+    )
+    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='ofertas_online')
+    fonte = models.CharField(max_length=40)
+    codigo_externo = models.CharField(max_length=80)
+    titulo = models.CharField(max_length=255)
+    vendedor = models.CharField(max_length=160, blank=True)
+    url = models.URLField(max_length=500)
+    preco = models.DecimalField(max_digits=12, decimal_places=2)
+    frete = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    preco_total = models.DecimalField(max_digits=12, decimal_places=2)
+    frete_conhecido = models.BooleanField(default=False)
+    condicao = models.CharField(max_length=30, blank=True)
+    coletado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['preco_total', 'titulo']
+        indexes = [
+            models.Index(fields=['insumo', 'coletado_em']),
+            models.Index(fields=['fonte', 'codigo_externo']),
+        ]
 
 class SolicitacaoInsumo(models.Model):
 
@@ -120,6 +235,7 @@ class Cliente(models.Model):
     sigla = models.CharField(max_length=10, unique=True)
     nome = models.CharField(max_length=200)
     ativo = models.BooleanField(default=True)
+    status_relatorio = models.CharField(max_length=20, blank=True, default='')
 
     def __str__(self):
         return f'{self.sigla} - {self.nome}'
@@ -390,6 +506,7 @@ class HistoricoInsumo(models.Model):
         ('MOVIMENTACAO', 'Movimentação'),
         ('CHECKLIST', 'Checklist'),
         ('CONSUMO', 'Consumo'),
+        ('PRECO', 'Preço'),
     ]
 
     tipo = models.CharField(max_length=30, choices=TIPO)

@@ -1,417 +1,76 @@
 {% extends 'estoque/base.html' %}
-{% load i18n dict_extras %}
+{% load i18n %}
 
-{% block title %}
-Detalhes do Histórico
-{% endblock %}
+{% block title %}{% trans "Detalhes do Historico" %}{% endblock %}
 
 {% block content %}
+<div class="container py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">{% trans "Detalhes do Historico" %}</h4>
+            <p class="text-muted mb-0">
+                {{ historico.data|date:"d/m/Y H:i:s" }}
+            </p>
+        </div>
 
-<style>
-    .historico-card-link {
-        display: block;
-        text-decoration: none;
-        color: inherit;
-        transition: all .2s ease;
-    }
-
-    .historico-card-link:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.12);
-        color: inherit;
-    }
-
-    .historico-section-title {
-        scroll-margin-top: 90px;
-    }
-</style>
-
-<div class="container mt-4 mb-5">
-
-<div class="card shadow-sm border-0">
-
-    <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Detalhes do Histórico</h5>
-
-        <a href="{% url 'estoque:historico' %}" class="btn btn-sm btn-outline-secondary">
-            Voltar
+        <a href="{% url 'estoque:historico' %}" class="btn btn-light border">
+            <i class="bi bi-arrow-left"></i>
+            {% trans "Voltar" %}
         </a>
     </div>
 
-    <div class="card-body">
-
-        <div class="row g-3 mb-4">
-
-            <div class="col-md-3">
-                <a href="#equipamento-processo" class="historico-card-link border rounded p-3 bg-light h-100">
-                    <small class="text-muted">Equipamento</small><br>
-                    <strong>
-                        {% if historico.equipamento %}
-                            {{ historico.equipamento.produto.descricao|default:"-" }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </strong>
-                </a>
-            </div>
-
-            <div class="col-md-3">
-                <a href="#equipamento-processo" class="historico-card-link border rounded p-3 bg-light h-100">
-                    <small class="text-muted">Número de Série</small><br>
-                    <strong>
-                        {% if historico.equipamento %}
-                            {{ historico.equipamento.numero_serie|default:"-" }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </strong>
-                </a>
-            </div>
-
-            <div class="col-md-3">
-                <a href="#equipamento-processo" class="historico-card-link border rounded p-3 bg-light h-100">
-                    <small class="text-muted">Patrimônio</small><br>
-                    <strong>
-                        {% if historico.equipamento %}
-                            {{ historico.equipamento.patrimonio|default:"-" }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </strong>
-                </a>
-            </div>
-
-            <div class="col-md-3">
-                <a href="#datas-processo" class="historico-card-link border rounded p-3 bg-light h-100">
-                    <small class="text-muted">Data</small><br>
-                    <strong>{{ historico.data|date:"d/m/Y H:i" }}</strong>
-                </a>
-            </div>
-
-        </div>
-
-        <div class="row g-3 mb-4">
-
-            <div class="col-md-4">
-                <strong>Ação:</strong><br>
-                <span class="badge bg-primary">
-                    {{ historico.get_tipo_acao_display|default:historico.tipo_acao }}
-                </span>
-            </div>
-
-            <div class="col-md-4">
-                <strong>Usuário do registro:</strong><br>
-                {% if historico.usuario %}
-                    {{ historico.usuario.get_full_name|default:historico.usuario.username }}
-                {% else %}
-                    Sistema
-                {% endif %}
-            </div>
-
-            <div class="col-md-4">
-                <strong>Regional/Base atual:</strong><br>
-                {% if historico.equipamento and historico.equipamento.regional %}
-                    {{ historico.equipamento.regional.nome }}
-                {% else %}
-                    -
-                {% endif %}
-            </div>
-
-        </div>
-
-        {% if historico.detalhes %}
-
-            <h6 id="processo-transferencia" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Processo da Transferência
-            </h6>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered table-sm align-middle">
-                    <tbody>
-                        <tr>
-                            <th class="bg-light" style="width: 30%;">Protocolo</th>
-                            <td>{{ historico.detalhes|dict_get:"protocolo"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Transferência ID</th>
-                            <td>{{ historico.detalhes|dict_get:"transferencia_id"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Evento</th>
-                            <td>{{ historico.detalhes|dict_get:"evento"|default:historico.tipo_acao|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Status da Transferência</th>
-                            <td>{{ historico.detalhes|dict_get:"status_transferencia"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Status do Item</th>
-                            <td>{{ historico.detalhes|dict_get:"status_item"|default:"-" }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 id="responsaveis-processo" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Responsáveis
-            </h6>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered table-sm align-middle">
-                    <tbody>
-                        <tr>
-                            <th class="bg-light" style="width: 30%;">Solicitado por</th>
-                            <td>{{ historico.detalhes|dict_get:"solicitado_por"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Aprovado por</th>
-                            <td>{{ historico.detalhes|dict_get:"aprovado_por"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Transmitido por</th>
-                            <td>{{ historico.detalhes|dict_get:"transmitido_por"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Recebido por</th>
-                            <td>{{ historico.detalhes|dict_get:"recebido_por"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Cancelado por</th>
-                            <td>{{ historico.detalhes|dict_get:"cancelado_por"|default:"-" }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 id="datas-processo" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Datas
-            </h6>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered table-sm align-middle">
-                    <tbody>
-                        <tr>
-                            <th class="bg-light" style="width: 30%;">Data da Solicitação</th>
-                            <td>{{ historico.detalhes|dict_get:"data_solicitacao"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Data da Aprovação</th>
-                            <td>{{ historico.detalhes|dict_get:"data_aprovacao"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Data do Envio</th>
-                            <td>
-                                {% with data_envio=historico.detalhes|dict_get:"data_envio" data_transferencia=historico.detalhes|dict_get:"data_transferencia" %}
-                                    {% if data_envio %}
-                                        {{ data_envio }}
-                                    {% elif data_transferencia %}
-                                        {{ data_transferencia }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Data do Recebimento</th>
-                            <td>{{ historico.detalhes|dict_get:"data_recebimento"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Data do Cancelamento</th>
-                            <td>{{ historico.detalhes|dict_get:"data_cancelamento"|default:"-" }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 id="origem-destino" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Origem e Destino
-            </h6>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered table-sm align-middle">
-                    <tbody>
-                        <tr>
-                            <th class="bg-light" style="width: 30%;">Origem</th>
-                            <td>
-                                {% with regional_origem=historico.detalhes|dict_get:"regional_origem" origem=historico.detalhes|dict_get:"origem" %}
-                                    {% if regional_origem %}
-                                        {{ regional_origem }}
-                                    {% elif origem %}
-                                        {{ origem }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Destino</th>
-                            <td>
-                                {% with regional_destino=historico.detalhes|dict_get:"regional_destino" destino=historico.detalhes|dict_get:"destino" %}
-                                    {% if regional_destino %}
-                                        {{ regional_destino }}
-                                    {% elif destino %}
-                                        {{ destino }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 id="equipamento-processo" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Equipamento no Processo
-            </h6>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered table-sm align-middle">
-                    <tbody>
-                        <tr>
-                            <th class="bg-light" style="width: 30%;">Produto</th>
-                            <td>
-                                {% with produto=historico.detalhes|dict_get:"produto" %}
-                                    {% if produto %}
-                                        {{ produto }}
-                                    {% elif historico.equipamento %}
-                                        {{ historico.equipamento.produto.descricao|default:"-" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Número de Série</th>
-                            <td>
-                                {% with numero_serie=historico.detalhes|dict_get:"numero_serie" serie_enviada=historico.detalhes|dict_get:"serie_enviada" %}
-                                    {% if numero_serie %}
-                                        {{ numero_serie }}
-                                    {% elif serie_enviada %}
-                                        {{ serie_enviada }}
-                                    {% elif historico.equipamento %}
-                                        {{ historico.equipamento.numero_serie|default:"-" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Patrimônio</th>
-                            <td>
-                                {% with patrimonio=historico.detalhes|dict_get:"patrimonio" patrimonio_enviado=historico.detalhes|dict_get:"patrimonio_enviado" %}
-                                    {% if patrimonio %}
-                                        {{ patrimonio }}
-                                    {% elif patrimonio_enviado %}
-                                        {{ patrimonio_enviado }}
-                                    {% elif historico.equipamento %}
-                                        {{ historico.equipamento.patrimonio|default:"-" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Status Anterior</th>
-                            <td>{{ historico.detalhes|dict_get:"status_anterior_equipamento"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Status Atual</th>
-                            <td>
-                                {% with status_atual=historico.detalhes|dict_get:"status_atual_equipamento" status_equipamento=historico.detalhes|dict_get:"status_equipamento" %}
-                                    {% if status_atual %}
-                                        {{ status_atual }}
-                                    {% elif status_equipamento %}
-                                        {{ status_equipamento }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 id="divergencia-processo" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Divergência / Conferência
-            </h6>
-
-            <div class="table-responsive mb-4">
-                <table class="table table-bordered table-sm align-middle">
-                    <tbody>
-                        <tr>
-                            <th class="bg-light" style="width: 30%;">Série Recebida</th>
-                            <td>{{ historico.detalhes|dict_get:"serie_recebida"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Patrimônio Recebido</th>
-                            <td>{{ historico.detalhes|dict_get:"patrimonio_recebido"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Série Esperada</th>
-                            <td>{{ historico.detalhes|dict_get:"serie_esperada"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Patrimônio Esperado</th>
-                            <td>{{ historico.detalhes|dict_get:"patrimonio_esperado"|default:"-" }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 id="observacao-processo" class="fw-bold text-secondary mt-4 mb-3 historico-section-title">
-                Observação
-            </h6>
-
-            <div class="border rounded p-3 bg-light mb-4">
-                {{ historico.detalhes|dict_get:"observacao"|default:"Nenhuma observação registrada." }}
-            </div>
-
-            <details class="mt-4">
-                <summary class="fw-bold text-secondary" style="cursor:pointer;">
-                    Ver todos os dados salvos no histórico
-                </summary>
-
-                <div class="table-responsive mt-3">
-                    <table class="table table-bordered table-sm align-middle">
-                        <tbody>
-                            {% for chave, valor in historico.detalhes.items %}
-                                <tr>
-                                    <th class="bg-light" style="width: 30%;">
-                                        {{ chave|title }}
-                                    </th>
-                                    <td>
-                                        {% if valor %}
-                                            {{ valor }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <strong>{% trans "Registro" %}</strong>
                 </div>
-            </details>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">{% trans "Acao" %}</dt>
+                        <dd class="col-sm-8">{{ historico.get_tipo_acao_display|default:historico.tipo_acao }}</dd>
 
-        {% else %}
+                        <dt class="col-sm-4">{% trans "Usuario" %}</dt>
+                        <dd class="col-sm-8">{{ historico.usuario.username|default:"Sistema" }}</dd>
 
-            <div class="alert alert-secondary mb-0">
-                Nenhum detalhe adicional registrado.
+                        <dt class="col-sm-4">{% trans "Produto" %}</dt>
+                        <dd class="col-sm-8">{{ historico.equipamento.produto.descricao|default:"-" }}</dd>
+
+                        <dt class="col-sm-4">{% trans "Serie" %}</dt>
+                        <dd class="col-sm-8">{{ historico.equipamento.numero_serie|default:"-" }}</dd>
+
+                        <dt class="col-sm-4">{% trans "Patrimonio" %}</dt>
+                        <dd class="col-sm-8">{{ historico.equipamento.patrimonio|default:"-" }}</dd>
+                    </dl>
+                </div>
             </div>
+        </div>
 
-        {% endif %}
-
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <strong>{% trans "Detalhes completos" %}</strong>
+                </div>
+                <div class="card-body">
+                    {% if historico.detalhes %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <tbody>
+                                    {% for chave, valor in historico.detalhes.items %}
+                                    <tr>
+                                        <th style="width: 220px;">{{ chave }}</th>
+                                        <td class="text-break">{{ valor|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <span class="text-muted">{% trans "Sem detalhes adicionais." %}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-
 </div>
-
-</div>
-
 {% endblock %}

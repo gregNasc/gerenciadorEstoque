@@ -19,6 +19,7 @@ urlpatterns = [
 
     # ---------------- DASHBOARD ----------------
     path('', views.index, name='index'),
+    path('assistente/', views.assistente_operacional, name='assistente_operacional'),
 
 
     # ---------------- ESTOQUE ----------------

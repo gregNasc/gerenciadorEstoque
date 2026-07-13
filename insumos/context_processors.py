@@ -18,8 +18,13 @@ def menu_insumos(request):
         },
         {
             "label": "Dashboard Financeiro",
-            "url": "/insumos/dashboard/financeiro/",
-            "show": perfil.is_financeiro_insumos or perfil.is_executivo_insumos or perfil.is_admin
+            "url": "/insumos/custos/",
+            "show": perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos or perfil.is_admin
+        },
+        {
+            "label": "Solicitações de insumos",
+            "url": "/insumos/solicitacoes/",
+            "show": perfil.is_admin or perfil.is_gestor or perfil.is_compras_insumos or perfil.is_financeiro_insumos,
         },
     ]
 

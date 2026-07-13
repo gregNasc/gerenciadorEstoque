@@ -1,0 +1,50 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Solicitações de insumos" %}{% endblock %}
+
+{% block content %}
+<main class="container-fluid p-4">
+    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">{% trans "Solicitações de insumos" %}</h1>
+            <p class="text-secondary mb-0">{% trans "Acompanhe pedidos, decisões e compras por protocolo." %}</p>
+        </div>
+        {% if pode_solicitar %}<a class="btn btn-primary" href="{% url 'insumos:criar_solicitacao_insumo' %}"><i class="bi bi-plus-lg"></i> {% trans "Nova solicitação" %}</a>{% endif %}
+    </header>
+
+    <section class="row g-3 mb-3" aria-label="{% trans 'Resumo das solicitações' %}">
+        <div class="col-xl col-md-4"><div class="border-start border-4 border-warning px-3 py-2"><div class="small text-secondary">{% trans "Pendentes" %}</div><strong class="fs-4">{{ totais.PENDENTE|default:0 }}</strong></div></div>
+        <div class="col-xl col-md-4"><div class="border-start border-4 border-success px-3 py-2"><div class="small text-secondary">{% trans "Aprovadas" %}</div><strong class="fs-4">{{ totais.APROVADA|default:0 }}</strong></div></div>
+        <div class="col-xl col-md-4"><div class="border-start border-4 border-primary px-3 py-2"><div class="small text-secondary">{% trans "Em compra" %}</div><strong class="fs-4">{{ totais.EM_COMPRA|default:0 }}</strong></div></div>
+        <div class="col-xl col-md-4"><div class="border-start border-4 border-danger px-3 py-2"><div class="small text-secondary">{% trans "Reprovadas" %}</div><strong class="fs-4">{{ totais.REPROVADA|default:0 }}</strong></div></div>
+        <div class="col-xl col-md-4"><div class="border-start border-4 border-secondary px-3 py-2"><div class="small text-secondary">{% trans "Finalizadas" %}</div><strong class="fs-4">{{ totais.FINALIZADA|default:0 }}</strong></div></div>
+    </section>
+
+    <form method="get" class="row g-2 align-items-end bg-light border p-3 mb-3">
+        <div class="col-lg-7"><label class="form-label" for="busca-solicitacao">{% trans "Pesquisar" %}</label><input id="busca-solicitacao" class="form-control" type="search" name="q" value="{{ busca }}" placeholder="{% trans 'Protocolo, base, solicitante ou insumo' %}"></div>
+        <div class="col-lg-3"><label class="form-label" for="status-solicitacao">{% trans "Status" %}</label><select id="status-solicitacao" class="form-select" name="status"><option value="">{% trans "Todos" %}</option>{% for valor, label in status_choices %}<option value="{{ valor }}" {% if status_atual == valor %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-lg-2 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit"><i class="bi bi-search"></i> {% trans "Buscar" %}</button><a class="btn btn-outline-secondary" href="{% url 'insumos:lista_solicitacoes_insumo' %}" title="{% trans 'Limpar filtros' %}"><i class="bi bi-x-lg"></i></a></div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead><tr><th>{% trans "Protocolo" %}</th><th>{% trans "Data" %}</th><th>{% trans "Base" %}</th><th>{% trans "Solicitante" %}</th><th>{% trans "Prioridade" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead>
+            <tbody>
+            {% for solicitacao in solicitacoes %}
+                <tr>
+                    <td><strong>{{ solicitacao.protocolo }}</strong></td>
+                    <td>{{ solicitacao.criado_em|date:'d/m/Y H:i' }}</td>
+                    <td>{{ solicitacao.base.nome }}</td>
+                    <td>{{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}</td>
+                    <td>{{ solicitacao.get_prioridade_display }}</td>
+                    <td>{{ solicitacao.itens.all|length }}</td>
+                    <td><span class="badge {% if solicitacao.status == 'PENDENTE' %}text-bg-warning{% elif solicitacao.status == 'REPROVADA' %}text-bg-danger{% elif solicitacao.status == 'APROVADA' %}text-bg-success{% elif solicitacao.status == 'EM_COMPRA' %}text-bg-primary{% else %}text-bg-secondary{% endif %}">{{ solicitacao.get_status_display }}</span></td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'insumos:detalhe_solicitacao' solicitacao.pk %}" title="{% trans 'Ver detalhes' %}"><i class="bi bi-eye"></i></a></td>
+                </tr>
+            {% empty %}<tr><td colspan="8" class="text-center text-secondary py-4">{% trans "Nenhuma solicitação encontrada." %}</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</main>
+{% endblock %}

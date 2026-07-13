@@ -1,0 +1,25 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Fornecedores de insumos" %}{% endblock %}
+
+{% block content %}
+<main class="container-fluid p-4">
+    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
+        <div><h1 class="h3 mb-1">{% trans "Análise de fornecedores" %}</h1><p class="text-secondary mb-0">{% trans "Compare cobertura, preços e prazo de entrega dos fornecedores cadastrados." %}</p></div>
+        <div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{% url 'insumos:dashboard_custos' %}"><i class="bi bi-bar-chart"></i> {% trans "Custos" %}</a><a class="btn btn-outline-primary" href="{% url 'insumos:precos_insumos' %}"><i class="bi bi-tags"></i> {% trans "Preços" %}</a></div>
+    </header>
+
+    <div class="row g-4">
+        {% if pode_editar %}
+        <section class="col-xl-4"><div class="border rounded-2 p-3 bg-light"><h2 class="h5">{% if editando %}{% trans "Editar fornecedor" %}{% else %}{% trans "Cadastrar fornecedor" %}{% endif %}</h2><form method="post">{% csrf_token %}{% if editando %}<input type="hidden" name="fornecedor_id" value="{{ editando.id }}">{% endif %}{% for field in form %}<div class="mb-3">{% if field.field.widget.input_type == 'checkbox' %}<div class="form-check">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}<button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> {% trans "Salvar fornecedor" %}</button></form></div></section>
+        {% endif %}
+        <section class="{% if pode_editar %}col-xl-8{% else %}col-12{% endif %}">
+            <div class="table-responsive"><table class="table table-hover align-middle"><thead><tr><th>{% trans "Fornecedor" %}</th><th>{% trans "Itens cotados" %}</th><th>{% trans "Cotações" %}</th><th>{% trans "Menor preço" %}</th><th>{% trans "Preço médio" %}</th><th>{% trans "Maior preço" %}</th><th>{% trans "Prazo" %}</th><th>{% trans "Status" %}</th>{% if pode_editar %}<th></th>{% endif %}</tr></thead><tbody>{% for fornecedor in fornecedores %}<tr><td><strong>{{ fornecedor.nome }}</strong><div class="small text-secondary">{{ fornecedor.cnpj_formatado }}{% if fornecedor.contato %} | {{ fornecedor.contato }}{% endif %}</div></td><td>{{ fornecedor.itens }}</td><td>{{ fornecedor.cotacoes }}</td><td>{% if fornecedor.menor_preco %}R$ {{ fornecedor.menor_preco|floatformat:4 }}{% else %}-{% endif %}</td><td>{% if fornecedor.preco_medio %}R$ {{ fornecedor.preco_medio|floatformat:4 }}{% else %}-{% endif %}</td><td>{% if fornecedor.maior_preco %}R$ {{ fornecedor.maior_preco|floatformat:4 }}{% else %}-{% endif %}</td><td>{% if fornecedor.prazo_entrega_dias %}{{ fornecedor.prazo_entrega_dias }} {% trans "dias" %}{% else %}-{% endif %}</td><td>{% if fornecedor.ativo %}{% trans "Ativo" %}{% else %}{% trans "Inativo" %}{% endif %}</td>{% if pode_editar %}<td><a class="btn btn-sm btn-outline-secondary" href="?editar={{ fornecedor.id }}"><i class="bi bi-pencil"></i></a></td>{% endif %}</tr>{% empty %}<tr><td colspan="9" class="text-center text-secondary py-4">{% trans "Nenhum fornecedor cadastrado." %}</td></tr>{% endfor %}</tbody></table></div>
+
+            <h2 class="h5 mt-4">{% trans "Cotações recentes" %}</h2>
+            <div class="table-responsive"><table class="table table-sm"><thead><tr><th>{% trans "Data" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th></tr></thead><tbody>{% for preco in precos_recentes %}<tr><td>{{ preco.vigente_desde|date:'d/m/Y' }}</td><td>{{ preco.insumo.descricao }}</td><td>{{ preco.fornecedor.nome }}</td><td>R$ {{ preco.valor_unitario|floatformat:4 }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-secondary">{% trans "Nenhuma cotação ativa." %}</td></tr>{% endfor %}</tbody></table></div>
+        </section>
+    </div>
+</main>
+{% endblock %}

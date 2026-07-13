@@ -1,0 +1,103 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Custos de insumos" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cost-page { padding: 20px; }
+    .cost-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cost-filter { background: #f7f9fb; border: 1px solid #d8e0e8; padding: 14px; }
+    .cost-kpi { border: 1px solid #d8e0e8; border-left: 4px solid #198754; border-radius: 6px; padding: 14px; height: 100%; background: #fff; }
+    .cost-kpi .value { font-size: 1.45rem; font-weight: 700; color: #17212b; }
+    .chart-panel { border: 1px solid #d8e0e8; border-radius: 6px; padding: 16px; height: 340px; background: #fff; }
+    .chart-panel canvas { max-height: 280px; }
+    .cost-table th { white-space: nowrap; font-size: .78rem; color: #52606d; }
+    .cost-table td { vertical-align: middle; font-size: .86rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid cost-page">
+    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">{% trans "Custos de insumos" %}</h1>
+            <p class="text-secondary mb-0">{% trans "Valores registrados no consumo de cada inventário." %}</p>
+        </div>
+        <nav class="cost-toolbar" aria-label="{% trans 'Ações de custos' %}">
+            <a class="btn btn-outline-primary" href="{% url 'insumos:precos_insumos' %}"><i class="bi bi-tags"></i> {% trans "Preços" %}</a>
+            <a class="btn btn-outline-primary" href="{% url 'insumos:fornecedores_insumos' %}"><i class="bi bi-building"></i> {% trans "Fornecedores" %}</a>
+        </nav>
+    </header>
+
+    {% if cobertura_precos < 100 or consumos_sem_custo %}
+    <div class="alert alert-warning" role="alert">
+        <strong>{% trans "Cobertura financeira incompleta." %}</strong>
+        {% blocktrans %}{{ insumos_com_preco }} de {{ total_insumos }} insumos ativos possuem preço. Existem {{ consumos_sem_custo }} consumos sem custo unitário no filtro atual.{% endblocktrans %}
+    </div>
+    {% endif %}
+
+    <form method="get" class="cost-filter mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Início" %}</label><input class="form-control" type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}"></div>
+            <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Fim" %}</label><input class="form-control" type="date" name="fim" value="{{ fim|date:'Y-m-d' }}"></div>
+            <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Base" %}</label><select class="form-select" name="base"><option value="">{% trans "Todas" %}</option>{% for base in bases %}<option value="{{ base.id }}" {% if request.GET.base == base.id|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
+            <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Cliente" %}</label><select class="form-select" name="cliente"><option value="">{% trans "Todos" %}</option>{% for cliente in clientes %}<option value="{{ cliente.id }}" {% if request.GET.cliente == cliente.id|stringformat:'s' %}selected{% endif %}>{{ cliente.sigla }}</option>{% endfor %}</select></div>
+            <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Loja" %}</label><input class="form-control" name="loja" value="{{ request.GET.loja }}" list="lojas-custo"><datalist id="lojas-custo">{% for loja in lojas %}<option value="{{ loja }}">{% endfor %}</datalist></div>
+            <div class="col-xl-1 col-md-4"><label class="form-label">{% trans "Tipo" %}</label><select class="form-select" name="tipo"><option value="">{% trans "Todos" %}</option>{% for tipo in tipos %}<option value="{{ tipo }}" {% if request.GET.tipo == tipo %}selected{% endif %}>{{ tipo }}</option>{% endfor %}</select></div>
+            <div class="col-xl-1 col-md-4"><label class="form-label">{% trans "Pessoas" %}</label><input class="form-control" type="number" min="0" name="pessoas" value="{{ request.GET.pessoas }}"></div>
+            <div class="col-xl-10 col-md-8"><label class="form-label">{% trans "Inventário específico" %}</label><select class="form-select" name="inventario"><option value="">{% trans "Todos os inventários" %}</option>{% for inventario in inventarios %}<option value="{{ inventario.id }}" {% if request.GET.inventario == inventario.id|stringformat:'s' %}selected{% endif %}>{{ inventario.data_inicio|date:'d/m/Y' }} | {{ inventario.cliente.sigla }} {{ inventario.loja }} | {{ inventario.base.nome }} | {{ inventario.tipo|default:'-' }}</option>{% endfor %}</select></div>
+            <div class="col-xl-2 col-md-4 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit"><i class="bi bi-funnel"></i> {% trans "Filtrar" %}</button><a class="btn btn-outline-secondary" href="{% url 'insumos:dashboard_custos' %}" title="{% trans 'Limpar filtros' %}"><i class="bi bi-x-lg"></i></a></div>
+        </div>
+    </form>
+
+    <section class="row g-3 mb-3" aria-label="{% trans 'Indicadores financeiros' %}">
+        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Gasto no período" %}</div><div class="value">R$ {{ resumo.total|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Inventários com consumo" %}</div><div class="value">{{ resumo.inventarios }}</div></div></div>
+        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Custo médio por inventário" %}</div><div class="value">R$ {{ resumo.custo_medio_inventario|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Custo médio por pessoa" %}</div><div class="value">R$ {{ resumo.custo_medio_pessoa|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Valor estimado do estoque" %}</div><div class="value">R$ {{ valor_estoque|floatformat:2 }}</div></div></div>
+    </section>
+
+    <section class="row g-3 mb-3">
+        <div class="col-xl-4"><div class="chart-panel"><h2 class="h6">{% trans "Maiores custos por inventário" %}</h2><canvas id="chartInventarios"></canvas></div></div>
+        <div class="col-xl-4"><div class="chart-panel"><h2 class="h6">{% trans "Custos por cliente" %}</h2><canvas id="chartClientes"></canvas></div></div>
+        <div class="col-xl-4"><div class="chart-panel"><h2 class="h6">{% trans "Evolução mensal" %}</h2><canvas id="chartMensal"></canvas></div></div>
+    </section>
+
+    <section class="row g-3 mb-3">
+        <div class="col-xl-6">
+            <h2 class="h5">{% trans "Custos por tipo de inventário" %}</h2>
+            <div class="table-responsive"><table class="table table-sm cost-table"><thead><tr><th>{% trans "Tipo" %}</th><th>{% trans "Inventários" %}</th><th>{% trans "Custo total" %}</th></tr></thead><tbody>{% for item in por_tipo %}<tr><td>{{ item.inventario__tipo|default:'-' }}</td><td>{{ item.inventarios }}</td><td>R$ {{ item.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3" class="text-secondary">{% trans "Sem dados para o filtro." %}</td></tr>{% endfor %}</tbody></table></div>
+        </div>
+        <div class="col-xl-6">
+            <h2 class="h5">{% trans "Insumos com maior custo" %}</h2>
+            <div class="table-responsive"><table class="table table-sm cost-table"><thead><tr><th>{% trans "Categoria" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Custo total" %}</th></tr></thead><tbody>{% for item in top_insumos %}<tr><td>{{ item.insumo__categoria__nome }}</td><td>{{ item.insumo__descricao }}</td><td>{{ item.quantidade|floatformat:2 }}</td><td>R$ {{ item.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">{% trans "Sem dados para o filtro." %}</td></tr>{% endfor %}</tbody></table></div>
+        </div>
+    </section>
+
+    <section class="border-top pt-3">
+        <h2 class="h5">{% trans "Detalhamento por inventário" %}</h2>
+        <div class="table-responsive">
+            <table class="table table-hover cost-table">
+                <thead><tr><th>{% trans "Data" %}</th><th>{% trans "Cliente" %}</th><th>{% trans "Loja" %}</th><th>{% trans "Base" %}</th><th>{% trans "Tipo" %}</th><th>{% trans "Pessoas" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Custo total" %}</th><th>{% trans "Custo por pessoa" %}</th></tr></thead>
+                <tbody>{% for item in por_inventario %}<tr><td>{{ item.inventario__data_inicio|date:'d/m/Y' }}</td><td>{{ item.inventario__cliente__sigla }}</td><td>{{ item.inventario__loja }}</td><td>{{ item.inventario__base__nome }}</td><td>{{ item.inventario__tipo|default:'-' }}</td><td>{{ item.inventario__pessoas|default:'-' }}</td><td>{{ item.itens }}</td><td>{{ item.quantidade|floatformat:2 }}</td><td>R$ {{ item.total|floatformat:2 }}</td><td>{% if item.custo_por_pessoa %}R$ {{ item.custo_por_pessoa|floatformat:2 }}{% else %}-{% endif %}</td></tr>{% empty %}<tr><td colspan="10" class="text-center text-secondary py-4">{% trans "Nenhum consumo encontrado para os filtros selecionados." %}</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+    </section>
+
+    {{ chart_inventarios|json_script:"chart-inventarios-data" }}
+    {{ chart_clientes|json_script:"chart-clientes-data" }}
+    {{ chart_mensal|json_script:"chart-mensal-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function chartData(id) { return JSON.parse(document.getElementById(id).textContent); }
+        function moneyChart(canvas, source, type) {
+            return new Chart(document.getElementById(canvas), {type, data: {labels: source.labels, datasets: [{label: 'R$', data: source.values, backgroundColor: '#198754', borderColor: '#146c43', borderWidth: 1}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}});
+        }
+        moneyChart('chartInventarios', chartData('chart-inventarios-data'), 'bar');
+        moneyChart('chartClientes', chartData('chart-clientes-data'), 'bar');
+        moneyChart('chartMensal', chartData('chart-mensal-data'), 'line');
+    </script>
+</main>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Assistente Operacional" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-semibold mb-1">{% trans "Assistente Operacional" %}</h1>
+            <p class="text-muted mb-0">
+                {% trans "Pergunte sobre estoque, insumos, transferencias, historico, inventarios, checklists e indicadores." %}
+            </p>
+        </div>
+        <span class="badge rounded-pill text-bg-light border px-3 py-2">
+            {% trans "Respeita seu perfil de acesso" %}
+        </span>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+                        <label for="perguntaAssistente" class="form-label fw-semibold">
+                            {% trans "Pergunta" %}
+                        </label>
+                        <textarea
+                            id="perguntaAssistente"
+                            name="pergunta"
+                            rows="4"
+                            class="form-control"
+                            placeholder="{% trans 'Ex.: Quantos coletores estão ativos?' %}"
+                        >{{ pergunta }}</textarea>
+
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i>
+                                {% trans "Perguntar" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if resultado %}
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <strong>{% trans "Resposta" %}</strong>
+                    <span class="badge text-bg-secondary">{{ resultado.categoria }}</span>
+                </div>
+                <div class="card-body">
+                    <pre class="assistente-resposta mb-0">{{ resultado.resposta }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!--div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <strong>{% trans "Exemplos" %}</strong>
+                </div>
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">Quantos equipamentos estao ativos?</div>
+                    <div class="list-group-item">Qual o status da transferencia?</div>
+                    <div class="list-group-item">Resumo de insumos.</div>
+                    <div class="list-group-item">Historico do protocolo.</div>
+                    <div class="list-group-item">Checklists abertos e inventarios.</div>
+                    <div class="list-group-item">Indicadores gerais.</div>
+                </div>
+            </div>
+        </div-->
+    </div>
+</div>
+
+<style>
+.assistente-resposta {
+    white-space: pre-wrap;
+    font-family: inherit;
+    line-height: 1.55;
+}
+</style>
+{% endblock %}

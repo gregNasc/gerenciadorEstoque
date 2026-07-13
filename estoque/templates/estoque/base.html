@@ -62,8 +62,8 @@
 
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 <!-- CHECKLIST -->
-                <!--li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
+                <li class="nav-item dropdown">
+                    <!--a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
                        href="#"
                        id="checklistDropdown"
                        role="button"
@@ -71,30 +71,30 @@
                        aria-expanded="false">
                         <i class="bi bi-plus-circle"></i>
                         {% trans "Checklist" %}
-                    </a>
+                    </a-->
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="checklistDropdown">
-                        <li>
+                        <!--li>
                             <a class="dropdown-item {% if url_name == 'checklist' %}active{% endif %}"
                                href="{% url 'estoque:checklist' %}">
                                 <i class="bi bi-plus-circle"></i>
                                 {% trans "Novo Checklist" %}
                             </a>
-                        </li>
+                        </li-->
                         {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
-                        <li>
+                        <!--li>
                             <hr class="dropdown-divider">
-                        </li>
-                        <li>
+                        </li-->
+                        <!--li>
                             <a class="dropdown-item {% if url_name == 'lista_checklists' %}active{% endif %}"
                                href="{% url 'insumos:lista_checklists' %}">
                                 <i class="bi bi-list-check"></i>
                                 {% trans "Lista de Checklists" %}
                             </a>
-                        </li>
+                        </li-->
                         {% endif %}
                     </ul>
-                </li-->
+                </li>
 
                 <!-- ESTOQUE -->
                 <li class="nav-item dropdown">
@@ -126,7 +126,7 @@
 
                         </li>
 
-                        <!--li>
+                        <li>
 
                             <a class="dropdown-item"
                                href="{% url 'insumos:estoque_insumos' %}">
@@ -136,7 +136,33 @@
 
                             </a>
 
+                        </li>
+                        {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
+                        <!--li>
+                            <a class="dropdown-item" href="{% url 'insumos:dashboard_custos' %}">
+                                <i class="bi bi-bar-chart-line"></i>
+                                {% trans "Custos de insumos" %}
+                            </a>
                         </li-->
+                        <!--li>
+                            <a class="dropdown-item" href="{% url 'insumos:precos_insumos' %}">
+                                <i class="bi bi-tags"></i>
+                                {% trans "Preços unitários" %}
+                            </a>
+                        </li-->
+                        <!--li>
+                            <a class="dropdown-item" href="{% url 'insumos:fornecedores_insumos' %}">
+                                <i class="bi bi-building"></i>
+                                {% trans "Fornecedores" %}
+                            </a>
+                        </li-->
+                        <!--li>
+                            <a class="dropdown-item" href="{% url 'insumos:pesquisa_precos_online' %}">
+                                <i class="bi bi-search"></i>
+                                {% trans "Pesquisa de preços" %}
+                            </a>
+                        </li-->
+                        {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
                         <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
@@ -154,15 +180,15 @@
                         </li-->
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos %}
-                        <!--li>
+                        <li>
                             <hr class="dropdown-divider">
                         </li-->
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:lista_inventarios' %}">
                                 <i class="bi bi-list-ul"></i>
                                 Inventários
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
 
                           {% if perfil.role == 'admin' %}
@@ -182,6 +208,16 @@
                 </li>
 
                 <!-- SOLICITAÇÕES -->
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.is_compras_insumos or perfil.is_financeiro_insumos %}
+                <li class="nav-item">
+                    <!--a class="nav-link {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' %}active{% endif %}"
+                       href="{% url 'insumos:lista_solicitacoes_insumo' %}">
+                        <i class="bi bi-clipboard-check"></i>
+                        {% trans "Solicitações de insumos" %}
+                    </a-->
+                </li-->
+                {% endif %}
+
                 {% if perfil.role == 'gestor' %}
                 <li class="nav-item">
 
@@ -195,6 +231,15 @@
 
                 </li>
                 {% endif %}
+
+                <!-- ASSISTENTE -->
+                <!--li class="nav-item">
+                    <a class="nav-link {% if url_name == 'assistente_operacional' %}active{% endif %}"
+                       href="{% url 'estoque:assistente_operacional' %}">
+                        <i class="bi bi-stars"></i>
+                        {% trans "Assistente" %}
+                    </a>
+                </li-->
 
                 <!-- COMUNICADOS -->
                 <li class="nav-item dropdown">
@@ -451,13 +496,13 @@
                             </a>
                         </li>
 
-                        <!--li>
+                        <li>
                             <a class="dropdown-item"
                                href="{% url 'insumos:cadastrar_insumos' %}">
                                 <i class="bi bi-box-seam"></i>
                                 Insumos
                             </a>
-                        </li-->
+                        </li>
 
                     </ul>
 
@@ -612,6 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </style>
 
 {% block extra_js %}{% endblock %}
-
+{% if request.user.is_authenticated %}
+    {% include 'estoque/partials/assistente_widget.html' %}
+{% endif %}
 </body>
 </html>

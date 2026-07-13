@@ -599,9 +599,14 @@ def importar_excel(request):
                 for row in sheet.iter_rows(min_row=2, values_only=True):
                     sigla, nome, segmento, status = row[0], row[1], row[2], row[3]
                     if sigla and nome:
+                        status_relatorio = str(status or '').strip().upper()
                         Cliente.objects.update_or_create(
                             sigla=sigla,
-                            defaults={'nome': nome, 'ativo': status == 'ATIVO'}
+                            defaults={
+                                'nome': nome,
+                                'ativo': status_relatorio in {'ATIVO', 'LATAM'},
+                                'status_relatorio': status_relatorio,
+                            }
                         )
                         clientes_processados += 1
                 resumo_importacao['clientes'] = clientes_processados
@@ -813,12 +818,14 @@ def importar_excel(request):
                                         valor = None
                             defaults[model_field] = valor
 
-                    # --- Criar ou atualizar inventário ---
+                    # O tipo faz parte da identidade: uma loja pode ter CA, CP e T no mesmo dia.
+                    tipo_inventario = defaults.get('tipo') or ''
                     inventario, created = Inventario.objects.get_or_create(
                         cliente=cliente,
                         loja=str(loja),
                         base=base,
                         data_inicio=data_inicio,
+                        tipo=tipo_inventario,
                         defaults=defaults
                     )
                     if not created:
@@ -1647,20 +1654,31 @@ def editar_itens_checklist(request, pk):
 
 @login_required
 def ultimo_checklist_por_loja(request):
-    cliente_sigla = request.GET.get('cliente')
-    loja = request.GET.get('loja')
-    base_id = request.GET.get('base')
+    inventario_id = request.GET.get('inventario')
+    if not inventario_id:
+        return JsonResponse({'error': 'Inventário não informado'}, status=400)
 
-    if not cliente_sigla or not loja or not base_id:
-        return JsonResponse({'error': 'Parâmetros incompletos'}, status=400)
+    inventario = get_object_or_404(
+        Inventario.objects.select_related('cliente', 'base', 'base__empresa'),
+        pk=inventario_id,
+    )
+    perfil = request.user.perfil
+    if not perfil.is_admin and (
+        inventario.base_id not in perfil.bases_checklist_ids or
+        inventario.base.empresa_id != perfil.empresa_id
+    ):
+        return JsonResponse({'error': 'Base não permitida para este usuário'}, status=403)
 
-    # Busca o último checklist daquela loja (finalizado ou em execução)
-    ultimo = ChecklistDiario.objects.filter(
-        inventario__cliente__sigla=cliente_sigla,
-        inventario__loja=loja,
-        inventario__base_id=base_id,
-        status__in=['FINALIZADO', 'EM_EXECUCAO']
-    ).order_by('-data_inicio').first()
+    anteriores = ChecklistDiario.objects.filter(
+        inventario__cliente_id=inventario.cliente_id,
+        inventario__loja__iexact=inventario.loja,
+        inventario__base_id=inventario.base_id,
+        inventario__data_inicio__lt=inventario.data_inicio,
+        status__in=['FINALIZADO', 'EM_EXECUCAO'],
+    ).exclude(inventario_id=inventario.id).select_related('inventario')
+
+    # Usa o preenchimento imediatamente anterior, mesmo que o retorno ainda esteja em execução.
+    ultimo = anteriores.order_by('-inventario__data_inicio', '-data_inicio').first()
 
     if not ultimo:
         return JsonResponse({'dados': None})
@@ -1668,7 +1686,9 @@ def ultimo_checklist_por_loja(request):
     # Monta resposta
     data = {
         'checklist_id': ultimo.id,
+        'inventario_id': ultimo.inventario_id,
         'data': ultimo.data_inicio.strftime('%d/%m/%Y %H:%M'),
+        'status': ultimo.status,
         'insumos': [],
         'equipamentos': [],
         'tags': []
@@ -1685,21 +1705,41 @@ def ultimo_checklist_por_loja(request):
         })
 
     # Equipamentos
-    for eq in ultimo.equipamentos_utilizados.select_related('equipamento'):
+    categorias = {
+        'coletores': 'coletor',
+        'coletor': 'coletor',
+        'impressoras': 'impressora',
+        'impressora': 'impressora',
+        'notebooks': 'notebook',
+        'notebook': 'notebook',
+        'routers': 'router',
+        'router': 'router',
+        'roteadores': 'router',
+        'roteador': 'router',
+    }
+    for eq in ultimo.equipamentos_utilizados.select_related('equipamento__produto'):
+        equipamento = eq.equipamento
+        if equipamento.status != 'ATIVO' or equipamento.regional_id != inventario.base_id:
+            continue
+        categoria = categorias.get((equipamento.produto.categoria or '').strip().lower())
+        if not categoria:
+            continue
         data['equipamentos'].append({
-            'id': eq.equipamento.id,
-            'categoria': eq.equipamento.produto.categoria.lower(),  # coletor, router, etc.
+            'id': equipamento.id,
+            'categoria': categoria,
             'tag_saida': eq.tag_saida,
-            'tag_volta': eq.tag_volta,
         })
 
     # Tags (LoteTag) - se houver
     for tag in ultimo.lotes_tags_movimentados.select_related('lote', 'rolo'):
+        if not tag.rolo or tag.rolo.status not in ['DISPONIVEL', 'EM_USO']:
+            continue
+        if tag.lote.base_id != inventario.base_id:
+            continue
         data['tags'].append({
             'lote_id': tag.lote.id,
             'rolo_id': tag.rolo_id,
-            'inicial_utilizado': tag.numero_inicial_utilizado,
-            'final_utilizado': tag.numero_final_utilizado,
+            'inicial_sugerido': tag.rolo.numero_atual,
         })
 
     return JsonResponse({'dados': data})

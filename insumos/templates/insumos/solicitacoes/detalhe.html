@@ -1,0 +1,29 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{{ solicitacao.protocolo }}{% endblock %}
+
+{% block content %}
+<main class="container-fluid p-4">
+    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
+        <div><a class="text-decoration-none" href="{% url 'insumos:lista_solicitacoes_insumo' %}"><i class="bi bi-arrow-left"></i> {% trans "Solicitações" %}</a><h1 class="h3 mt-2 mb-1">{{ solicitacao.protocolo }}</h1><p class="text-secondary mb-0">{{ solicitacao.base.nome }} | {{ solicitacao.criado_em|date:'d/m/Y H:i' }}</p></div>
+        <span class="badge fs-6 {% if solicitacao.status == 'PENDENTE' %}text-bg-warning{% elif solicitacao.status == 'REPROVADA' %}text-bg-danger{% elif solicitacao.status == 'APROVADA' %}text-bg-success{% elif solicitacao.status == 'EM_COMPRA' %}text-bg-primary{% else %}text-bg-secondary{% endif %}">{{ solicitacao.get_status_display }}</span>
+    </header>
+
+    <section class="row g-3 mb-4">
+        <div class="col-md-3"><div class="small text-secondary">{% trans "Solicitante" %}</div><strong>{{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}</strong></div>
+        <div class="col-md-3"><div class="small text-secondary">{% trans "Prioridade" %}</div><strong>{{ solicitacao.get_prioridade_display }}</strong></div>
+        <div class="col-md-6"><div class="small text-secondary">{% trans "Justificativa" %}</div><div>{{ solicitacao.justificativa|default:'-'|linebreaksbr }}</div></div>
+    </section>
+
+    <section class="mb-4"><h2 class="h5">{% trans "Itens solicitados" %}</h2><div class="table-responsive"><table class="table table-hover"><thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Categoria" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Observação" %}</th></tr></thead><tbody>{% for item in solicitacao.itens.all %}<tr><td>{{ item.insumo.descricao }}</td><td>{{ item.insumo.categoria.nome }}</td><td>{{ item.quantidade|floatformat:2 }} {{ item.insumo.unidade_medida }}</td><td>{{ item.observacao|default:'-' }}</td></tr>{% endfor %}</tbody></table></div></section>
+
+    {% if solicitacao.observacao_aprovacao %}<section class="alert alert-secondary"><strong>{% trans "Observação da análise" %}:</strong> {{ solicitacao.observacao_aprovacao }}</section>{% endif %}
+
+    {% if pode_decidir and solicitacao.status == 'PENDENTE' %}
+    <section class="border-top pt-3"><h2 class="h5">{% trans "Analisar solicitação" %}</h2><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<label class="form-label" for="observacao-decisao">{% trans "Observação ou motivo" %}</label><textarea class="form-control mb-3" id="observacao-decisao" name="observacao" rows="3"></textarea><div class="d-flex gap-2 flex-wrap"><button class="btn btn-success" name="acao" value="aprovar" type="submit"><i class="bi bi-check-lg"></i> {% trans "Aprovar" %}</button><button class="btn btn-danger" name="acao" value="reprovar" type="submit"><i class="bi bi-x-lg"></i> {% trans "Reprovar" %}</button></div></form></section>
+    {% elif pode_decidir and solicitacao.status == 'APROVADA' %}
+    <section class="border-top pt-3"><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<input type="hidden" name="acao" value="comprar"><button class="btn btn-primary" type="submit"><i class="bi bi-cart-check"></i> {% trans "Encaminhar para compra" %}</button></form></section>
+    {% endif %}
+</main>
+{% endblock %}

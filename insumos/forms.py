@@ -1,6 +1,14 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from estoque.models import Base
-from insumos.models import Insumo, CategoriaInsumo, Inventario
+from insumos.models import (
+    CategoriaInsumo,
+    FornecedorInsumo,
+    Insumo,
+    Inventario,
+    PrecoFornecedorInsumo,
+    SolicitacaoInsumo,
+)
 from django_select2.forms import Select2Widget
 
 class InsumoForm(forms.ModelForm):
@@ -48,6 +56,112 @@ class InsumoForm(forms.ModelForm):
                 attrs={'class': 'form-check-input'}
             ),
         }
+
+
+class FornecedorInsumoForm(forms.ModelForm):
+    documento = forms.CharField(
+        label=_('CNPJ'),
+        max_length=18,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'inputmode': 'numeric',
+            'placeholder': '00.000.000/0000-00',
+        }),
+    )
+
+    def clean_documento(self):
+        documento = ''.join(ch for ch in self.cleaned_data['documento'] if ch.isdigit())
+        if len(documento) != 14:
+            raise forms.ValidationError(_('Informe um CNPJ com 14 dígitos.'))
+        return documento
+
+    class Meta:
+        model = FornecedorInsumo
+        fields = [
+            'nome', 'documento', 'contato', 'email', 'telefone',
+            'prazo_entrega_dias', 'observacao', 'ativo',
+        ]
+        labels = {
+            'nome': _('Nome'),
+            'documento': _('CNPJ'),
+            'contato': _('Contato'),
+            'email': _('E-mail'),
+            'telefone': _('Telefone'),
+            'prazo_entrega_dias': _('Prazo de entrega em dias'),
+            'observacao': _('Observação'),
+            'ativo': _('Ativo'),
+        }
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'documento': forms.TextInput(attrs={'class': 'form-control'}),
+            'contato': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'telefone': forms.TextInput(attrs={'class': 'form-control'}),
+            'prazo_entrega_dias': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class PrecoFornecedorInsumoForm(forms.ModelForm):
+    aplicar_como_custo = forms.BooleanField(
+        required=False,
+        initial=True,
+        label=_('Usar como custo atual do insumo'),
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    class Meta:
+        model = PrecoFornecedorInsumo
+        fields = [
+            'insumo', 'fornecedor', 'valor_unitario', 'vigente_desde',
+            'vigente_ate', 'ativo', 'observacao',
+        ]
+        labels = {
+            'insumo': _('Insumo'),
+            'fornecedor': _('Fornecedor'),
+            'valor_unitario': _('Preço unitário'),
+            'vigente_desde': _('Vigente desde'),
+            'vigente_ate': _('Vigente até'),
+            'ativo': _('Ativo'),
+            'observacao': _('Observação'),
+        }
+        widgets = {
+            'insumo': forms.Select(attrs={'class': 'form-select'}),
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'valor_unitario': forms.NumberInput(attrs={
+                'class': 'form-control', 'min': '0.0001', 'step': '0.0001',
+            }),
+            'vigente_desde': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'vigente_ate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class SolicitacaoInsumoForm(forms.ModelForm):
+    class Meta:
+        model = SolicitacaoInsumo
+        fields = ['base', 'prioridade', 'justificativa']
+        labels = {
+            'base': _('Base solicitante'),
+            'prioridade': _('Prioridade'),
+            'justificativa': _('Justificativa'),
+        }
+        widgets = {
+            'base': forms.Select(attrs={'class': 'form-select'}),
+            'prioridade': forms.Select(attrs={'class': 'form-select'}),
+            'justificativa': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user and user.perfil.is_admin:
+            self.fields['base'].queryset = Base.objects.order_by('nome')
+        elif user:
+            self.fields['base'].queryset = user.perfil.regionais.order_by('nome')
+        else:
+            self.fields['base'].queryset = Base.objects.none()
 
 class CadastroInsumoForm(forms.Form):
 

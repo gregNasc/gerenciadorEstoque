@@ -6,6 +6,8 @@ from insumos.views.dashboard_financeiro import dashboard_financeiro
 from insumos.views import api
 from insumos.views.api import importar_excel
 from insumos.views.api import insumos_por_categoria
+from insumos.views import custos
+from insumos.views import solicitacoes
 
 app_name = 'insumos'
 
@@ -14,6 +16,14 @@ urlpatterns = [
     path('dashboard/base/', dashboard_base, name='dashboard_base'),
     path('dashboard/planejamento/', dashboard_planejamento, name='dashboard_planejamento'),
     path('dashboard/financeiro/', dashboard_financeiro, name='dashboard_financeiro'),
+    path('custos/', custos.dashboard_custos, name='dashboard_custos'),
+    path('custos/precos/', custos.precos_insumos, name='precos_insumos'),
+    path('custos/fornecedores/', custos.fornecedores_insumos, name='fornecedores_insumos'),
+    path('custos/pesquisa/', custos.pesquisa_precos_online, name='pesquisa_precos_online'),
+    path('solicitacoes/', solicitacoes.lista_solicitacoes, name='lista_solicitacoes_insumo'),
+    path('solicitacoes/nova/', solicitacoes.criar_solicitacao, name='criar_solicitacao_insumo'),
+    path('solicitacoes/<int:pk>/', solicitacoes.detalhe_solicitacao, name='detalhe_solicitacao'),
+    path('solicitacoes/<int:pk>/decidir/', solicitacoes.decidir_solicitacao, name='decidir_solicitacao'),
     path('api/kpis/inventarios/', api.kpi_inventarios),
     path('api/bi/consumo-base/', api.consumo_por_base),
     path('api/bi/ranking-insumos/', api.ranking_insumos),

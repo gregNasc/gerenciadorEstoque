@@ -8,6 +8,7 @@ from reportlab.lib import colors
 from openpyxl import Workbook
 from .services.emprestimo_service import EmprestimoService
 from .services.comunicado_service import ComunicadoService
+from .services.assistente_operacional_service import AssistenteOperacionalService
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
 from django.db import transaction
@@ -273,6 +274,29 @@ def index(request):
     }
 
     return render(request, 'estoque/index.html', context)
+
+@login_required
+def assistente_operacional(request):
+    resultado = None
+    pergunta = ''
+
+    if request.method == 'POST':
+        pergunta = request.POST.get('pergunta', '').strip()
+        contexto = request.session.get('assistente_operacional_contexto', {})
+        resultado = AssistenteOperacionalService.responder(request.user, pergunta, contexto=contexto)
+        request.session['assistente_operacional_contexto'] = resultado.get('contexto', {})
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse(resultado)
+
+    return render(
+        request,
+        'estoque/assistente_operacional.html',
+        {
+            'pergunta': pergunta,
+            'resultado': resultado,
+        }
+    )
 
 @login_required
 def api_kpis_json(request):

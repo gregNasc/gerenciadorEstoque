@@ -104,6 +104,59 @@ class ComunicadoService:
         ).delete()
 
     @staticmethod
+    def usuarios_ciclo_compras(solicitante=None):
+        from insumos.constants import GruposInsumos
+
+        filtros = (
+            Q(perfil__role='admin') |
+            Q(groups__name=GruposInsumos.COMPRAS) |
+            Q(groups__name=GruposInsumos.FINANCEIRO)
+        )
+        if solicitante:
+            filtros |= Q(pk=solicitante.pk)
+        return User.objects.filter(is_active=True).filter(filtros).distinct()
+
+    @staticmethod
+    def solicitacao_insumo_criada(solicitacao, usuario):
+        itens = list(solicitacao.itens.select_related('insumo').all())
+        linhas = '\n'.join(
+            f'- {item.insumo.descricao}: {item.quantidade:g} {item.insumo.unidade_medida}'
+            for item in itens
+        )
+        return ComunicadoService.criar_acao(
+            titulo=f'Nova solicitação de insumos {solicitacao.protocolo}',
+            mensagem=(
+                f'{usuario.get_full_name() or usuario.get_username()} criou uma solicitação de insumos.\n\n'
+                f'Base: {solicitacao.base.nome}\n'
+                f'Prioridade: {solicitacao.get_prioridade_display()}\n'
+                f'Justificativa: {solicitacao.justificativa or "-"}\n\n'
+                f'Itens:\n{linhas}'
+            ),
+            usuario=usuario,
+            tipo='URGENTE' if solicitacao.prioridade == 'URGENTE' else 'OPERACIONAL',
+            usuarios=ComunicadoService.usuarios_ciclo_compras(solicitacao.solicitante),
+            empresa=solicitacao.base.empresa,
+        )
+
+    @staticmethod
+    def solicitacao_insumo_decidida(solicitacao, usuario):
+        return ComunicadoService.criar_acao(
+            titulo=f'Solicitação {solicitacao.protocolo}: {solicitacao.get_status_display()}',
+            mensagem=(
+                f'A solicitação de insumos foi atualizada.\n\n'
+                f'Base: {solicitacao.base.nome}\n'
+                f'Solicitante: {solicitacao.solicitante.get_full_name() or solicitacao.solicitante.get_username()}\n'
+                f'Status: {solicitacao.get_status_display()}\n'
+                f'Responsável: {usuario.get_full_name() or usuario.get_username()}\n'
+                f'Observação: {solicitacao.observacao_aprovacao or "-"}'
+            ),
+            usuario=usuario,
+            tipo='URGENTE' if solicitacao.status == 'REPROVADA' else 'OPERACIONAL',
+            usuarios=ComunicadoService.usuarios_ciclo_compras(solicitacao.solicitante),
+            empresa=solicitacao.base.empresa,
+        )
+
+    @staticmethod
     def checklist_criado(checklist, usuario):
         return ComunicadoService.criar_acao(
             titulo=f'Checklist #{checklist.id} criado',

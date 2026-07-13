@@ -1,0 +1,154 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Nova solicitação de insumos" %}{% endblock %}
+
+{% block content %}
+<main class="container-fluid p-4">
+    <header class="border-bottom pb-3 mb-3">
+        <a class="text-decoration-none" href="{% url 'insumos:lista_solicitacoes_insumo' %}"><i class="bi bi-arrow-left"></i> {% trans "Solicitações" %}</a>
+        <h1 class="h3 mt-2 mb-1">{% trans "Nova solicitação de insumos" %}</h1>
+        <p class="text-secondary mb-0">{% trans "Informe a base e os itens necessários." %}</p>
+    </header>
+
+    <form method="post" novalidate id="form-solicitacao">{% csrf_token %}
+        <section class="row g-3 mb-4">
+            {% for field in form %}<div class="{% if field.name == 'justificativa' %}col-12{% else %}col-lg-6{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+        </section>
+
+        <section class="border-top pt-3">
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                <h2 class="h5 mb-0">{% trans "Carrinho de insumos" %}</h2>
+                <span class="badge text-bg-primary" id="contador-carrinho">0 {% trans "itens" %}</span>
+            </div>
+
+            <div class="row g-2 align-items-end bg-light border p-3 mb-3">
+                <div class="col-xl-5">
+                    <label class="form-label" for="produto-carrinho">{% trans "Insumo" %}</label>
+                    <select class="form-select" id="produto-carrinho">
+                        <option value="">{% trans "Selecione" %}</option>
+                        {% regroup insumos by categoria.nome as categorias %}
+                        {% for categoria in categorias %}<optgroup label="{{ categoria.grouper }}">{% for insumo in categoria.list %}<option value="{{ insumo.id }}" data-nome="{{ insumo.descricao }}" data-unidade="{{ insumo.unidade_medida }}" data-categoria="{{ insumo.categoria.nome }}">{{ insumo.descricao }} ({{ insumo.unidade_medida }})</option>{% endfor %}</optgroup>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-xl-2 col-md-4"><label class="form-label" for="quantidade-carrinho">{% trans "Quantidade" %}</label><input class="form-control" id="quantidade-carrinho" type="number" min="0.01" step="0.01" value="1"></div>
+                <div class="col-xl-3 col-md-8"><label class="form-label" for="observacao-carrinho">{% trans "Observação" %}</label><input class="form-control" id="observacao-carrinho"></div>
+                <div class="col-xl-2"><button class="btn btn-outline-primary w-100" type="button" id="adicionar-item"><i class="bi bi-cart-plus"></i> {% trans "Adicionar" %}</button></div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="tabela-itens">
+                    <thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Categoria" %}</th><th style="width:170px">{% trans "Quantidade" %}</th><th>{% trans "Observação" %}</th><th style="width:48px"></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="text-center text-secondary py-4 border-bottom" id="carrinho-vazio">{% trans "Nenhum item adicionado." %}</div>
+        </section>
+
+        <div class="d-flex justify-content-end gap-2 border-top pt-3"><a class="btn btn-outline-secondary" href="{% url 'insumos:lista_solicitacoes_insumo' %}">{% trans "Cancelar" %}</a><button class="btn btn-primary" id="enviar-solicitacao" type="submit" disabled><i class="bi bi-send"></i> {% trans "Enviar solicitação" %}</button></div>
+    </form>
+</main>
+
+<script>
+(function () {
+    const produto = document.getElementById('produto-carrinho');
+    const quantidade = document.getElementById('quantidade-carrinho');
+    const observacao = document.getElementById('observacao-carrinho');
+    const corpo = document.querySelector('#tabela-itens tbody');
+    const vazio = document.getElementById('carrinho-vazio');
+    const contador = document.getElementById('contador-carrinho');
+    const enviar = document.getElementById('enviar-solicitacao');
+
+    function atualizarResumo() {
+        const total = corpo.querySelectorAll('tr').length;
+        contador.textContent = total + (total === 1 ? ' {% trans "item" %}' : ' {% trans "itens" %}');
+        vazio.classList.toggle('d-none', total > 0);
+        enviar.disabled = total === 0;
+    }
+
+    function campoOculto(nome, valor) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = nome;
+        input.value = valor;
+        return input;
+    }
+
+    document.getElementById('adicionar-item').addEventListener('click', function () {
+        const opcao = produto.options[produto.selectedIndex];
+        const valorQuantidade = Number.parseFloat(quantidade.value);
+        if (!produto.value || !Number.isFinite(valorQuantidade) || valorQuantidade <= 0) {
+            produto.focus();
+            return;
+        }
+
+        const existente = corpo.querySelector('tr[data-insumo="' + produto.value + '"]');
+        if (existente) {
+            const campoQuantidade = existente.querySelector('input[name="quantidade"]');
+            campoQuantidade.value = (Number.parseFloat(campoQuantidade.value) + valorQuantidade).toFixed(2);
+            const campoObservacao = existente.querySelector('input[name="observacao_item"]');
+            if (observacao.value.trim() && !campoObservacao.value.includes(observacao.value.trim())) {
+                campoObservacao.value = [campoObservacao.value, observacao.value.trim()].filter(Boolean).join('; ');
+            }
+        } else {
+            const linha = document.createElement('tr');
+            linha.dataset.insumo = produto.value;
+
+            const colunaProduto = document.createElement('td');
+            const nome = document.createElement('strong');
+            nome.textContent = opcao.dataset.nome;
+            const unidade = document.createElement('div');
+            unidade.className = 'small text-secondary';
+            unidade.textContent = opcao.dataset.unidade;
+            colunaProduto.append(nome, unidade, campoOculto('insumo', produto.value));
+
+            const colunaCategoria = document.createElement('td');
+            colunaCategoria.textContent = opcao.dataset.categoria;
+
+            const colunaQuantidade = document.createElement('td');
+            const inputQuantidade = document.createElement('input');
+            inputQuantidade.className = 'form-control';
+            inputQuantidade.type = 'number';
+            inputQuantidade.name = 'quantidade';
+            inputQuantidade.min = '0.01';
+            inputQuantidade.step = '0.01';
+            inputQuantidade.required = true;
+            inputQuantidade.value = valorQuantidade.toFixed(2);
+            colunaQuantidade.appendChild(inputQuantidade);
+
+            const colunaObservacao = document.createElement('td');
+            const inputObservacao = document.createElement('input');
+            inputObservacao.className = 'form-control';
+            inputObservacao.name = 'observacao_item';
+            inputObservacao.value = observacao.value.trim();
+            colunaObservacao.appendChild(inputObservacao);
+
+            const colunaAcao = document.createElement('td');
+            const remover = document.createElement('button');
+            remover.className = 'btn btn-outline-danger remover-item';
+            remover.type = 'button';
+            remover.title = '{% trans "Remover item" %}';
+            remover.innerHTML = '<i class="bi bi-trash"></i>';
+            colunaAcao.appendChild(remover);
+
+            linha.append(colunaProduto, colunaCategoria, colunaQuantidade, colunaObservacao, colunaAcao);
+            corpo.appendChild(linha);
+        }
+
+        produto.value = '';
+        quantidade.value = '1';
+        observacao.value = '';
+        atualizarResumo();
+    });
+
+    corpo.addEventListener('click', function (evento) {
+        const botao = evento.target.closest('.remover-item');
+        if (!botao) return;
+        botao.closest('tr').remove();
+        atualizarResumo();
+    });
+
+    atualizarResumo();
+})();
+</script>
+{% endblock %}

@@ -36,6 +36,15 @@ class Command(BaseCommand):
                 'realizar_devolucao',
                 'realizar_perda',
                 'realizar_ajuste',
+                'view_consumoinsumo',
+                'visualizar_custos',
+                'visualizar_dashboards_financeiros',
+                'view_fornecedorinsumo',
+                'add_fornecedorinsumo',
+                'change_fornecedorinsumo',
+                'view_precofornecedorinsumo',
+                'add_precofornecedorinsumo',
+                'change_precofornecedorinsumo',
             ],
 
             GruposInsumos.PLANEJAMENTO: [
@@ -60,6 +69,8 @@ class Command(BaseCommand):
                 'view_movimentacaoinsumo',
                 'visualizar_custos',
                 'visualizar_dashboards_financeiros',
+                'view_fornecedorinsumo',
+                'view_precofornecedorinsumo',
             ],
 
             GruposInsumos.EXECUTIVO: list(
