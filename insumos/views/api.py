@@ -35,30 +35,75 @@ from collections import defaultdict
 @login_required
 @role_required('admin', 'gestor', 'operador')
 def estoque_insumos(request):
-
     perfil = request.user.perfil
 
-    empresa_id = request.GET.get('empresa')
-    base_id = request.GET.get('base')
+    empresa_id = (request.GET.get('empresa') or '').strip()
+    base_id = (request.GET.get('base') or '').strip()
 
+    # =====================================================
+    # ESCOPO DE BASES PERMITIDAS PARA O USUÁRIO
+    # =====================================================
     if perfil.pode_ver_empresas_globais:
-        bases = Base.objects.select_related('empresa').all()
-        empresas = Empresa.objects.all().order_by('nome')
+        bases_disponiveis = (
+            Base.objects
+            .select_related('empresa')
+            .all()
+            .order_by('empresa__nome', 'nome')
+        )
     else:
-        bases = perfil.regionais.select_related('empresa').all()
-        empresas = Empresa.objects.filter(
-            id__in=bases.values_list('empresa_id', flat=True)
-        ).order_by('nome')
+        bases_disponiveis = (
+            perfil.regionais
+            .select_related('empresa')
+            .all()
+            .order_by('empresa__nome', 'nome')
+        )
 
-    bases = bases.order_by('nome')
+    total_bases_disponiveis = bases_disponiveis.count()
 
-    if perfil.pode_ver_empresas_globais:
+    exibir_filtros = (
+        perfil.pode_ver_empresas_globais
+        or total_bases_disponiveis > 1
+    )
+
+    # =====================================================
+    # EMPRESAS QUE PODEM SER EXIBIDAS NO FILTRO
+    # =====================================================
+    empresas = (
+        Empresa.objects
+        .filter(
+            id__in=bases_disponiveis.values_list(
+                'empresa_id',
+                flat=True,
+            )
+        )
+        .distinct()
+        .order_by('nome')
+    )
+
+    # =====================================================
+    # BASES UTILIZADAS NA CONSULTA
+    # =====================================================
+    bases_consulta = bases_disponiveis
+
+    if exibir_filtros:
         if empresa_id:
-            bases = bases.filter(empresa_id=empresa_id)
+            bases_consulta = bases_consulta.filter(
+                empresa_id=empresa_id
+            )
 
         if base_id:
-            bases = bases.filter(id=base_id)
+            bases_consulta = bases_consulta.filter(
+                id=base_id
+            )
 
+    else:
+        # Com uma única base, ignora filtros enviados pela URL.
+        empresa_id = ''
+        base_id = ''
+
+    # =====================================================
+    # INSUMOS
+    # =====================================================
     insumos = (
         Insumo.objects
         .filter(ativo=True)
@@ -68,7 +113,7 @@ def estoque_insumos(request):
 
     estoque = []
 
-    for base in bases:
+    for base in bases_consulta:
         for insumo in insumos:
             saldo = MovimentacaoService.saldo(base, insumo)
 
@@ -83,14 +128,29 @@ def estoque_insumos(request):
                 'critico': saldo <= insumo.estoque_minimo,
             })
 
+    # =====================================================
+    # INDICADORES
+    # =====================================================
     total_itens = len(estoque)
-    criticos = sum(1 for item in estoque if item['critico'])
-    bases_com_saldo = len({item['base'].id for item in estoque})
+    criticos = sum(
+        1
+        for item in estoque
+        if item['critico']
+    )
+
+    bases_com_saldo = len({
+        item['base'].id
+        for item in estoque
+    })
+
     categorias_com_saldo = len({
         item['insumo'].categoria_id
         for item in estoque
     })
 
+    # =====================================================
+    # AGRUPAMENTO POR CATEGORIA
+    # =====================================================
     estoque_por_categoria = defaultdict(list)
 
     for item in estoque:
@@ -102,18 +162,29 @@ def estoque_insumos(request):
         'insumos/estoque_insumos.html',
         {
             'estoque': estoque,
-            'estoque_por_categoria': dict(estoque_por_categoria),
+            'estoque_por_categoria': dict(
+                estoque_por_categoria
+            ),
+
             'total_itens': total_itens,
             'criticos': criticos,
             'ok_count': total_itens - criticos,
             'bases_com_saldo': bases_com_saldo,
             'categorias_com_saldo': categorias_com_saldo,
 
+            # Opções completas dos filtros
             'empresas': empresas,
-            'bases': bases,
+            'bases': bases_disponiveis,
+
+            # Bases realmente consultadas
+            'bases_consulta': bases_consulta,
+
+            'exibir_filtros': exibir_filtros,
+            'total_bases_disponiveis': total_bases_disponiveis,
+
             'filtro_empresa_id': empresa_id,
             'filtro_base_id': base_id,
-        }
+        },
     )
 
 @login_required

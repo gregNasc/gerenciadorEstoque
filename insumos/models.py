@@ -42,7 +42,6 @@ class Insumo(models.Model):
     def __str__(self):
         return self.descricao
 
-
 class FornecedorInsumo(models.Model):
     nome = models.CharField(max_length=160, unique=True)
     documento = models.CharField(max_length=30, unique=True, db_index=True)
@@ -70,7 +69,6 @@ class FornecedorInsumo(models.Model):
             f'{numeros[:2]}.{numeros[2:5]}.{numeros[5:8]}/'
             f'{numeros[8:12]}-{numeros[12:]}'
         )
-
 
 class PrecoFornecedorInsumo(models.Model):
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='precos_fornecedores')
@@ -110,7 +108,6 @@ class PrecoFornecedorInsumo(models.Model):
     def __str__(self):
         return f'{self.insumo} - {self.fornecedor}: {self.valor_unitario}'
 
-
 class PesquisaPrecoOnline(models.Model):
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='pesquisas_preco')
     termo = models.CharField(max_length=255)
@@ -120,7 +117,6 @@ class PesquisaPrecoOnline(models.Model):
 
     class Meta:
         ordering = ['-pesquisado_em']
-
 
 class OfertaPrecoOnline(models.Model):
     pesquisa = models.ForeignKey(

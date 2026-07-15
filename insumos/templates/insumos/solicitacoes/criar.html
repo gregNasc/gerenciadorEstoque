@@ -31,7 +31,7 @@
                         {% for categoria in categorias %}<optgroup label="{{ categoria.grouper }}">{% for insumo in categoria.list %}<option value="{{ insumo.id }}" data-nome="{{ insumo.descricao }}" data-unidade="{{ insumo.unidade_medida }}" data-categoria="{{ insumo.categoria.nome }}">{{ insumo.descricao }} ({{ insumo.unidade_medida }})</option>{% endfor %}</optgroup>{% endfor %}
                     </select>
                 </div>
-                <div class="col-xl-2 col-md-4"><label class="form-label" for="quantidade-carrinho">{% trans "Quantidade" %}</label><input class="form-control" id="quantidade-carrinho" type="number" min="0.01" step="0.01" value="1"></div>
+                <div class="col-xl-2 col-md-4"><label class="form-label" for="quantidade-carrinho">{% trans "Quantidade" %}</label><input class="form-control" id="quantidade-carrinho" type="number" min="0" step="1" value="1"></div>
                 <div class="col-xl-3 col-md-8"><label class="form-label" for="observacao-carrinho">{% trans "Observação" %}</label><input class="form-control" id="observacao-carrinho"></div>
                 <div class="col-xl-2"><button class="btn btn-outline-primary w-100" type="button" id="adicionar-item"><i class="bi bi-cart-plus"></i> {% trans "Adicionar" %}</button></div>
             </div>
@@ -110,8 +110,8 @@
             inputQuantidade.className = 'form-control';
             inputQuantidade.type = 'number';
             inputQuantidade.name = 'quantidade';
-            inputQuantidade.min = '0.01';
-            inputQuantidade.step = '0.01';
+            inputQuantidade.min = '0';
+            inputQuantidade.step = '1';
             inputQuantidade.required = true;
             inputQuantidade.value = valorQuantidade.toFixed(2);
             colunaQuantidade.appendChild(inputQuantidade);
