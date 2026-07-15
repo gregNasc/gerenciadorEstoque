@@ -2,7 +2,14 @@ from django.db.models.functions import TruncMonth
 from django.db.models import (Q, Sum, F)
 from django.http import HttpResponse
 from insumos.models import ConsumoInsumo
-from insumos.models import (Inventario, ChecklistDiario, SolicitacaoInsumo, Insumo, AlteracaoCalendario)
+from insumos.models import (
+    AlteracaoCalendario,
+    ChecklistDiario,
+    Insumo,
+    Inventario,
+    MovimentacaoInsumo,
+    SolicitacaoInsumo,
+)
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -35,62 +42,170 @@ from collections import defaultdict
 @login_required
 @role_required('admin', 'gestor', 'operador')
 def estoque_insumos(request):
-
     perfil = request.user.perfil
 
-    empresa_id = request.GET.get('empresa')
-    base_id = request.GET.get('base')
+    empresa_id = (request.GET.get('empresa') or '').strip()
+    base_id = (request.GET.get('base') or '').strip()
 
+    # =====================================================
+    # ESCOPO DE BASES PERMITIDAS PARA O USUÁRIO
+    # =====================================================
     if perfil.pode_ver_empresas_globais:
-        bases = Base.objects.select_related('empresa').all()
-        empresas = Empresa.objects.all().order_by('nome')
+        bases_disponiveis_qs = (
+            Base.objects
+            .select_related('empresa')
+            .all()
+            .order_by('empresa__nome', 'nome')
+        )
     else:
-        bases = perfil.regionais.select_related('empresa').all()
-        empresas = Empresa.objects.filter(
-            id__in=bases.values_list('empresa_id', flat=True)
-        ).order_by('nome')
+        bases_disponiveis_qs = (
+            perfil.regionais
+            .select_related('empresa')
+            .all()
+            .order_by('empresa__nome', 'nome')
+        )
 
-    bases = bases.order_by('nome')
+    bases_disponiveis = list(bases_disponiveis_qs)
+    total_bases_disponiveis = len(bases_disponiveis)
 
-    if perfil.pode_ver_empresas_globais:
-        if empresa_id:
-            bases = bases.filter(empresa_id=empresa_id)
-
-        if base_id:
-            bases = bases.filter(id=base_id)
-
-    insumos = (
-        Insumo.objects
-        .filter(ativo=True)
-        .select_related('categoria')
-        .order_by('categoria__nome', 'descricao')
+    exibir_filtros = (
+        perfil.pode_ver_empresas_globais
+        or total_bases_disponiveis > 1
     )
 
+    # =====================================================
+    # EMPRESAS QUE PODEM SER EXIBIDAS NO FILTRO
+    # =====================================================
+    empresas = sorted(
+        {
+            base.empresa_id: base.empresa
+            for base in bases_disponiveis
+        }.values(),
+        key=lambda empresa: empresa.nome,
+    )
+
+    # =====================================================
+    # BASES UTILIZADAS NA CONSULTA
+    # =====================================================
+    bases_consulta = bases_disponiveis
+    aguardando_filtro_base = False
+
+    if exibir_filtros:
+        if empresa_id:
+            bases_consulta = [
+                base for base in bases_consulta
+                if str(base.empresa_id) == empresa_id
+            ]
+
+        if base_id:
+            bases_consulta = [
+                base for base in bases_consulta
+                if str(base.id) == base_id
+            ]
+        else:
+            # Evita materializar o estoque consolidado de dezenas de bases e
+            # gerar uma página muito grande. A consulta operacional exige uma
+            # base explícita quando o usuário possui mais de uma opção.
+            bases_consulta = []
+            aguardando_filtro_base = True
+
+    else:
+        # Com uma única base, ignora filtros enviados pela URL.
+        empresa_id = ''
+        base_id = ''
+
+    # Uma única agregação substitui duas consultas para cada combinação
+    # base/insumo. Somente pares com movimentação e saldo positivo são
+    # materializados para o template.
+    bases_por_id = {base.id: base for base in bases_consulta}
+    saldos_agregados = list(
+        MovimentacaoInsumo.objects
+        .filter(
+            base_id__in=bases_por_id,
+            insumo__ativo=True,
+        )
+        .values('base_id', 'insumo_id')
+        .annotate(
+            entradas=Sum(
+                'quantidade',
+                filter=Q(tipo__in=[
+                    'ENTRADA', 'DEVOLUCAO', 'AJUSTE_ENTRADA',
+                ]),
+            ),
+            saidas=Sum(
+                'quantidade',
+                filter=Q(tipo__in=[
+                    'SAIDA', 'PERDA', 'AJUSTE_SAIDA',
+                ]),
+            ),
+        )
+    )
+
+    saldos_positivos = []
+    insumos_ids = set()
+    for agregado in saldos_agregados:
+        saldo = (
+            (agregado['entradas'] or Decimal('0')) -
+            (agregado['saidas'] or Decimal('0'))
+        )
+        if saldo > 0:
+            agregado['saldo'] = saldo
+            saldos_positivos.append(agregado)
+            insumos_ids.add(agregado['insumo_id'])
+
+    insumos_por_id = {
+        insumo.id: insumo
+        for insumo in (
+            Insumo.objects
+            .filter(id__in=insumos_ids, ativo=True)
+            .select_related('categoria')
+        )
+    }
+
     estoque = []
+    for agregado in saldos_positivos:
+        base = bases_por_id.get(agregado['base_id'])
+        insumo = insumos_por_id.get(agregado['insumo_id'])
+        if base is None or insumo is None:
+            continue
+        estoque.append({
+            'base': base,
+            'insumo': insumo,
+            'saldo': agregado['saldo'],
+            'minimo': insumo.estoque_minimo,
+            'critico': agregado['saldo'] <= insumo.estoque_minimo,
+        })
 
-    for base in bases:
-        for insumo in insumos:
-            saldo = MovimentacaoService.saldo(base, insumo)
+    estoque.sort(key=lambda item: (
+        item['insumo'].categoria.nome,
+        item['insumo'].descricao,
+        item['base'].empresa.nome,
+        item['base'].nome,
+    ))
 
-            if saldo <= 0:
-                continue
-
-            estoque.append({
-                'base': base,
-                'insumo': insumo,
-                'saldo': saldo,
-                'minimo': insumo.estoque_minimo,
-                'critico': saldo <= insumo.estoque_minimo,
-            })
-
+    # =====================================================
+    # INDICADORES
+    # =====================================================
     total_itens = len(estoque)
-    criticos = sum(1 for item in estoque if item['critico'])
-    bases_com_saldo = len({item['base'].id for item in estoque})
+    criticos = sum(
+        1
+        for item in estoque
+        if item['critico']
+    )
+
+    bases_com_saldo = len({
+        item['base'].id
+        for item in estoque
+    })
+
     categorias_com_saldo = len({
         item['insumo'].categoria_id
         for item in estoque
     })
 
+    # =====================================================
+    # AGRUPAMENTO POR CATEGORIA
+    # =====================================================
     estoque_por_categoria = defaultdict(list)
 
     for item in estoque:
@@ -102,18 +217,30 @@ def estoque_insumos(request):
         'insumos/estoque_insumos.html',
         {
             'estoque': estoque,
-            'estoque_por_categoria': dict(estoque_por_categoria),
+            'estoque_por_categoria': dict(
+                estoque_por_categoria
+            ),
+
             'total_itens': total_itens,
             'criticos': criticos,
             'ok_count': total_itens - criticos,
             'bases_com_saldo': bases_com_saldo,
             'categorias_com_saldo': categorias_com_saldo,
 
+            # Opções completas dos filtros
             'empresas': empresas,
-            'bases': bases,
+            'bases': bases_disponiveis,
+
+            # Bases realmente consultadas
+            'bases_consulta': bases_consulta,
+
+            'exibir_filtros': exibir_filtros,
+            'total_bases_disponiveis': total_bases_disponiveis,
+
             'filtro_empresa_id': empresa_id,
             'filtro_base_id': base_id,
-        }
+            'aguardando_filtro_base': aguardando_filtro_base,
+        },
     )
 
 @login_required
@@ -349,6 +476,10 @@ def resolver_nome_base_importada(regional_nome, regional_map):
         }
         nome_base = mapa_normalizado.get(regional_normalizado, regional_nome)
 
+    nome_normalizado = normalizar_nome_base(nome_base)
+    if not nome_normalizado or nome_normalizado == 'TODAS':
+        return None
+
     if regional_termina_com_x(nome_base) and not normalizar_nome_base(nome_base).startswith('OXXO '):
         nome_oxxo = f'OXXO {str(nome_base).strip()}'
         nome_oxxo_normalizado = normalizar_nome_base(nome_oxxo)
@@ -363,7 +494,35 @@ def resolver_nome_base_importada(regional_nome, regional_map):
         )
         return base_existente.nome if base_existente else nome_oxxo
 
+    if nome_normalizado in {'RJ', 'RIO DE JANEIRO'}:
+        return 'RIO DE JANEIRO'
+
+    if nome_normalizado.startswith('SP INT '):
+        return nome_base
+
+    if nome_normalizado.startswith('SP '):
+        return 'SÃO PAULO'
+
+    if 'CURITIBA' in nome_normalizado or 'FLORIPA' in nome_normalizado:
+        return 'PR CURITIBA'
+
     return nome_base
+
+def obter_base_importada(regional_nome, regional_map, empresa_padrao):
+    nome_base = resolver_nome_base_importada(regional_nome, regional_map)
+    if nome_base is None:
+        return None
+
+    empresa_base = empresa_para_base_importada(nome_base, empresa_padrao)
+    nome_normalizado = normalizar_nome_base(nome_base)
+    return next(
+        (
+            base
+            for base in Base.objects.filter(empresa=empresa_base)
+            if normalizar_nome_base(base.nome) == nome_normalizado
+        ),
+        None,
+    )
 
 def empresa_para_base_importada(nome_base, empresa_padrao):
     nome_normalizado = normalizar_nome_base(nome_base)
@@ -454,15 +613,17 @@ def importar_alteracoes_calendario(wb, arquivo_nome, usuario, regional_map, empr
                 base = None
 
                 if regional_nome:
-                    nome_base = resolver_nome_base_importada(regional_nome, regional_map)
-                    empresa_base = empresa_para_base_importada(nome_base, empresa_padrao)
-                    base, base_created = Base.objects.get_or_create(
-                        nome=nome_base,
-                        empresa=empresa_base,
-                        defaults={'nome': nome_base, 'grupo_regional': None}
+                    base = obter_base_importada(
+                        regional_nome,
+                        regional_map,
+                        empresa_padrao,
                     )
-                    if base_created:
-                        resumo['bases_criadas'] += 1
+                    if base is None and normalizar_nome_base(regional_nome) != 'TODAS':
+                        adicionar_aviso_importacao(
+                            resumo,
+                            f'Aba Alteracoes, linha {row_idx}: regional '
+                            f'{regional_nome} não corresponde a uma base cadastrada.'
+                        )
 
                 AlteracaoCalendario.objects.update_or_create(
                     origem_bloco=origem_bloco,
@@ -750,15 +911,18 @@ def importar_excel(request):
                         continue
 
                     # --- Mapear regional ---
-                    nome_base = resolver_nome_base_importada(regional_nome, REGIONAL_MAP)
-                    empresa_base = empresa_para_base_importada(nome_base, empresa_padrao)
-                    base, created = Base.objects.get_or_create(
-                        nome=nome_base,
-                        empresa=empresa_base,
-                        defaults={'nome': nome_base, 'grupo_regional': None}
+                    base = obter_base_importada(
+                        regional_nome,
+                        REGIONAL_MAP,
+                        empresa_padrao,
                     )
-                    if created:
-                        resumo_importacao['bases_criadas'] += 1
+                    if base is None:
+                        adicionar_aviso_importacao(
+                            resumo_importacao,
+                            f'Aba {aba_nome}, linha {row_idx}: regional '
+                            f'{regional_nome} não corresponde a uma base cadastrada.'
+                        )
+                        continue
 
                     # --- Converter data ---
                     if isinstance(data_str, datetime):

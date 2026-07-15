@@ -47,7 +47,12 @@ class InsumoForm(forms.ModelForm):
                 attrs={'class': 'form-control'}
             ),
             'estoque_minimo': forms.NumberInput(
-                attrs={'class': 'form-control'}
+                attrs={
+                    'class': 'form-control',
+                    'min': '0',
+                    'max': '10',
+                    'step': '0.01',
+                }
             ),
             'estoque_maximo': forms.NumberInput(
                 attrs={'class': 'form-control'}
@@ -168,7 +173,7 @@ class CadastroInsumoForm(forms.Form):
     base = forms.ModelChoiceField(queryset=Base.objects.all(), widget=forms.Select(attrs={'class': 'form-select'}))
     categoria = forms.ModelChoiceField(queryset=CategoriaInsumo.objects.all().order_by('nome'), widget=forms.Select(attrs={'class': 'form-select'}))
     insumo = forms.ModelChoiceField(queryset=Insumo.objects.none(), widget=forms.Select(attrs={'class': 'form-select'}))
-    quantidade = forms.DecimalField(min_value=0.01, decimal_places=2, max_digits=10, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    quantidade = forms.DecimalField(min_value=1, decimal_places=2, max_digits=10, widget=forms.NumberInput(attrs={'class': 'form-control'}))
 
     def __init__(self, *args, user=None, **kwargs):
 
@@ -237,8 +242,11 @@ class InventarioForm(forms.ModelForm):
         model = Inventario
         fields = [
             'cliente', 'loja', 'base', 'data_inicio', 'data_fim', 'status',
+            'inicio_previsto', 'fim_previsto', 'inicio_real', 'fim_real',
+            'inicio_contagem', 'fim_contagem',
             'endereco', 'bairro', 'cidade',
-            'tipo', 'pessoas', 'observacao', 'lider', 'ponto_encontro',
+            'tipo', 'pessoas', 'total_pecas', 'custo_hora_pessoa',
+            'observacao', 'lider', 'ponto_encontro',
             'horario_ponto', 'horario_inicio', 'tipo_visita', 'responsavel_visita',
             'data_visita', 'horario_visita', 'relatorio_visita', 'prep',
             'historico_equipe', 'historico_pecas', 'historico_satisfacao',
@@ -251,6 +259,30 @@ class InventarioForm(forms.ModelForm):
             'base': Select2Widget(attrs={'class': 'form-control'}),
             'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'data_fim': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'inicio_previsto': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local', 'class': 'form-control'},
+            ),
+            'fim_previsto': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local', 'class': 'form-control'},
+            ),
+            'inicio_real': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local', 'class': 'form-control'},
+            ),
+            'fim_real': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local', 'class': 'form-control'},
+            ),
+            'inicio_contagem': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local', 'class': 'form-control'},
+            ),
+            'fim_contagem': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={'type': 'datetime-local', 'class': 'form-control'},
+            ),
             'data_visita': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'historico_data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'envio_escala': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -262,6 +294,14 @@ class InventarioForm(forms.ModelForm):
         labels = {
             'tipo': 'Tipo',
             'pessoas': 'Pessoas',
+            'inicio_previsto': 'Início previsto',
+            'fim_previsto': 'Fim previsto',
+            'inicio_real': 'Início real',
+            'fim_real': 'Fim real',
+            'inicio_contagem': 'Início da contagem',
+            'fim_contagem': 'Fim da contagem',
+            'total_pecas': 'Total de peças contadas',
+            'custo_hora_pessoa': 'Custo por pessoa/hora',
             'observacao': 'Observação',
             'lider': 'Líder',
             'ponto_encontro': 'Ponto de Encontro',

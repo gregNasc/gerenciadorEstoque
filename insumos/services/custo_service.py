@@ -104,8 +104,11 @@ class CustoInsumoService:
     @staticmethod
     def por_cliente(qs, limite=10):
         return list(
-            qs.values('inventario__cliente__sigla')
-            .annotate(total=Sum('valor_total'))
+            qs.values('inventario__cliente__sigla', 'inventario__cliente__nome')
+            .annotate(
+                total=Sum('valor_total'),
+                inventarios=Count('inventario_id', distinct=True),
+            )
             .order_by('-total')[:limite]
         )
 
@@ -135,11 +138,14 @@ class CustoInsumoService:
         )
 
     @classmethod
-    def valor_estoque_atual(cls, user):
+    def valor_estoque_atual(cls, user, bases=None):
         if not cls.pode_visualizar(user):
             return Decimal('0')
+        queryset = MovimentacaoInsumo.objects.all()
+        if bases is not None:
+            queryset = queryset.filter(base__in=bases)
         movimentos = (
-            MovimentacaoInsumo.objects.values('insumo_id', 'insumo__valor_medio')
+            queryset.values('insumo_id', 'insumo__valor_medio')
             .annotate(
                 entradas=Sum(Case(
                     When(tipo__in=cls.ENTRADAS, then=F('quantidade')),

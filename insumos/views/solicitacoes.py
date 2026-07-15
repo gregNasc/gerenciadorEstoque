@@ -25,6 +25,14 @@ def _pode_acompanhar(user):
     ))
 
 
+def _pode_ver_detalhes_administrativos(user):
+    perfil = getattr(user, 'perfil', None)
+    return bool(perfil and (
+        perfil.is_admin or perfil.is_compras_insumos or
+        perfil.is_financeiro_insumos
+    ))
+
+
 def _queryset_visivel(user):
     qs = SolicitacaoInsumo.objects.select_related(
         'base', 'solicitante', 'aprovado_por', 'em_compra_por'
@@ -60,6 +68,9 @@ def lista_solicitacoes(request):
         'status_choices': SolicitacaoInsumo.STATUS,
         'pode_decidir': _pode_decidir(request.user),
         'pode_solicitar': request.user.perfil.is_admin or request.user.perfil.is_gestor,
+        'pode_ver_detalhes_administrativos': (
+            _pode_ver_detalhes_administrativos(request.user)
+        ),
         'busca': busca,
         'status_atual': status,
     })
@@ -139,6 +150,9 @@ def detalhe_solicitacao(request, pk):
     return render(request, 'insumos/solicitacoes/detalhe.html', {
         'solicitacao': solicitacao,
         'pode_decidir': _pode_decidir(request.user),
+        'pode_ver_detalhes_administrativos': (
+            _pode_ver_detalhes_administrativos(request.user)
+        ),
     })
 
 
@@ -171,6 +185,13 @@ def decidir_solicitacao(request, pk):
                 observacao=observacao,
             )
             messages.success(request, _('Solicitação encaminhada para compra.'))
+        elif acao == 'finalizar':
+            SolicitacaoService.finalizar(
+                solicitacao=solicitacao,
+                usuario=request.user,
+                observacao=observacao,
+            )
+            messages.success(request, _('Solicitação finalizada.'))
         else:
             messages.error(request, _('Ação inválida.'))
     except ValueError as erro:

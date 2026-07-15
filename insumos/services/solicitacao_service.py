@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from estoque.services.comunicado_service import ComunicadoService
@@ -89,5 +90,31 @@ class SolicitacaoService:
         solicitacao.save(update_fields=[
             'status', 'em_compra_por', 'em_compra_em', 'observacao_aprovacao',
         ])
+        ComunicadoService.solicitacao_insumo_decidida(solicitacao, usuario)
+        return solicitacao
+
+    @staticmethod
+    @transaction.atomic
+    def finalizar(*, solicitacao, usuario, observacao=''):
+        if solicitacao.status != 'EM_COMPRA':
+            raise ValueError(
+                'Somente solicitações em compra podem ser finalizadas.'
+            )
+
+        observacao = observacao.strip()
+        if observacao:
+            solicitacao.observacao_aprovacao = '\n'.join(filter(None, [
+                solicitacao.observacao_aprovacao.strip(),
+                f'Finalização: {observacao}',
+            ]))
+
+        solicitacao.status = 'FINALIZADA'
+        solicitacao.finalizado_por = usuario
+        solicitacao.finalizado_em = timezone.now()
+        solicitacao.save(update_fields=[
+            'status', 'finalizado_por', 'finalizado_em',
+            'observacao_aprovacao',
+        ])
+        solicitacao.itens.update(quantidade_atendida=F('quantidade'))
         ComunicadoService.solicitacao_insumo_decidida(solicitacao, usuario)
         return solicitacao

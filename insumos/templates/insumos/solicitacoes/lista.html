@@ -29,20 +29,20 @@
 
     <div class="table-responsive">
         <table class="table table-hover align-middle">
-            <thead><tr><th>{% trans "Protocolo" %}</th><th>{% trans "Data" %}</th><th>{% trans "Base" %}</th><th>{% trans "Solicitante" %}</th><th>{% trans "Prioridade" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead>
+            <thead><tr><th>{% trans "Protocolo" %}</th><th>{% trans "Data" %}</th><th>{% trans "Base" %}</th>{% if pode_ver_detalhes_administrativos %}<th>{% trans "Solicitante" %}</th>{% endif %}<th>{% trans "Prioridade" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead>
             <tbody>
             {% for solicitacao in solicitacoes %}
                 <tr>
                     <td><strong>{{ solicitacao.protocolo }}</strong></td>
                     <td>{{ solicitacao.criado_em|date:'d/m/Y H:i' }}</td>
                     <td>{{ solicitacao.base.nome }}</td>
-                    <td>{{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}</td>
+                    {% if pode_ver_detalhes_administrativos %}<td>{{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}</td>{% endif %}
                     <td>{{ solicitacao.get_prioridade_display }}</td>
                     <td>{{ solicitacao.itens.all|length }}</td>
                     <td><span class="badge {% if solicitacao.status == 'PENDENTE' %}text-bg-warning{% elif solicitacao.status == 'REPROVADA' %}text-bg-danger{% elif solicitacao.status == 'APROVADA' %}text-bg-success{% elif solicitacao.status == 'EM_COMPRA' %}text-bg-primary{% else %}text-bg-secondary{% endif %}">{{ solicitacao.get_status_display }}</span></td>
                     <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'insumos:detalhe_solicitacao' solicitacao.pk %}" title="{% trans 'Ver detalhes' %}"><i class="bi bi-eye"></i></a></td>
                 </tr>
-            {% empty %}<tr><td colspan="8" class="text-center text-secondary py-4">{% trans "Nenhuma solicitação encontrada." %}</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="{% if pode_ver_detalhes_administrativos %}8{% else %}7{% endif %}" class="text-center text-secondary py-4">{% trans "Nenhuma solicitação encontrada." %}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

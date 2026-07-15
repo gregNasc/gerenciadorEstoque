@@ -415,6 +415,31 @@
         color: #842029;
         border: 1px solid #f5c2c7;
     }
+    .tag-modo-cell {
+    min-width: 165px;
+}
+
+    .tag-modo-select {
+        width: 100%;
+        min-width: 135px;
+        border: 1px solid #b8c6d6 !important;
+        border-radius: 5px;
+        background: #fff !important;
+        color: #1e3c72;
+        font-weight: 600;
+        padding: 5px 8px !important;
+        text-align: left !important;
+    }
+
+    .tag-modo-select:focus {
+        border-color: #1e3c72 !important;
+        box-shadow: 0 0 0 2px rgba(30, 60, 114, .12);
+    }
+
+    .tag-modo-cell .insumo-help {
+        margin-top: 4px;
+        line-height: 1.25;
+    }
 
     /* ================================
        PRINT
@@ -782,43 +807,58 @@ function obterContainerInsumos() {
 function criarLinhaInsumo(insumo) {
     const tr = document.createElement('tr');
     const ehTag = isCategoriaTags(insumo.categoria || '');
-    const modoTagHtml = ehTag ? `
-            <select
-                name="insumo_${insumo.id}_modo_tag"
-                class="mt-2">
-                <option value="NOVO">Novo</option>
-                <option value="REUTILIZACAO">Reutilizacao</option>
-            </select>
-            <span class="insumo-help">Novo baixa estoque; reutilizacao nao baixa.</span>
-    ` : '';
 
     tr.innerHTML = `
         <td class="desc-col">
             ${insumo.descricao}
         </td>
+
         <td>${insumo.categoria || '-'}</td>
+
         <td>${insumo.unidade || '-'}</td>
+
         <td>
             <span class="saldo-disponivel">${insumo.saldo}</span>
             <span class="insumo-help">Disponível na base</span>
         </td>
+
+        ${ehTag ? `
+            <td class="input-cell tag-modo-cell">
+                <select
+                    name="insumo_${insumo.id}_modo_tag"
+                    class="tag-modo-select"
+                    aria-label="Tipo de envio da TAG">
+                    <option value="NOVO">Novo</option>
+                    <option value="REUTILIZACAO">Reutilizar</option>
+                </select>
+
+                <span class="insumo-help">
+                    Novo baixa estoque; reutilizar não baixa.
+                </span>
+            </td>
+        ` : ''}
+
         <td class="input-cell">
             <input
                 type="number"
                 name="insumo_${insumo.id}_enviada"
-                placeholder="0,00"
+                placeholder="0"
                 min="0"
                 max="${insumo.saldo}"
-                step="0.01"
+                step="1"
                 class="insumo-enviado"
                 data-insumo-id="${insumo.id}"
                 data-insumo-desc="${insumo.descricao}"
                 data-saldo="${insumo.saldo}">
-            ${modoTagHtml}
+
+            <span class="insumo-help">
+                Quantidade enviada
+            </span>
         </td>
     `;
 
     const input = tr.querySelector('.insumo-enviado');
+
     input.addEventListener('input', function() {
         validarInputInsumo(this, true);
     });
@@ -888,16 +928,36 @@ function renderizarInsumosAgrupados(insumos) {
 
         const wrap = document.createElement('div');
         wrap.className = 'table-wrap';
+        const ehCategoriaTags = isCategoriaTags(categoria);
+
         wrap.innerHTML = `
             <table>
                 <thead>
                     <tr>
-                        <th class="th-sub" style="text-align:left;">Insumo</th>
-                        <th class="th-sub">Unidade</th>
-                        <th class="th-sub">Saldo</th>
-                        <th class="th-sub">Qtd. enviada</th>
+                        <th class="th-sub" style="text-align:left;">
+                            Insumo
+                        </th>
+
+                        <th class="th-sub">
+                            Unidade
+                        </th>
+
+                        <th class="th-sub">
+                            Saldo
+                        </th>
+
+                        ${ehCategoriaTags ? `
+                            <th class="th-sub">
+                                Tipo de envio
+                            </th>
+                        ` : ''}
+
+                        <th class="th-sub">
+                            Qtd. enviada
+                        </th>
                     </tr>
                 </thead>
+
                 <tbody></tbody>
             </table>
         `;

@@ -18,12 +18,14 @@
 
     <section class="mb-4"><h2 class="h5">{% trans "Itens solicitados" %}</h2><div class="table-responsive"><table class="table table-hover"><thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Categoria" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Observação" %}</th></tr></thead><tbody>{% for item in solicitacao.itens.all %}<tr><td>{{ item.insumo.descricao }}</td><td>{{ item.insumo.categoria.nome }}</td><td>{{ item.quantidade|floatformat:2 }} {{ item.insumo.unidade_medida }}</td><td>{{ item.observacao|default:'-' }}</td></tr>{% endfor %}</tbody></table></div></section>
 
-    {% if solicitacao.observacao_aprovacao %}<section class="alert alert-secondary"><strong>{% trans "Observação da análise" %}:</strong> {{ solicitacao.observacao_aprovacao }}</section>{% endif %}
+    {% if pode_ver_detalhes_administrativos and solicitacao.observacao_aprovacao %}<section class="alert alert-secondary"><strong>{% trans "Observação da análise" %}:</strong> {{ solicitacao.observacao_aprovacao|linebreaksbr }}</section>{% endif %}
 
     {% if pode_decidir and solicitacao.status == 'PENDENTE' %}
     <section class="border-top pt-3"><h2 class="h5">{% trans "Analisar solicitação" %}</h2><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<label class="form-label" for="observacao-decisao">{% trans "Observação ou motivo" %}</label><textarea class="form-control mb-3" id="observacao-decisao" name="observacao" rows="3"></textarea><div class="d-flex gap-2 flex-wrap"><button class="btn btn-success" name="acao" value="aprovar" type="submit"><i class="bi bi-check-lg"></i> {% trans "Aprovar" %}</button><button class="btn btn-danger" name="acao" value="reprovar" type="submit"><i class="bi bi-x-lg"></i> {% trans "Reprovar" %}</button></div></form></section>
     {% elif pode_decidir and solicitacao.status == 'APROVADA' %}
     <section class="border-top pt-3"><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<input type="hidden" name="acao" value="comprar"><button class="btn btn-primary" type="submit"><i class="bi bi-cart-check"></i> {% trans "Encaminhar para compra" %}</button></form></section>
+    {% elif pode_decidir and solicitacao.status == 'EM_COMPRA' %}
+    <section class="border-top pt-3"><h2 class="h5">{% trans "Finalizar solicitação" %}</h2><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<input type="hidden" name="acao" value="finalizar"><label class="form-label" for="observacao-finalizacao">{% trans "Observação da finalização" %}</label><textarea class="form-control mb-3" id="observacao-finalizacao" name="observacao" rows="3"></textarea><button class="btn btn-success" type="submit" onclick="return confirm('{% trans "Confirma a finalização desta solicitação?" %}')"><i class="bi bi-check-circle"></i> {% trans "Finalizar solicitação" %}</button></form></section>
     {% endif %}
 </main>
 {% endblock %}

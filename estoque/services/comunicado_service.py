@@ -1,10 +1,11 @@
 from datetime import timedelta
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from estoque.models import Base, Comunicado
+from estoque.models import Base, Comunicado, Sick
 
 
 class ComunicadoService:
@@ -102,6 +103,63 @@ class ComunicadoService:
             expira_em__isnull=False,
             expira_em__lte=timezone.now(),
         ).delete()
+
+    @staticmethod
+    @transaction.atomic
+    def notificar_manutencoes_previstas(data_referencia=None):
+        data_referencia = data_referencia or timezone.localdate()
+        data_previsao = data_referencia + timedelta(days=1)
+        destinatarios = User.objects.filter(is_active=True).filter(
+            Q(perfil__role='admin') |
+            Q(username='rafael.ribeiro')
+        ).distinct()
+        if not destinatarios.exists():
+            return []
+
+        criador = destinatarios.filter(username='rafael.ribeiro').first()
+        if criador is None:
+            criador = destinatarios.filter(perfil__role='admin').first()
+
+        comunicados = []
+        manutencoes = (
+            Sick.objects
+            .select_for_update(of=('self',))
+            .filter(
+                ativo=True,
+                status_final='MANUTENCAO',
+                previsao_retorno=data_previsao,
+            )
+            .select_related('equipamento__produto', 'equipamento__regional__empresa')
+        )
+        for sick in manutencoes:
+            titulo = (
+                f'Manutenção prevista para amanhã — SICK #{sick.id}'
+            )
+            if Comunicado.objects.filter(titulo=titulo).exists():
+                continue
+
+            equipamento = sick.equipamento
+            comunicado = ComunicadoService.criar_acao(
+                titulo=titulo,
+                mensagem=(
+                    'A previsão de retorno deste equipamento é amanhã.\n\n'
+                    f'Equipamento: {equipamento.produto.descricao if equipamento.produto else equipamento.codigo}\n'
+                    f'Código: {equipamento.codigo}\n'
+                    f'Patrimônio: {equipamento.patrimonio or "N/A"}\n'
+                    f'Série: {equipamento.numero_serie or "N/A"}\n'
+                    f'Base: {equipamento.regional.nome}\n'
+                    f'Previsão: {data_previsao.strftime("%d/%m/%Y")}\n'
+                    f'Motivo: {sick.motivo or "Não informado"}'
+                ),
+                usuario=criador,
+                tipo='MANUTENCAO',
+                usuarios=destinatarios,
+                empresa=equipamento.regional.empresa,
+                permitir_limpar=False,
+                expira_em=timezone.now() + timedelta(days=3),
+            )
+            comunicados.append(comunicado)
+        return comunicados
 
     @staticmethod
     def usuarios_ciclo_compras(solicitante=None):

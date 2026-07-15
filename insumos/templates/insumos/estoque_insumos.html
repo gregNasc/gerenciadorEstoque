@@ -1,258 +1,519 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Estoque de Insumos" %}
+{% endblock %}
+
 {% block content %}
 
-<div class="container mt-4">
+<style>
+    .estoque-page {
+        max-width: 100%;
+    }
 
-    <div class="card shadow-sm">
+    .estoque-header {
+        background: #343a40;
+        color: #fff;
+        padding: 16px 20px;
+        border-radius: 8px 8px 0 0;
+    }
 
-        <div class="card-header bg-dark text-white">
-            📦 Estoque de Insumos
+    .estoque-header h4 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+    }
+
+    .estoque-header small {
+        display: block;
+        margin-top: 4px;
+        color: rgba(255, 255, 255, .75);
+    }
+
+    .kpi-card {
+        height: 100%;
+        border: 1px solid #e1e6eb;
+        border-radius: 8px;
+        background: #fff;
+        padding: 16px;
+    }
+
+    .kpi-card-button {
+        width: 100%;
+        text-align: left;
+        color: inherit;
+        cursor: pointer;
+        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+
+    .kpi-card-button:hover,
+    .kpi-card-button:focus-visible,
+    .kpi-card-button[aria-pressed="true"] {
+        border-color: #1e3c72;
+        box-shadow: 0 .35rem .9rem rgba(30, 60, 114, .14);
+        transform: translateY(-1px);
+        outline: none;
+    }
+
+    .kpi-label {
+        color: #6c757d;
+        font-size: .8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+    }
+
+    .kpi-value {
+        color: #1e3c72;
+        font-size: 1.65rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-top: 4px;
+    }
+
+    .filter-card {
+        border: 1px solid #dce3ea;
+        border-radius: 8px;
+        background: #f8fafc;
+    }
+
+    .filter-title {
+        color: #1e3c72;
+        font-weight: 700;
+    }
+
+    .base-context {
+        border-left: 4px solid #1e3c72;
+        background: #f1f5f9;
+        padding: 10px 14px;
+        margin-bottom: 18px;
+        border-radius: 4px;
+        color: #475569;
+    }
+
+    .nav-tabs {
+        border-bottom-color: #cfd8e3;
+    }
+
+    .nav-tabs .nav-link {
+        color: #526173;
+        font-weight: 600;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #1e3c72;
+        font-weight: 700;
+        border-top: 3px solid #1e3c72;
+    }
+
+    .estoque-table th {
+        white-space: nowrap;
+        background: #eef3f8;
+        color: #1e3c72;
+        font-size: .82rem;
+        text-transform: uppercase;
+        vertical-align: middle;
+    }
+
+    .estoque-table td {
+        vertical-align: middle;
+    }
+
+    .saldo-value {
+        color: #1e3c72;
+        font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+        .kpi-value {
+            font-size: 1.35rem;
+        }
+
+        .estoque-header {
+            border-radius: 0;
+        }
+    }
+</style>
+
+<div class="container-fluid mt-4 estoque-page">
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="estoque-header">
+            <h4>
+                <i class="bi bi-box-seam me-1"></i>
+                {% trans "Estoque de Insumos" %}
+            </h4>
+
+            <small>
+                {% trans "Saldos disponíveis por base e categoria" %}
+            </small>
         </div>
 
         <div class="card-body">
 
+            {# =============================== #}
+            {# MENSAGENS                       #}
+            {# =============================== #}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-{{ message.tags|default:'info' }}">
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show">
                         {{ message }}
+
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="alert"
+                                aria-label="{% trans 'Fechar' %}">
+                        </button>
                     </div>
                 {% endfor %}
             {% endif %}
 
-            {% if user.perfil.is_admin %}
-                <div class="card shadow-sm mb-3">
-                    <div class="card-header bg-light">
-                        <strong>🔎 Filtros</strong>
+            {# =============================== #}
+            {# CONTEXTO DE BASE ÚNICA          #}
+            {# =============================== #}
+            {% if not exibir_filtros and bases %}
+                {% for base in bases %}
+                    <div class="base-context">
+                        <i class="bi bi-geo-alt-fill me-1"></i>
+
+                        <strong>{% trans "Base vinculada:" %}</strong>
+                        {{ base.nome }}
+
+                        {% if base.empresa %}
+                            <span class="text-muted">
+                                — {{ base.empresa.nome }}
+                            </span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {# =============================== #}
+            {# FILTROS                         #}
+            {# =============================== #}
+            {% if exibir_filtros %}
+                <div class="filter-card mb-4">
+                    <div class="p-3 border-bottom">
+                        <span class="filter-title">
+                            <i class="bi bi-funnel me-1"></i>
+                            {% trans "Filtros" %}
+                        </span>
+
+                        {% if not user.perfil.pode_ver_empresas_globais %}
+                            <small class="text-muted ms-2">
+                                {% trans "Exibindo apenas as bases vinculadas ao seu usuário." %}
+                            </small>
+                        {% endif %}
                     </div>
 
-                    <div class="card-body">
-                        <form method="get">
+                    <div class="p-3">
+                        <form method="get" id="formFiltrosEstoque">
+
                             <div class="row g-3 align-items-end">
 
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Empresa</label>
-                                    <select name="empresa" id="filtroEmpresa" class="form-select">
-                                        <option value="">Todas as empresas</option>
+                                <div class="col-lg-4 col-md-6">
+                                    <label for="filtroEmpresa"
+                                           class="form-label fw-bold">
+                                        {% trans "Empresa" %}
+                                    </label>
+
+                                    <select name="empresa"
+                                            id="filtroEmpresa"
+                                            class="form-select">
+
+                                        <option value="">
+                                            {% trans "Todas as empresas permitidas" %}
+                                        </option>
+
                                         {% for empresa in empresas %}
                                             <option value="{{ empresa.id }}"
-                                                {% if filtro_empresa_id|stringformat:"s" == empresa.id|stringformat:"s" %}selected{% endif %}>
+                                                {% if filtro_empresa_id|stringformat:"s" == empresa.id|stringformat:"s" %}
+                                                    selected
+                                                {% endif %}>
                                                 {{ empresa.nome }}
                                             </option>
                                         {% endfor %}
+
                                     </select>
                                 </div>
 
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Base</label>
-                                    <select name="base" id="filtroBase" class="form-select">
-                                        <option value="">Todas as bases</option>
+                                <div class="col-lg-4 col-md-6">
+                                    <label for="filtroBase"
+                                           class="form-label fw-bold">
+                                        {% trans "Base" %}
+                                    </label>
+
+                                    <select name="base"
+                                            id="filtroBase"
+                                            class="form-select">
+
+                                        <option value="">
+                                            {% trans "Selecione uma base" %}
+                                        </option>
+
                                         {% for base in bases %}
                                             <option value="{{ base.id }}"
-                                                    data-empresa-id="{{ base.empresa.id }}"
-                                                {% if filtro_base_id|stringformat:"s" == base.id|stringformat:"s" %}selected{% endif %}>
+                                                    data-empresa-id="{{ base.empresa_id }}"
+                                                {% if filtro_base_id|stringformat:"s" == base.id|stringformat:"s" %}
+                                                    selected
+                                                {% endif %}>
                                                 {{ base.nome }}
                                             </option>
                                         {% endfor %}
+
                                     </select>
                                 </div>
 
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        Pesquisar
+                                <div class="col-lg-2 col-md-6">
+                                    <button type="submit"
+                                            class="btn btn-primary w-100">
+                                        <i class="bi bi-search me-1"></i>
+                                        {% trans "Pesquisar" %}
                                     </button>
                                 </div>
 
-                                <div class="col-md-2">
+                                <div class="col-lg-2 col-md-6">
                                     <a href="{% url 'insumos:estoque_insumos' %}"
                                        class="btn btn-outline-secondary w-100">
-                                        Limpar
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        {% trans "Limpar" %}
                                     </a>
                                 </div>
 
                             </div>
+
                         </form>
                     </div>
                 </div>
             {% endif %}
 
-            <ul class="nav nav-tabs mb-3" id="abasCategorias" role="tablist">
-                {% for categoria, itens in estoque_por_categoria.items %}
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link {% if forloop.first %}active{% endif %}"
-                                id="tab-{{ forloop.counter }}"
-                                data-bs-toggle="tab"
-                                data-bs-target="#categoria-{{ forloop.counter }}"
-                                type="button"
-                                role="tab"
-                                aria-controls="categoria-{{ forloop.counter }}"
-                                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
-                            {{ categoria }}
-                            <span class="badge bg-secondary ms-1">
-                                {{ itens|length }}
-                            </span>
-                        </button>
-                    </li>
-                {% endfor %}
-            </ul>
+            {# =============================== #}
+            {# INDICADORES                     #}
+            {# =============================== #}
+            <div class="row g-3 mb-4">
 
-            <div class="tab-content">
-
-                {% for categoria, itens in estoque_por_categoria.items %}
-
-                    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
-                         id="categoria-{{ forloop.counter }}"
-                         role="tabpanel"
-                         aria-labelledby="tab-{{ forloop.counter }}">
-
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover align-middle">
-
-                                <thead>
-                                    <tr>
-                                        <th>Base</th>
-                                        <th>Categoria</th>
-                                        <th>Insumo</th>
-                                        <th>Unidade</th>
-                                        <th>Saldo</th>
-                                        <th>Status</th>
-                                        {% if user.perfil.is_admin or user.perfil.is_gestor %}
-                                            <th>Ações</th>
-                                        {% endif %}
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-
-                                    {% for item in itens %}
-
-                                        <tr>
-                                            <td>{{ item.base }}</td>
-                                            <td>{{ item.insumo.categoria.nome }}</td>
-                                            <td>{{ item.insumo.descricao }}</td>
-                                            <td>{{ item.insumo.unidade_medida }}</td>
-                                            <td>{{ item.saldo }}</td>
-                                            <td>
-                                                {% if item.critico %}
-                                                    <span class="badge bg-danger">CRÍTICO</span>
-                                                {% else %}
-                                                    <span class="badge bg-success">OK</span>
-                                                {% endif %}
-                                            </td>
-
-                                            {% if user.perfil.is_admin or user.perfil.is_gestor %}
-                                                <td>
-                                                    <button type="button"
-                                                            class="btn btn-sm btn-outline-primary"
-                                                            data-ajuste-toggle
-                                                            data-target="ajuste-{{ item.base.id }}-{{ item.insumo.id }}">
-                                                        Ajustar
-                                                    </button>
-                                                </td>
-                                            {% endif %}
-                                        </tr>
-
-                                        {% if user.perfil.is_admin or user.perfil.is_gestor %}
-                                            <tr id="ajuste-{{ item.base.id }}-{{ item.insumo.id }}"
-                                                data-ajuste-row
-                                                style="display:none;">
-                                                <td colspan="7">
-                                                    <form method="post"
-                                                          action="{% url 'insumos:ajustar_estoque_insumo' %}"
-                                                          class="row g-2 align-items-end">
-                                                        {% csrf_token %}
-
-                                                        <input type="hidden" name="base_id" value="{{ item.base.id }}">
-                                                        <input type="hidden" name="insumo_id" value="{{ item.insumo.id }}">
-
-                                                        <div class="col-md-3">
-                                                            <label class="form-label small fw-bold">Item</label>
-                                                            <input type="text"
-                                                                   class="form-control form-control-sm"
-                                                                   value="{{ item.insumo.descricao }}"
-                                                                   readonly>
-                                                        </div>
-
-                                                        <div class="col-md-2">
-                                                            <label class="form-label small fw-bold">Saldo atual</label>
-                                                            <input type="text"
-                                                                   class="form-control form-control-sm"
-                                                                   value="{{ item.saldo }}"
-                                                                   readonly>
-                                                        </div>
-
-                                                        <div class="col-md-2">
-                                                            <label class="form-label small fw-bold">Saldo real</label>
-                                                            <input type="number"
-                                                                   name="saldo_real"
-                                                                   class="form-control form-control-sm"
-                                                                   value="{{ item.saldo }}"
-                                                                   step="0.01"
-                                                                   min="0"
-                                                                   required>
-                                                        </div>
-
-                                                        <div class="col-md-3">
-                                                            <label class="form-label small fw-bold">Motivo</label>
-                                                            <input type="text"
-                                                                   name="motivo"
-                                                                   class="form-control form-control-sm"
-                                                                   required>
-                                                        </div>
-
-                                                        <div class="col-md-2">
-                                                            <label class="form-label small fw-bold">Senha</label>
-                                                            <input type="password"
-                                                                   name="senha"
-                                                                   class="form-control form-control-sm"
-                                                                   autocomplete="current-password"
-                                                                   required>
-                                                        </div>
-
-                                                        <div class="col-12 d-flex justify-content-end gap-2">
-                                                            <button type="button"
-                                                                    class="btn btn-sm btn-outline-secondary"
-                                                                    data-ajuste-cancel>
-                                                                Cancelar
-                                                            </button>
-
-                                                            <button type="submit"
-                                                                    class="btn btn-sm btn-primary">
-                                                                Salvar ajuste
-                                                            </button>
-                                                        </div>
-
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                        {% endif %}
-
-                                    {% empty %}
-
-                                        <tr>
-                                            <td colspan="{% if user.perfil.is_admin or user.perfil.is_gestor %}7{% else %}6{% endif %}"
-                                                class="text-center text-muted">
-                                                Nenhum item encontrado nesta categoria.
-                                            </td>
-                                        </tr>
-
-                                    {% endfor %}
-
-                                </tbody>
-
-                            </table>
+                <div class="col-xl-3 col-md-6">
+                    <button type="button" class="kpi-card kpi-card-button" data-estoque-filter="todos" aria-pressed="true">
+                        <div class="kpi-label">
+                            {% trans "Itens com saldo" %}
                         </div>
+                        <div class="kpi-value">
+                            {{ total_itens }}
+                        </div>
+                    </button>
+                </div>
 
+                <div class="col-xl-3 col-md-6">
+                    <button type="button" class="kpi-card kpi-card-button" data-estoque-filter="criticos" aria-pressed="false">
+                        <div class="kpi-label">
+                            {% trans "Itens críticos" %}
+                        </div>
+                        <div class="kpi-value text-danger">
+                            {{ criticos }}
+                        </div>
+                    </button>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <button type="button" class="kpi-card kpi-card-button" data-estoque-action="base">
+                        <div class="kpi-label">
+                            {% trans "Bases com saldo" %}
+                        </div>
+                        <div class="kpi-value">
+                            {{ bases_com_saldo }}
+                        </div>
+                    </button>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <button type="button" class="kpi-card kpi-card-button" data-estoque-action="categorias">
+                        <div class="kpi-label">
+                            {% trans "Categorias ativas" %}
+                        </div>
+                        <div class="kpi-value">
+                            {{ categorias_com_saldo }}
+                        </div>
                     </div>
-
-                {% empty %}
-
-                    <div class="alert alert-info mb-0">
-                        Nenhum item encontrado.
-                    </div>
-
-                {% endfor %}
+                </div>
 
             </div>
+
+            {# =============================== #}
+            {# ABAS DAS CATEGORIAS             #}
+            {# =============================== #}
+            {% if estoque_por_categoria %}
+
+                <ul class="nav nav-tabs mb-3"
+                    id="abasCategorias"
+                    role="tablist">
+
+                    {% for categoria, itens in estoque_por_categoria.items %}
+                        <li class="nav-item" role="presentation">
+
+                            <button class="nav-link {% if forloop.first %}active{% endif %}"
+                                    id="tab-{{ forloop.counter }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#categoria-{{ forloop.counter }}"
+                                    type="button"
+                                    role="tab"
+                                    aria-controls="categoria-{{ forloop.counter }}"
+                                    aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+
+                                {{ categoria }}
+
+                                <span class="badge bg-secondary ms-1">
+                                    {{ itens|length }}
+                                </span>
+
+                            </button>
+
+                        </li>
+                    {% endfor %}
+
+                </ul>
+
+                <div class="tab-content">
+
+                    {% for categoria, itens in estoque_por_categoria.items %}
+
+                        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+                             id="categoria-{{ forloop.counter }}"
+                             role="tabpanel"
+                             aria-labelledby="tab-{{ forloop.counter }}">
+
+                            <div class="table-responsive">
+
+                                <table class="table table-striped table-hover estoque-table">
+
+                                    <thead>
+                                        <tr>
+                                            {% if exibir_filtros %}
+                                                <th>{% trans "Empresa" %}</th>
+                                            {% endif %}
+
+                                            <th>{% trans "Base" %}</th>
+                                            <th>{% trans "Insumo" %}</th>
+                                            <th>{% trans "Unidade" %}</th>
+                                            <th>{% trans "Saldo" %}</th>
+                                            <th>{% trans "Mínimo" %}</th>
+                                            <th>{% trans "Status" %}</th>
+
+                                            {% if user.perfil.is_admin or user.perfil.is_gestor %}
+                                                <th class="text-end">
+                                                    {% trans "Ações" %}
+                                                </th>
+                                            {% endif %}
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+
+                                        {% for item in itens %}
+
+                                            <tr data-estoque-item data-critico="{% if item.critico %}true{% else %}false{% endif %}">
+                                                {% if exibir_filtros %}
+                                                    <td>
+                                                        {{ item.base.empresa.nome }}
+                                                    </td>
+                                                {% endif %}
+
+                                                <td>
+                                                    {{ item.base.nome }}
+                                                </td>
+
+                                                <td>
+                                                    <strong>
+                                                        {{ item.insumo.descricao }}
+                                                    </strong>
+                                                </td>
+
+                                                <td>
+                                                    {{ item.insumo.unidade_medida }}
+                                                </td>
+
+                                                <td>
+                                                    <span class="saldo-value">
+                                                        {{ item.saldo|floatformat:0 }}
+                                                    </span>
+                                                </td>
+
+                                                <td>
+                                                    {{ item.minimo|floatformat:2 }}
+                                                </td>
+
+                                                <td>
+                                                    {% if item.critico %}
+                                                        <span class="badge bg-danger">
+                                                            {% trans "CRÍTICO" %}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-success">
+                                                            {% trans "OK" %}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+
+                                                {% if user.perfil.is_admin or user.perfil.is_gestor %}
+                                                    <td class="text-end">
+
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-primary"
+                                                                data-ajuste-toggle
+                                                                data-base-id="{{ item.base.id }}"
+                                                                data-insumo-id="{{ item.insumo.id }}"
+                                                                data-insumo-nome="{{ item.insumo.descricao }}"
+                                                                data-base-nome="{{ item.base.nome }}"
+                                                                data-saldo="{{ item.saldo|floatformat:'2u' }}">
+
+                                                            <i class="bi bi-pencil-square me-1"></i>
+                                                            {% trans "Ajustar" %}
+
+                                                        </button>
+
+                                                    </td>
+                                                {% endif %}
+                                            </tr>
+
+                                        {% empty %}
+
+                                            <tr>
+                                                <td colspan="{% if exibir_filtros %}8{% else %}7{% endif %}"
+                                                    class="text-center text-muted py-4">
+                                                    {% trans "Nenhum item encontrado nesta categoria." %}
+                                                </td>
+                                            </tr>
+
+                                        {% endfor %}
+
+                                    </tbody>
+
+                                </table>
+
+                            </div>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% elif aguardando_filtro_base %}
+
+                <div class="alert alert-primary mb-0">
+                    <i class="bi bi-geo-alt me-1"></i>
+                    {% trans "Selecione uma base para carregar os saldos de insumos." %}
+                </div>
+
+            {% else %}
+
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    {% trans "Nenhum insumo com saldo foi encontrado para as bases selecionadas." %}
+                </div>
+
+            {% endif %}
 
         </div>
 
@@ -260,13 +521,51 @@
 
 </div>
 
+{% if user.perfil.is_admin or user.perfil.is_gestor %}
+<section class="container-fluid mt-3" id="painelAjusteEstoque" hidden>
+    <div class="card border-primary shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">{% trans "Ajustar estoque" %}</h2>
+            <button type="button" class="btn-close" data-ajuste-cancel aria-label="{% trans 'Fechar' %}"></button>
+        </div>
+        <form method="post" action="{% url 'insumos:ajustar_estoque_insumo' %}" id="formAjusteEstoque" class="card-body">
+            {% csrf_token %}
+            <input type="hidden" name="base_id" id="ajusteBaseId">
+            <input type="hidden" name="insumo_id" id="ajusteInsumoId">
+            <div class="row g-3">
+                <div class="col-md-7"><label class="form-label" for="ajusteItem">{% trans "Item" %}</label><input id="ajusteItem" class="form-control" type="text" readonly></div>
+                <div class="col-md-5"><label class="form-label" for="ajusteBase">{% trans "Base" %}</label><input id="ajusteBase" class="form-control" type="text" readonly></div>
+                <div class="col-md-4"><label class="form-label" for="ajusteSaldoAtual">{% trans "Saldo atual" %}</label><input id="ajusteSaldoAtual" class="form-control" type="text" readonly></div>
+                <div class="col-md-4"><label class="form-label" for="ajusteSaldoReal">{% trans "Saldo real" %}</label><input id="ajusteSaldoReal" name="saldo_real" class="form-control" type="number" step="0.01" min="0" required></div>
+                <div class="col-md-4"><label class="form-label" for="ajusteSenha">{% trans "Senha" %}</label><input id="ajusteSenha" name="senha" class="form-control" type="password" autocomplete="current-password" required></div>
+                <div class="col-12"><label class="form-label" for="ajusteMotivo">{% trans "Motivo" %}</label><input id="ajusteMotivo" name="motivo" class="form-control" type="text" maxlength="255" required></div>
+                <div class="col-12 d-flex justify-content-end gap-2"><button type="button" class="btn btn-outline-secondary" data-ajuste-cancel>{% trans "Cancelar" %}</button><button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>{% trans "Salvar ajuste" %}</button></div>
+            </div>
+        </form>
+    </div>
+</section>
+{% endif %}
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+        backdrop.remove();
+    });
+
     const empresaSelect = document.getElementById('filtroEmpresa');
     const baseSelect = document.getElementById('filtroBase');
 
+    /*
+     * Mantém todas as bases permitidas no HTML,
+     * mas exibe apenas as que pertencem à empresa escolhida.
+     */
     function filtrarBasesPorEmpresa() {
-        if (!empresaSelect || !baseSelect) return;
+        if (!empresaSelect || !baseSelect) {
+            return;
+        }
 
         const empresaId = empresaSelect.value;
         const baseSelecionada = baseSelect.value;
@@ -274,50 +573,95 @@ document.addEventListener('DOMContentLoaded', function () {
         Array.from(baseSelect.options).forEach(function (option) {
             if (!option.value) {
                 option.hidden = false;
+                option.disabled = false;
                 return;
             }
 
-            const pertenceEmpresa = option.dataset.empresaId === empresaId;
-            option.hidden = empresaId && !pertenceEmpresa;
+            const pertenceEmpresa =
+                option.dataset.empresaId === empresaId;
+
+            const deveExibir =
+                !empresaId || pertenceEmpresa;
+
+            option.hidden = !deveExibir;
+            option.disabled = !deveExibir;
         });
 
-        const optionAtual = baseSelect.querySelector(`option[value="${baseSelecionada}"]`);
+        const optionSelecionada = Array
+            .from(baseSelect.options)
+            .find(function (option) {
+                return option.value === baseSelecionada;
+            });
 
-        if (optionAtual && optionAtual.hidden) {
+        if (
+            optionSelecionada &&
+            optionSelecionada.disabled
+        ) {
             baseSelect.value = '';
         }
     }
 
     if (empresaSelect && baseSelect) {
-        empresaSelect.addEventListener('change', filtrarBasesPorEmpresa);
+        empresaSelect.addEventListener(
+            'change',
+            filtrarBasesPorEmpresa
+        );
+
         filtrarBasesPorEmpresa();
     }
 
+    const painelAjuste = document.getElementById('painelAjusteEstoque');
     document.querySelectorAll('[data-ajuste-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
-            const target = document.getElementById(this.dataset.target);
-
-            if (!target) return;
-
-            document.querySelectorAll('[data-ajuste-row]').forEach(function (row) {
-                if (row !== target) {
-                    row.style.display = 'none';
-                }
-            });
-
-            target.style.display = target.style.display === 'none' ? '' : 'none';
+            document.getElementById('ajusteBaseId').value = button.dataset.baseId;
+            document.getElementById('ajusteInsumoId').value = button.dataset.insumoId;
+            document.getElementById('ajusteItem').value = button.dataset.insumoNome;
+            document.getElementById('ajusteBase').value = button.dataset.baseNome;
+            document.getElementById('ajusteSaldoAtual').value = button.dataset.saldo;
+            document.getElementById('ajusteSaldoReal').value = button.dataset.saldo;
+            document.getElementById('ajusteMotivo').value = '';
+            document.getElementById('ajusteSenha').value = '';
+            painelAjuste.hidden = false;
+            painelAjuste.scrollIntoView({behavior: 'smooth', block: 'center'});
         });
     });
-
     document.querySelectorAll('[data-ajuste-cancel]').forEach(function (button) {
         button.addEventListener('click', function () {
-            const row = this.closest('[data-ajuste-row]');
-
-            if (row) {
-                row.style.display = 'none';
-            }
+            if (painelAjuste) painelAjuste.hidden = true;
         });
     });
+
+    const botoesFiltro = document.querySelectorAll('[data-estoque-filter]');
+    botoesFiltro.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const somenteCriticos = button.dataset.estoqueFilter === 'criticos';
+            document.querySelectorAll('[data-estoque-item]').forEach(function (row) {
+                row.hidden = somenteCriticos && row.dataset.critico !== 'true';
+            });
+            botoesFiltro.forEach(function (item) {
+                item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
+            });
+        });
+    });
+
+    const cardBase = document.querySelector('[data-estoque-action="base"]');
+    if (cardBase) {
+        cardBase.addEventListener('click', function () {
+            const alvo = baseSelect || document.getElementById('formFiltrosEstoque');
+            if (alvo) {
+                alvo.scrollIntoView({behavior: 'smooth', block: 'center'});
+                if (baseSelect) baseSelect.focus({preventScroll: true});
+            }
+        });
+    }
+
+    const cardCategorias = document.querySelector('[data-estoque-action="categorias"]');
+    if (cardCategorias) {
+        cardCategorias.addEventListener('click', function () {
+            const abas = document.getElementById('abasCategorias');
+            if (abas) abas.scrollIntoView({behavior: 'smooth', block: 'start'});
+        });
+    }
 });
 </script>
 

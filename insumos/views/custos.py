@@ -77,6 +77,7 @@ def dashboard_custos(request):
     por_cliente = CustoInsumoService.por_cliente(qs)
     por_tipo = CustoInsumoService.por_tipo(qs)
     mensal = CustoInsumoService.por_mes(qs)
+    top_insumos = CustoInsumoService.top_insumos(qs)
 
     chart_inventarios = {
         'labels': [
@@ -93,6 +94,14 @@ def dashboard_custos(request):
         'labels': [item['mes'].strftime('%m/%Y') for item in mensal],
         'values': [float(item['total']) for item in mensal],
     }
+    chart_tipos = {
+        'labels': [item['inventario__tipo'] or 'Sem tipo' for item in por_tipo],
+        'values': [float(item['total']) for item in por_tipo],
+    }
+    chart_insumos = {
+        'labels': [item['insumo__descricao'] for item in top_insumos],
+        'values': [float(item['total']) for item in top_insumos],
+    }
     total_insumos = Insumo.objects.filter(ativo=True).count()
     insumos_com_preco = Insumo.objects.filter(ativo=True, valor_medio__gt=0).count()
     cobertura_precos = round(insumos_com_preco * 100 / total_insumos, 1) if total_insumos else 100
@@ -101,10 +110,13 @@ def dashboard_custos(request):
         'inicio': inicio,
         'fim': fim,
         'resumo': resumo,
-        'valor_estoque': CustoInsumoService.valor_estoque_atual(request.user),
+        'valor_estoque': CustoInsumoService.valor_estoque_atual(
+            request.user,
+            bases=[base] if base else None,
+        ),
         'por_inventario': por_inventario,
         'por_tipo': por_tipo,
-        'top_insumos': CustoInsumoService.top_insumos(qs),
+        'top_insumos': top_insumos,
         'clientes': Cliente.objects.order_by('sigla'),
         'bases': Base.objects.exclude(nome__iexact='TODAS').order_by('nome'),
         'lojas': Inventario.objects.order_by('loja').values_list('loja', flat=True).distinct(),
@@ -115,6 +127,8 @@ def dashboard_custos(request):
         'chart_inventarios': chart_inventarios,
         'chart_clientes': chart_clientes,
         'chart_mensal': chart_mensal,
+        'chart_tipos': chart_tipos,
+        'chart_insumos': chart_insumos,
         'total_insumos': total_insumos,
         'insumos_com_preco': insumos_com_preco,
         'cobertura_precos': cobertura_precos,

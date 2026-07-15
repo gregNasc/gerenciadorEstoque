@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django.db import models
 from estoque.models import Base
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Q
 from django.utils import timezone
 
@@ -36,12 +39,30 @@ class Insumo(models.Model):
         on_delete=models.SET_NULL,
         related_name='insumos_como_referencia',
     )
-    estoque_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    estoque_minimo = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=Decimal('2.00'),
+        validators=[
+            MinValueValidator(Decimal('0.00')),
+            MaxValueValidator(Decimal('10.00')),
+        ],
+    )
     estoque_maximo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(
+                    estoque_minimo__gte=Decimal('0.00'),
+                    estoque_minimo__lte=Decimal('10.00'),
+                ),
+                name='insumo_estoque_minimo_entre_0_e_10',
+            ),
+        ]
 
     def __str__(self):
         return self.descricao
-
 
 class FornecedorInsumo(models.Model):
     nome = models.CharField(max_length=160, unique=True)
@@ -70,7 +91,6 @@ class FornecedorInsumo(models.Model):
             f'{numeros[:2]}.{numeros[2:5]}.{numeros[5:8]}/'
             f'{numeros[8:12]}-{numeros[12:]}'
         )
-
 
 class PrecoFornecedorInsumo(models.Model):
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='precos_fornecedores')
@@ -110,7 +130,6 @@ class PrecoFornecedorInsumo(models.Model):
     def __str__(self):
         return f'{self.insumo} - {self.fornecedor}: {self.valor_unitario}'
 
-
 class PesquisaPrecoOnline(models.Model):
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='pesquisas_preco')
     termo = models.CharField(max_length=255)
@@ -120,7 +139,6 @@ class PesquisaPrecoOnline(models.Model):
 
     class Meta:
         ordering = ['-pesquisado_em']
-
 
 class OfertaPrecoOnline(models.Model):
     pesquisa = models.ForeignKey(
@@ -253,6 +271,12 @@ class Inventario(models.Model):
     base = models.ForeignKey(Base, on_delete=models.PROTECT)
     data_inicio = models.DateField(db_index=True)
     data_fim = models.DateField(null=True, blank=True)
+    inicio_previsto = models.DateTimeField(null=True, blank=True, db_index=True)
+    fim_previsto = models.DateTimeField(null=True, blank=True)
+    inicio_real = models.DateTimeField(null=True, blank=True, db_index=True)
+    fim_real = models.DateTimeField(null=True, blank=True, db_index=True)
+    inicio_contagem = models.DateTimeField(null=True, blank=True)
+    fim_contagem = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default='PLANEJADO')
     criado_por = models.ForeignKey(User, on_delete=models.PROTECT)
     endereco = models.CharField(max_length=255, blank=True, null=True)
@@ -263,6 +287,13 @@ class Inventario(models.Model):
     dados_brutos = models.JSONField(default=dict, blank=True, null=True)
     tipo = models.CharField(max_length=20, blank=True, null=True)
     pessoas = models.IntegerField(blank=True, null=True)
+    total_pecas = models.PositiveBigIntegerField(blank=True, null=True)
+    custo_hora_pessoa = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
     observacao = models.TextField(blank=True, null=True)
     lider = models.CharField(max_length=100, blank=True, null=True)
     ponto_encontro = models.CharField(max_length=200, blank=True, null=True)
@@ -292,6 +323,105 @@ class Inventario(models.Model):
         return (
             f'{self.cliente.sigla} '
             f'- Loja {self.loja}'
+        )
+
+    def clean(self):
+        super().clean()
+        erros = {}
+        pares = (
+            ('inicio_previsto', 'fim_previsto', 'O fim previsto não pode ser anterior ao início previsto.'),
+            ('inicio_real', 'fim_real', 'O fim real não pode ser anterior ao início real.'),
+            ('inicio_contagem', 'fim_contagem', 'O fim da contagem não pode ser anterior ao início da contagem.'),
+        )
+        for campo_inicio, campo_fim, mensagem in pares:
+            inicio = getattr(self, campo_inicio)
+            fim = getattr(self, campo_fim)
+            if inicio and fim and fim < inicio:
+                erros[campo_fim] = mensagem
+
+        if self.inicio_real and self.inicio_contagem and self.inicio_contagem < self.inicio_real:
+            erros['inicio_contagem'] = 'A contagem não pode começar antes do início real do inventário.'
+        if self.fim_real and self.fim_contagem and self.fim_contagem > self.fim_real:
+            erros['fim_contagem'] = 'A contagem não pode terminar depois do fim real do inventário.'
+        if self.pessoas is not None and self.pessoas < 0:
+            erros['pessoas'] = 'A quantidade de pessoas não pode ser negativa.'
+        if self.custo_hora_pessoa is not None and self.custo_hora_pessoa < 0:
+            erros['custo_hora_pessoa'] = 'O custo por pessoa/hora não pode ser negativo.'
+        if erros:
+            raise ValidationError(erros)
+
+    @staticmethod
+    def _duracao_horas(inicio, fim):
+        if not inicio or not fim or fim < inicio:
+            return None
+        return (fim - inicio).total_seconds() / 3600
+
+    @property
+    def duracao_prevista_horas(self):
+        return self._duracao_horas(self.inicio_previsto, self.fim_previsto)
+
+    @property
+    def duracao_total_horas(self):
+        return self._duracao_horas(self.inicio_real, self.fim_real)
+
+    @property
+    def duracao_contagem_horas(self):
+        return self._duracao_horas(self.inicio_contagem, self.fim_contagem)
+
+    @property
+    def tempo_improdutivo_horas(self):
+        total = self.duracao_total_horas
+        contagem = self.duracao_contagem_horas
+        if total is None or contagem is None:
+            return None
+        return max(total - contagem, 0)
+
+    @property
+    def atraso_inicio_minutos(self):
+        if not self.inicio_previsto or not self.inicio_real:
+            return None
+        return (self.inicio_real - self.inicio_previsto).total_seconds() / 60
+
+    @property
+    def desvio_fim_minutos(self):
+        if not self.fim_previsto or not self.fim_real:
+            return None
+        return (self.fim_real - self.fim_previsto).total_seconds() / 60
+
+    @property
+    def pecas_por_pessoa(self):
+        if self.total_pecas is None or not self.pessoas:
+            return None
+        return self.total_pecas / self.pessoas
+
+    @property
+    def produtividade_pessoa_hora(self):
+        duracao = self.duracao_total_horas
+        if self.total_pecas is None or not self.pessoas or not duracao:
+            return None
+        return self.total_pecas / self.pessoas / duracao
+
+    @property
+    def produtividade_contagem_pessoa_hora(self):
+        duracao = self.duracao_contagem_horas
+        if self.total_pecas is None or not self.pessoas or not duracao:
+            return None
+        return self.total_pecas / self.pessoas / duracao
+
+    @property
+    def custo_adicional_atraso(self):
+        if (
+            self.desvio_fim_minutos is None or
+            self.desvio_fim_minutos <= 0 or
+            not self.pessoas or
+            self.custo_hora_pessoa is None
+        ):
+            return None
+        return (
+            self.custo_hora_pessoa *
+            Decimal(self.pessoas) *
+            Decimal(str(self.desvio_fim_minutos)) /
+            Decimal(60)
         )
 
     class Meta:

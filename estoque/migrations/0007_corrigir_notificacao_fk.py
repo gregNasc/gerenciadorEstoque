@@ -1,5 +1,4 @@
-from django.db import migrations, models
-import django.db.models.deletion
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
@@ -8,28 +7,6 @@ class Migration(migrations.Migration):
         ('estoque', '0006_alter_transferencia_status'),
     ]
 
-    operations = [
-
-        migrations.AddField(
-            model_name='notificacao',
-            name='transferencia',
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.CASCADE,
-                to='estoque.transferencia',
-            ),
-        ),
-
-        migrations.AddField(
-            model_name='notificacao',
-            name='solicitacao',
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                to='estoque.solicitacao',
-            ),
-        ),
-
-    ]
+    # As duas FKs já fazem parte de 0001_initial. Mantida como marco da
+    # sequência, sem repetir alterações de schema em bancos novos.
+    operations = []
