@@ -154,8 +154,11 @@ class ToryTemposOperacionaisTests(TestCase):
         labels = [acao['label'] for acao in resultado['acoes']]
         self.assertIn('SÃO PAULO', labels)
         self.assertIn('SP INT BAURU', labels)
+        self.assertIn('Todo o estado de SP', labels)
         self.assertNotIn('RIO DE JANEIRO', labels)
         self.assertNotIn('Resumo de inventários', resultado['resposta'])
+        self.assertIn('OPÇÃO | ESCOPO CONSULTADO | COMO PEDIR', resultado['resposta'])
+        self.assertNotIn('- SP INT BAURU', resultado['resposta'])
 
         acao_sao_paulo = next(
             acao for acao in resultado['acoes']
@@ -170,6 +173,106 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertEqual(selecionado['contexto']['base'], 'SÃO PAULO')
         self.assertEqual(selecionado['contexto']['data'], '2026-07-15')
         self.assertIn('OXX loja 17 | T | 15', selecionado['resposta'])
+
+    def test_quantidade_de_coletores_usa_tabelas_de_status_e_modelo(self):
+        produto_a = Produto.objects.create(
+            codigo='COL-TORY-A',
+            descricao='COLETOR MODELO A',
+            fabricante='Fabricante A',
+            modelo='A',
+            categoria='Coletores',
+        )
+        produto_b = Produto.objects.create(
+            codigo='COL-TORY-B',
+            descricao='COLETOR MODELO B',
+            fabricante='Fabricante B',
+            modelo='B',
+            categoria='Coletores',
+        )
+        for indice, (produto, status) in enumerate((
+            (produto_a, 'ATIVO'),
+            (produto_a, 'ATIVO'),
+            (produto_b, 'INATIVO'),
+        ), start=1):
+            Equipamento.objects.create(
+                produto=produto,
+                numero_serie=f'COL-SERIE-{indice}',
+                patrimonio=f'COL-PAT-{indice}',
+                regional=self.base,
+                codigo=f'COL-EQP-{indice}',
+                status=status,
+            )
+
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quantos coletores existem na base SP TORY?',
+        )
+
+        self.assertEqual(resultado['categoria'], 'estoque')
+        self.assertIn(
+            'TOTAL VISÍVEL | ATIVOS | EM USO | SICK | MANUTENÇÃO | INATIVOS',
+            resultado['resposta'],
+        )
+        self.assertIn('3 | 2 | 0 | 0 | 0 | 1', resultado['resposta'])
+        self.assertIn('MODELO/PRODUTO | QUANTIDADE | %', resultado['resposta'])
+        self.assertIn('COLETOR MODELO A | 2 | 66,67%', resultado['resposta'])
+        self.assertIn('COLETOR MODELO B | 1 | 33,33%', resultado['resposta'])
+        self.assertNotIn('Modelos/produtos:', resultado['resposta'])
+
+        resumo_geral = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quantos equipamentos existem na base SP TORY?',
+        )
+        self.assertIn('ESCOPO | TOTAL VISÍVEL', resumo_geral['resposta'])
+        self.assertIn('STATUS | QUANTIDADE | %', resumo_geral['resposta'])
+        self.assertIn('ATIVO | 2 | 66,67%', resumo_geral['resposta'])
+        self.assertIn('INATIVO | 1 | 33,33%', resumo_geral['resposta'])
+        self.assertIn('CATEGORIA | QUANTIDADE | %', resumo_geral['resposta'])
+        self.assertIn('Coletores | 3 | 100,00%', resumo_geral['resposta'])
+        self.assertNotIn('Por status:', resumo_geral['resposta'])
+        self.assertNotIn('Por categoria:', resumo_geral['resposta'])
+
+    def test_capacidade_da_base_usa_tabela_de_demanda_e_resultado(self):
+        self.inventario.data_inicio = timezone.localdate()
+        self.inventario.data_fim = timezone.localdate()
+        self.inventario.pessoas = 4
+        self.inventario.save(update_fields=('data_inicio', 'data_fim', 'pessoas'))
+        produto = Produto.objects.create(
+            codigo='COL-CAP-TORY',
+            descricao='COLETOR CAPACIDADE TORY',
+            fabricante='Fabricante',
+            modelo='CAP',
+            categoria='Coletores',
+        )
+        for indice in range(3):
+            Equipamento.objects.create(
+                produto=produto,
+                numero_serie=f'CAP-SERIE-{indice}',
+                patrimonio=f'CAP-PAT-{indice}',
+                regional=self.base,
+                codigo=f'CAP-EQP-{indice}',
+                status='ATIVO',
+            )
+
+        primeira = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quantos coletores existem na base SP TORY?',
+        )
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'A base SP TORY atende hoje?',
+            contexto=primeira['contexto'],
+        )
+
+        self.assertEqual(resultado['categoria'], 'capacidade')
+        self.assertIn(
+            'INVENTÁRIOS | PESSOAS PREVISTAS | COLETORES CADASTRADOS | COLETORES ATIVOS',
+            resultado['resposta'],
+        )
+        self.assertIn('1 | 4 | 3 | 3', resultado['resposta'])
+        self.assertIn('SITUAÇÃO | DIFERENÇA', resultado['resposta'])
+        self.assertIn('NÃO ATENDE | Faltam 1 coletor(es)', resultado['resposta'])
+        self.assertNotIn('- Pessoas previstas:', resultado['resposta'])
 
     def test_uf_sp_explicita_consulta_estado_sem_desambiguar(self):
         Base.objects.create(nome='SÃO PAULO', empresa=self.empresa)
@@ -302,10 +405,11 @@ class ToryTemposOperacionaisTests(TestCase):
     def test_consultas_cotidianas_reconhecem_cliente_e_ranking_de_custos(self):
         cliente_asi = Cliente.objects.create(sigla='ASI', nome='Assaí Atacadista')
         Cliente.objects.create(sigla='POR', nome='Cliente com sigla ambígua')
+        base_asi = Base.objects.create(nome='SÃO PAULO', empresa=self.empresa)
         inventario_asi = Inventario.objects.create(
             cliente=cliente_asi,
             loja='17',
-            base=self.base,
+            base=base_asi,
             data_inicio=date(2026, 7, 14),
             criado_por=self.usuario,
             pessoas=10,
@@ -364,12 +468,34 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertEqual(por_cliente['contexto']['intencao'], 'custos_insumos')
         self.assertEqual(por_cliente['contexto']['cliente'], '')
         self.assertIn(
-            'CLIENTE | INVENTÁRIOS | CUSTO TOTAL | PARTICIPAÇÃO',
+            'CLIENTE | INVENTÁRIOS | CUSTO TOTAL | %',
             por_cliente['resposta'],
         )
         self.assertIn('ASI | 1 | R$ 50,00 | 71,43%', por_cliente['resposta'])
         self.assertIn('OXX | 1 | R$ 20,00 | 28,57%', por_cliente['resposta'])
         self.assertNotIn('cliente POR', por_cliente['resposta'])
+
+        por_base = AssistenteOperacionalService.responder(
+            self.usuario,
+            'quais bases possuem os maiores custos',
+            contexto=maiores['contexto'],
+        )
+        self.assertEqual(por_base['contexto']['intencao'], 'custos_insumos')
+        self.assertIn(
+            'BASE | INVENTÁRIOS | CUSTO TOTAL | CUSTO MÉDIO/INVENTÁRIO | %',
+            por_base['resposta'],
+        )
+        self.assertIn('SÃO PAULO | 1 | R$ 50,00 | R$ 50,00 | 71,43%', por_base['resposta'])
+        self.assertIn('SP TORY | 1 | R$ 20,00 | R$ 20,00 | 28,57%', por_base['resposta'])
+        self.assertNotIn('DATA | CLIENTE | LOJA | BASE', por_base['resposta'])
+
+        por_base_no_mes = AssistenteOperacionalService.responder(
+            self.usuario,
+            'dez bases com maiores custos no mês',
+            contexto=por_base['contexto'],
+        )
+        self.assertIn('BASE | INVENTÁRIOS | CUSTO TOTAL', por_base_no_mes['resposta'])
+        self.assertIn('Ranking das 2 bases com maior custo no período', por_base_no_mes['resposta'])
 
         cliente_por_explicito = AssistenteOperacionalService.responder(
             self.usuario,

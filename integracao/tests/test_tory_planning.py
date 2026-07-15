@@ -350,7 +350,8 @@ class ToryPlanningTests(TestCase):
         result = AssistenteOperacionalService.responder(self.admin, "Tory")
 
         self.assertEqual(result["contexto"]["intencao"], "saudacao")
-        self.assertIn("Eu sou Tory", result["resposta"])
+        self.assertIn("Estou por aqui", result["resposta"])
+        self.assertIn("planejamento, execução, estoque, insumos e custos", result["resposta"])
         self.assertNotIn("tory_planning_admin, oi", result["resposta"].lower())
 
     def test_campinas_can_show_multiple_operations_and_oxxo_disambiguates(self):

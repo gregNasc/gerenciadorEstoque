@@ -62,7 +62,8 @@ class CustoInsumoService:
         return qs
 
     @staticmethod
-    def por_inventario(qs, limite=None):
+    def por_inventario(qs, limite=None, *, maiores=True):
+        ordenacao = '-total' if maiores else 'total'
         dados = list(
             qs.values(
                 'inventario_id',
@@ -78,7 +79,7 @@ class CustoInsumoService:
                 total=Sum('valor_total'),
                 itens=Count('insumo_id', distinct=True),
             )
-            .order_by('-total', 'inventario__data_inicio')
+            .order_by(ordenacao, 'inventario__data_inicio')
         )
         for item in dados:
             pessoas = item['inventario__pessoas'] or 0
@@ -102,15 +103,34 @@ class CustoInsumoService:
         }
 
     @staticmethod
-    def por_cliente(qs, limite=10):
+    def por_cliente(qs, limite=10, *, maiores=True):
+        ordenacao = '-total' if maiores else 'total'
         return list(
             qs.values('inventario__cliente__sigla', 'inventario__cliente__nome')
             .annotate(
                 total=Sum('valor_total'),
                 inventarios=Count('inventario_id', distinct=True),
             )
-            .order_by('-total')[:limite]
+            .order_by(ordenacao, 'inventario__cliente__sigla')[:limite]
         )
+
+    @staticmethod
+    def por_base(qs, limite=10, *, maiores=True):
+        ordenacao = '-total' if maiores else 'total'
+        dados = list(
+            qs.values('inventario__base_id', 'inventario__base__nome')
+            .annotate(
+                total=Sum('valor_total'),
+                inventarios=Count('inventario_id', distinct=True),
+            )
+            .order_by(ordenacao, 'inventario__base__nome')[:limite]
+        )
+        for item in dados:
+            inventarios = item['inventarios'] or 0
+            item['custo_medio_inventario'] = (
+                item['total'] / inventarios if inventarios else Decimal('0')
+            )
+        return dados
 
     @staticmethod
     def por_tipo(qs):

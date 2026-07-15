@@ -622,32 +622,25 @@ class AssistenteOperacionalService:
 
         saldo = coletores_ativos - pessoas
         if saldo >= 0:
-            situacao = f'Atende. Sobram {saldo} coletor(es).'
+            situacao = 'ATENDE'
+            diferenca = f'Sobram {saldo} coletor(es)'
         else:
-            situacao = f'Nao atende. Faltam {abs(saldo)} coletor(es).'
+            situacao = 'NÃO ATENDE'
+            diferenca = f'Faltam {abs(saldo)} coletor(es)'
 
-        if cls._eh_confirmacao_capacidade(interpretacao.texto):
-            if saldo >= 0:
-                texto_confirmacao = (
-                    f'sim, a base {interpretacao.base.nome} atende. Para {pessoas} pessoa(s), '
-                    f'há {coletores_ativos} coletor(es) ativo(s), com sobra de {saldo}.'
-                )
-            else:
-                texto_confirmacao = (
-                    f'isso, a base {interpretacao.base.nome} não atende hoje. Para {pessoas} pessoa(s), '
-                    f'há {coletores_ativos} coletor(es) ativo(s), portanto faltam {abs(saldo)}.'
-                )
-            return cls._resposta('capacidade', texto_confirmacao)
-
+        titulo = (
+            f'Confirmação da capacidade da base {interpretacao.base.nome} em {data_ref:%d/%m/%Y}'
+            if cls._eh_confirmacao_capacidade(interpretacao.texto)
+            else f'Análise da base {interpretacao.base.nome} em {data_ref:%d/%m/%Y}'
+        )
         linhas = [
-            f'Analise da base {interpretacao.base.nome} em {data_ref:%d/%m/%Y}:',
+            titulo,
             '',
-            '- Inventarios encontrados: ' + str(len(grupos_inventario)),
-            '- Pessoas previstas: ' + str(pessoas),
-            '- Coletores cadastrados: ' + str(coletores_cadastrados),
-            '- Coletores ativos disponiveis: ' + str(coletores_ativos),
+            'INVENTÁRIOS | PESSOAS PREVISTAS | COLETORES CADASTRADOS | COLETORES ATIVOS',
+            f'{len(grupos_inventario)} | {pessoas} | {coletores_cadastrados} | {coletores_ativos}',
             '',
-            f'Resultado: {situacao}',
+            'SITUAÇÃO | DIFERENÇA',
+            f'{situacao} | {diferenca}',
         ]
         return cls._resposta('capacidade', '\n'.join(linhas))
 
@@ -1020,7 +1013,7 @@ class AssistenteOperacionalService:
                 f'- Previsão total de peças (oficial + estimada): {cls._formatar_numero(total_previsao)}',
                 f'- Previsões: {len(previsoes_oficiais)} oficiais, {len(previsoes_estimadas)} estimadas, '
                 f'{total - len(previsoes_oficiais) - len(previsoes_estimadas)} sem base comparável',
-                f'- Produtividade planejada média: {cls._formatar_decimal(media_prod)} peças por pessoa/hora',
+                f'- Produtividade média: {cls._formatar_decimal(media_prod)} peças por pessoa/hora',
                 f'- Produtividades: {len(produtividades_oficiais)} oficiais, '
                 f'{len(produtividades_estimadas)} estimadas, '
                 f'{total - len(produtividades_oficiais) - len(produtividades_estimadas)} sem base comparável',
@@ -1395,7 +1388,7 @@ class AssistenteOperacionalService:
         if not previsao or not produtividade:
             return cls._resposta(
                 'inventarios',
-                'não consigo simular esse planejamento sem previsão de peças e produtividade planejada.'
+                'não consigo simular esse planejamento sem previsão de peças e produtividade.'
             )
 
         duracao_atual = cls._duracao_planejada_horas(previsao, equipe_atual, produtividade)
@@ -1418,10 +1411,10 @@ class AssistenteOperacionalService:
             f'{cls._formatar_decimal(produtividade)} peças/pessoa/h | {cls._formatar_horas(duracao_simulada)} | '
             f'{inicio_texto} | {termino_simulado_texto}',
             '',
-            f'Produtividade planejada {origem_produtividade}.',
+            f'Produtividade {origem_produtividade}.',
         ]
         linhas.extend([
-            'Fórmula: duração = previsão de peças ÷ equipe de contagem ÷ produtividade planejada.',
+            'Fórmula: duração = previsão de peças ÷ equipe de contagem ÷ produtividade.',
             'A projeção é linear e não considera perda de eficiência, limitações físicas ou coordenação adicional '
             'ao aumentar a equipe. A produtividade real só pode ser calculada com peças realizadas e timestamps reais.',
         ])
@@ -1589,13 +1582,66 @@ class AssistenteOperacionalService:
                 '- Valores ausentes são tratados como R$ 0,00 e não são estimados pela Tory.',
             ])
 
-        ranking_por_cliente = bool(re.search(r'\bpor\s+clientes?\b', interpretacao.texto))
-        if ranking_por_cliente:
-            detalhes_clientes = CustoInsumoService.por_cliente(qs)
+        analise = cls._analisar_ranking_custos(interpretacao.texto)
+        dimensao = analise['dimensao']
+        maiores = analise['maiores']
+        limite = analise['limite']
+        acoes = []
+        if dimensao == 'base':
+            detalhes_bases = CustoInsumoService.por_base(
+                qs,
+                limite=limite,
+                maiores=maiores,
+            )
             linhas.extend([
                 '',
-                'CLIENTE | INVENTÁRIOS | CUSTO TOTAL | PARTICIPAÇÃO',
+                'BASE | INVENTÁRIOS | CUSTO TOTAL | CUSTO MÉDIO/INVENTÁRIO | %',
             ])
+            if detalhes_bases:
+                destaque = detalhes_bases[0]
+                linhas.extend([
+                    f'Destaque: {destaque["inventario__base__nome"]} — '
+                    f'R$ {cls._formatar_decimal(destaque["total"])}.',
+                    '',
+                ])
+            for item in detalhes_bases:
+                participacao = (
+                    item['total'] * 100 / resumo['total']
+                    if resumo['total'] else Decimal('0')
+                )
+                linhas.append(
+                    f'{item["inventario__base__nome"]} | {item["inventarios"]} | '
+                    f'R$ {cls._formatar_decimal(item["total"])} | '
+                    f'R$ {cls._formatar_decimal(item["custo_medio_inventario"])} | '
+                    f'{cls._formatar_decimal(participacao)}%'
+                )
+            linhas.extend([
+                '',
+                f'Ranking das {len(detalhes_bases)} bases com '
+                f'{"maior" if maiores else "menor"} custo no período, '
+                'somando os consumos dos inventários de cada base.',
+            ])
+            acoes = [
+                {'label': 'Ver por cliente', 'pergunta': 'E os maiores custos por cliente?'},
+                {'label': 'Ver inventários', 'pergunta': 'Quais inventários tiveram os maiores custos?'},
+            ]
+        elif dimensao == 'cliente':
+            detalhes_clientes = CustoInsumoService.por_cliente(
+                qs,
+                limite=limite,
+                maiores=maiores,
+            )
+            linhas.extend([
+                '',
+                'CLIENTE | INVENTÁRIOS | CUSTO TOTAL | %',
+            ])
+            if detalhes_clientes:
+                destaque = detalhes_clientes[0]
+                linhas.extend([
+                    f'Destaque: {destaque["inventario__cliente__sigla"]} — '
+                    f'R$ {cls._formatar_decimal(destaque["total"])}.',
+                    '',
+                ])
             for item in detalhes_clientes:
                 participacao = (
                     item['total'] * 100 / resumo['total']
@@ -1607,10 +1653,19 @@ class AssistenteOperacionalService:
                 )
             linhas.extend([
                 '',
-                f'Ranking dos {len(detalhes_clientes)} clientes com consumo no período, do maior para o menor custo.',
+                f'Ranking dos {len(detalhes_clientes)} clientes com consumo no período, '
+                f'do {"maior" if maiores else "menor"} custo em diante.',
             ])
+            acoes = [
+                {'label': 'Ver por base', 'pergunta': 'E os maiores custos por base?'},
+                {'label': 'Ver inventários', 'pergunta': 'Quais inventários tiveram os maiores custos?'},
+            ]
         else:
-            detalhes = CustoInsumoService.por_inventario(qs, limite=10)
+            detalhes = CustoInsumoService.por_inventario(
+                qs,
+                limite=limite,
+                maiores=maiores,
+            )
             linhas.extend([
                 '',
                 'DATA | CLIENTE | LOJA | BASE | TIPO | PESSOAS | CUSTO | CUSTO/PESSOA',
@@ -1625,13 +1680,22 @@ class AssistenteOperacionalService:
                     f'{("R$ " + cls._formatar_decimal(custo_pessoa)) if custo_pessoa is not None else "-"}'
                 )
             if resumo['inventarios'] > len(detalhes):
-                linhas.extend(['', f'Exibindo 10 de {resumo["inventarios"]} inventários com consumo.'])
+                linhas.extend([
+                    '',
+                    f'Exibindo {len(detalhes)} de {resumo["inventarios"]} inventários com consumo.',
+                ])
+            acoes = [
+                {'label': 'Agrupar por base', 'pergunta': 'Quais bases possuem os maiores custos?'},
+                {'label': 'Agrupar por cliente', 'pergunta': 'E os maiores custos por cliente?'},
+            ]
 
         linhas.extend([
             '',
             'Os custos históricos usam o valor unitário gravado no momento do consumo; alterações de preço não reescrevem inventários anteriores.',
         ])
-        return cls._resposta('custos', '\n'.join(linhas))
+        resposta = cls._resposta('custos', '\n'.join(linhas))
+        resposta['acoes'] = acoes
+        return resposta
 
     @classmethod
     def _comparacao_precos(cls, user, interpretacao):
@@ -1966,17 +2030,25 @@ class AssistenteOperacionalService:
 
         escopo = f' na base {interpretacao.base.nome}' if interpretacao.base else ''
         linhas = [
-            f'{interpretacao.categoria}{escopo}: {total} equipamento(s) visiveis.',
-            f'Ativos: {ativos} | Em uso: {em_uso} | SICK: {sick} | Manutencao: {manutencao} | Inativos: {inativos}',
+            f'{interpretacao.categoria}{escopo}',
+            '',
+            'TOTAL VISÍVEL | ATIVOS | EM USO | SICK | MANUTENÇÃO | INATIVOS',
+            f'{total} | {ativos} | {em_uso} | {sick} | {manutencao} | {inativos}',
         ]
 
         por_produto = (
             qs.values('produto__descricao')
             .annotate(total=Count('id'))
-            .order_by('-total')[:5]
+            .order_by('-total', 'produto__descricao')[:10]
         )
         if por_produto:
-            linhas.append('Modelos/produtos: ' + cls._formatar_grupo(por_produto, 'produto__descricao'))
+            linhas.extend(['', 'MODELO/PRODUTO | QUANTIDADE | %'])
+            for item in por_produto:
+                participacao = Decimal(item['total'] * 100) / total if total else Decimal('0')
+                linhas.append(
+                    f'{item["produto__descricao"] or "-"} | {item["total"]} | '
+                    f'{cls._formatar_decimal(participacao)}%'
+                )
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
@@ -2001,14 +2073,17 @@ class AssistenteOperacionalService:
         linhas = [
             f'Resumo de {interpretacao.categoria.lower()}{status_label} por base:',
             '',
-            f'- Bases consultadas: {len(bases)}',
-            f'- Total encontrado: {total}',
+            'BASES CONSULTADAS | TOTAL ENCONTRADO',
+            f'{len(bases)} | {total}',
             '',
-            'Por base:',
+            'BASE | QUANTIDADE',
         ]
         linhas.extend(
-            f'- {base.nome}: {totais_por_base.get(base.pk, 0)}'
-            for base in bases
+            f'{base.nome} | {totais_por_base.get(base.pk, 0)}'
+            for base in sorted(
+                bases,
+                key=lambda item: (-totais_por_base.get(item.pk, 0), item.nome),
+            )
         )
         return cls._resposta('estoque', '\n'.join(linhas))
 
@@ -2025,11 +2100,28 @@ class AssistenteOperacionalService:
         por_categoria = qs.values('produto__categoria').annotate(total=Count('id')).order_by('-total')
         escopo = cls._descricao_escopo_geografico(interpretacao, prefixo=' em')
 
-        linhas = [f'Encontrei {total} equipamento(s){escopo} no seu escopo de acesso.']
+        linhas = [
+            'Resumo de equipamentos',
+            '',
+            'ESCOPO | TOTAL VISÍVEL',
+            f'{escopo.strip() or "Seu escopo de acesso"} | {total}',
+        ]
         if por_status:
-            linhas.append('Por status: ' + cls._formatar_grupo(por_status, 'status'))
+            linhas.extend(['', 'STATUS | QUANTIDADE | %'])
+            for item in por_status:
+                participacao = Decimal(item['total'] * 100) / total if total else Decimal('0')
+                linhas.append(
+                    f'{item["status"] or "-"} | {item["total"]} | '
+                    f'{cls._formatar_decimal(participacao)}%'
+                )
         if por_categoria:
-            linhas.append('Por categoria: ' + cls._formatar_grupo(por_categoria, 'produto__categoria'))
+            linhas.extend(['', 'CATEGORIA | QUANTIDADE | %'])
+            for item in por_categoria:
+                participacao = Decimal(item['total'] * 100) / total if total else Decimal('0')
+                linhas.append(
+                    f'{item["produto__categoria"] or "-"} | {item["total"]} | '
+                    f'{cls._formatar_decimal(participacao)}%'
+                )
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
@@ -2189,25 +2281,38 @@ class AssistenteOperacionalService:
             )
 
         limite = 20
-        if interpretacao.opcoes_base and re.search(r'\bsao paulo\b', interpretacao.texto):
+        sao_paulo_ambiguo = bool(
+            interpretacao.opcoes_base and re.search(r'\bsao paulo\b', interpretacao.texto)
+        )
+        if sao_paulo_ambiguo:
+            base_exata = next(
+                (nome for nome in opcoes if cls._normalizar(nome) == 'sao paulo'),
+                'SÃO PAULO',
+            )
             linhas = [
-                '“São Paulo” pode indicar a base SÃO PAULO ou o estado de SP. Qual base você deseja consultar?',
+                '“São Paulo” pode significar uma base específica ou todo o estado. Escolha o escopo:',
                 '',
-                'Selecione uma das opções abaixo:',
+                'OPÇÃO | ESCOPO CONSULTADO | COMO PEDIR',
+                f'Base {base_exata} | Somente essa base | Na base {base_exata}',
+                'Estado de São Paulo | Todas as bases de SP permitidas ao seu perfil | UF SP',
+                f'Outra base específica | Uma das outras {max(len(opcoes) - 1, 0)} bases disponíveis | Na base NOME DA BASE',
             ]
         else:
             linhas = [
                 'só preciso confirmar qual base você deseja consultar.',
                 '',
-                'Selecione uma das opções abaixo:',
+                'OPÇÃO | BASE | COMO PEDIR',
             ]
-        linhas.extend(f'- {nome}' for nome in opcoes[:limite])
-        if len(opcoes) > limite:
-            linhas.append(f'- mais {len(opcoes) - limite} base(s) disponível(is)')
-        if interpretacao.opcoes_base and re.search(r'\bsao paulo\b', interpretacao.texto):
+            linhas.extend(
+                f'{indice} | {nome} | Na base {nome}'
+                for indice, nome in enumerate(opcoes[:limite], start=1)
+            )
+            if len(opcoes) > limite:
+                linhas.append(f'… | Mais {len(opcoes) - limite} base(s) | Digite o nome da base')
+        if sao_paulo_ambiguo:
             linhas.extend([
                 '',
-                'Para consultar todo o estado, escreva “UF SP” ou “estado de São Paulo”.',
+                'Se quiser outra base, escreva o nome completo; eu preservo a pergunta original.',
             ])
         return cls._resposta('escolher_base', '\n'.join(linhas))
 
@@ -2293,9 +2398,12 @@ class AssistenteOperacionalService:
             texto, 'como vai', 'como voce esta', 'como esta voce', 'tudo bem', 'ta tudo bem'
         )
         if pergunta_como_esta:
-            complemento = f'Eu sou {cls.NOME_ASSISTENTE}. Estou bem e pronta para ajudar. E você, como está?'
+            complemento = 'Estou bem e por aqui para ajudar. E você, como está?'
         else:
-            complemento = f'Eu sou {cls.NOME_ASSISTENTE}, como posso ajudá-lo? O que gostaria de saber?'
+            complemento = (
+                'Estou por aqui. Posso analisar planejamento, execução, estoque, insumos e custos '
+                'dentro do seu acesso. O que você quer verificar?'
+            )
         return cls._resposta(
             'saudacao',
             f'{abertura} {complemento}'.strip()
@@ -3514,6 +3622,50 @@ class AssistenteOperacionalService:
         ))
 
     @staticmethod
+    def _extrair_limite_ranking(texto, dimensao):
+        numeros = {
+            'uma': 1, 'duas': 2, 'tres': 3, 'quatro': 4, 'cinco': 5,
+            'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9, 'dez': 10,
+        }
+        substantivos = {
+            'base': r'bases?',
+            'cliente': r'clientes?',
+            'inventario': r'inventarios?',
+        }
+        match = re.search(
+            rf'\b(\d+|uma|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+'
+            rf'{substantivos[dimensao]}\b',
+            texto,
+        )
+        if not match:
+            return 10
+        valor = match.group(1)
+        limite = int(valor) if valor.isdigit() else numeros[valor]
+        return min(max(limite, 1), 50)
+
+    @classmethod
+    def _analisar_ranking_custos(cls, texto):
+        tem_ranking = bool(re.search(
+            r'\b(maior|maiores|menor|menores|ranking|top)\b',
+            texto,
+        ))
+        if re.search(r'\bpor\s+bases?\b', texto) or (
+            tem_ranking and re.search(r'\bbases?\b', texto)
+        ):
+            dimensao = 'base'
+        elif re.search(r'\bpor\s+clientes?\b', texto) or (
+            tem_ranking and re.search(r'\bclientes\b', texto)
+        ):
+            dimensao = 'cliente'
+        else:
+            dimensao = 'inventario'
+        return {
+            'dimensao': dimensao,
+            'maiores': not bool(re.search(r'\b(menor|menores)\b', texto)),
+            'limite': cls._extrair_limite_ranking(texto, dimensao),
+        }
+
+    @staticmethod
     def _pergunta_custo_insumo(texto):
         termo_financeiro = re.search(
             r'\b(gasto|gastos|gastou|gastamos|custo|custos|custou|despesa|despesas|'
@@ -4068,13 +4220,33 @@ class AssistenteOperacionalService:
     def _acoes_interpretacao(interpretacao):
         if interpretacao.intencao != 'escolher_base':
             return []
-        return [
+        opcoes = list(interpretacao.opcoes_base)
+        acoes = [
             {
                 'label': nome,
                 'pergunta': f'Na base {nome}',
             }
-            for nome in interpretacao.opcoes_base
+            for nome in opcoes
         ]
+        if re.search(r'\bsao paulo\b', interpretacao.texto):
+            acoes.sort(
+                key=lambda item: (
+                    AssistenteOperacionalService._normalizar(item['label']) != 'sao paulo',
+                    AssistenteOperacionalService._normalizar(item['label']),
+                )
+            )
+            acao_estado = {
+                'label': 'Todo o estado de SP',
+                'pergunta': 'UF SP',
+            }
+            if len(acoes) > 10:
+                exata = [
+                    item for item in acoes
+                    if AssistenteOperacionalService._normalizar(item['label']) == 'sao paulo'
+                ]
+                return exata + [acao_estado]
+            acoes.insert(1 if acoes else 0, acao_estado)
+        return acoes
 
     @staticmethod
     def _data_contexto(contexto):
