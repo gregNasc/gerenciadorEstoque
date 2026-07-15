@@ -14,7 +14,6 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-print(BASE_DIR)
 
 LOCALE_PATHS = [
     BASE_DIR / 'locale',
@@ -26,9 +25,9 @@ LOCALE_PATHS = [
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'unsafe-key')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-#DEBUG = os.getenv('DEBUG', 'False') == 'True'
+# O runserver precisa do modo de desenvolvimento para servir os arquivos
+# encontrados pelos staticfiles. Em produção, defina DEBUG=False no ambiente.
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
 
@@ -49,15 +48,13 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'estoque_render_dump',
-            'USER': 'postgres',
-            'PASSWORD': 'admininventory',
-            'HOST': 'localhost',
-            'PORT': '5432',
+            'NAME': os.getenv('POSTGRES_DB', 'estoque_render_dump'),
+            'USER': os.getenv('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'admininventory'),
+            'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
         }
     }
-
-print("DATABASE_URL =", DATABASE_URL)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -69,6 +66,7 @@ INSTALLED_APPS = [
     'estoque.apps.EstoqueConfig',
     'core',
     'insumos',
+    'integracao.apps.IntegracaoConfig',
 ]
 
 MIDDLEWARE = [
@@ -162,6 +160,49 @@ STORAGES = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Inventory Planning API. A URL é validada novamente pelo cliente antes de
+# qualquer requisição para impedir o envio da chave por HTTP.
+INVENTORY_PLANNING_API_URL = os.getenv('INVENTORY_PLANNING_API_URL', '')
+INVENTORY_PLANNING_API_KEY = os.getenv('INVENTORY_PLANNING_API_KEY', '')
+INVENTORY_PLANNING_TIMEOUT = float(os.getenv('INVENTORY_PLANNING_TIMEOUT', '15'))
+INVENTORY_PLANNING_MAX_RETRIES = int(os.getenv('INVENTORY_PLANNING_MAX_RETRIES', '4'))
+INVENTORY_PLANNING_BACKOFF_BASE = float(os.getenv('INVENTORY_PLANNING_BACKOFF_BASE', '1'))
+INVENTORY_PLANNING_CATALOG_CACHE_TTL = int(
+    os.getenv('INVENTORY_PLANNING_CATALOG_CACHE_TTL', '21600')
+)
+INVENTORY_PLANNING_SYSTEM_USERNAME = os.getenv(
+    'INVENTORY_PLANNING_SYSTEM_USERNAME',
+    'inventory_planning_sync',
+)
+
+CACHES = {
+    'default': {
+        'BACKEND': os.getenv(
+            'DJANGO_CACHE_BACKEND',
+            'django.core.cache.backends.locmem.LocMemCache',
+        ),
+        'LOCATION': os.getenv('DJANGO_CACHE_LOCATION', 'gerenciador-estoque'),
+        'TIMEOUT': INVENTORY_PLANNING_CATALOG_CACHE_TTL,
+    }
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'integracao.inventory_planning': {
+            'handlers': ['console'],
+            'level': os.getenv('INVENTORY_PLANNING_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}
 
 # Configurações CSRF
 #CSRF_COOKIE_SECURE = False

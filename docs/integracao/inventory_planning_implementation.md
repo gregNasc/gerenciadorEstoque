@@ -1,0 +1,155 @@
+# Implementação da integração Inventory Planning
+
+## Escopo entregue
+
+A primeira fase sincroniza somente:
+
+- `/regions`;
+- `/clients`;
+- `/stores`;
+- `/inventory-types`;
+- `/events`.
+
+Os dados externos são persistidos no app `integracao` como projeção read-only.
+Equipamentos, insumos, checklists, TAGs, movimentações, consumo, custos e tempos
+reais continuam sob responsabilidade do `gerenciadorEstoque`.
+
+## Configuração
+
+Configure por ambiente:
+
+```text
+INVENTORY_PLANNING_API_URL=https://host/api/integration/v1
+INVENTORY_PLANNING_API_KEY=ipk_...
+INVENTORY_PLANNING_TIMEOUT=15
+INVENTORY_PLANNING_MAX_RETRIES=4
+INVENTORY_PLANNING_BACKOFF_BASE=1
+INVENTORY_PLANNING_CATALOG_CACHE_TTL=21600
+INVENTORY_PLANNING_SYSTEM_USERNAME=inventory_planning_sync
+```
+
+A aplicação recusa URL sem HTTPS. A API Key nunca deve ser colocada em arquivos
+versionados, argumentos de linha de comando ou logs.
+
+## Preparação do banco
+
+```powershell
+python manage.py migrate
+```
+
+As migrations criam somente tabelas e constraints do app `integracao`. Nenhum
+inventário legado é alterado durante a migration.
+
+## Primeira sincronização segura
+
+Primeiro carregue a projeção sem materializar inventários:
+
+```powershell
+python manage.py sync_inventory_planning --no-materialize
+```
+
+No Django Admin, configure:
+
+1. `PlanningClientBinding`: cliente externo → `insumos.Cliente`;
+2. `PlanningRegionBinding`: regional externa → `estoque.Base`.
+
+Os bindings são explícitos. O sistema não associa registros apenas pelo nome.
+
+Depois materialize os eventos PAI:
+
+```powershell
+python manage.py materialize_inventory_planning
+```
+
+Eventos sem os dois bindings permanecem com status `PENDING` e um código de
+pendência. Eles continuam sincronizados e podem ser materializados depois.
+
+## Sincronizações seguintes
+
+```powershell
+python manage.py sync_inventory_planning
+```
+
+Opções disponíveis:
+
+```text
+--catalogs-only
+--events-only
+--no-materialize
+```
+
+Sugestão de agendamento:
+
+- catálogos a cada 6 horas;
+- eventos a cada 15 minutos;
+- snapshot global noturno para reconciliação de ausências.
+
+Uma sincronização parcial com filtros nunca marca registros fora da janela como
+ausentes. Apenas um snapshot global concluído pode fazer essa reconciliação.
+
+## PAI, FILHO e horários
+
+- `inventoryType.type` e `parentEventId` são as fontes oficiais da hierarquia;
+- todo PAI com bindings cria exatamente um `Inventario` local;
+- eventos FILHO não criam `Inventario` nem checklist próprio;
+- `plannedAt` é o início planejado oficial;
+- o instante é armazenado com timezone e convertido para `America/Sao_Paulo` ao
+  gerar `data_inicio` e `horario_inicio` locais;
+- `importData.horarioInicio` não sobrescreve `plannedAt`;
+- nenhum horário de término é presumido.
+
+## Proteção dos dados locais
+
+Ao atualizar um inventário vinculado, a integração escreve somente campos de
+planejamento. Os seguintes dados locais não são alterados:
+
+- status operacional já iniciado/finalizado;
+- início e fim reais;
+- início e fim da contagem;
+- peças realizadas;
+- custo por hora;
+- checklist, equipamentos, insumos, TAGs, consumo, custos e históricos.
+
+O formulário desabilita campos de planejamento oficiais. A importação XLSX não
+sobrescreve nem remove inventários vinculados à API.
+
+## Cancelados, removidos e ausentes
+
+- `CANCELLED`, `MODIFIED`, `ADDED` e `REMOVED` são preservados no evento externo;
+- nenhum desses estados exclui o `Inventario`, checklist ou histórico local;
+- registros ausentes de snapshot completo recebem `sync_state=MISSING`;
+- não há exclusão física durante sincronização.
+
+## Dados sensíveis
+
+O mapper remove campos de CPF, RG, PIS, PIX, contas bancárias, documentos,
+telefone, celular, e-mail, data de nascimento e CNPJ MEI encontrados em
+`importData`. Os valores removidos não são enviados aos logs.
+
+Os endpoints de colaboradores, equipes, disponibilidade, conferentes avulsos e
+composição de valor não fazem parte desta fase.
+
+## Auditoria
+
+Cada endpoint gera um `InventoryPlanningSyncRun` contendo:
+
+- início e fim;
+- status;
+- páginas e registros recebidos;
+- criados, atualizados e ausentes;
+- inventários materializados e pendentes;
+- `RateLimit-Limit`, `RateLimit-Remaining` e `RateLimit-Reset`;
+- código de erro sanitizado.
+
+Uma constraint impede duas sincronizações simultâneas do mesmo endpoint.
+
+## Testes
+
+```powershell
+python manage.py test integracao.tests
+```
+
+A suíte cobre autenticação, HTTPS, paginação, timeout, retry, `Retry-After`,
+401/403, idempotência, atualização, PAI/FILHO, cancelamento, campos opcionais,
+relacionamentos de catálogo, sanitização, logs, rate limit e concorrência.
+

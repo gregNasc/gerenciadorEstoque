@@ -238,6 +238,27 @@ class FiltroEstoqueInsumoForm(forms.Form):
             )
 
 class InventarioForm(forms.ModelForm):
+    EXTERNAL_PLANNING_FIELDS = {
+        'cliente', 'loja', 'base', 'data_inicio', 'inicio_previsto',
+        'endereco', 'bairro', 'cidade', 'tipo', 'pessoas', 'observacao',
+        'ponto_encontro', 'horario_inicio', 'equipe_plan', 'previsao_pecas',
+        'cnpj', 'cep',
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance or not self.instance.pk:
+            return
+        from integracao.models import InventoryPlanningEventBinding
+
+        if not InventoryPlanningEventBinding.objects.filter(inventory=self.instance).exists():
+            return
+        for field_name in self.EXTERNAL_PLANNING_FIELDS:
+            field = self.fields.get(field_name)
+            if field:
+                field.disabled = True
+                field.help_text = 'Campo oficial sincronizado pela Inventory Planning API.'
+
     class Meta:
         model = Inventario
         fields = [

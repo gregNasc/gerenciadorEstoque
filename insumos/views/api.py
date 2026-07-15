@@ -993,10 +993,21 @@ def importar_excel(request):
                         defaults=defaults
                     )
                     if not created:
-                        for key, value in defaults.items():
-                            setattr(inventario, key, value)
-                        inventario.save()
-                        atualizados += 1
+                        from integracao.models import InventoryPlanningEventBinding
+                        sincronizado_api = InventoryPlanningEventBinding.objects.filter(
+                            inventory=inventario
+                        ).exists()
+                        if sincronizado_api:
+                            adicionar_aviso_importacao(
+                                resumo_importacao,
+                                f'Aba {aba_nome}, linha {row_idx}: inventário vinculado '
+                                'à Inventory Planning API não foi sobrescrito pela planilha.'
+                            )
+                        else:
+                            for key, value in defaults.items():
+                                setattr(inventario, key, value)
+                            inventario.save()
+                            atualizados += 1
                     else:
                         contador += 1
 
@@ -1023,6 +1034,7 @@ def importar_excel(request):
                         status='PLANEJADO',
                         checklists__isnull=True,
                     )
+                    .filter(planning_event_binding__isnull=True)
                     .exclude(id__in=inventarios_importados_ids)
                 )
                 quantidade = obsoletos.count()
@@ -1247,12 +1259,17 @@ def editar_inventario(request, pk):
             # Atualiza campos principais
             inventario = form.save(commit=False)
             # Atualiza dados_brutos com os campos dinâmicos
-            dados = {}
-            for key, value in request.POST.items():
-                if key.startswith('campo_'):
-                    nome_campo = key.replace('campo_', '')
-                    dados[nome_campo] = value
-            inventario.dados_brutos = dados
+            from integracao.models import InventoryPlanningEventBinding
+            sincronizado = InventoryPlanningEventBinding.objects.filter(
+                inventory=inventario
+            ).exists()
+            if not sincronizado:
+                dados = {}
+                for key, value in request.POST.items():
+                    if key.startswith('campo_'):
+                        nome_campo = key.replace('campo_', '')
+                        dados[nome_campo] = value
+                inventario.dados_brutos = dados
             inventario.save()
             messages.success(request, 'Inventário atualizado com sucesso.')
             return redirect('insumos:lista_inventarios')
