@@ -51,7 +51,22 @@
                     <span class="badge text-bg-secondary">{{ resultado.categoria }}</span>
                 </div>
                 <div class="card-body">
-                    <pre class="assistente-resposta mb-0">{{ resultado.resposta }}</pre>
+                    <div class="assistente-resposta mb-0" data-assistente-resposta>{{ resultado.resposta }}</div>
+                    {% if resultado.acoes %}
+                    <div class="d-flex flex-wrap gap-2 mt-3" aria-label="{% trans 'Opções de base' %}">
+                        {% for acao in resultado.acoes %}
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button
+                                type="submit"
+                                name="pergunta"
+                                value="{{ acao.pergunta }}"
+                                class="btn btn-sm btn-outline-primary rounded-pill"
+                            >{{ acao.label }}</button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -81,5 +96,91 @@
     font-family: inherit;
     line-height: 1.55;
 }
+
+.assistente-tabela-wrap {
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.assistente-tabela {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.assistente-tabela th,
+.assistente-tabela td {
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+    vertical-align: top;
+}
+
+.assistente-tabela th {
+    background: #e9ecef;
+    color: #343a40;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.assistente-tabela tr:nth-child(even) td {
+    background: #f8f9fa;
+}
 </style>
+
+{% if resultado %}
+<script>
+(function () {
+    const resposta = document.querySelector('[data-assistente-resposta]');
+    if (!resposta) return;
+
+    const linhas = resposta.textContent.split('\n');
+    resposta.textContent = '';
+    let indice = 0;
+
+    while (indice < linhas.length) {
+        const linha = linhas[indice];
+        const inicioTabela = linha.includes('|') && linha === linha.toUpperCase();
+        if (!inicioTabela) {
+            resposta.appendChild(document.createTextNode(linha));
+            if (indice < linhas.length - 1) resposta.appendChild(document.createElement('br'));
+            indice += 1;
+            continue;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'assistente-tabela-wrap';
+        const tabela = document.createElement('table');
+        tabela.className = 'assistente-tabela';
+        const cabecalho = document.createElement('thead');
+        const linhaCabecalho = document.createElement('tr');
+
+        linha.split('|').forEach(function (valor) {
+            const celula = document.createElement('th');
+            celula.textContent = valor.trim();
+            linhaCabecalho.appendChild(celula);
+        });
+        cabecalho.appendChild(linhaCabecalho);
+        tabela.appendChild(cabecalho);
+
+        const corpo = document.createElement('tbody');
+        indice += 1;
+        while (indice < linhas.length && linhas[indice].includes('|')) {
+            const linhaTabela = document.createElement('tr');
+            linhas[indice].split('|').forEach(function (valor) {
+                const celula = document.createElement('td');
+                celula.textContent = valor.trim();
+                linhaTabela.appendChild(celula);
+            });
+            corpo.appendChild(linhaTabela);
+            indice += 1;
+        }
+        tabela.appendChild(corpo);
+        wrap.appendChild(tabela);
+        resposta.appendChild(wrap);
+    }
+}());
+</script>
+{% endif %}
 {% endblock %}

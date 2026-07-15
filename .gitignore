@@ -10,6 +10,7 @@ __pycache__/
 
 # Database local
 *.sqlite3
+backups/
 
 # Static / media
 media/

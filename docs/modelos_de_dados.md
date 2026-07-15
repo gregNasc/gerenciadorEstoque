@@ -1439,7 +1439,27 @@ Possíveis campos:
 
 ---
 
-# 7. Conclusão
+# 7. Tempos operacionais do Inventario
+
+O modelo `Inventario` preserva `data_inicio`, `data_fim` e os horários legados para compatibilidade com calendários e importações existentes. A medição operacional usa os campos aditivos:
+
+```text
+inicio_previsto
+fim_previsto
+inicio_real
+fim_real
+inicio_contagem
+fim_contagem
+pessoas
+total_pecas
+custo_hora_pessoa
+```
+
+Os timestamps são opcionais para permitir migração gradual do histórico. Durações, desvios, produtividade e custo adicional são valores derivados e não devem ser persistidos como uma jornada fixa.
+
+---
+
+# 8. Conclusão
 
 Os modelos de dados do Gerenciador de Estoque representam mais do que tabelas.
 

@@ -219,6 +219,26 @@
         </section>
 
         <section class="form-section">
+            <div class="section-head"><i class="bi bi-clock-history"></i> Planejamento e tempos reais</div>
+            <div class="section-body">
+                <div class="alert alert-light border small mb-3">
+                    Informe datas e horários completos. Inventários podem ser diurnos, noturnos ou atravessar a meia-noite.
+                </div>
+                <div class="row">
+                    {% for field in form %}
+                        {% if field.name in "inicio_previsto fim_previsto inicio_real fim_real inicio_contagem fim_contagem" %}
+                            <div class="col-md-4 field-box">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="form-section">
             <div class="section-head"><i class="bi bi-geo-alt"></i> Endereco e encontro</div>
             <div class="section-body">
                 <div class="row">
@@ -257,7 +277,7 @@
             <div class="section-body">
                 <div class="row">
                     {% for field in form %}
-                        {% if field.name in "prep historico_equipe historico_pecas historico_satisfacao historico_preparacao historico_lider historico_data equipe_plan previsao_pecas prod_media bid cnpj chave" %}
+                        {% if field.name in "total_pecas custo_hora_pessoa prep historico_equipe historico_pecas historico_satisfacao historico_preparacao historico_lider historico_data equipe_plan previsao_pecas prod_media bid cnpj chave" %}
                             <div class="col-md-3 field-box">
                                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                                 {{ field }}

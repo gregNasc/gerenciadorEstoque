@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
+from uuid import uuid4
 from estoque.models import (
     Equipamento,
     Transferencia,
@@ -61,6 +62,7 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
             )
 
     transferencia = Transferencia.objects.create(
+        protocolo=str(uuid4())[:8].upper(),
         alocacao=alocacao,
         solicitado_por=solicitado_por,
         regional_origem=regional_origem,

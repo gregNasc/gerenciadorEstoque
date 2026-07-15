@@ -16,6 +16,7 @@ def notificacoes_context(request):
     if not request.user.is_authenticated:
         return {}
 
+    ComunicadoService.notificar_manutencoes_previstas()
     ComunicadoService.excluir_expirados()
 
     perfil = request.user.perfil

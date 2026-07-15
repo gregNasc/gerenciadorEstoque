@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from uuid import uuid4
 from estoque.models import (Emprestimo, ItemEmprestimo,)
 from .comunicado_service import ComunicadoService
 from .notificacao_service import NotificacaoService
@@ -20,7 +21,8 @@ class EmprestimoService:
 
             protocolo=(
                 f'EMP-'
-                f'{timezone.now().strftime("%Y%m%d%H%M%S")}'
+                f'{timezone.now().strftime("%y%m%d%H%M%S")}'
+                f'{uuid4().hex[:4].upper()}'
             ),
             regional_origem=base_origem,
             regional_destino=base_destino,

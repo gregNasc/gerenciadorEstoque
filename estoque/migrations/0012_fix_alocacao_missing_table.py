@@ -1,4 +1,4 @@
-from django.db import migrations, models
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
@@ -7,24 +7,6 @@ class Migration(migrations.Migration):
         ('estoque', '0001_initial'),
     ]
 
-    operations = [
-        migrations.CreateModel(
-            name='AlocacaoSolicitacaoItem',
-            fields=[
-                ('id', models.BigAutoField(primary_key=True)),
-                ('quantidade', models.PositiveIntegerField(default=0)),
-                ('item', models.ForeignKey(
-                    to='estoque.solicitacaoitem',
-                    on_delete=models.CASCADE
-                )),
-                ('regional_origem', models.ForeignKey(
-                    to='estoque.base',
-                    on_delete=models.CASCADE
-                )),
-                ('criado_em', models.DateTimeField(auto_now_add=True)),
-            ],
-            options={
-                'db_table': 'estoque_alocacaosolicitacaoitem',
-            },
-        ),
-    ]
+    # O modelo já é criado em 0001_initial. A operação duplicada impedia a
+    # criação de bancos novos e do banco de testes com DuplicateTable.
+    operations = []

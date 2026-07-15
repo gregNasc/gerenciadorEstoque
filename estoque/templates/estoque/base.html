@@ -25,7 +25,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet"
-          href="{% static 'css/style.css' %}?v=3">
+          href="{% static 'css/style.css' %}?v=4">
     {% block extra_css %}{% endblock %}
 
 </head>
@@ -63,7 +63,7 @@
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 <!-- CHECKLIST -->
                 <li class="nav-item dropdown">
-                    <!--a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
+                    <a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
                        href="#"
                        id="checklistDropdown"
                        role="button"
@@ -71,27 +71,27 @@
                        aria-expanded="false">
                         <i class="bi bi-plus-circle"></i>
                         {% trans "Checklist" %}
-                    </a-->
+                    </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="checklistDropdown">
-                        <!--li>
+                        <li>
                             <a class="dropdown-item {% if url_name == 'checklist' %}active{% endif %}"
                                href="{% url 'estoque:checklist' %}">
                                 <i class="bi bi-plus-circle"></i>
                                 {% trans "Novo Checklist" %}
                             </a>
-                        </li-->
+                        </li>
                         {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
-                        <!--li>
+                        <li>
                             <hr class="dropdown-divider">
-                        </li-->
-                        <!--li>
+                        </li>
+                        <li>
                             <a class="dropdown-item {% if url_name == 'lista_checklists' %}active{% endif %}"
                                href="{% url 'insumos:lista_checklists' %}">
                                 <i class="bi bi-list-check"></i>
                                 {% trans "Lista de Checklists" %}
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
                     </ul>
                 </li>
@@ -138,12 +138,12 @@
 
                         </li>
                         {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_custos' %}">
                                 <i class="bi bi-bar-chart-line"></i>
                                 {% trans "Custos de insumos" %}
                             </a>
-                        </li-->
+                        </li>
                         <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:precos_insumos' %}">
                                 <i class="bi bi-tags"></i>
@@ -208,29 +208,46 @@
                 </li>
 
                 <!-- SOLICITAÇÕES -->
-                {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.is_compras_insumos or perfil.is_financeiro_insumos %}
-                <li class="nav-item">
-                    <!--a class="nav-link {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' %}active{% endif %}"
-                       href="{% url 'insumos:lista_solicitacoes_insumo' %}">
+            {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.is_compras_insumos or perfil.is_financeiro_insumos %}
+                <li class="nav-item dropdown">
+
+                    <a class="nav-link dropdown-toggle {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' or url_name == 'criar_solicitacao' %}active{% endif %}"
+                       href="#"
+                       id="dropdownSolicitacoes"
+                       role="button"
+                       data-bs-toggle="dropdown"
+                       aria-expanded="false">
+
                         <i class="bi bi-clipboard-check"></i>
-                        {% trans "Solicitações de insumos" %}
-                    </a-->
-                </li-->
-                {% endif %}
-
-                {% if perfil.role == 'gestor' %}
-                <li class="nav-item">
-
-                    <a class="nav-link {% if url_name == 'criar_solicitacao' %}active{% endif %}"
-                       href="{% url 'estoque:criar_solicitacao' %}">
-
-                        <i class="bi bi-plus-circle"></i>
-                        {% trans "Solicitar" %}
-
+                        {% trans "Solicitações" %}
                     </a>
 
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+
+                        <li>
+                            <a class="dropdown-item {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' %}active{% endif %}"
+                               href="{% url 'insumos:lista_solicitacoes_insumo' %}">
+
+                                <i class="bi bi-box-seam me-2"></i>
+                                {% trans "Solicitações de insumos" %}
+                            </a>
+                        </li>
+
+                        {% if perfil.role == 'gestor' %}
+                            <li>
+                                <a class="dropdown-item {% if url_name == 'criar_solicitacao' %}active{% endif %}"
+                                   href="{% url 'estoque:criar_solicitacao' %}">
+
+                                    <i class="bi bi-pc-display me-2"></i>
+                                    {% trans "Solicitações de equipamentos" %}
+                                </a>
+                            </li>
+                        {% endif %}
+
+                    </ul>
+
                 </li>
-                {% endif %}
+            {% endif %}
 
                 <!-- ASSISTENTE -->
                 <!--li class="nav-item">

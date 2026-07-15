@@ -2,9 +2,10 @@ import re
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from difflib import SequenceMatcher
+from math import ceil
 from numbers import Number
 
 from django.db.models import Case, Count, DecimalField, Q, Sum, Value, When
@@ -157,6 +158,7 @@ class AssistenteOperacionalService:
         resposta['resposta'] = cls._personalizar_resposta(user, resposta['resposta'])
         resposta['interpretacao'] = cls._resumo_interpretacao(interpretacao)
         resposta['contexto'] = cls._contexto_interpretacao(interpretacao)
+        resposta['acoes'] = cls._acoes_interpretacao(interpretacao)
         return resposta
 
     @classmethod
@@ -167,20 +169,25 @@ class AssistenteOperacionalService:
         texto = cls._interpretar_linguagem_cotidiana(texto)
         continuacao = cls._eh_continuacao(texto)
         consulta_relatorio = cls._pergunta_relatorio_inventario(texto)
-        consulta_custo = cls._pergunta_custo_insumo(texto) or (
+        consulta_tempo_operacional = cls._pergunta_tempos_operacionais(texto)
+        consulta_custo = not consulta_tempo_operacional and (cls._pergunta_custo_insumo(texto) or (
             contexto.get('intencao') == 'custos_insumos' and
             (
                 continuacao or
                 cls._tem(texto, 'cliente', 'loja', 'base', 'tipo', 'pessoas', 'periodo') or
                 re.search(r'\b(hoje|ontem|semana|mes|ano)\b', texto)
             )
-        )
+        ))
         consulta_detalhe = cls._tem(
             texto, 'previsao', 'pecas', 'produtividade', 'prod media',
             'media', 'endereco', 'cnpj', 'cep', 'bairro', 'cidade',
             'lider', 'qual dia', 'qual data', 'quando', 'pessoas', 'apoio',
-            'etapa', 'tipo', 'horario', 'historico',
+            'etapa', 'tipo', 'horario', 'historico', 'duracao', 'durou', 'demorou',
+            'comecou', 'terminou', 'atraso', 'tempo efetivo', 'tempo produtivo',
+            'depois das', 'antes das', 'acima da media', 'custo adicional',
+            'ultrapassou', 'ultrapassar',
         )
+        simulacao_equipe_contextual = cls._pergunta_simulacao_equipe(texto)
         cliente_explicito = cls._extrair_cliente(texto)
         cliente = None if cls._quer_todos_clientes(texto) else (
             cliente_explicito or cls._cliente_do_contexto(contexto)
@@ -191,7 +198,10 @@ class AssistenteOperacionalService:
         loja = cls._extrair_loja(texto, cliente)
         pessoas_filtro = cls._extrair_pessoas_filtro(texto)
         tipo_inventario = cls._extrair_tipo_inventario(texto) or contexto.get('tipo_inventario', '')
-        if not loja and pessoas_filtro is None and (continuacao or consulta_detalhe):
+        if not loja and (
+            simulacao_equipe_contextual or
+            (pessoas_filtro is None and (continuacao or consulta_detalhe))
+        ):
             loja = contexto.get('loja', '')
         if pessoas_filtro is None and (continuacao or consulta_relatorio):
             pessoas_filtro = contexto.get('pessoas_filtro')
@@ -207,8 +217,20 @@ class AssistenteOperacionalService:
         todas_bases = cls._quer_todas_bases(texto) or (
             continuacao and bool(contexto.get('todas_bases'))
         )
-        uf_solicitada = None if todas_bases else cls._extrair_uf(texto)
-        base_solicitada = None if todas_bases or uf_solicitada else cls._extrair_base_global(texto)
+        base_explicita = bool(re.search(r'\b(?:na\s+)?base\s+', texto))
+        opcoes_base_ambiguas = (
+            [] if todas_bases or base_explicita
+            else cls._opcoes_base_para_local_ambiguo(user, texto)
+        )
+        if base_explicita:
+            uf_solicitada = ''
+            base_solicitada = cls._extrair_base_global(texto)
+        else:
+            uf_solicitada = None if todas_bases or opcoes_base_ambiguas else cls._extrair_uf(texto)
+            base_solicitada = (
+                None if todas_bases or uf_solicitada or opcoes_base_ambiguas
+                else cls._extrair_base_global(texto)
+            )
         grupo_solicitado = cls._extrair_grupo_global(texto)
         if grupo_solicitado and cls._normalizar(grupo_solicitado.nome).startswith('oxxo '):
             uf_solicitada = ''
@@ -265,6 +287,11 @@ class AssistenteOperacionalService:
         if not pergunta:
             return interpretacao
 
+        if opcoes_base_ambiguas:
+            interpretacao.intencao = 'escolher_base'
+            interpretacao.opcoes_base = [base.nome for base in opcoes_base_ambiguas]
+            return interpretacao
+
         if cls._eh_saudacao(texto):
             # Uma nova saudação inicia um atendimento limpo e remove filtros antigos.
             return InterpretacaoOperacional(
@@ -310,6 +337,9 @@ class AssistenteOperacionalService:
                 texto, 'previsao', 'pecas', 'produtividade', 'prod media', 'media',
                 'endereco', 'cnpj', 'cep', 'lider', 'qual dia', 'qual data', 'quando',
                 'pessoas', 'apoio', 'etapa', 'tipo', 'horario', 'historico',
+                'duracao', 'durou', 'demorou', 'comecou', 'terminou', 'atraso',
+                'tempo efetivo', 'tempo produtivo', 'depois das', 'antes das',
+                'custo adicional', 'ultrapassou', 'ultrapassar',
             ) or
             (
                 interpretacao.periodo_inicio and interpretacao.periodo_fim and
@@ -330,6 +360,8 @@ class AssistenteOperacionalService:
         ):
             interpretacao.intencao = 'inventarios_relatorio'
         elif interpretacao.cliente and interpretacao.loja:
+            interpretacao.intencao = 'inventarios_relatorio'
+        elif cliente_explicito:
             interpretacao.intencao = 'inventarios_relatorio'
         elif (todas_bases or interpretacao.grupo or interpretacao.uf) and contexto.get('intencao') == 'capacidade_coletores':
             interpretacao.intencao = 'capacidade_coletores'
@@ -385,6 +417,25 @@ class AssistenteOperacionalService:
             interpretacao.intencao = 'inventarios_checklists'
         elif cls._tem(texto, 'estoque', 'equipamento', 'equipamentos', 'patrimonio', 'serie', 'base'):
             interpretacao.intencao = 'equipamentos'
+
+        selecao_base_contextual = bool(
+            base_explicita and
+            interpretacao.base and
+            contexto.get('intencao') in cls.INTENCOES_COM_ESCOPO_DE_BASE and
+            re.match(r'^(?:na\s+)?base\s+', texto)
+        )
+        if selecao_base_contextual:
+            interpretacao.intencao = contexto['intencao']
+            interpretacao.categoria = interpretacao.categoria or contexto.get('categoria', '')
+            interpretacao.data = interpretacao.data or cls._data_contexto(contexto)
+            interpretacao.periodo_inicio = (
+                interpretacao.periodo_inicio or
+                cls._data_contexto_chave(contexto, 'periodo_inicio')
+            )
+            interpretacao.periodo_fim = (
+                interpretacao.periodo_fim or
+                cls._data_contexto_chave(contexto, 'periodo_fim')
+            )
 
         if (
             interpretacao.intencao == 'orientacao' and
@@ -752,12 +803,27 @@ class AssistenteOperacionalService:
             qs = qs.filter(cliente=interpretacao.cliente)
         if interpretacao.loja:
             qs = qs.filter(loja__iexact=interpretacao.loja)
-        if interpretacao.pessoas_filtro is not None:
+        if (
+            interpretacao.pessoas_filtro is not None and
+            not cls._pergunta_simulacao_equipe(interpretacao.texto)
+        ):
             qs = qs.filter(pessoas=interpretacao.pessoas_filtro)
         if interpretacao.periodo_inicio:
             qs = qs.filter(data_inicio__gte=interpretacao.periodo_inicio)
         if interpretacao.periodo_fim:
             qs = qs.filter(data_inicio__lte=interpretacao.periodo_fim)
+
+        simulacao_equipe = cls._pergunta_simulacao_equipe(interpretacao.texto)
+        consulta_tempos = cls._pergunta_tempos_operacionais(interpretacao.texto)
+        possui_tempos_reais = simulacao_equipe and qs.filter(
+            inicio_real__isnull=False,
+            fim_real__isnull=False,
+        ).exists()
+        if (
+            consulta_tempos and
+            (not simulacao_equipe or possui_tempos_reais)
+        ):
+            return cls._tempos_operacionais_inventario(user, interpretacao, qs)
 
         escopo = cls._descricao_filtro_inventario(interpretacao)
         registros = list(qs.order_by('data_inicio', 'cliente__sigla', 'loja', 'base__nome', 'pk'))
@@ -770,6 +836,9 @@ class AssistenteOperacionalService:
             )
 
         estimativas = cls._estimar_grupos_inventario(user, grupos)
+        if simulacao_equipe and interpretacao.cliente and interpretacao.loja:
+            return cls._simular_planejamento_grupo(grupos, estimativas, interpretacao.texto)
+
         total_pessoas = sum(grupo['pessoas'] for grupo in grupos)
         previsoes_oficiais = [grupo['previsao'] for grupo in grupos if grupo['previsao'] is not None]
         previsoes_estimadas = [
@@ -789,14 +858,14 @@ class AssistenteOperacionalService:
             sum(produtividades_completas) / len(produtividades_completas)
             if produtividades_completas else None
         )
-        pessoas_com_previsao = sum(
-            grupo['pessoas']
+        equipe_contagem_total = sum(
+            cls._equipe_produtiva_grupo(grupo)
             for grupo in grupos
             if grupo['previsao'] is not None or estimativas[grupo['representante'].pk]['previsao'] is not None
         )
-        media_planejada = (
-            total_previsao / pessoas_com_previsao
-            if pessoas_com_previsao and (previsoes_oficiais or previsoes_estimadas)
+        carga_media_por_pessoa = (
+            total_previsao / equipe_contagem_total
+            if equipe_contagem_total and (previsoes_oficiais or previsoes_estimadas)
             else None
         )
         itens = grupos[:10]
@@ -862,30 +931,38 @@ class AssistenteOperacionalService:
                 f'Previsão e produtividade ({escopo})',
                 '',
                 f'- Inventários encontrados: {total}',
-                f'- Pessoas previstas: {total_pessoas}',
+                f'- Alocações pessoa-etapa: {total_pessoas}',
+                f'- Equipes de contagem (soma de T + APOIO): {equipe_contagem_total}',
                 f'- Previsão total de peças (oficial + estimada): {cls._formatar_numero(total_previsao)}',
                 f'- Previsões: {len(previsoes_oficiais)} oficiais, {len(previsoes_estimadas)} estimadas, '
                 f'{total - len(previsoes_oficiais) - len(previsoes_estimadas)} sem base comparável',
-                f'- PROD MÉDIA (oficial + estimada): {cls._formatar_decimal(media_prod)}',
+                f'- Produtividade planejada média: {cls._formatar_decimal(media_prod)} peças por pessoa/hora',
                 f'- Produtividades: {len(produtividades_oficiais)} oficiais, '
                 f'{len(produtividades_estimadas)} estimadas, '
                 f'{total - len(produtividades_oficiais) - len(produtividades_estimadas)} sem base comparável',
-                '- Previsão por pessoa: ' + (
-                    f'{cls._formatar_decimal(media_planejada)} peças/pessoa'
-                    if media_planejada is not None else 'não calculável com os dados disponíveis'
+                '- Carga prevista por pessoa da equipe de contagem: ' + (
+                    f'{cls._formatar_decimal(carga_media_por_pessoa)} peças/pessoa'
+                    if carga_media_por_pessoa is not None else 'não calculável com os dados disponíveis'
                 ),
                 '',
-                'CLIENTE | LOJA | PERÍODO | BASE | TIPOS | PESSOAS | PREVISÃO PEÇAS | PROD MÉDIA | PEÇAS/PESSOA',
+                'CLIENTE | LOJA | PERÍODO | BASE | TIPOS | ALOCAÇÕES | EQUIPE T+APOIO | PREVISÃO PEÇAS | '
+                'PROD. PLANEJADA | PEÇAS/PESSOA | DURAÇÃO ESTIMADA',
             ]
             for grupo in itens:
                 inv = grupo['representante']
                 estimativa = estimativas[inv.pk]
                 previsao = grupo['previsao'] if grupo['previsao'] is not None else estimativa['previsao']
                 prod_media = grupo['prod_media'] if grupo['prod_media'] is not None else estimativa['prod_media']
-                produtividade = (
-                    previsao / grupo['pessoas']
-                    if previsao is not None and grupo['pessoas']
+                equipe_contagem = cls._equipe_produtiva_grupo(grupo)
+                pecas_por_pessoa = (
+                    previsao / equipe_contagem
+                    if previsao is not None and equipe_contagem
                     else None
+                )
+                duracao_estimada = cls._duracao_planejada_horas(
+                    previsao,
+                    equipe_contagem,
+                    prod_media,
                 )
                 previsao_texto = cls._formatar_numero(previsao)
                 prod_texto = cls._formatar_decimal(prod_media)
@@ -895,14 +972,16 @@ class AssistenteOperacionalService:
                     prod_texto += f' (estimada, n={estimativa["prod_amostras"]})'
                 linhas.append(
                     f'{inv.cliente.sigla} | {inv.loja} | {cls._formatar_periodo_grupo(grupo)} | {inv.base.nome} | '
-                    f'{", ".join(grupo["tipos"])} | {grupo["pessoas"]} | '
+                    f'{", ".join(grupo["tipos"])} | {grupo["pessoas"]} | {equipe_contagem} | '
                     f'{previsao_texto} | {prod_texto} | '
-                    f'{cls._formatar_decimal(produtividade)}'
+                    f'{cls._formatar_decimal(pecas_por_pessoa)} | {cls._formatar_horas(duracao_estimada)}'
                 )
             linhas.extend([
                 '',
-                'Nota: “PROD MÉDIA” é o valor informado pelo relatório. “PEÇAS/PESSOA” é calculado como '
-                'PREVISÃO DE PEÇAS ÷ PESSOAS; os dois indicadores não são tratados como equivalentes. '
+                'Nota: “ALOCAÇÕES” soma pessoas de todas as etapas e dias; não representa o tamanho da equipe '
+                'produtiva. Para duração e carga por pessoa, Tory usa a equipe T + APOIO. “PROD. PLANEJADA” '
+                'é tratada como peças por pessoa/hora, e a duração é PREVISÃO ÷ EQUIPE ÷ PRODUTIVIDADE. '
+                'A produtividade real exige peças realizadas, início real e fim real. '
                 'Estimativas usam, nesta ordem, médias da mesma loja/cliente, do mesmo cliente com igual número de pessoas '
                 'e do cliente em geral.',
             ])
@@ -993,6 +1072,367 @@ class AssistenteOperacionalService:
         return cls._resposta('inventarios', '\n'.join(linhas))
 
     @classmethod
+    def _tempos_operacionais_inventario(cls, user, interpretacao, qs):
+        registros = list(qs.order_by('-data_inicio', '-pk'))
+        escopo = cls._descricao_filtro_inventario(interpretacao)
+        texto = interpretacao.texto
+
+        if cls._pergunta_ranking_atrasos(texto):
+            return cls._ranking_atrasos_por_base(registros, escopo)
+
+        horario_limite = cls._extrair_horario_depois(texto)
+        if horario_limite is not None:
+            encerrados_depois = [
+                inventario for inventario in registros
+                if inventario.fim_real and
+                cls._datetime_local(inventario.fim_real).time().replace(tzinfo=None) > horario_limite
+            ]
+            if not encerrados_depois:
+                return cls._resposta(
+                    'inventarios',
+                    f'não encontrei inventários encerrados depois das {horario_limite:%H:%M} para {escopo}. '
+                    'A comparação usa o horário real registrado; Tory não presume uma janela fixa.'
+                )
+            linhas = [
+                f'Inventários encerrados depois das {horario_limite:%H:%M} ({escopo})',
+                '',
+                'CLIENTE | LOJA | BASE | INÍCIO REAL | FIM REAL | DURAÇÃO',
+            ]
+            for inventario in encerrados_depois[:20]:
+                linhas.append(
+                    f'{inventario.cliente.sigla} | {inventario.loja} | {inventario.base.nome} | '
+                    f'{cls._formatar_datetime(inventario.inicio_real)} | '
+                    f'{cls._formatar_datetime(inventario.fim_real)} | '
+                    f'{cls._formatar_horas(inventario.duracao_total_horas)}'
+                )
+            linhas.extend([
+                '',
+                'O filtro é literal pelo horário de encerramento informado. Inventários diurnos e noturnos '
+                'não recebem janelas presumidas.',
+            ])
+            return cls._resposta('inventarios', '\n'.join(linhas))
+
+        if not registros:
+            return cls._resposta(
+                'inventarios',
+                f'não encontrei inventários para {escopo} dentro das bases permitidas ao seu usuário.'
+            )
+
+        inventario = next(
+            (
+                item for item in registros
+                if item.inicio_real or item.fim_real or item.inicio_previsto or item.fim_previsto
+            ),
+            registros[0],
+        )
+
+        if cls._pergunta_simulacao_equipe(texto):
+            return cls._simular_equipe_inventario(inventario, texto)
+
+        inicio_hipotetico = cls._extrair_horario_inicio_hipotetico(texto)
+        if inicio_hipotetico is not None:
+            return cls._simular_inicio_inventario(inventario, inicio_hipotetico)
+
+        horario_alvo = cls._extrair_horario_antes(texto)
+        if horario_alvo is not None and cls._tem(texto, 'quantas pessoas', 'quantos profissionais', 'equipe necessaria'):
+            return cls._calcular_equipe_para_horario(inventario, horario_alvo)
+
+        return cls._detalhar_tempos_inventario(user, inventario, texto)
+
+    @classmethod
+    def _detalhar_tempos_inventario(cls, user, inventario, texto):
+        linhas = [f'Inventário {inventario.cliente.sigla} loja {inventario.loja}']
+        linhas.extend([
+            f'- Início previsto: {cls._formatar_datetime(inventario.inicio_previsto)}',
+            f'- Início real: {cls._formatar_datetime(inventario.inicio_real)}',
+            f'- Fim previsto: {cls._formatar_datetime(inventario.fim_previsto)}',
+            f'- Fim real: {cls._formatar_datetime(inventario.fim_real)}',
+            f'- Duração total: {cls._formatar_horas(inventario.duracao_total_horas)}',
+            f'- Tempo efetivo de contagem: {cls._formatar_horas(inventario.duracao_contagem_horas)}',
+            f'- Tempo fora da contagem: {cls._formatar_horas(inventario.tempo_improdutivo_horas)}',
+        ])
+
+        if inventario.atraso_inicio_minutos is None:
+            linhas.append('- Cumprimento do início previsto: não calculável sem início previsto e início real')
+        elif inventario.atraso_inicio_minutos > 0:
+            linhas.append(
+                f'- Cumprimento do início previsto: começou com '
+                f'{cls._formatar_minutos(inventario.atraso_inicio_minutos)} de atraso'
+            )
+        elif inventario.atraso_inicio_minutos < 0:
+            linhas.append(
+                f'- Cumprimento do início previsto: começou '
+                f'{cls._formatar_minutos(abs(inventario.atraso_inicio_minutos))} antes'
+            )
+        else:
+            linhas.append('- Cumprimento do início previsto: começou no horário')
+
+        if inventario.desvio_fim_minutos is None:
+            linhas.append('- Cumprimento do fim previsto: não calculável sem fim previsto e fim real')
+        elif inventario.desvio_fim_minutos > 0:
+            linhas.append(
+                f'- Cumprimento do fim previsto: encerrou '
+                f'{cls._formatar_minutos(inventario.desvio_fim_minutos)} depois'
+            )
+        elif inventario.desvio_fim_minutos < 0:
+            linhas.append(
+                f'- Cumprimento do fim previsto: encerrou '
+                f'{cls._formatar_minutos(abs(inventario.desvio_fim_minutos))} antes'
+            )
+        else:
+            linhas.append('- Cumprimento do fim previsto: encerrou no horário')
+
+        linhas.extend([
+            f'- Peças contadas: {cls._formatar_numero(inventario.total_pecas)}',
+            f'- Equipe: {inventario.pessoas if inventario.pessoas is not None else "-"}',
+            f'- Peças por pessoa: {cls._formatar_decimal(inventario.pecas_por_pessoa)}',
+            '- Produtividade pela duração total: ' + (
+                f'{cls._formatar_decimal(inventario.produtividade_pessoa_hora)} peças por pessoa/hora'
+                if inventario.produtividade_pessoa_hora is not None else 'não calculável com os dados disponíveis'
+            ),
+            '- Produtividade no tempo de contagem: ' + (
+                f'{cls._formatar_decimal(inventario.produtividade_contagem_pessoa_hora)} peças por pessoa/hora'
+                if inventario.produtividade_contagem_pessoa_hora is not None else 'não calculável com os dados disponíveis'
+            ),
+        ])
+
+        if cls._tem(texto, 'custo', 'custou', 'adicional'):
+            if inventario.custo_adicional_atraso is None:
+                linhas.append(
+                    '- Custo adicional: não calculável sem atraso de encerramento, equipe e custo por pessoa/hora.'
+                )
+            else:
+                linhas.append(
+                    f'- Custo adicional pelo encerramento após o previsto: '
+                    f'R$ {cls._formatar_decimal(inventario.custo_adicional_atraso)}'
+                )
+
+        comparacao = cls._comparar_com_historico(user, inventario)
+        if comparacao:
+            linhas.extend(['', comparacao])
+
+        if not inventario.inicio_real or not inventario.fim_real:
+            linhas.extend([
+                '',
+                'Os timestamps reais estão incompletos. Tory não usa 20h–6h nem qualquer outra jornada fixa '
+                'como substituição.',
+            ])
+        return cls._resposta('inventarios', '\n'.join(linhas))
+
+    @classmethod
+    def _comparar_com_historico(cls, user, inventario):
+        if not inventario.inicio_real:
+            return ''
+        from insumos.models import Inventario
+        from insumos.utils import secure_queryset_insumos
+
+        anteriores = secure_queryset_insumos(
+            Inventario.objects.filter(
+                cliente=inventario.cliente,
+                loja__iexact=inventario.loja,
+                inicio_real__lt=inventario.inicio_real,
+                fim_real__isnull=False,
+            ).select_related('base', 'cliente'),
+            user,
+            campo_base='base',
+        ).order_by('-inicio_real')[:5]
+        anteriores = list(anteriores)
+        duracoes = [item.duracao_total_horas for item in anteriores if item.duracao_total_horas is not None]
+        produtividades = [
+            item.produtividade_pessoa_hora
+            for item in anteriores
+            if item.produtividade_pessoa_hora is not None
+        ]
+        partes = []
+        if duracoes and inventario.duracao_total_horas is not None:
+            media = sum(duracoes) / len(duracoes)
+            diferenca = inventario.duracao_total_horas - media
+            direcao = 'acima' if diferenca >= 0 else 'abaixo'
+            partes.append(
+                f'A duração ficou {cls._formatar_horas(abs(diferenca))} {direcao} da média dos '
+                f'{len(duracoes)} inventários anteriores da mesma loja ({cls._formatar_horas(media)}).'
+            )
+        if produtividades and inventario.produtividade_pessoa_hora is not None:
+            media = sum(produtividades) / len(produtividades)
+            variacao = ((inventario.produtividade_pessoa_hora / media) - 1) * 100 if media else 0
+            direcao = 'acima' if variacao >= 0 else 'abaixo'
+            partes.append(
+                f'A produtividade ficou {abs(variacao):.0f}% {direcao} da média histórica comparável.'
+            )
+        return ' '.join(partes)
+
+    @classmethod
+    def _simular_equipe_inventario(cls, inventario, texto):
+        if not inventario.pessoas or not inventario.duracao_total_horas or not inventario.inicio_real:
+            return cls._resposta(
+                'inventarios',
+                'não consigo simular a equipe sem quantidade de pessoas, início real e fim real registrados.'
+            )
+        nova_equipe = cls._extrair_total_equipe_simulada(texto)
+        adicional = cls._extrair_adicional_equipe(texto)
+        if nova_equipe is None and adicional is not None:
+            nova_equipe = inventario.pessoas + adicional
+        if not nova_equipe or nova_equipe <= 0:
+            return cls._resposta('inventarios', 'informe quantas pessoas terá a equipe simulada.')
+
+        horas_estimadas = inventario.duracao_total_horas * inventario.pessoas / nova_equipe
+        termino = inventario.inicio_real + timedelta(hours=horas_estimadas)
+        linhas = [
+            f'Com {nova_equipe} pessoas, a duração estimada seria {cls._formatar_horas(horas_estimadas)}, '
+            f'com término em {cls._formatar_datetime(termino)}.',
+            '',
+            'A projeção mantém a produtividade individual observada e é linear. Ela não considera perda de '
+            'eficiência, espaço físico, curva de aprendizado ou coordenação adicional causada pela mudança da equipe.',
+        ]
+        return cls._resposta('inventarios', '\n'.join(linhas))
+
+    @classmethod
+    def _simular_planejamento_grupo(cls, grupos, estimativas, texto):
+        grupo = max(
+            grupos,
+            key=lambda item: (item['data_inicio'], item['representante'].pk),
+        )
+        inventario = grupo['representante']
+        estimativa = estimativas[inventario.pk]
+        previsao = grupo['previsao'] if grupo['previsao'] is not None else estimativa['previsao']
+        produtividade = (
+            grupo['prod_media']
+            if grupo['prod_media'] is not None
+            else estimativa['prod_media']
+        )
+        equipe_atual = cls._equipe_produtiva_grupo(grupo)
+        nova_equipe = cls._extrair_total_equipe_simulada(texto)
+        adicional = cls._extrair_adicional_equipe(texto)
+        if nova_equipe is None and adicional is not None:
+            nova_equipe = equipe_atual + adicional
+
+        if not nova_equipe or nova_equipe <= 0:
+            return cls._resposta('inventarios', 'informe quantas pessoas terá a equipe simulada.')
+        if not previsao or not produtividade:
+            return cls._resposta(
+                'inventarios',
+                'não consigo simular esse planejamento sem previsão de peças e produtividade planejada.'
+            )
+
+        duracao_atual = cls._duracao_planejada_horas(previsao, equipe_atual, produtividade)
+        duracao_simulada = cls._duracao_planejada_horas(previsao, nova_equipe, produtividade)
+        inicio = cls._inicio_planejado_grupo(grupo)
+        termino_atual = inicio + timedelta(hours=duracao_atual) if inicio and duracao_atual is not None else None
+        termino = inicio + timedelta(hours=duracao_simulada) if inicio and duracao_simulada is not None else None
+        origem_produtividade = 'informada no planejamento' if grupo['prod_media'] is not None else 'estimada pelo histórico'
+        inicio_texto = cls._formatar_datetime(inicio) if inicio else '-'
+        termino_atual_texto = cls._formatar_datetime(termino_atual) if termino_atual else '-'
+        termino_simulado_texto = cls._formatar_datetime(termino) if termino else '-'
+        linhas = [
+            f'Simulação de equipe para {inventario.cliente.sigla} loja {inventario.loja}',
+            '',
+            'CENÁRIO | EQUIPE | PREVISÃO DE PEÇAS | PRODUTIVIDADE | DURAÇÃO | INÍCIO | TÉRMINO',
+            f'Atual | {equipe_atual} | {cls._formatar_numero(previsao)} | '
+            f'{cls._formatar_decimal(produtividade)} peças/pessoa/h | {cls._formatar_horas(duracao_atual)} | '
+            f'{inicio_texto} | {termino_atual_texto}',
+            f'Simulada | {nova_equipe} | {cls._formatar_numero(previsao)} | '
+            f'{cls._formatar_decimal(produtividade)} peças/pessoa/h | {cls._formatar_horas(duracao_simulada)} | '
+            f'{inicio_texto} | {termino_simulado_texto}',
+            '',
+            f'Produtividade planejada {origem_produtividade}.',
+        ]
+        linhas.extend([
+            'Fórmula: duração = previsão de peças ÷ equipe de contagem ÷ produtividade planejada.',
+            'A projeção é linear e não considera perda de eficiência, limitações físicas ou coordenação adicional '
+            'ao aumentar a equipe. A produtividade real só pode ser calculada com peças realizadas e timestamps reais.',
+        ])
+        return cls._resposta('inventarios', '\n'.join(linhas))
+
+    @staticmethod
+    def _equipe_produtiva_grupo(grupo):
+        equipe_oficial = grupo['pessoas_oficial_apoio']
+        if equipe_oficial:
+            return equipe_oficial
+        return grupo['pessoas']
+
+    @staticmethod
+    def _duracao_planejada_horas(previsao, equipe, produtividade):
+        if not previsao or not equipe or not produtividade:
+            return None
+        return previsao / equipe / produtividade
+
+    @classmethod
+    def _inicio_planejado_grupo(cls, grupo):
+        inventario = grupo['pai'] or grupo['representante']
+        if inventario.inicio_previsto:
+            return inventario.inicio_previsto
+        if inventario.horario_inicio:
+            inicio = datetime.combine(inventario.data_inicio, inventario.horario_inicio)
+            return timezone.make_aware(inicio)
+        return None
+
+    @classmethod
+    def _simular_inicio_inventario(cls, inventario, horario_inicio):
+        if not inventario.duracao_total_horas:
+            return cls._resposta(
+                'inventarios',
+                'não consigo projetar o término sem início real e fim real para obter a duração observada.'
+            )
+        referencia = cls._datetime_local(inventario.inicio_real) if inventario.inicio_real else None
+        data_referencia = referencia.date() if referencia else inventario.data_inicio
+        inicio = timezone.make_aware(datetime.combine(data_referencia, horario_inicio))
+        termino = inicio + timedelta(hours=inventario.duracao_total_horas)
+        return cls._resposta(
+            'inventarios',
+            f'Se tivesse começado em {cls._formatar_datetime(inicio)}, mantendo a duração observada de '
+            f'{cls._formatar_horas(inventario.duracao_total_horas)}, terminaria em '
+            f'{cls._formatar_datetime(termino)}.'
+        )
+
+    @classmethod
+    def _calcular_equipe_para_horario(cls, inventario, horario_alvo):
+        if not inventario.pessoas or not inventario.duracao_total_horas or not inventario.inicio_real:
+            return cls._resposta(
+                'inventarios',
+                'não consigo dimensionar a equipe sem quantidade de pessoas, início real e fim real registrados.'
+            )
+        inicio = cls._datetime_local(inventario.inicio_real)
+        alvo = timezone.make_aware(datetime.combine(inicio.date(), horario_alvo))
+        if alvo <= inicio:
+            alvo += timedelta(days=1)
+        horas_disponiveis = (alvo - inicio).total_seconds() / 3600
+        pessoas = ceil(inventario.pessoas * inventario.duracao_total_horas / horas_disponiveis)
+        return cls._resposta(
+            'inventarios',
+            f'Para concluir até {cls._formatar_datetime(alvo)}, seriam necessárias aproximadamente '
+            f'{pessoas} pessoas, mantendo a produtividade individual observada. A projeção é linear e não '
+            'considera perdas de eficiência ao ampliar a equipe.'
+        )
+
+    @classmethod
+    def _ranking_atrasos_por_base(cls, registros, escopo):
+        por_base = defaultdict(list)
+        for inventario in registros:
+            if inventario.atraso_inicio_minutos is not None and inventario.atraso_inicio_minutos > 0:
+                por_base[inventario.base.nome].append(inventario.atraso_inicio_minutos)
+        if not por_base:
+            return cls._resposta(
+                'inventarios',
+                f'não há atrasos de início calculáveis para {escopo}. São necessários início previsto e início real.'
+            )
+        ranking = sorted(
+            (
+                (sum(atrasos) / len(atrasos), len(atrasos), base)
+                for base, atrasos in por_base.items()
+            ),
+            reverse=True,
+        )
+        linhas = [
+            f'Bases com maiores atrasos médios de início ({escopo})',
+            '',
+            'BASE | ATRASO MÉDIO | INVENTÁRIOS ATRASADOS',
+        ]
+        for media, quantidade, base in ranking[:10]:
+            linhas.append(f'{base} | {cls._formatar_minutos(media)} | {quantidade}')
+        linhas.extend(['', 'O ranking considera somente registros com início previsto e início real.'])
+        return cls._resposta('inventarios', '\n'.join(linhas))
+
+    @classmethod
     def _custos_insumos(cls, user, interpretacao):
         from insumos.models import Insumo
         from insumos.services.custo_service import CustoInsumoService
@@ -1065,22 +1505,43 @@ class AssistenteOperacionalService:
                 '- Valores ausentes são tratados como R$ 0,00 e não são estimados pela Tory.',
             ])
 
-        detalhes = CustoInsumoService.por_inventario(qs, limite=10)
-        linhas.extend([
-            '',
-            'DATA | CLIENTE | LOJA | BASE | TIPO | PESSOAS | CUSTO | CUSTO/PESSOA',
-        ])
-        for item in detalhes:
-            custo_pessoa = item['custo_por_pessoa']
-            linhas.append(
-                f'{item["inventario__data_inicio"]:%d/%m/%Y} | '
-                f'{item["inventario__cliente__sigla"]} | {item["inventario__loja"]} | '
-                f'{item["inventario__base__nome"]} | {item["inventario__tipo"] or "-"} | '
-                f'{item["inventario__pessoas"] or "-"} | R$ {cls._formatar_decimal(item["total"])} | '
-                f'{("R$ " + cls._formatar_decimal(custo_pessoa)) if custo_pessoa is not None else "-"}'
-            )
-        if resumo['inventarios'] > len(detalhes):
-            linhas.extend(['', f'Exibindo 10 de {resumo["inventarios"]} inventários com consumo.'])
+        ranking_por_cliente = bool(re.search(r'\bpor\s+clientes?\b', interpretacao.texto))
+        if ranking_por_cliente:
+            detalhes_clientes = CustoInsumoService.por_cliente(qs)
+            linhas.extend([
+                '',
+                'CLIENTE | INVENTÁRIOS | CUSTO TOTAL | PARTICIPAÇÃO',
+            ])
+            for item in detalhes_clientes:
+                participacao = (
+                    item['total'] * 100 / resumo['total']
+                    if resumo['total'] else Decimal('0')
+                )
+                linhas.append(
+                    f'{item["inventario__cliente__sigla"]} | {item["inventarios"]} | '
+                    f'R$ {cls._formatar_decimal(item["total"])} | {cls._formatar_decimal(participacao)}%'
+                )
+            linhas.extend([
+                '',
+                f'Ranking dos {len(detalhes_clientes)} clientes com consumo no período, do maior para o menor custo.',
+            ])
+        else:
+            detalhes = CustoInsumoService.por_inventario(qs, limite=10)
+            linhas.extend([
+                '',
+                'DATA | CLIENTE | LOJA | BASE | TIPO | PESSOAS | CUSTO | CUSTO/PESSOA',
+            ])
+            for item in detalhes:
+                custo_pessoa = item['custo_por_pessoa']
+                linhas.append(
+                    f'{item["inventario__data_inicio"]:%d/%m/%Y} | '
+                    f'{item["inventario__cliente__sigla"]} | {item["inventario__loja"]} | '
+                    f'{item["inventario__base__nome"]} | {item["inventario__tipo"] or "-"} | '
+                    f'{item["inventario__pessoas"] or "-"} | R$ {cls._formatar_decimal(item["total"])} | '
+                    f'{("R$ " + cls._formatar_decimal(custo_pessoa)) if custo_pessoa is not None else "-"}'
+                )
+            if resumo['inventarios'] > len(detalhes):
+                linhas.extend(['', f'Exibindo 10 de {resumo["inventarios"]} inventários com consumo.'])
 
         linhas.extend([
             '',
@@ -1644,13 +2105,26 @@ class AssistenteOperacionalService:
             )
 
         limite = 20
-        linhas = [
-            'só preciso confirmar qual base você deseja consultar. Você pode informar apenas a cidade ou uma parte do nome:',
-        ]
+        if interpretacao.opcoes_base and re.search(r'\bsao paulo\b', interpretacao.texto):
+            linhas = [
+                '“São Paulo” pode indicar a base SÃO PAULO ou o estado de SP. Qual base você deseja consultar?',
+                '',
+                'Selecione uma das opções abaixo:',
+            ]
+        else:
+            linhas = [
+                'só preciso confirmar qual base você deseja consultar.',
+                '',
+                'Selecione uma das opções abaixo:',
+            ]
         linhas.extend(f'- {nome}' for nome in opcoes[:limite])
         if len(opcoes) > limite:
-            linhas.append(f'- mais {len(opcoes) - limite} base(s) disponivel(is)')
-        linhas.append('Responda, por exemplo, apenas “Maringá”, “Londrina” ou “todas”.')
+            linhas.append(f'- mais {len(opcoes) - limite} base(s) disponível(is)')
+        if interpretacao.opcoes_base and re.search(r'\bsao paulo\b', interpretacao.texto):
+            linhas.extend([
+                '',
+                'Para consultar todo o estado, escreva “UF SP” ou “estado de São Paulo”.',
+            ])
         return cls._resposta('escolher_base', '\n'.join(linhas))
 
     @classmethod
@@ -2286,21 +2760,22 @@ class AssistenteOperacionalService:
             if nome and nome in texto:
                 return cliente
 
-        siglas_ignoradas = {'dia', 'pra', 'ate', 'sim', 'nao', 'mes', 'ano'}
+        siglas_ignoradas = {'dia', 'pra', 'ate', 'sim', 'nao', 'mes', 'ano', 'por'}
         for cliente in clientes:
             sigla = cls._normalizar(cliente.sigla)
-            if sigla in siglas_ignoradas:
-                continue
-            if re.search(rf'\b{re.escape(sigla)}\b(?:\s+loja)?\s*\d+', texto):
+            codigo_loja = r'(?=[a-z0-9-]*\d)[a-z0-9-]+'
+            if re.search(rf'\b{re.escape(sigla)}\b(?:\s+loja)?\s*{codigo_loja}\b', texto):
                 return cliente
             if re.search(rf'\b(?:cliente|rede|do|da)\s+{re.escape(sigla)}\b', texto):
                 return cliente
+            if sigla in siglas_ignoradas:
+                continue
             # Siglas de uma letra (como A) não podem competir com artigos da frase.
             if len(sigla) > 1 and re.search(rf'\b{re.escape(sigla)}\b', texto) and cls._tem(
                 texto, 'inventario', 'inventarios', 'loja', 'previsao', 'pecas', 'produtividade',
                 'cnpj', 'endereco', 'quantos', 'quantas', 'quantidade', 'total', 'mes',
                 'semana', 'hoje', 'amanha', 'gasto', 'gastos', 'custo', 'custos',
-                'despesa', 'despesas',
+                'despesa', 'despesas', 'fale', 'fala', 'sobre', 'resumo', 'visao',
             ):
                 return cliente
         return None
@@ -2365,7 +2840,11 @@ class AssistenteOperacionalService:
                 if sigla.lower() == cliente.sigla.lower()
             )
             for identificador in sorted(identificadores, key=len, reverse=True):
-                match = re.search(rf'\b{re.escape(identificador)}\b\s*(?:loja\s*)?(\d+)\b', texto)
+                match = re.search(
+                    rf'\b{re.escape(identificador)}\b\s*(?:loja\s*)?'
+                    rf'((?=[a-z0-9-]*\d)[a-z0-9-]+)\b',
+                    texto,
+                )
                 if match:
                     return match.group(1)
         return ''
@@ -2407,6 +2886,20 @@ class AssistenteOperacionalService:
     def _base_unica_visivel(cls, user):
         bases = cls._bases_visiveis(user)
         return bases[0] if len(bases) == 1 else None
+
+    @classmethod
+    def _opcoes_base_para_local_ambiguo(cls, user, texto):
+        if re.search(r'\b(?:uf|estado)\s+(?:de\s+|do\s+|da\s+)?sao paulo\b', texto):
+            return []
+        if not re.search(r'\bsao paulo\b', texto):
+            return []
+
+        bases = cls._bases_visiveis(user)
+        existe_base_exata = any(cls._normalizar(base.nome) == 'sao paulo' for base in bases)
+        bases_sp = [base for base in bases if cls._base_pertence_uf(base, 'SP')]
+        if not existe_base_exata or len(bases_sp) < 2:
+            return []
+        return sorted(bases_sp, key=lambda base: cls._normalizar(base.nome))
 
     @classmethod
     def _bases_da_uf_visiveis(cls, user, uf):
@@ -2652,7 +3145,7 @@ class AssistenteOperacionalService:
         return bool(
             re.search(
                 r'^(e\b|entao\b|nessa\b|nesta\b|ela\b|isso\b|ainda\b|tambem\b|'
-                r'a base\b|essa base\b|esta base\b|a regional\b|essa regional\b|'
+                r'a base\b|na base\b|base\b|essa base\b|esta base\b|a regional\b|essa regional\b|'
                 r'da conta\b|consegue\b|tem\b|temos\b|possui\b|possuimos\b|ha\b|'
                 r'e suficiente\b|vai dar\b)',
                 texto,
@@ -2687,9 +3180,83 @@ class AssistenteOperacionalService:
         return bool(re.search(
             r'\b(inventario|inventarios|previsao|pecas|produtividade|prod media|producao|'
             r'media|endereco|cnpj|cep|bairro|cidade|loja|lider|data|dia|quando|'
-            r'pessoas|apoio|etapa|etapas|tipo|tipos|horario|historico)\b',
+            r'pessoas|apoio|etapa|etapas|tipo|tipos|horario|historico|duracao|durou|demorou|'
+            r'comecou|terminou|encerramento|atraso|atrasos|tempo produtivo|tempo efetivo|'
+            r'custo adicional|ultrapassou|ultrapassar)\b',
             texto,
         ))
+
+    @staticmethod
+    def _pergunta_tempos_operacionais(texto):
+        return bool(re.search(
+            r'\b(duracao|durou|demorou|tempo total|tempo efetivo|tempo produtivo|tempo improdutivo|'
+            r'comecou|inicio real|inicio previsto|terminou|fim real|fim previsto|encerramento|'
+            r'atraso|atrasos|depois das|antes das|mais \w+ pessoas|equipe necessaria|'
+            r'acima da media|custo adicional|ultrapassou|ultrapassar)\b',
+            texto,
+        ))
+
+    @staticmethod
+    def _pergunta_ranking_atrasos(texto):
+        return bool(
+            re.search(r'\b(base|bases)\b', texto) and
+            re.search(r'\b(atraso|atrasos|atrasam|atrasadas)\b', texto)
+        )
+
+    @staticmethod
+    def _pergunta_simulacao_equipe(texto):
+        return bool(
+            re.search(r'\bmais\s+(?:\d+|uma|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+pessoas?\b', texto) or
+            re.search(r'\b(?:fossem|com|equipe de)\s+\d+\s+pessoas?\b', texto)
+        )
+
+    @staticmethod
+    def _extrair_adicional_equipe(texto):
+        numeros = {
+            'uma': 1, 'duas': 2, 'tres': 3, 'quatro': 4, 'cinco': 5,
+            'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9, 'dez': 10,
+        }
+        match = re.search(
+            r'\bmais\s+(\d+|uma|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+pessoas?\b',
+            texto,
+        )
+        if not match:
+            return None
+        valor = match.group(1)
+        return int(valor) if valor.isdigit() else numeros[valor]
+
+    @staticmethod
+    def _extrair_total_equipe_simulada(texto):
+        match = re.search(r'\b(?:fossem|com|equipe de)\s+(\d+)\s+pessoas?\b', texto)
+        return int(match.group(1)) if match else None
+
+    @staticmethod
+    def _extrair_horario_inicio_hipotetico(texto):
+        match = re.search(
+            r'\b(?:comecado|comecasse|iniciado|iniciasse)\s+(?:as\s+)?(\d{1,2})(?::(\d{2}))?h?\b',
+            texto,
+        )
+        return AssistenteOperacionalService._horario_do_match(match)
+
+    @staticmethod
+    def _extrair_horario_antes(texto):
+        match = re.search(r'\bantes\s+d(?:as|e)\s+(\d{1,2})(?::(\d{2}))?h?\b', texto)
+        return AssistenteOperacionalService._horario_do_match(match)
+
+    @staticmethod
+    def _extrair_horario_depois(texto):
+        match = re.search(r'\bdepois\s+d(?:as|e)\s+(\d{1,2})(?::(\d{2}))?h?\b', texto)
+        return AssistenteOperacionalService._horario_do_match(match)
+
+    @staticmethod
+    def _horario_do_match(match):
+        if not match:
+            return None
+        hora = int(match.group(1))
+        minuto = int(match.group(2) or 0)
+        if hora > 23 or minuto > 59:
+            return None
+        return time(hour=hora, minute=minuto)
 
     @staticmethod
     def _pergunta_data_inventario(texto):
@@ -2718,7 +3285,11 @@ class AssistenteOperacionalService:
             r'mes|semana|periodo|tipo|pessoas)\b',
             texto,
         )
-        return bool(termo_financeiro and contexto_custo)
+        ranking_ou_consulta_direta = re.search(
+            r'\b(maior|maiores|menor|menores|ranking|top|total|qual|quais)\b',
+            texto,
+        )
+        return bool(termo_financeiro and (contexto_custo or ranking_ou_consulta_direta))
 
     @staticmethod
     def _pergunta_comparacao_precos(texto):
@@ -2922,13 +3493,14 @@ class AssistenteOperacionalService:
         mapas_prod = [defaultdict(list), defaultdict(list), defaultdict(list)]
         for grupo in comparaveis:
             inv = grupo['representante']
+            equipe_contagem = cls._equipe_produtiva_grupo(grupo)
             chaves = (
                 (inv.cliente_id, str(inv.loja).strip().lower()),
-                (inv.cliente_id, grupo['pessoas']),
+                (inv.cliente_id, equipe_contagem),
                 inv.cliente_id,
             )
-            if grupo['previsao'] is not None and grupo['pessoas']:
-                razao = grupo['previsao'] / grupo['pessoas']
+            if grupo['previsao'] is not None and equipe_contagem:
+                razao = grupo['previsao'] / equipe_contagem
                 for mapa, chave in zip(mapas_previsao, chaves):
                     mapa[chave].append(razao)
             if grupo['prod_media'] is not None:
@@ -2937,17 +3509,18 @@ class AssistenteOperacionalService:
 
         for grupo in grupos:
             inv = grupo['representante']
+            equipe_contagem = cls._equipe_produtiva_grupo(grupo)
             chaves = (
                 (inv.cliente_id, str(inv.loja).strip().lower()),
-                (inv.cliente_id, grupo['pessoas']),
+                (inv.cliente_id, equipe_contagem),
                 inv.cliente_id,
             )
             estimativa = resultado[inv.pk]
-            if grupo['previsao'] is None and grupo['pessoas'] and 'LO' not in grupo['tipos']:
+            if grupo['previsao'] is None and equipe_contagem and 'LO' not in grupo['tipos']:
                 for mapa, chave in zip(mapas_previsao, chaves):
                     amostras = mapa.get(chave, [])
                     if amostras:
-                        estimativa['previsao'] = round(sum(amostras) / len(amostras) * grupo['pessoas'])
+                        estimativa['previsao'] = round(sum(amostras) / len(amostras) * equipe_contagem)
                         estimativa['previsao_amostras'] = len(amostras)
                         break
             if grupo['prod_media'] is None and 'LO' not in grupo['tipos']:
@@ -3077,6 +3650,36 @@ class AssistenteOperacionalService:
         return f'{valor:%H:%M}' if valor else '-'
 
     @staticmethod
+    def _datetime_local(valor):
+        if valor is None:
+            return None
+        return timezone.localtime(valor) if timezone.is_aware(valor) else valor
+
+    @classmethod
+    def _formatar_datetime(cls, valor):
+        valor = cls._datetime_local(valor)
+        return f'{valor:%d/%m/%Y às %H:%M}' if valor else '-'
+
+    @staticmethod
+    def _formatar_horas(valor):
+        if valor is None:
+            return '-'
+        minutos = round(abs(float(valor)) * 60)
+        horas, minutos = divmod(minutos, 60)
+        sinal = '-' if valor < 0 else ''
+        return f'{sinal}{horas}h{minutos:02d}'
+
+    @staticmethod
+    def _formatar_minutos(valor):
+        if valor is None:
+            return '-'
+        minutos = round(abs(float(valor)))
+        horas, minutos = divmod(minutos, 60)
+        if horas:
+            return f'{horas}h{minutos:02d}'
+        return f'{minutos} min'
+
+    @staticmethod
     def _formatar_percentual(valor):
         if valor in (None, ''):
             return '-'
@@ -3198,6 +3801,18 @@ class AssistenteOperacionalService:
             'periodo_inicio': interpretacao.periodo_inicio.isoformat() if interpretacao.periodo_inicio else '',
             'periodo_fim': interpretacao.periodo_fim.isoformat() if interpretacao.periodo_fim else '',
         }
+
+    @staticmethod
+    def _acoes_interpretacao(interpretacao):
+        if interpretacao.intencao != 'escolher_base':
+            return []
+        return [
+            {
+                'label': nome,
+                'pergunta': f'Na base {nome}',
+            }
+            for nome in interpretacao.opcoes_base
+        ]
 
     @staticmethod
     def _data_contexto(contexto):

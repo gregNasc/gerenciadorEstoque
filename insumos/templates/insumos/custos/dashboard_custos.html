@@ -5,24 +5,194 @@
 
 {% block extra_css %}
 <style>
-    .cost-page { padding: 20px; }
+    .cost-page {
+        --cost-primary: #176b55;
+        --cost-primary-soft: #eaf6f1;
+        --cost-blue: #3568d4;
+        --cost-amber: #d98b22;
+        --cost-purple: #7657c8;
+        --cost-border: #dfe6ec;
+        --cost-muted: #647181;
+        padding: 24px;
+        background: #f5f7f9;
+        min-height: calc(100vh - 64px);
+    }
+
+    .cost-header,
+    .cost-filter,
+    .cost-tabs-shell,
+    .cost-kpi,
+    .chart-card,
+    .table-card {
+        background: #fff;
+        border: 1px solid var(--cost-border);
+        border-radius: 14px;
+    }
+
+    .cost-header {
+        padding: 20px 22px;
+        box-shadow: 0 8px 24px rgba(31, 49, 64, .05);
+    }
+
+    .cost-title-icon {
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        color: var(--cost-primary);
+        background: var(--cost-primary-soft);
+        font-size: 1.25rem;
+    }
+
     .cost-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
-    .cost-filter { background: #f7f9fb; border: 1px solid #d8e0e8; padding: 14px; }
-    .cost-kpi { border: 1px solid #d8e0e8; border-left: 4px solid #198754; border-radius: 6px; padding: 14px; height: 100%; background: #fff; }
-    .cost-kpi .value { font-size: 1.45rem; font-weight: 700; color: #17212b; }
-    .chart-panel { border: 1px solid #d8e0e8; border-radius: 6px; padding: 16px; height: 340px; background: #fff; }
-    .chart-panel canvas { max-height: 280px; }
-    .cost-table th { white-space: nowrap; font-size: .78rem; color: #52606d; }
-    .cost-table td { vertical-align: middle; font-size: .86rem; }
+
+    .cost-filter { padding: 16px; }
+    .cost-filter .form-label {
+        color: #52606d;
+        font-size: .76rem;
+        font-weight: 700;
+        letter-spacing: .02em;
+        margin-bottom: 5px;
+    }
+
+    .cost-kpi {
+        position: relative;
+        overflow: hidden;
+        padding: 16px;
+        min-height: 116px;
+        box-shadow: 0 5px 18px rgba(31, 49, 64, .04);
+    }
+
+    .cost-kpi::after {
+        content: '';
+        position: absolute;
+        width: 72px;
+        height: 72px;
+        right: -22px;
+        bottom: -28px;
+        border-radius: 50%;
+        background: var(--kpi-soft, var(--cost-primary-soft));
+    }
+
+    .cost-kpi .kpi-icon {
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        color: var(--kpi-color, var(--cost-primary));
+        background: var(--kpi-soft, var(--cost-primary-soft));
+    }
+
+    .cost-kpi .label { color: var(--cost-muted); font-size: .78rem; margin-top: 12px; }
+    .cost-kpi .value { color: #17212b; font-size: 1.35rem; font-weight: 750; line-height: 1.15; margin-top: 2px; }
+
+    .cost-tabs-shell {
+        overflow: hidden;
+        box-shadow: 0 8px 28px rgba(31, 49, 64, .05);
+    }
+
+    .cost-tabs-nav {
+        display: flex;
+        gap: 6px;
+        padding: 10px;
+        overflow-x: auto;
+        background: #f8fafb;
+        border-bottom: 1px solid var(--cost-border);
+    }
+
+    .cost-tabs-nav .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #52606d;
+        background: transparent;
+        border: 0;
+        border-radius: 9px;
+        padding: 10px 14px;
+        white-space: nowrap;
+        font-weight: 650;
+        font-size: .88rem;
+    }
+
+    .cost-tabs-nav .nav-link:hover { color: var(--cost-primary); background: #edf3f1; }
+    .cost-tabs-nav .nav-link.active { color: #fff; background: var(--cost-primary); box-shadow: 0 5px 14px rgba(23, 107, 85, .2); }
+    .cost-tabs-nav .badge { font-size: .68rem; }
+    .cost-tabs-content { padding: 20px; }
+
+    .chart-card,
+    .table-card { height: 100%; overflow: hidden; }
+    .chart-card { padding: 18px; min-height: 370px; }
+    .chart-card.compact { min-height: 340px; }
+    .chart-heading { margin-bottom: 15px; }
+    .chart-heading h2 { color: #1f2d38; font-size: 1rem; font-weight: 750; margin: 0; }
+    .chart-heading p { color: var(--cost-muted); font-size: .78rem; margin: 4px 0 0; }
+    .chart-stage { position: relative; height: 285px; }
+    .chart-stage.tall { height: 360px; }
+
+    .table-card .table-card-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--cost-border);
+    }
+
+    .table-card .table-card-header h2 { font-size: 1rem; font-weight: 750; margin: 0; }
+    .table-card .table-card-header p { color: var(--cost-muted); font-size: .78rem; margin: 4px 0 0; }
+    .cost-table { margin: 0; }
+    .cost-table th {
+        padding: 11px 14px;
+        color: #52606d;
+        background: #f8fafb;
+        border-bottom-width: 1px;
+        white-space: nowrap;
+        font-size: .74rem;
+        text-transform: uppercase;
+        letter-spacing: .035em;
+    }
+
+    .cost-table td { padding: 11px 14px; vertical-align: middle; font-size: .84rem; }
+    .cost-table tbody tr:last-child td { border-bottom: 0; }
+    .cost-table tbody tr:hover td { background: #f7fbf9; }
+    .money-cell { color: #174d3f; font-weight: 700; white-space: nowrap; }
+    .table-scroll { max-height: 560px; overflow: auto; }
+    .table-scroll thead { position: sticky; top: 0; z-index: 2; }
+
+    .empty-state {
+        height: 100%;
+        min-height: 220px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--cost-muted);
+        text-align: center;
+        padding: 24px;
+    }
+
+    .empty-state i { font-size: 2rem; color: #9aa8b4; margin-bottom: 8px; }
+
+    @media (max-width: 767.98px) {
+        .cost-page { padding: 12px; }
+        .cost-header { padding: 16px; }
+        .cost-tabs-content { padding: 12px; }
+        .chart-card { min-height: 340px; padding: 14px; }
+        .chart-stage, .chart-stage.tall { height: 280px; }
+        .cost-kpi { min-height: 105px; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <main class="container-fluid cost-page">
-    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
-        <div>
-            <h1 class="h3 mb-1">{% trans "Custos de insumos" %}</h1>
-            <p class="text-secondary mb-0">{% trans "Valores registrados no consumo de cada inventário." %}</p>
+    <header class="cost-header d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <span class="cost-title-icon"><i class="bi bi-graph-up-arrow"></i></span>
+            <div>
+                <h1 class="h3 fw-bold mb-1">{% trans "Custos de insumos" %}</h1>
+                <p class="text-secondary mb-0">{% trans "Análise financeira dos consumos registrados nos inventários." %}</p>
+            </div>
         </div>
         <nav class="cost-toolbar" aria-label="{% trans 'Ações de custos' %}">
             <a class="btn btn-outline-primary" href="{% url 'insumos:precos_insumos' %}"><i class="bi bi-tags"></i> {% trans "Preços" %}</a>
@@ -31,73 +201,193 @@
     </header>
 
     {% if cobertura_precos < 100 or consumos_sem_custo %}
-    <div class="alert alert-warning" role="alert">
-        <strong>{% trans "Cobertura financeira incompleta." %}</strong>
-        {% blocktrans %}{{ insumos_com_preco }} de {{ total_insumos }} insumos ativos possuem preço. Existem {{ consumos_sem_custo }} consumos sem custo unitário no filtro atual.{% endblocktrans %}
+    <div class="alert alert-warning border-0 shadow-sm d-flex gap-3 align-items-start" role="alert">
+        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+        <div>
+            <strong>{% trans "Cobertura financeira incompleta." %}</strong>
+            <div class="small mt-1">{% blocktrans %}{{ insumos_com_preco }} de {{ total_insumos }} insumos ativos possuem preço. Existem {{ consumos_sem_custo }} consumos sem custo unitário no filtro atual.{% endblocktrans %}</div>
+        </div>
     </div>
     {% endif %}
 
     <form method="get" class="cost-filter mb-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-funnel text-primary"></i>
+            <strong class="small">{% trans "Filtros do relatório" %}</strong>
+            <span class="text-secondary small">{{ inicio|date:'d/m/Y' }} – {{ fim|date:'d/m/Y' }}</span>
+        </div>
         <div class="row g-2 align-items-end">
             <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Início" %}</label><input class="form-control" type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}"></div>
             <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Fim" %}</label><input class="form-control" type="date" name="fim" value="{{ fim|date:'Y-m-d' }}"></div>
             <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Base" %}</label><select class="form-select" name="base"><option value="">{% trans "Todas" %}</option>{% for base in bases %}<option value="{{ base.id }}" {% if request.GET.base == base.id|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
             <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Cliente" %}</label><select class="form-select" name="cliente"><option value="">{% trans "Todos" %}</option>{% for cliente in clientes %}<option value="{{ cliente.id }}" {% if request.GET.cliente == cliente.id|stringformat:'s' %}selected{% endif %}>{{ cliente.sigla }}</option>{% endfor %}</select></div>
             <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Loja" %}</label><input class="form-control" name="loja" value="{{ request.GET.loja }}" list="lojas-custo"><datalist id="lojas-custo">{% for loja in lojas %}<option value="{{ loja }}">{% endfor %}</datalist></div>
-            <div class="col-xl-1 col-md-4"><label class="form-label">{% trans "Tipo" %}</label><select class="form-select" name="tipo"><option value="">{% trans "Todos" %}</option>{% for tipo in tipos %}<option value="{{ tipo }}" {% if request.GET.tipo == tipo %}selected{% endif %}>{{ tipo }}</option>{% endfor %}</select></div>
-            <div class="col-xl-1 col-md-4"><label class="form-label">{% trans "Pessoas" %}</label><input class="form-control" type="number" min="0" name="pessoas" value="{{ request.GET.pessoas }}"></div>
+            <div class="col-xl-1 col-md-2"><label class="form-label">{% trans "Tipo" %}</label><select class="form-select" name="tipo"><option value="">{% trans "Todos" %}</option>{% for tipo in tipos %}<option value="{{ tipo }}" {% if request.GET.tipo == tipo %}selected{% endif %}>{{ tipo }}</option>{% endfor %}</select></div>
+            <div class="col-xl-1 col-md-2"><label class="form-label">{% trans "Pessoas" %}</label><input class="form-control" type="number" min="0" name="pessoas" value="{{ request.GET.pessoas }}"></div>
             <div class="col-xl-10 col-md-8"><label class="form-label">{% trans "Inventário específico" %}</label><select class="form-select" name="inventario"><option value="">{% trans "Todos os inventários" %}</option>{% for inventario in inventarios %}<option value="{{ inventario.id }}" {% if request.GET.inventario == inventario.id|stringformat:'s' %}selected{% endif %}>{{ inventario.data_inicio|date:'d/m/Y' }} | {{ inventario.cliente.sigla }} {{ inventario.loja }} | {{ inventario.base.nome }} | {{ inventario.tipo|default:'-' }}</option>{% endfor %}</select></div>
-            <div class="col-xl-2 col-md-4 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit"><i class="bi bi-funnel"></i> {% trans "Filtrar" %}</button><a class="btn btn-outline-secondary" href="{% url 'insumos:dashboard_custos' %}" title="{% trans 'Limpar filtros' %}"><i class="bi bi-x-lg"></i></a></div>
+            <div class="col-xl-2 col-md-4 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit"><i class="bi bi-funnel"></i> {% trans "Aplicar" %}</button><a class="btn btn-outline-secondary" href="{% url 'insumos:dashboard_custos' %}" title="{% trans 'Limpar filtros' %}"><i class="bi bi-x-lg"></i></a></div>
         </div>
     </form>
 
     <section class="row g-3 mb-3" aria-label="{% trans 'Indicadores financeiros' %}">
-        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Gasto no período" %}</div><div class="value">R$ {{ resumo.total|floatformat:2 }}</div></div></div>
-        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Inventários com consumo" %}</div><div class="value">{{ resumo.inventarios }}</div></div></div>
-        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Custo médio por inventário" %}</div><div class="value">R$ {{ resumo.custo_medio_inventario|floatformat:2 }}</div></div></div>
-        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Custo médio por pessoa" %}</div><div class="value">R$ {{ resumo.custo_medio_pessoa|floatformat:2 }}</div></div></div>
-        <div class="col-xl col-md-4"><div class="cost-kpi"><div class="text-secondary small">{% trans "Valor estimado do estoque" %}</div><div class="value">R$ {{ valor_estoque|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4 col-6"><div class="cost-kpi"><span class="kpi-icon"><i class="bi bi-cash-stack"></i></span><div class="label">{% trans "Gasto no período" %}</div><div class="value">R$ {{ resumo.total|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4 col-6"><div class="cost-kpi" style="--kpi-color:#3568d4;--kpi-soft:#edf3ff"><span class="kpi-icon"><i class="bi bi-clipboard-data"></i></span><div class="label">{% trans "Inventários com consumo" %}</div><div class="value">{{ resumo.inventarios }}</div></div></div>
+        <div class="col-xl col-md-4 col-6"><div class="cost-kpi" style="--kpi-color:#d98b22;--kpi-soft:#fff5e8"><span class="kpi-icon"><i class="bi bi-calculator"></i></span><div class="label">{% trans "Média por inventário" %}</div><div class="value">R$ {{ resumo.custo_medio_inventario|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4 col-6"><div class="cost-kpi" style="--kpi-color:#7657c8;--kpi-soft:#f2effc"><span class="kpi-icon"><i class="bi bi-people"></i></span><div class="label">{% trans "Média por pessoa" %}</div><div class="value">R$ {{ resumo.custo_medio_pessoa|floatformat:2 }}</div></div></div>
+        <div class="col-xl col-md-4 col-12"><div class="cost-kpi" style="--kpi-color:#297b8d;--kpi-soft:#eaf7f9"><span class="kpi-icon"><i class="bi bi-box-seam"></i></span><div class="label">{% trans "Valor estimado do estoque" %}</div><div class="value">R$ {{ valor_estoque|floatformat:2 }}</div></div></div>
     </section>
 
-    <section class="row g-3 mb-3">
-        <div class="col-xl-4"><div class="chart-panel"><h2 class="h6">{% trans "Maiores custos por inventário" %}</h2><canvas id="chartInventarios"></canvas></div></div>
-        <div class="col-xl-4"><div class="chart-panel"><h2 class="h6">{% trans "Custos por cliente" %}</h2><canvas id="chartClientes"></canvas></div></div>
-        <div class="col-xl-4"><div class="chart-panel"><h2 class="h6">{% trans "Evolução mensal" %}</h2><canvas id="chartMensal"></canvas></div></div>
-    </section>
+    <section class="cost-tabs-shell">
+        <nav class="nav cost-tabs-nav" id="cost-tabs" role="tablist" aria-label="{% trans 'Seções do relatório de custos' %}">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview-pane" type="button" role="tab" aria-controls="overview-pane" aria-selected="true"><i class="bi bi-grid"></i> {% trans "Visão geral" %}</button>
+            <button class="nav-link" id="types-tab" data-bs-toggle="tab" data-bs-target="#types-pane" type="button" role="tab" aria-controls="types-pane" aria-selected="false"><i class="bi bi-diagram-3"></i> {% trans "Por tipo" %}<span class="badge text-bg-light">{{ por_tipo|length }}</span></button>
+            <button class="nav-link" id="supplies-tab" data-bs-toggle="tab" data-bs-target="#supplies-pane" type="button" role="tab" aria-controls="supplies-pane" aria-selected="false"><i class="bi bi-boxes"></i> {% trans "Insumos" %}<span class="badge text-bg-light">{{ top_insumos|length }}</span></button>
+            <button class="nav-link" id="inventories-tab" data-bs-toggle="tab" data-bs-target="#inventories-pane" type="button" role="tab" aria-controls="inventories-pane" aria-selected="false"><i class="bi bi-list-check"></i> {% trans "Inventários" %}<span class="badge text-bg-light">{{ resumo.inventarios }}</span></button>
+        </nav>
 
-    <section class="row g-3 mb-3">
-        <div class="col-xl-6">
-            <h2 class="h5">{% trans "Custos por tipo de inventário" %}</h2>
-            <div class="table-responsive"><table class="table table-sm cost-table"><thead><tr><th>{% trans "Tipo" %}</th><th>{% trans "Inventários" %}</th><th>{% trans "Custo total" %}</th></tr></thead><tbody>{% for item in por_tipo %}<tr><td>{{ item.inventario__tipo|default:'-' }}</td><td>{{ item.inventarios }}</td><td>R$ {{ item.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3" class="text-secondary">{% trans "Sem dados para o filtro." %}</td></tr>{% endfor %}</tbody></table></div>
-        </div>
-        <div class="col-xl-6">
-            <h2 class="h5">{% trans "Insumos com maior custo" %}</h2>
-            <div class="table-responsive"><table class="table table-sm cost-table"><thead><tr><th>{% trans "Categoria" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Custo total" %}</th></tr></thead><tbody>{% for item in top_insumos %}<tr><td>{{ item.insumo__categoria__nome }}</td><td>{{ item.insumo__descricao }}</td><td>{{ item.quantidade|floatformat:2 }}</td><td>R$ {{ item.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">{% trans "Sem dados para o filtro." %}</td></tr>{% endfor %}</tbody></table></div>
-        </div>
-    </section>
+        <div class="tab-content cost-tabs-content" id="cost-tabs-content">
+            <div class="tab-pane fade show active" id="overview-pane" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
+                <div class="row g-3">
+                    <div class="col-xl-5">
+                        <article class="chart-card compact">
+                            <div class="chart-heading"><h2>{% trans "Distribuição por cliente" %}</h2><p>{% trans "Participação de cada cliente no custo total filtrado." %}</p></div>
+                            {% if chart_clientes.values %}<div class="chart-stage"><canvas id="chartClientes"></canvas></div>{% else %}<div class="empty-state"><i class="bi bi-pie-chart"></i><span>{% trans "Sem custos por cliente para este filtro." %}</span></div>{% endif %}
+                        </article>
+                    </div>
+                    <div class="col-xl-7">
+                        <article class="chart-card compact">
+                            <div class="chart-heading"><h2>{% trans "Evolução mensal" %}</h2><p>{% trans "Comportamento do gasto ao longo dos meses disponíveis." %}</p></div>
+                            {% if chart_mensal.values %}<div class="chart-stage"><canvas id="chartMensal"></canvas></div>{% else %}<div class="empty-state"><i class="bi bi-graph-up"></i><span>{% trans "Sem evolução mensal para este filtro." %}</span></div>{% endif %}
+                        </article>
+                    </div>
+                </div>
+            </div>
 
-    <section class="border-top pt-3">
-        <h2 class="h5">{% trans "Detalhamento por inventário" %}</h2>
-        <div class="table-responsive">
-            <table class="table table-hover cost-table">
-                <thead><tr><th>{% trans "Data" %}</th><th>{% trans "Cliente" %}</th><th>{% trans "Loja" %}</th><th>{% trans "Base" %}</th><th>{% trans "Tipo" %}</th><th>{% trans "Pessoas" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Custo total" %}</th><th>{% trans "Custo por pessoa" %}</th></tr></thead>
-                <tbody>{% for item in por_inventario %}<tr><td>{{ item.inventario__data_inicio|date:'d/m/Y' }}</td><td>{{ item.inventario__cliente__sigla }}</td><td>{{ item.inventario__loja }}</td><td>{{ item.inventario__base__nome }}</td><td>{{ item.inventario__tipo|default:'-' }}</td><td>{{ item.inventario__pessoas|default:'-' }}</td><td>{{ item.itens }}</td><td>{{ item.quantidade|floatformat:2 }}</td><td>R$ {{ item.total|floatformat:2 }}</td><td>{% if item.custo_por_pessoa %}R$ {{ item.custo_por_pessoa|floatformat:2 }}{% else %}-{% endif %}</td></tr>{% empty %}<tr><td colspan="10" class="text-center text-secondary py-4">{% trans "Nenhum consumo encontrado para os filtros selecionados." %}</td></tr>{% endfor %}</tbody>
-            </table>
+            <div class="tab-pane fade" id="types-pane" role="tabpanel" aria-labelledby="types-tab" tabindex="0">
+                <div class="row g-3">
+                    <div class="col-xl-7">
+                        <article class="chart-card"><div class="chart-heading"><h2>{% trans "Custo por tipo de inventário" %}</h2><p>{% trans "Comparação financeira entre as etapas e modalidades." %}</p></div>{% if chart_tipos.values %}<div class="chart-stage"><canvas id="chartTipos"></canvas></div>{% else %}<div class="empty-state"><i class="bi bi-bar-chart"></i><span>{% trans "Sem custos por tipo para este filtro." %}</span></div>{% endif %}</article>
+                    </div>
+                    <div class="col-xl-5">
+                        <article class="table-card"><div class="table-card-header"><h2>{% trans "Resumo por tipo" %}</h2><p>{% trans "Quantidade de inventários e custo acumulado." %}</p></div><div class="table-responsive"><table class="table cost-table"><thead><tr><th>{% trans "Tipo" %}</th><th>{% trans "Inventários" %}</th><th>{% trans "Custo total" %}</th></tr></thead><tbody>{% for item in por_tipo %}<tr><td><span class="badge rounded-pill text-bg-light border">{{ item.inventario__tipo|default:'Sem tipo' }}</span></td><td>{{ item.inventarios }}</td><td class="money-cell">R$ {{ item.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-secondary py-4">{% trans "Sem dados para o filtro." %}</td></tr>{% endfor %}</tbody></table></div></article>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="supplies-pane" role="tabpanel" aria-labelledby="supplies-tab" tabindex="0">
+                <div class="row g-3">
+                    <div class="col-xl-7">
+                        <article class="chart-card"><div class="chart-heading"><h2>{% trans "Insumos com maior custo" %}</h2><p>{% trans "Ranking dos materiais com maior impacto financeiro." %}</p></div>{% if chart_insumos.values %}<div class="chart-stage tall"><canvas id="chartInsumos"></canvas></div>{% else %}<div class="empty-state"><i class="bi bi-boxes"></i><span>{% trans "Sem consumo de insumos para este filtro." %}</span></div>{% endif %}</article>
+                    </div>
+                    <div class="col-xl-5">
+                        <article class="table-card"><div class="table-card-header"><h2>{% trans "Detalhamento dos insumos" %}</h2><p>{% trans "Quantidade consumida e custo acumulado." %}</p></div><div class="table-responsive"><table class="table cost-table"><thead><tr><th>{% trans "Categoria" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Qtd." %}</th><th>{% trans "Custo" %}</th></tr></thead><tbody>{% for item in top_insumos %}<tr><td class="text-secondary">{{ item.insumo__categoria__nome }}</td><td>{{ item.insumo__descricao }}</td><td>{{ item.quantidade|floatformat:2 }}</td><td class="money-cell">R$ {{ item.total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-secondary py-4">{% trans "Sem dados para o filtro." %}</td></tr>{% endfor %}</tbody></table></div></article>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="inventories-pane" role="tabpanel" aria-labelledby="inventories-tab" tabindex="0">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <article class="chart-card"><div class="chart-heading"><h2>{% trans "Inventários de maior custo" %}</h2><p>{% trans "Os dez inventários com maior gasto no período selecionado." %}</p></div>{% if chart_inventarios.values %}<div class="chart-stage tall"><canvas id="chartInventarios"></canvas></div>{% else %}<div class="empty-state"><i class="bi bi-clipboard-x"></i><span>{% trans "Nenhum inventário com consumo para este filtro." %}</span></div>{% endif %}</article>
+                    </div>
+                    <div class="col-12">
+                        <article class="table-card"><div class="table-card-header d-flex justify-content-between align-items-center gap-2 flex-wrap"><div><h2>{% trans "Detalhamento por inventário" %}</h2><p>{% trans "Custos, pessoas e consumo de cada operação." %}</p></div><span class="badge rounded-pill text-bg-light border px-3 py-2">{{ resumo.inventarios }} {% trans "com consumo" %}</span></div><div class="table-responsive table-scroll"><table class="table table-hover cost-table"><thead><tr><th>{% trans "Data" %}</th><th>{% trans "Cliente" %}</th><th>{% trans "Loja" %}</th><th>{% trans "Base" %}</th><th>{% trans "Tipo" %}</th><th>{% trans "Pessoas" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Custo total" %}</th><th>{% trans "Custo/pessoa" %}</th></tr></thead><tbody>{% for item in por_inventario %}<tr><td>{{ item.inventario__data_inicio|date:'d/m/Y' }}</td><td><strong>{{ item.inventario__cliente__sigla }}</strong></td><td>{{ item.inventario__loja }}</td><td>{{ item.inventario__base__nome }}</td><td><span class="badge rounded-pill text-bg-light border">{{ item.inventario__tipo|default:'-' }}</span></td><td>{{ item.inventario__pessoas|default:'-' }}</td><td>{{ item.itens }}</td><td>{{ item.quantidade|floatformat:2 }}</td><td class="money-cell">R$ {{ item.total|floatformat:2 }}</td><td>{% if item.custo_por_pessoa %}R$ {{ item.custo_por_pessoa|floatformat:2 }}{% else %}-{% endif %}</td></tr>{% empty %}<tr><td colspan="10" class="text-center text-secondary py-5">{% trans "Nenhum consumo encontrado para os filtros selecionados." %}</td></tr>{% endfor %}</tbody></table></div></article>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
     {{ chart_inventarios|json_script:"chart-inventarios-data" }}
     {{ chart_clientes|json_script:"chart-clientes-data" }}
     {{ chart_mensal|json_script:"chart-mensal-data" }}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        function chartData(id) { return JSON.parse(document.getElementById(id).textContent); }
-        function moneyChart(canvas, source, type) {
-            return new Chart(document.getElementById(canvas), {type, data: {labels: source.labels, datasets: [{label: 'R$', data: source.values, backgroundColor: '#198754', borderColor: '#146c43', borderWidth: 1}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}});
-        }
-        moneyChart('chartInventarios', chartData('chart-inventarios-data'), 'bar');
-        moneyChart('chartClientes', chartData('chart-clientes-data'), 'bar');
-        moneyChart('chartMensal', chartData('chart-mensal-data'), 'line');
-    </script>
+    {{ chart_tipos|json_script:"chart-tipos-data" }}
+    {{ chart_insumos|json_script:"chart-insumos-data" }}
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const money = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'});
+    const compactMoney = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1});
+    const palette = ['#176b55', '#3568d4', '#d98b22', '#7657c8', '#297b8d', '#c85c74', '#6f8c3a', '#8a6543', '#4f78a8', '#a15b9e'];
+    const charts = [];
+
+    function source(id) {
+        const element = document.getElementById(id);
+        return element ? JSON.parse(element.textContent) : {labels: [], values: []};
+    }
+
+    function tooltipMoney(context) {
+        const parsed = context.parsed;
+        const value = typeof parsed === 'number' ? parsed : (parsed.x ?? parsed.y ?? 0);
+        return `${context.dataset.label || 'Custo'}: ${money.format(value)}`;
+    }
+
+    function currencyScale(axis) {
+        return {
+            beginAtZero: true,
+            grid: {color: '#edf1f4', drawBorder: false},
+            ticks: {color: '#6a7785', callback: value => compactMoney.format(value)},
+            title: {display: false},
+            ...(axis === 'category' ? {grid: {display: false}, ticks: {color: '#52606d'}} : {})
+        };
+    }
+
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.color = '#52606d';
+    Chart.defaults.animation.duration = 650;
+
+    const clientes = source('chart-clientes-data');
+    const clientesCanvas = document.getElementById('chartClientes');
+    if (clientesCanvas) {
+        charts.push(new Chart(clientesCanvas, {
+            type: 'doughnut',
+            data: {labels: clientes.labels, datasets: [{data: clientes.values, backgroundColor: palette, borderColor: '#fff', borderWidth: 3, hoverOffset: 7}]},
+            options: {responsive: true, maintainAspectRatio: false, cutout: '64%', plugins: {legend: {position: 'bottom', labels: {usePointStyle: true, pointStyle: 'circle', padding: 16}}, tooltip: {callbacks: {label: tooltipMoney}}}}
+        }));
+    }
+
+    const mensal = source('chart-mensal-data');
+    const mensalCanvas = document.getElementById('chartMensal');
+    if (mensalCanvas) {
+        const gradient = mensalCanvas.getContext('2d').createLinearGradient(0, 0, 0, 280);
+        gradient.addColorStop(0, 'rgba(23, 107, 85, .28)');
+        gradient.addColorStop(1, 'rgba(23, 107, 85, 0)');
+        charts.push(new Chart(mensalCanvas, {
+            type: 'line',
+            data: {labels: mensal.labels, datasets: [{label: 'Custo', data: mensal.values, borderColor: '#176b55', backgroundColor: gradient, borderWidth: 3, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderColor: '#176b55', pointBorderWidth: 3, tension: .35, fill: true}]},
+            options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false}, scales: {x: currencyScale('category'), y: currencyScale('money')}, plugins: {legend: {display: false}, tooltip: {callbacks: {label: tooltipMoney}}}}
+        }));
+    }
+
+    function createBarChart(canvasId, dataId, options) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const data = source(dataId);
+        const horizontal = options.horizontal;
+        charts.push(new Chart(canvas, {
+            type: 'bar',
+            data: {labels: data.labels, datasets: [{label: 'Custo', data: data.values, backgroundColor: data.values.map((_, index) => palette[index % palette.length] + 'D9'), borderColor: data.values.map((_, index) => palette[index % palette.length]), borderWidth: 1, borderRadius: 7, borderSkipped: false, maxBarThickness: horizontal ? 28 : 48}]},
+            options: {indexAxis: horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false, interaction: {mode: 'nearest', intersect: false}, scales: horizontal ? {x: currencyScale('money'), y: currencyScale('category')} : {x: currencyScale('category'), y: currencyScale('money')}, plugins: {legend: {display: false}, tooltip: {callbacks: {label: tooltipMoney}}}}
+        }));
+    }
+
+    createBarChart('chartTipos', 'chart-tipos-data', {horizontal: false});
+    createBarChart('chartInsumos', 'chart-insumos-data', {horizontal: true});
+    createBarChart('chartInventarios', 'chart-inventarios-data', {horizontal: true});
+
+    document.querySelectorAll('#cost-tabs button[data-bs-toggle="tab"]').forEach(function (trigger) {
+        trigger.addEventListener('shown.bs.tab', function (event) {
+            const target = event.target.getAttribute('data-bs-target');
+            if (target) history.replaceState(null, '', target);
+            charts.forEach(chart => chart.resize());
+        });
+    });
+
+    if (window.location.hash && document.querySelector(`[data-bs-target="${window.location.hash}"]`)) {
+        bootstrap.Tab.getOrCreateInstance(document.querySelector(`[data-bs-target="${window.location.hash}"]`)).show();
+    }
+});
+</script>
 {% endblock %}

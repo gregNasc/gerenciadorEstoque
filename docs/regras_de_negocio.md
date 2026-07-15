@@ -1115,6 +1115,60 @@ Deploy
 
 ---
 
+# 23. Tempos operacionais dos inventários e Tory
+
+## 23.1 Intervalos completos
+
+Inventários não possuem uma jornada fixa. Eles podem ser diurnos, noturnos, começar ou terminar em horários variados e atravessar a meia-noite.
+
+A Tory deve usar exclusivamente datas e horários completos registrados em:
+
+* `inicio_previsto` e `fim_previsto`;
+* `inicio_real` e `fim_real`;
+* `inicio_contagem` e `fim_contagem`.
+
+O intervalo 20h–6h é apenas um exemplo operacional e nunca deve ser usado como padrão implícito.
+
+## 23.2 Indicadores derivados
+
+Com dados completos, o sistema deve calcular:
+
+* duração prevista e duração real total;
+* atraso ou antecipação de início e término;
+* tempo efetivo de contagem;
+* tempo fora da contagem;
+* peças por pessoa;
+* produtividade por pessoa/hora pela duração total;
+* produtividade por pessoa/hora durante a contagem;
+* custo adicional pelo tempo após o fim previsto, quando houver custo por pessoa/hora.
+
+Registros incompletos continuam válidos, mas a Tory deve informar que o indicador não é calculável. Ela não deve preencher horários ausentes com uma jornada presumida.
+
+## 23.3 Simulações
+
+Simulações de horário e tamanho de equipe devem declarar a hipótese utilizada. A projeção linear mantém a produtividade individual observada e não representa garantia, pois pode haver perda de eficiência com equipes maiores.
+
+## 23.4 Equipe produtiva e alocações
+
+Para ciclos compostos por várias etapas, a soma de pessoas de `CA`, `CP`, `PRE`, `T`, `APOIO` e outras etapas representa **alocações pessoa-etapa**, não pessoas únicas trabalhando simultaneamente.
+
+Nos cálculos de produtividade e duração da contagem oficial, a equipe produtiva deve ser:
+
+```text
+equipe_contagem = pessoas_T + pessoas_APOIO
+duracao_planejada = previsao_pecas / equipe_contagem / produtividade_planejada
+```
+
+`prod_media` importada do planejamento deve ser apresentada como produtividade planejada em peças por pessoa/hora. Produtividade real só pode ser calculada com peças realizadas, quantidade real de pessoas e timestamps reais.
+
+## 23.5 Contexto e desambiguação de bases
+
+Quando um nome puder representar simultaneamente uma base e uma UF, como “São Paulo”, a Tory deve pedir confirmação e oferecer as bases acessíveis como opções clicáveis. “UF SP” e “estado de São Paulo” selecionam explicitamente a UF.
+
+Ao selecionar uma base, a Tory deve apenas completar o filtro pendente. A intenção original, a data, o período, o cliente e a loja devem ser preservados. Identificadores de loja podem ser numéricos ou alfanuméricos, como `A063`.
+
+---
+
 ## Conclusão
 
 As regras de negócio devem guiar o desenvolvimento.
