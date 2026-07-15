@@ -12,13 +12,17 @@ class CustoInsumoService:
 
     @staticmethod
     def pode_visualizar(user):
-        perfil = getattr(user, 'perfil', None)
-        return bool(perfil and (
-            perfil.is_admin or
-            perfil.is_compras_insumos or
-            perfil.is_financeiro_insumos or
-            perfil.is_executivo_insumos
-        ))
+        perfil = getattr(user, "perfil", None)
+
+        return bool(
+            user.is_authenticated
+            and perfil
+            and (
+                    perfil.is_compras_insumos
+                    or perfil.is_financeiro_insumos
+                    or perfil.is_executivo_insumos
+            )
+        )
 
     @classmethod
     def queryset(cls, user):
