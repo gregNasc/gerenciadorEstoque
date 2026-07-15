@@ -1,0 +1,173 @@
+{% extends "estoque/base.html" %}
+{% load i18n %}
+
+{% block title %}Mapeamentos Inventory Planning{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Mapeamentos Inventory Planning</h1>
+            <p class="text-muted mb-0">Confirmações auditáveis. Sugestões nunca são aplicadas silenciosamente.</p>
+        </div>
+        {% if perms.integracao.executar_materializacao_planning %}
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="materialize_resolved">
+            <button class="btn btn-warning" type="submit">
+                <i class="bi bi-play-circle"></i> Materializar eventos resolvidos
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0"><div class="card-body"><small class="text-muted">Sincronizados</small><div class="h4 mb-0">{{ stats.events }}</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0"><div class="card-body"><small class="text-muted">PAI</small><div class="h4 mb-0">{{ stats.parents }}</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0"><div class="card-body"><small class="text-muted">FILHO</small><div class="h4 mb-0">{{ stats.children }}</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0"><div class="card-body"><small class="text-muted">Materializados</small><div class="h4 mb-0 text-success">{{ stats.materialized }}</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0"><div class="card-body"><small class="text-muted">Pendentes</small><div class="h4 mb-0 text-warning">{{ stats.pending }}</div></div></div></div>
+        <div class="col-6 col-md-2"><div class="card shadow-sm border-0"><div class="card-body"><small class="text-muted">Erros</small><div class="h4 mb-0 text-danger">{{ stats.errors }}</div></div></div></div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-lg-3">
+                    <label class="form-label">Busca</label>
+                    <input class="form-control" name="q" value="{{ filters.q }}" placeholder="Cliente, regional ou loja">
+                </div>
+                <div class="col-lg-2">
+                    <label class="form-label">Cliente externo</label>
+                    <select class="form-select" name="client">
+                        <option value="">Todos</option>
+                        {% for item in planning_clients %}<option value="{{ item.pk }}" {% if filters.client == item.pk|stringformat:"s" %}selected{% endif %}>{{ item }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-2">
+                    <label class="form-label">Regional externa</label>
+                    <select class="form-select" name="region">
+                        <option value="">Todas</option>
+                        {% for item in planning_regions %}<option value="{{ item.pk }}" {% if filters.region == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-2">
+                    <label class="form-label">Operação</label>
+                    <select class="form-select" name="operation">
+                        <option value="">Todas</option>
+                        <option value="oxxo" {% if filters.operation == "oxxo" %}selected{% endif %}>OXXO</option>
+                    </select>
+                </div>
+                <div class="col-lg-2">
+                    <label class="form-label">Pendência</label>
+                    <select class="form-select" name="pending">
+                        <option value="">Todas</option>
+                        {% for item in pending_breakdown %}<option value="{{ item.materialization_error }}" {% if filters.pending == item.materialization_error %}selected{% endif %}>{{ item.materialization_error }} ({{ item.total }})</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-1"><button class="btn btn-primary w-100">Filtrar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong>Clientes pendentes</strong>
+            <span class="badge text-bg-secondary">{{ client_rows|length }}</span>
+        </div>
+        <div class="table-responsive">
+            <form method="post" id="bulk-client-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="bulk_confirm_clients">
+            </form>
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th></th><th>Cliente externo</th><th>Sugestão local</th><th>Confiança</th><th>Motivo</th><th>Eventos</th><th>Confirmar</th></tr></thead>
+                    <tbody>
+                    {% for row in client_rows %}
+                    <tr>
+                        <td>{% if row.suggestion.can_bulk_confirm %}<input class="form-check-input" type="checkbox" name="planning_clients" value="{{ row.planning_client.pk }}" form="bulk-client-form">{% endif %}</td>
+                        <td><strong>{{ row.planning_client.trade_name|default:row.planning_client.corporate_name }}</strong><br><small class="text-muted">{{ row.planning_client.corporate_name }}</small></td>
+                        <td>{% if row.suggestion.best %}{{ row.suggestion.best.instance.sigla }} — {{ row.suggestion.best.instance.nome }}{% else %}<span class="text-muted">Sem candidato</span>{% endif %}</td>
+                        <td>{% if row.suggestion.best %}<span class="badge {% if row.suggestion.ambiguous %}text-bg-danger{% elif row.suggestion.best.confidence == 'HIGH' %}text-bg-success{% else %}text-bg-warning{% endif %}">{% if row.suggestion.ambiguous %}AMBÍGUO{% else %}{{ row.suggestion.best.confidence }} {{ row.suggestion.best.score }}{% endif %}</span>{% endif %}</td>
+                        <td><small>{{ row.suggestion.best.reason|default:"-" }}</small></td>
+                        <td>{{ row.events }}</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" name="local_client" form="client-form-{{ row.planning_client.pk }}">
+                                    {% for local in local_clients %}<option value="{{ local.pk }}" {% if row.suggestion.best and row.suggestion.best.instance.pk == local.pk %}selected{% endif %}>{{ local.sigla }} — {{ local.nome }}</option>{% endfor %}
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary" type="submit" form="client-form-{{ row.planning_client.pk }}">Confirmar</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nenhum cliente pendente neste filtro.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+                {% if client_rows %}<div class="p-3 border-top"><button class="btn btn-sm btn-success" type="submit" form="bulk-client-form">Confirmar selecionados de alta confiança</button></div>{% endif %}
+            {% for row in client_rows %}
+            <form method="post" id="client-form-{{ row.planning_client.pk }}">
+                {% csrf_token %}<input type="hidden" name="action" value="confirm_client"><input type="hidden" name="planning_client" value="{{ row.planning_client.pk }}">
+            </form>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center"><strong>Bases operacionais pendentes</strong><span class="badge text-bg-secondary">{{ base_rows|length }}</span></div>
+        <div class="table-responsive">
+            <form method="post" id="bulk-base-form">
+                {% csrf_token %}<input type="hidden" name="action" value="bulk_confirm_operational_bases">
+            </form>
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th></th><th>Cliente</th><th>Regional externa</th><th>Base sugerida</th><th>Confiança/motivo</th><th>Eventos</th><th>Confirmar</th></tr></thead>
+                    <tbody>
+                    {% for row in base_rows %}
+                    <tr>
+                        <td>{% if row.suggestion.can_bulk_confirm %}<input class="form-check-input" type="checkbox" name="operational_pairs" value="{{ row.planning_client.pk }}:{{ row.planning_region.pk }}" form="bulk-base-form">{% endif %}</td>
+                        <td>{{ row.local_client.sigla }}<br><small>{{ row.planning_client }}</small></td>
+                        <td>{{ row.planning_region.name }} / {{ row.planning_region.state }}</td>
+                        <td>{% if row.suggestion.best %}<strong>{{ row.suggestion.best.instance.nome }}</strong>{% else %}<span class="text-muted">Sem candidato</span>{% endif %}</td>
+                        <td><span class="badge {% if row.suggestion.ambiguous %}text-bg-danger{% elif row.suggestion.best.confidence == 'HIGH' %}text-bg-success{% else %}text-bg-warning{% endif %}">{% if row.suggestion.ambiguous %}AMBÍGUO{% else %}{{ row.suggestion.best.confidence }} {{ row.suggestion.best.score }}{% endif %}</span><br><small>{{ row.suggestion.best.reason }}</small></td>
+                        <td>{{ row.events }}</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="#base-confirm-{{ row.planning_client.pk }}-{{ row.planning_region.pk }}">Selecionar</a></td>
+                    </tr>
+                    <tr id="base-confirm-{{ row.planning_client.pk }}-{{ row.planning_region.pk }}">
+                        <td colspan="7">
+                            <form method="post" class="d-flex gap-2 justify-content-end">
+                                {% csrf_token %}<input type="hidden" name="action" value="confirm_operational_base"><input type="hidden" name="planning_client" value="{{ row.planning_client.pk }}"><input type="hidden" name="planning_region" value="{{ row.planning_region.pk }}">
+                                <select class="form-select form-select-sm w-auto" name="local_base">{% for base in local_bases %}<option value="{{ base.pk }}" {% if row.suggestion.best and row.suggestion.best.instance.pk == base.pk %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select>
+                                <button class="btn btn-sm btn-primary">Confirmar base</button>
+                            </form>
+                            {% if row.allow_region_fallback %}
+                            <form method="post" class="d-flex justify-content-end mt-2">
+                                {% csrf_token %}<input type="hidden" name="action" value="confirm_region_fallback"><input type="hidden" name="planning_client" value="{{ row.planning_client.pk }}"><input type="hidden" name="planning_region" value="{{ row.planning_region.pk }}">
+                                <button class="btn btn-sm btn-outline-secondary">Confirmar também como fallback regional inequívoco</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Confirme clientes para liberar sugestões de base.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+                {% if base_rows %}<div class="p-3 border-top"><button class="btn btn-sm btn-success" type="submit" form="bulk-base-form">Confirmar bases selecionadas de alta confiança</button></div>{% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white"><strong>Vínculos confirmados</strong></div>
+        <div class="card-body"><h2 class="h6">Cliente externo → cliente local</h2></div>
+        <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Externo</th><th>Local</th><th>Origem</th><th>Confirmado por</th><th>Estado</th><th></th></tr></thead><tbody>
+        {% for binding in client_bindings %}<tr><td>{{ binding.planning_client }}</td><td>{{ binding.local_client.sigla }} — {{ binding.local_client.nome }}</td><td>{{ binding.source }}</td><td>{{ binding.confirmed_by|default:"-" }}<br><small>{{ binding.confirmed_at }}</small></td><td>{% if binding.is_active %}Ativo{% else %}Inativo{% endif %}</td><td>{% if binding.is_active %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="deactivate_binding"><input type="hidden" name="binding_type" value="client"><input type="hidden" name="binding_id" value="{{ binding.pk }}"><button class="btn btn-sm btn-outline-danger">Desativar</button></form>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="text-muted">Nenhum.</td></tr>{% endfor %}
+        </tbody></table></div>
+        <div class="card-body border-top"><h2 class="h6">Cliente + regional → base operacional</h2></div>
+        <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Cliente</th><th>Regional</th><th>Base</th><th>Motivo</th><th>Estado</th><th></th></tr></thead><tbody>
+        {% for binding in operational_bindings %}<tr><td>{{ binding.planning_client }}</td><td>{{ binding.planning_region.name }}</td><td>{{ binding.local_base.nome }}</td><td><small>{{ binding.reason|default:binding.source }}</small></td><td>{% if binding.is_active %}Ativo{% else %}Inativo{% endif %}</td><td>{% if binding.is_active %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="deactivate_binding"><input type="hidden" name="binding_type" value="operational"><input type="hidden" name="binding_id" value="{{ binding.pk }}"><button class="btn btn-sm btn-outline-danger">Desativar</button></form>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="text-muted">Nenhum.</td></tr>{% endfor %}
+        </tbody></table></div>
+        <div class="card-body border-top"><h2 class="h6">Fallback regional inequívoco</h2></div>
+        <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Regional</th><th>Base</th><th>Origem</th><th>Estado</th><th></th></tr></thead><tbody>
+        {% for binding in region_bindings %}<tr><td>{{ binding.planning_region.name }}</td><td>{{ binding.local_base.nome }}</td><td>{{ binding.source }}</td><td>{% if binding.is_active %}Ativo{% else %}Inativo{% endif %}</td><td>{% if binding.is_active %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="deactivate_binding"><input type="hidden" name="binding_type" value="region"><input type="hidden" name="binding_id" value="{{ binding.pk }}"><button class="btn btn-sm btn-outline-danger">Desativar</button></form>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted">Nenhum.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+</div>
+
+{% endblock %}

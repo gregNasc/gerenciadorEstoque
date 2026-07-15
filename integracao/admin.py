@@ -7,6 +7,7 @@ from integracao.models import (
     PlanningClientBinding,
     PlanningEvent,
     PlanningInventoryType,
+    PlanningOperationalBaseBinding,
     PlanningRegion,
     PlanningRegionBinding,
     PlanningStore,
@@ -43,9 +44,20 @@ class PlanningEventAdmin(admin.ModelAdmin):
     readonly_fields = [field.name for field in PlanningEvent._meta.fields]
 
 
-@admin.register(PlanningClientBinding, PlanningRegionBinding)
+@admin.register(
+    PlanningClientBinding,
+    PlanningRegionBinding,
+    PlanningOperationalBaseBinding,
+)
 class PlanningBindingAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "confirmed_at", "confirmed_by")
+    list_display = (
+        "__str__",
+        "source",
+        "is_active",
+        "confirmed_at",
+        "confirmed_by",
+    )
+    list_filter = ("source", "is_active")
     readonly_fields = ("confirmed_at",)
 
 
@@ -69,4 +81,3 @@ class SyncRunAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "endpoint")
     readonly_fields = [field.name for field in InventoryPlanningSyncRun._meta.fields]
-

@@ -145,6 +145,7 @@ class PlanningEvent(ExternalSyncModel):
         PENDING = "PENDING", "Pendente de vínculos"
         MATERIALIZED = "MATERIALIZED", "Inventário criado"
         NOT_APPLICABLE = "NOT_APPLICABLE", "Evento FILHO"
+        SKIPPED = "SKIPPED", "Não criado pelo status externo"
         ERROR = "ERROR", "Erro de materialização"
 
     status = models.CharField(max_length=24, db_index=True)
@@ -230,16 +231,22 @@ class PlanningEvent(ExternalSyncModel):
         return f"{self.external_id} - {self.planned_at:%Y-%m-%d %H:%M}"
 
 
+class BindingSource(models.TextChoices):
+    MANUAL = "MANUAL", "Manual"
+    SUGGESTED = "SUGGESTED", "Sugerido"
+    RULE = "RULE", "Regra confirmada"
+
+
 class PlanningClientBinding(models.Model):
     planning_client = models.OneToOneField(
         PlanningClient,
         on_delete=models.CASCADE,
         related_name="local_binding",
     )
-    local_client = models.OneToOneField(
+    local_client = models.ForeignKey(
         "insumos.Cliente",
         on_delete=models.PROTECT,
-        related_name="planning_binding",
+        related_name="planning_bindings",
     )
     confirmed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -249,6 +256,13 @@ class PlanningClientBinding(models.Model):
         related_name="planning_client_bindings_confirmed",
     )
     confirmed_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    source = models.CharField(
+        max_length=20,
+        choices=BindingSource.choices,
+        default=BindingSource.MANUAL,
+    )
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.planning_client} → {self.local_client}"
@@ -273,9 +287,74 @@ class PlanningRegionBinding(models.Model):
         related_name="planning_region_bindings_confirmed",
     )
     confirmed_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    source = models.CharField(
+        max_length=20,
+        choices=BindingSource.choices,
+        default=BindingSource.MANUAL,
+    )
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.planning_region} → {self.local_base}"
+
+
+class PlanningOperationalBaseBinding(models.Model):
+    planning_client = models.ForeignKey(
+        PlanningClient,
+        on_delete=models.CASCADE,
+        related_name="operational_base_bindings",
+    )
+    planning_region = models.ForeignKey(
+        PlanningRegion,
+        on_delete=models.CASCADE,
+        related_name="operational_base_bindings",
+    )
+    local_base = models.ForeignKey(
+        "estoque.Base",
+        on_delete=models.PROTECT,
+        related_name="planning_operational_bindings",
+    )
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="planning_operational_bindings_confirmed",
+    )
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    source = models.CharField(
+        max_length=20,
+        choices=BindingSource.choices,
+        default=BindingSource.MANUAL,
+    )
+    reason = models.CharField(max_length=255, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("planning_client", "planning_region"),
+                name="uniq_planning_client_region_binding",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=("local_base", "is_active"),
+                name="plan_op_base_active",
+            )
+        ]
+        permissions = [
+            ("gerenciar_mapeamentos_planning", "Pode gerenciar mapeamentos do planejamento"),
+            ("executar_materializacao_planning", "Pode executar materialização do planejamento"),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.planning_client} + {self.planning_region} "
+            f"→ {self.local_base}"
+        )
 
 
 class InventoryPlanningEventBinding(models.Model):
@@ -301,6 +380,7 @@ class InventoryPlanningSyncRun(models.Model):
         RUNNING = "RUNNING", "Executando"
         SUCCESS = "SUCCESS", "Sucesso"
         FAILED = "FAILED", "Falha"
+        STALE = "STALE", "Abandonada"
 
     endpoint = models.CharField(max_length=80)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.RUNNING)

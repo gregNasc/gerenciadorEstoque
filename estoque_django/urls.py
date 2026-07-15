@@ -17,6 +17,7 @@ urlpatterns = [
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     #path('estoque/', include('estoque.urls')),
     path('insumos/', include('insumos.urls')),
+    path('integracao/', include('integracao.urls')),
 ]
 
 if settings.DEBUG:

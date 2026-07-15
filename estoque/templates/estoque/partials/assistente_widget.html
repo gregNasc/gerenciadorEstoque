@@ -15,13 +15,13 @@
 
         <div id="assistente-mensagens" class="assistente-mensagens">
             <div class="assistente-msg bot">
-                {% blocktrans with nome=request.user.get_full_name|default:request.user.username %}Olá, {{ nome }}! Eu sou Tory, sua assistente operacional. Posso consultar o estoque e também explicar como usar o sistema. Pergunte do seu jeito.{% endblocktrans %}
+                {% blocktrans with nome=request.user.get_full_name|default:request.user.username %}Olá, {{ nome }}! Eu sou Tory, sua assistente operacional. Posso consultar planejamento, cruzar com a execução local e explicar o sistema. Pergunte do seu jeito; depois eu sugiro o próximo passo.{% endblocktrans %}
             </div>
 
             <div class="assistente-sugestoes">
                 <button type="button" data-pergunta="{% trans 'Quantos coletores ativos existem?' %}">{% trans "Coletores ativos" %}</button>
-                <button type="button" data-pergunta="{% trans 'Inventários de hoje' %}">{% trans "Inventários hoje" %}</button>
-                <button type="button" data-pergunta="{% trans 'Minha base atende as pessoas com coletores hoje?' %}">{% trans "Capacidade da base" %}</button>
+                <button type="button" data-pergunta="{% trans 'Quais inventários estão planejados para amanhã?' %}">{% trans "Planejados amanhã" %}</button>
+                <button type="button" data-pergunta="{% trans 'Qual tem maior previsão de peças nesta semana?' %}">{% trans "Maior previsão" %}</button>
                 <button type="button" data-pergunta="{% trans 'Como cadastrar um equipamento?' %}">{% trans "Como usar" %}</button>
             </div>
         </div>
@@ -32,7 +32,7 @@
                    id="assistente-pergunta"
                    name="pergunta"
                    class="form-control"
-                   placeholder="{% trans 'Pergunte sobre estoque, base, data ou protocolo...' %}"
+                   placeholder="{% trans 'Pergunte sobre planejamento, execução, estoque ou uma regional...' %}"
                    autocomplete="off">
 
             <button type="submit" class="btn btn-primary" title="{% trans 'Enviar' %}">
@@ -170,6 +170,13 @@
         margin: -6px 45px 10px 0;
     }
 
+    .assistente-fonte {
+        display: block;
+        color: #6c757d;
+        font-size: 11px;
+        margin-top: 8px;
+    }
+
     .assistente-sugestoes {
         display: flex;
         flex-wrap: wrap;
@@ -259,6 +266,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const linha = linhas[indice];
             const inicioTabela = linha.includes("|") && linha === linha.toUpperCase();
             if (!inicioTabela) {
+                if (linha.startsWith("Fonte:")) {
+                    const fonte = document.createElement("small");
+                    fonte.className = "assistente-fonte";
+                    fonte.textContent = linha;
+                    div.appendChild(fonte);
+                    indice += 1;
+                    continue;
+                }
                 div.appendChild(document.createTextNode(linha));
                 if (indice < linhas.length - 1) div.appendChild(document.createElement("br"));
                 indice += 1;

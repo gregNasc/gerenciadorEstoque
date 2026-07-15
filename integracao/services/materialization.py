@@ -1,6 +1,7 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.utils import timezone
 
@@ -12,6 +13,13 @@ from integracao.models import (
     SyncState,
 )
 from integracao.exceptions import InventoryPlanningConfigurationError
+from integracao.services.operational_base_resolver import (
+    OperationalBaseResolver,
+    PlanningClientResolver,
+)
+
+
+logger = logging.getLogger("integracao.inventory_planning")
 
 
 class PlanningEventMaterializer:
@@ -35,6 +43,12 @@ class PlanningEventMaterializer:
         "equipe_plan",
         "previsao_pecas",
     )
+    FORECAST_FIELDS_AFTER_EXECUTION = (
+        "inicio_previsto",
+        "equipe_plan",
+        "previsao_pecas",
+    )
+    SKIPPED_EXTERNAL_STATUSES = {"CANCELLED", "REMOVED"}
 
     @staticmethod
     def _system_user():
@@ -52,28 +66,19 @@ class PlanningEventMaterializer:
             user.save(update_fields=("password", "is_staff", "is_superuser"))
         return user
 
-    @staticmethod
-    def _get_related_binding(instance):
-        try:
-            return instance.local_binding
-        except ObjectDoesNotExist:
-            return None
-
-    def _planning_values(self, event):
+    def _planning_values(self, event, *, local_client, local_base):
         local_planned_at = timezone.localtime(event.planned_at)
         store = event.store
         import_data = event.import_data or {}
-        client_binding = self._get_related_binding(event.client)
-        region_binding = self._get_related_binding(event.region)
         return {
-            "cliente": client_binding.local_client,
+            "cliente": local_client,
             "loja": str(
                 (store.store_number if store else "")
                 or (store.code if store else "")
                 or (store.name if store else "")
                 or event.external_id
             )[:50],
-            "base": region_binding.local_base,
+            "base": local_base,
             "data_inicio": local_planned_at.date(),
             "inicio_previsto": event.planned_at,
             "endereco": (store.address if store else "") or import_data.get("endereco") or "",
@@ -95,8 +100,8 @@ class PlanningEventMaterializer:
         event = PlanningEvent.objects.select_related(
             "inventory_type",
             "store",
-            "client__local_binding__local_client",
-            "region__local_binding__local_base",
+            "client",
+            "region",
         ).get(pk=event.pk)
 
         if (
@@ -114,14 +119,39 @@ class PlanningEventMaterializer:
             return self._mark_error(event, "inventory_type_invalid")
         if event.parent_external_id:
             return self._mark_error(event, "parent_event_has_parent")
-        if not event.store_id or not event.client_id or not event.region_id:
-            return self._mark_pending(event, "catalog_binding_incomplete")
-        if not self._get_related_binding(event.client):
-            return self._mark_pending(event, "client_binding_missing")
-        if not self._get_related_binding(event.region):
-            return self._mark_pending(event, "region_binding_missing")
 
-        values = self._planning_values(event)
+        existing_binding = InventoryPlanningEventBinding.objects.filter(
+            planning_event=event,
+        ).select_related("inventory").first()
+        if event.status in self.SKIPPED_EXTERNAL_STATUSES and existing_binding is None:
+            event.materialization_status = PlanningEvent.MaterializationStatus.SKIPPED
+            event.materialization_error = f"external_status_{event.status.lower()}"
+            event.save(update_fields=("materialization_status", "materialization_error"))
+            return None, False, "skipped"
+
+        if not event.store_id:
+            return self._mark_pending(event, "store_missing")
+        if not event.client_id:
+            return self._mark_pending(event, "client_missing")
+        if not event.region_id:
+            return self._mark_pending(event, "region_missing")
+
+        client_resolution = PlanningClientResolver.resolve(event.client)
+        if not client_resolution.binding:
+            return self._mark_pending(event, "client_binding_missing")
+        base_resolution = OperationalBaseResolver.resolve(
+            planning_client=event.client,
+            planning_region=event.region,
+            local_client=client_resolution.local_client,
+        )
+        if not base_resolution.is_resolved:
+            return self._mark_pending(event, base_resolution.code)
+
+        values = self._planning_values(
+            event,
+            local_client=client_resolution.local_client,
+            local_base=base_resolution.base,
+        )
         with transaction.atomic():
             binding = InventoryPlanningEventBinding.objects.select_for_update().filter(
                 planning_event=event
@@ -139,9 +169,22 @@ class PlanningEventMaterializer:
                 )
             else:
                 inventory = binding.inventory
-                for field, value in values.items():
+                execution_started = bool(
+                    inventory.status != "PLANEJADO"
+                    or inventory.inicio_real
+                    or inventory.fim_real
+                    or inventory.inicio_contagem
+                    or inventory.fim_contagem
+                )
+                update_fields = (
+                    self.FORECAST_FIELDS_AFTER_EXECUTION
+                    if execution_started
+                    else self.PLANNING_FIELDS
+                )
+                for field in update_fields:
+                    value = values[field]
                     setattr(inventory, field, value)
-                inventory.save(update_fields=self.PLANNING_FIELDS)
+                inventory.save(update_fields=update_fields)
             event.materialization_status = PlanningEvent.MaterializationStatus.MATERIALIZED
             event.materialization_error = ""
             event.save(update_fields=("materialization_status", "materialization_error"))
@@ -161,17 +204,49 @@ class PlanningEventMaterializer:
         event.save(update_fields=("materialization_status", "materialization_error"))
         return None, False, code
 
-    def materialize_all(self):
+    @staticmethod
+    def _has_resolved_bindings(event):
+        if (
+            not event.inventory_type_id
+            or event.inventory_type.kind != PlanningInventoryType.Kind.PARENT
+            or not event.store_id
+            or not event.client_id
+            or not event.region_id
+        ):
+            return False
+        client_resolution = PlanningClientResolver.resolve(event.client)
+        if not client_resolution.binding:
+            return False
+        return OperationalBaseResolver.resolve(
+            planning_client=event.client,
+            planning_region=event.region,
+            local_client=client_resolution.local_client,
+        ).is_resolved
+
+    def materialize_all(self, *, resolved_only=False):
         materialized = 0
         pending = 0
         queryset = PlanningEvent.objects.filter(
             data_source="INVENTORY_PLANNING",
             sync_state=SyncState.PRESENT,
-        ).select_related("inventory_type")
+        ).select_related("inventory_type", "store", "client", "region")
         for event in queryset.iterator():
-            _inventory, created, result = self.materialize(event)
+            if resolved_only and not self._has_resolved_bindings(event):
+                continue
+            try:
+                _inventory, created, result = self.materialize(event)
+            except Exception as exc:
+                logger.error(
+                    "inventory_planning_materialization_event_failed event_id=%s error_code=%s",
+                    event.external_id,
+                    exc.__class__.__name__,
+                )
+                fresh_event = PlanningEvent.objects.get(pk=event.pk)
+                self._mark_error(fresh_event, "unexpected_materialization_error")
+                pending += 1
+                continue
             if result == "materialized":
                 materialized += int(created)
-            elif result not in {"child"}:
+            elif result not in {"child", "skipped"}:
                 pending += 1
         return materialized, pending

@@ -9,7 +9,7 @@
         <div>
             <h1 class="h3 fw-semibold mb-1">{% trans "Assistente Operacional" %}</h1>
             <p class="text-muted mb-0">
-                {% trans "Pergunte sobre estoque, insumos, transferencias, historico, inventarios, checklists e indicadores." %}
+                {% trans "Converse sobre planejamento, execução, estoque, insumos, inventários, checklists e indicadores." %}
             </p>
         </div>
         <span class="badge rounded-pill text-bg-light border px-3 py-2">
@@ -31,7 +31,7 @@
                             name="pergunta"
                             rows="4"
                             class="form-control"
-                            placeholder="{% trans 'Ex.: Quantos coletores estão ativos?' %}"
+                            placeholder="{% trans 'Ex.: Quais inventários estão planejados para amanhã?' %}"
                         >{{ pergunta }}</textarea>
 
                         <div class="d-flex justify-content-end mt-3">
@@ -127,6 +127,13 @@
 .assistente-tabela tr:nth-child(even) td {
     background: #f8f9fa;
 }
+
+.assistente-fonte {
+    display: block;
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+}
 </style>
 
 {% if resultado %}
@@ -143,6 +150,14 @@
         const linha = linhas[indice];
         const inicioTabela = linha.includes('|') && linha === linha.toUpperCase();
         if (!inicioTabela) {
+            if (linha.startsWith('Fonte:')) {
+                const fonte = document.createElement('small');
+                fonte.className = 'assistente-fonte';
+                fonte.textContent = linha;
+                resposta.appendChild(fonte);
+                indice += 1;
+                continue;
+            }
             resposta.appendChild(document.createTextNode(linha));
             if (indice < linhas.length - 1) resposta.appendChild(document.createElement('br'));
             indice += 1;

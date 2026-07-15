@@ -95,6 +95,19 @@ class InventoryPlanningService:
             "error_message",
         ))
 
+    @staticmethod
+    def _finish_interrupted(run):
+        run.status = InventoryPlanningSyncRun.Status.FAILED
+        run.finished_at = timezone.now()
+        run.error_code = "INTERRUPTED"
+        run.error_message = "Sincronização interrompida pelo operador."
+        run.save(update_fields=(
+            "status",
+            "finished_at",
+            "error_code",
+            "error_message",
+        ))
+
     def sync_catalog(self, endpoint):
         if endpoint not in self.CATALOG_ENDPOINTS:
             raise ValueError(f"Catálogo não suportado: {endpoint}")
@@ -136,6 +149,14 @@ class InventoryPlanningService:
                 missing=missing,
                 **rate_limits,
             )
+        except KeyboardInterrupt:
+            self._finish_interrupted(run)
+            logger.warning(
+                "inventory_planning_sync_interrupted endpoint=%s run_id=%s",
+                endpoint,
+                run.pk,
+            )
+            raise
         except Exception as exc:
             self._finish_failure(run, exc)
             logger.error(
@@ -193,6 +214,13 @@ class InventoryPlanningService:
                 pending_materialization=pending,
                 **rate_limits,
             )
+        except KeyboardInterrupt:
+            self._finish_interrupted(run)
+            logger.warning(
+                "inventory_planning_sync_interrupted endpoint=events run_id=%s",
+                run.pk,
+            )
+            raise
         except Exception as exc:
             self._finish_failure(run, exc)
             logger.error(

@@ -40,6 +40,19 @@ class InterpretacaoOperacional:
     periodo_fim: object | None = None
     tipo_inventario: str = ''
     insumo: object | None = None
+    planning_action: str = 'list'
+    planning_statuses: list[str] = field(default_factory=list)
+    planning_location: str = ''
+    simulated_sporadic_count: int | None = None
+    external_event_id: str = ''
+    external_client_id: str = ''
+    external_client_name: str = ''
+    external_store_id: str = ''
+    external_store_name: str = ''
+    external_region_id: str = ''
+    external_region_name: str = ''
+    external_inventory_type_name: str = ''
+    external_inventory_type_kind: str = ''
 
 class AssistenteOperacionalService:
     NOME_ASSISTENTE = 'Tory'
@@ -129,6 +142,7 @@ class AssistenteOperacionalService:
         interpretacao = cls.interpretar(user, pergunta, contexto=contexto)
 
         roteadores = {
+            'planejamento': cls._planejamento,
             'capacidade_coletores': cls._capacidade_coletores,
             'capacidade_equipamentos': cls._capacidade_equipamentos,
             'inventarios_data_base': cls._inventarios_data_base,
@@ -155,10 +169,16 @@ class AssistenteOperacionalService:
         }
 
         resposta = roteadores.get(interpretacao.intencao, cls._orientacao)(user, interpretacao)
-        resposta['resposta'] = cls._personalizar_resposta(user, resposta['resposta'])
+        acoes_contextuais = resposta.pop('acoes', [])
+        resposta['resposta'] = cls._personalizar_resposta(
+            user,
+            resposta['resposta'],
+            pergunta=pergunta,
+            intencao=interpretacao.intencao,
+        )
         resposta['interpretacao'] = cls._resumo_interpretacao(interpretacao)
         resposta['contexto'] = cls._contexto_interpretacao(interpretacao)
-        resposta['acoes'] = cls._acoes_interpretacao(interpretacao)
+        resposta['acoes'] = acoes_contextuais or cls._acoes_interpretacao(interpretacao)
         return resposta
 
     @classmethod
@@ -166,6 +186,7 @@ class AssistenteOperacionalService:
         contexto = contexto or {}
         pergunta = (pergunta or '').strip()
         texto = cls._corrigir_termos(cls._normalizar(pergunta))
+        texto = cls._remover_vocativo_tory(texto)
         texto = cls._interpretar_linguagem_cotidiana(texto)
         continuacao = cls._eh_continuacao(texto)
         consulta_relatorio = cls._pergunta_relatorio_inventario(texto)
@@ -205,13 +226,17 @@ class AssistenteOperacionalService:
             loja = contexto.get('loja', '')
         if pessoas_filtro is None and (continuacao or consulta_relatorio):
             pessoas_filtro = contexto.get('pessoas_filtro')
-        periodo_inicio, periodo_fim = cls._extrair_periodo(texto)
+        periodo_inicio_atual, periodo_fim_atual = cls._extrair_periodo(texto)
+        periodo_inicio, periodo_fim = periodo_inicio_atual, periodo_fim_atual
         if not periodo_inicio and (
-            continuacao or consulta_custo or (consulta_relatorio and not cliente_explicito)
+            continuacao or consulta_custo or
+            contexto.get('intencao') == 'planejamento' or
+            (consulta_relatorio and not cliente_explicito)
         ):
             periodo_inicio = cls._data_contexto_chave(contexto, 'periodo_inicio')
             periodo_fim = cls._data_contexto_chave(contexto, 'periodo_fim')
-        data_interpretada = cls._extrair_data(texto)
+        data_interpretada_atual = cls._extrair_data(texto)
+        data_interpretada = data_interpretada_atual
         if not data_interpretada and periodo_inicio and periodo_inicio == periodo_fim:
             data_interpretada = periodo_inicio
         todas_bases = cls._quer_todas_bases(texto) or (
@@ -261,6 +286,33 @@ class AssistenteOperacionalService:
         if todas_bases and not categoria:
             categoria = contexto.get('categoria', '')
 
+        contexto_planejamento = contexto.get('intencao') == 'planejamento'
+        planning_action = cls._planning_action(texto, contexto)
+        planning_location_atual = cls._extrair_local_planejamento(texto)
+        novo_escopo_planejamento = bool(
+            data_interpretada_atual or periodo_inicio_atual or base_solicitada or grupo_solicitado or
+            uf_solicitada or cliente_explicito or loja or planning_location_atual
+        )
+        manter_entidades_externas = contexto_planejamento and not novo_escopo_planejamento
+        external_event_id = cls._extrair_external_event_id(texto) or (
+            contexto.get('external_event_id', '') if manter_entidades_externas else ''
+        )
+        external_region_id = contexto.get('external_region_id', '') if manter_entidades_externas else ''
+        external_client_id = contexto.get('external_client_id', '') if manter_entidades_externas else ''
+        external_store_id = contexto.get('external_store_id', '') if manter_entidades_externas else ''
+        external_type_name = contexto.get('external_inventory_type_name', '') if manter_entidades_externas else ''
+        external_type_kind = (
+            cls._extrair_kind_planejamento(texto) or
+            (contexto.get('external_inventory_type_kind', '') if manter_entidades_externas else '')
+        )
+        if planning_action in {'hierarchy', 'highest_pieces', 'highest_headcount'}:
+            external_event_id = ''
+        if planning_action == 'hierarchy':
+            external_type_name = ''
+            external_type_kind = ''
+        if cls._tem(texto, 'volte ao planejamento', 'mostre os inventarios planejados'):
+            external_event_id = ''
+
         interpretacao = InterpretacaoOperacional(
             pergunta=pergunta,
             texto=texto,
@@ -282,6 +334,24 @@ class AssistenteOperacionalService:
             periodo_fim=periodo_fim,
             tipo_inventario=tipo_inventario,
             insumo=insumo,
+            planning_action=planning_action,
+            planning_statuses=cls._extrair_status_planejamento(texto) or (
+                contexto.get('planning_statuses', []) if contexto_planejamento else []
+            ),
+            planning_location=(
+                planning_location_atual or
+                (contexto.get('planning_location', '') if manter_entidades_externas else '')
+            ),
+            simulated_sporadic_count=cls._extrair_avulsos_simulados(texto),
+            external_event_id=external_event_id,
+            external_client_id=external_client_id,
+            external_client_name=contexto.get('external_client_name', '') if manter_entidades_externas else '',
+            external_store_id=external_store_id,
+            external_store_name=contexto.get('external_store_name', '') if manter_entidades_externas else '',
+            external_region_id=external_region_id,
+            external_region_name=contexto.get('external_region_name', '') if manter_entidades_externas else '',
+            external_inventory_type_name=external_type_name,
+            external_inventory_type_kind=external_type_kind,
         )
 
         if not pergunta:
@@ -309,7 +379,15 @@ class AssistenteOperacionalService:
             interpretacao.intencao = 'ajuda_sistema'
             return interpretacao
 
-        if cls._pergunta_comparacao_precos(texto) or (
+        if cls._pergunta_planejamento(texto, contexto):
+            interpretacao.intencao = 'planejamento'
+            # Em planejamento, uma cidade/regional representa o escopo externo. Ela
+            # não pode ser convertida silenciosamente em uma base local quando há
+            # mais de uma operação no mesmo local (por exemplo, regular e OXXO).
+            if planning_location_atual and not base_explicita:
+                interpretacao.base = None
+                interpretacao.base_bloqueada = ''
+        elif cls._pergunta_comparacao_precos(texto) or (
             contexto.get('intencao') == 'comparacao_precos' and continuacao
         ):
             interpretacao.intencao = 'comparacao_precos'
@@ -448,6 +526,12 @@ class AssistenteOperacionalService:
 
         cls._aplicar_escopo_de_base(user, interpretacao)
         return interpretacao
+
+    @classmethod
+    def _planejamento(cls, user, interpretacao):
+        from estoque.services.planning_assistant_service import PlanningAssistantService
+
+        return PlanningAssistantService.respond(user, interpretacao)
 
     @classmethod
     def _aplicar_escopo_de_base(cls, user, interpretacao):
@@ -3141,6 +3225,14 @@ class AssistenteOperacionalService:
         return bool(re.fullmatch(rf'(?:{saudacoes})(?:\s+{interacao})?|{interacao}|ta ai', texto))
 
     @staticmethod
+    def _remover_vocativo_tory(texto):
+        texto = (texto or '').strip()
+        tem_nome = bool(re.search(r'\btory\b', texto))
+        texto = re.sub(r'^\s*tory\s*[,;:!?.-]*\s*', '', texto)
+        texto = re.sub(r'\s*[,;:!?.-]*\s*tory\s*[,;:!?.-]*\s*$', '', texto)
+        return texto.strip() or ('oi' if tem_nome else '')
+
+    @staticmethod
     def _eh_continuacao(texto):
         return bool(
             re.search(
@@ -3185,6 +3277,154 @@ class AssistenteOperacionalService:
             r'custo adicional|ultrapassou|ultrapassar)\b',
             texto,
         ))
+
+    @classmethod
+    def _pergunta_planejamento(cls, texto, contexto):
+        if cls._tem(texto, 'inventario local', 'inventarios locais', 'dados locais'):
+            return False
+        comparacao = bool(re.search(
+            r'\b(planejado|planejamento|previsto)\b.*\b(realizado|execucao|real)\b|'
+            r'\b(realizado|execucao|real)\b.*\b(planejado|planejamento|previsto)\b',
+            texto,
+        ))
+        if not comparacao and cls._tem(
+            texto,
+            'terminou', 'terminaram', 'encerrado', 'encerrados', 'finalizado',
+            'durou', 'inicio real', 'fim real', 'depois das', 'antes das',
+            'tempo efetivo', 'tempo produtivo', 'custo adicional',
+        ):
+            return False
+
+        explicit = bool(
+            comparacao or
+            re.search(r'\b(inventarios?|eventos?)\s+(?:ja\s+)?planejad', texto) or
+            re.search(r'\b(equipe|pessoas|pecas)\s+previst', texto) or
+            re.search(r'\bprevisao\b.*\bpecas\b|\bpecas\b.*\bprevisao\b', texto) or
+            re.search(r'\bregional\s+responsavel\b', texto) or
+            re.search(r'\beventos?\s+(?:pai|filho)\b|\b(?:pai|filho)\s+e\s+(?:pai|filho)\b', texto) or
+            re.search(r'\bdisponibilidade\s+(?:da\s+)?equipe\b', texto) or
+            re.search(r'\bavulsos?\b', texto)
+        )
+        future_period = bool(
+            re.search(r'\b(inventario|inventarios|evento|eventos|agenda|servicos)\b', texto)
+            and re.search(
+                r'\b(amanha|proxima semana|semana que vem|nesta semana|esta semana|'
+                r'no mes|neste mes|este mes|proximo mes|mes que vem)\b',
+                texto,
+            )
+        )
+        contextual = bool(
+            contexto.get('intencao') == 'planejamento'
+            and (
+                cls._eh_continuacao(texto)
+                or re.search(
+                    r'\b(qual|quais|maior|menor|equipe|pessoas|pecas|regional|status|'
+                    r'planejado|realizado|pai|filho|disponibilidade|avulso|detalhe)\b',
+                    texto,
+                )
+            )
+        )
+        return explicit or future_period or contextual
+
+    @staticmethod
+    def _planning_action(texto, contexto):
+        if re.search(r'\bavulsos?\b', texto) and re.search(r'\b(adicionar|adicionarmos|mais|incluir|incluirmos)\b', texto):
+            return 'simulate_sporadic'
+        if re.search(
+            r'\b(planejado|planejamento|previsto)\b.*\b(realizado|execucao|real)\b|'
+            r'\b(realizado|execucao|real)\b.*\b(planejado|planejamento|previsto)\b|'
+            r'\bdiferenca\b.*\b(planejado|realizado)\b',
+            texto,
+        ):
+            return 'comparison'
+        if re.search(r'\bmaior\b.*\b(pecas|previsao|volume)\b', texto):
+            return 'highest_pieces'
+        if re.search(r'\bmaior\b.*\b(pessoas|equipe|demanda)\b', texto):
+            return 'highest_headcount'
+        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?(?:eventos?\s+)?(?:pai|filhos?)\b', texto):
+            return 'list'
+        if re.search(r'\b(?:pai|filho)\b', texto):
+            return 'hierarchy'
+        if re.search(r'\b(disponibilidade|suficiente|suficientes|pessoas suficientes|equipe suficiente)\b', texto):
+            return 'availability'
+        if re.search(r'\b(equipe prevista|pessoas previstas|quantas pessoas|demanda de pessoas)\b', texto):
+            return 'team'
+        if contexto.get('intencao') == 'planejamento' and re.search(r'\btemos pessoas\b', texto):
+            return 'availability'
+        return 'list'
+
+    @staticmethod
+    def _extrair_status_planejamento(texto):
+        mapping = {
+            'cancelado': 'CANCELLED',
+            'cancelados': 'CANCELLED',
+            'modificado': 'MODIFIED',
+            'modificados': 'MODIFIED',
+            'adicionado': 'ADDED',
+            'adicionados': 'ADDED',
+            'removido': 'REMOVED',
+            'removidos': 'REMOVED',
+            'aprovado': 'APPROVED',
+            'aprovados': 'APPROVED',
+            'concluido': 'COMPLETED',
+            'concluidos': 'COMPLETED',
+            'em andamento': 'IN_PROGRESS',
+            'pre planejado': 'PRE_PLANNED',
+        }
+        return list(dict.fromkeys(
+            value for term, value in mapping.items()
+            if re.search(rf'\b{re.escape(term)}\b', texto)
+        ))
+
+    @staticmethod
+    def _extrair_kind_planejamento(texto):
+        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?(?:eventos?\s+)?pai\b', texto):
+            return 'PAI'
+        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?(?:eventos?\s+)?filhos?\b', texto):
+            return 'FILHO'
+        return ''
+
+    @staticmethod
+    def _extrair_external_event_id(texto):
+        match = re.search(r'\bevento\s+([a-z0-9][a-z0-9_-]{7,})\b', texto)
+        return match.group(1) if match else ''
+
+    @staticmethod
+    def _extrair_local_planejamento(texto):
+        for alias in sorted(AssistenteOperacionalService.BASE_ALIASES, key=len, reverse=True):
+            if re.search(rf'\b{re.escape(alias)}\b', texto):
+                return alias
+        match = re.search(
+            r'\b(?:na regional|na cidade de|em)\s+([a-z][a-z0-9\s-]{2,40})$',
+            texto,
+        )
+        if not match:
+            return ''
+        location = re.sub(
+            r'\s+\b(hoje|amanha|nesta semana|na proxima semana|neste mes)\b.*$',
+            '',
+            match.group(1),
+        ).strip()
+        if location in {'andamento', 'execucao', 'planejamento'}:
+            return ''
+        return location
+
+    @staticmethod
+    def _extrair_avulsos_simulados(texto):
+        numbers = {
+            'um': 1, 'uma': 1, 'dois': 2, 'duas': 2, 'tres': 3,
+            'quatro': 4, 'cinco': 5, 'seis': 6, 'sete': 7,
+            'oito': 8, 'nove': 9, 'dez': 10,
+        }
+        match = re.search(
+            r'\b(?:adicionar|adicionarmos|incluir|incluirmos|mais)\s+'
+            r'(\d+|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+avulsos?\b',
+            texto,
+        )
+        if not match:
+            return None
+        value = match.group(1)
+        return int(value) if value.isdigit() else numbers[value]
 
     @staticmethod
     def _pergunta_tempos_operacionais(texto):
@@ -3755,6 +3995,16 @@ class AssistenteOperacionalService:
             partes.append(f'insumo={interpretacao.insumo.descricao}')
         if interpretacao.periodo_inicio and interpretacao.periodo_fim:
             partes.append(f'periodo={interpretacao.periodo_inicio:%d/%m/%Y}..{interpretacao.periodo_fim:%d/%m/%Y}')
+        if interpretacao.external_event_id:
+            partes.append(f'external_event_id={interpretacao.external_event_id}')
+        if interpretacao.external_region_name:
+            partes.append(f'regional_externa={interpretacao.external_region_name}')
+        if interpretacao.external_client_name:
+            partes.append(f'cliente_externo={interpretacao.external_client_name}')
+        if interpretacao.external_store_name:
+            partes.append(f'loja_externa={interpretacao.external_store_name}')
+        if interpretacao.external_inventory_type_name:
+            partes.append(f'tipo_externo={interpretacao.external_inventory_type_name}')
         return ', '.join(partes)
 
     @staticmethod
@@ -3800,6 +4050,18 @@ class AssistenteOperacionalService:
             'insumo_id': interpretacao.insumo.id if interpretacao.insumo else None,
             'periodo_inicio': interpretacao.periodo_inicio.isoformat() if interpretacao.periodo_inicio else '',
             'periodo_fim': interpretacao.periodo_fim.isoformat() if interpretacao.periodo_fim else '',
+            'planning_action': interpretacao.planning_action,
+            'planning_statuses': interpretacao.planning_statuses,
+            'planning_location': interpretacao.planning_location,
+            'external_event_id': interpretacao.external_event_id,
+            'external_client_id': interpretacao.external_client_id,
+            'external_client_name': interpretacao.external_client_name,
+            'external_store_id': interpretacao.external_store_id,
+            'external_store_name': interpretacao.external_store_name,
+            'external_region_id': interpretacao.external_region_id,
+            'external_region_name': interpretacao.external_region_name,
+            'external_inventory_type_name': interpretacao.external_inventory_type_name,
+            'external_inventory_type_kind': interpretacao.external_inventory_type_kind,
         }
 
     @staticmethod
@@ -3825,11 +4087,18 @@ class AssistenteOperacionalService:
         return parse_date(valor) if valor else None
 
     @classmethod
-    def _personalizar_resposta(cls, user, texto):
+    def _personalizar_resposta(cls, user, texto, *, pergunta='', intencao=''):
         nome = cls._nome_usuario(user)
         if not texto:
-            return f'{nome}, nao encontrei uma resposta para essa pergunta agora.'
-        return f'{nome}, {texto[:1].lower()}{texto[1:]}'
+            return 'Não consegui formar uma resposta segura para essa pergunta agora.'
+        if intencao == 'saudacao':
+            return texto
+        pergunta_normalizada = cls._normalizar(pergunta)
+        if re.search(r'\btory\b', pergunta_normalizada):
+            return f'Claro, {nome}. {texto[:1].lower()}{texto[1:]}'
+        # Mantém o texto factual do serviço e evita repetir o nome do usuário
+        # mecanicamente em todas as respostas.
+        return f'{texto[:1].lower()}{texto[1:]}'
 
     @staticmethod
     def _nome_usuario(user):

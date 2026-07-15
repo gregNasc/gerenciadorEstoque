@@ -48,21 +48,39 @@ Primeiro carregue a projeção sem materializar inventários:
 python manage.py sync_inventory_planning --no-materialize
 ```
 
-No Django Admin, configure:
+Na tela **Estoque → Mapeamentos Planning**, configure:
 
 1. `PlanningClientBinding`: cliente externo → `insumos.Cliente`;
-2. `PlanningRegionBinding`: regional externa → `estoque.Base`.
+2. `PlanningOperationalBaseBinding`: cliente externo + regional externa → base
+   operacional local;
+3. `PlanningRegionBinding` somente como fallback para regionais realmente
+   inequívocas.
 
-Os bindings são explícitos. O sistema não associa registros apenas pelo nome.
+Os bindings são explícitos, possuem origem, responsável, timestamps e estado
+ativo/inativo. Sugestões exibem confiança e motivo, mas não são gravadas sem
+confirmação. O sistema não associa registros apenas pelo nome. Isso é essencial
+para locais como Campinas, onde `SP INT CPN` e `OXXO SP INT CPN X` coexistem.
 
 Depois materialize os eventos PAI:
 
 ```powershell
-python manage.py materialize_inventory_planning
+python manage.py materialize_inventory_planning --resolved-only
 ```
 
 Eventos sem os dois bindings permanecem com status `PENDING` e um código de
 pendência. Eles continuam sincronizados e podem ser materializados depois.
+
+Comandos de apoio, todos sem acesso direto da Tory à API:
+
+```powershell
+python manage.py list_inventory_planning_bindings
+python manage.py suggest_inventory_planning_bindings
+python manage.py mark_stale_inventory_planning_runs --minutes 30
+```
+
+O comando de sugestões é somente leitura. Runs interrompidos recebem
+`FAILED/INTERRUPTED`; apenas o comando explícito acima converte runs antigas em
+`STALE`.
 
 ## Sincronizações seguintes
 
@@ -129,6 +147,35 @@ telefone, celular, e-mail, data de nascimento e CNPJ MEI encontrados em
 Os endpoints de colaboradores, equipes, disponibilidade, conferentes avulsos e
 composição de valor não fazem parte desta fase.
 
+## Tory
+
+A Tory nunca instancia o cliente HTTP. O fluxo de leitura é:
+
+```text
+Tory → PlanningAssistantService → PlanningService → models sincronizados
+```
+
+Perguntas sobre inventários futuros, pessoas e peças previstas, regional,
+eventos PAI/FILHO e planejado × realizado usam o planejamento sincronizado. A
+execução local só é cruzada quando existe `InventoryPlanningEventBinding` e o
+inventário pertence ao escopo de acesso do usuário.
+
+O contexto conversacional preserva período, evento externo, cliente, loja,
+regional, tipo e status. As respostas indicam a fonte e a data do snapshot. Se
+a última sincronização falhar, a Tory usa o snapshot existente; sem snapshot,
+ela oferece as consultas locais sem interromper a conversa.
+
+Consultas de disponibilidade, nomes de equipe, valores e avulsos não acessam os
+endpoints futuros. A Tory pode explicar a limitação e calcular cenários
+hipotéticos de quantidade, mas não altera a escala nem confirma disponibilidade.
+
+A Tory também aceita o próprio nome como vocativo (`Tory, ...`, `Oi, Tory` ou
+`Tory`). Quando uma cidade possui mais de uma operação, ela mostra as operações
+permitidas e pede o cliente em vez de escolher uma base silenciosamente. Toda
+consulta continua passando pelos serviços de domínio e pelo escopo de permissão;
+nenhum dado pessoal, bancário ou financeiro é entregue diretamente pelo modelo
+conversacional.
+
 ## Auditoria
 
 Cada endpoint gera um `InventoryPlanningSyncRun` contendo:
@@ -151,5 +198,6 @@ python manage.py test integracao.tests
 
 A suíte cobre autenticação, HTTPS, paginação, timeout, retry, `Retry-After`,
 401/403, idempotência, atualização, PAI/FILHO, cancelamento, campos opcionais,
-relacionamentos de catálogo, sanitização, logs, rate limit e concorrência.
-
+relacionamentos de catálogo, sanitização, logs, rate limit, concorrência,
+bindings combinados, OXXO/regular, permissões, interrupção/stale run e o vocativo
+da Tory.
