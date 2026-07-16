@@ -1832,7 +1832,7 @@ def exportar_historico_excel(request):
         )
 
     filename = (
-        f"inventario_equipamentos_{regional_nome}.xlsx"
+        f"Lista_Equipamentos_{regional_nome}.xlsx"
         .replace(' ', '_')
     )
 
