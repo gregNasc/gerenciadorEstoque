@@ -7,6 +7,7 @@ from django.templatetags.static import static as static_url
 from django.views.generic import RedirectView
 from django.urls import re_path
 from django.views.static import serve
+import os
 
 urlpatterns = [
     path(
