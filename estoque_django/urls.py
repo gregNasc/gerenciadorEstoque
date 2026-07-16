@@ -5,6 +5,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.templatetags.static import static as static_url
 from django.views.generic import RedirectView
+from django.urls import re_path
+from django.views.static import serve
 
 urlpatterns = [
     path(
@@ -19,7 +21,17 @@ urlpatterns = [
     path('insumos/', include('insumos.urls')),
     path('integracao/', include('integracao.urls')),
 ]
-urlpatterns += static(
-    settings.MEDIA_URL,
-    document_root=settings.MEDIA_ROOT,
-)
+
+urlpatterns += [
+    re_path(
+        r"^media/comunicados/(?P<path>.*)$",
+        serve,
+        {
+            "document_root": os.path.join(
+                settings.MEDIA_ROOT,
+                "comunicados",
+            )
+        },
+        name="servir_arquivo_comunicado",
+    ),
+]
