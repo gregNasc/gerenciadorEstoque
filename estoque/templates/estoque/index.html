@@ -15,7 +15,7 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body bg-light">
             <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-3">
+                <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Categoria" %}</label>
                     <select name="categoria" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todas</option>
@@ -26,7 +26,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Equipamento" %}</label>
                     <select name="produto" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">Todos</option>
@@ -39,7 +39,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">
                         Inventory
                     </label>
@@ -62,7 +62,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Regional" %}</label>
                     <select name="regional" class="form-select form-select-sm bg-white auto-submit">
                         <option value="">{% trans "Todas" %}</option>
@@ -71,6 +71,18 @@
                             {% if request.GET.regional == r.id|stringformat:"s" %}selected{% endif %}>
                             {{ r.nome }}
                         </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-md">
+                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Finalidade" %}</label>
+                    <select name="finalidade" class="form-select form-select-sm bg-white auto-submit">
+                        <option value="">{% trans "Todos" %}</option>
+                        {% for valor, nome in finalidade_choices %}
+                            <option value="{{ valor }}" {% if filtro_finalidade == valor %}selected{% endif %}>
+                                {{ nome }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -112,10 +124,10 @@
                     <span class="text-secondary">{% trans "Ativos" %}</span>
                     <strong class="text-success">{{ item.ativos }}</strong>
                 </div>
-                <!--div class="d-flex justify-content-between small">
+                <div class="d-flex justify-content-between small">
                     <span class="text-secondary">{% trans "Administrativos" %}</span>
                     <strong class="text-info">{{ item.administrativos }}</strong>
-                </div-->
+                </div>
                 <div class="d-flex justify-content-between small">
                     <span class="text-secondary">{% trans "Sick" %}</span>
                     <strong class="text-danger">{{ item.sick }}</strong>
@@ -134,6 +146,7 @@
     </div>
     {% endfor %}
 </div>
+
 
     <!-- Cards por Regional -->
     <div class="row g-3">

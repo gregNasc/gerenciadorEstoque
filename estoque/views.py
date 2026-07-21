@@ -106,6 +106,7 @@ def index(request):
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
     inventory_id = request.GET.get('inventory')
+    finalidade = request.GET.get('finalidade', '').strip().upper()
 
     if not perfil.is_admin:
         inventory_id = str(perfil.empresa_id) if perfil.empresa_id else ''
@@ -120,6 +121,11 @@ def index(request):
 
     if produto_id and produto_id.isdigit():
         equipamentos = equipamentos.filter(produto_id=produto_id)
+
+    if finalidade in Equipamento.Finalidade.values:
+        equipamentos = equipamentos.filter(finalidade=finalidade)
+    else:
+        finalidade = ''
 
     regional_id = request.GET.get('regional')
     if regional_id and regional_id.isdigit():
@@ -328,6 +334,8 @@ def index(request):
         'filtro_regional_id': regional_id,
         'empresas': empresas,
         'filtro_inventory_id': inventory_id,
+        'filtro_finalidade': finalidade,
+        'finalidade_choices': Equipamento.Finalidade.choices,
     }
 
     return render(request, 'estoque/index.html', context)
