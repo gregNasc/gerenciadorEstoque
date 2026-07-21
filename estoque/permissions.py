@@ -1,5 +1,6 @@
 USUARIOS_MANUTENCAO = {
     'rafael.ribeiro',
+    'jose.barboza',
 }
 
 

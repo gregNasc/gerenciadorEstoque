@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from django.core.paginator import Paginator
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
@@ -8,6 +8,7 @@ from reportlab.lib import colors
 from openpyxl import Workbook
 from .services.emprestimo_service import EmprestimoService
 from .services.comunicado_service import ComunicadoService
+from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
@@ -20,7 +21,7 @@ from .models import (PendenciaTransferencia, DivergenciaTransferencia)
 from estoque.models import Base
 from .utils import notificar_pendencia_transferencia
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, F, Prefetch
 from django.utils.dateparse import parse_date
 from estoque.models import Equipamento
 from insumos.models import ChecklistDiario
@@ -68,6 +69,28 @@ def _bases_unicas_por_nome(queryset):
     return [bases[0] for bases in _bases_agrupadas_por_nome(queryset).values()]
 
 
+def _base_contexto_usuario(request):
+    """Resolve e persiste uma base selecionada sem confiar apenas no cliente."""
+    perfil = request.user.perfil
+    base_id = (
+        request.GET.get('regional') or
+        request.POST.get('regional') or
+        request.session.get('estoque_base_contexto_id')
+    )
+    if not base_id and not perfil.is_admin and perfil.regionais.count() == 1:
+        base_id = perfil.regionais.values_list('id', flat=True).first()
+    if not str(base_id or '').isdigit():
+        return None
+
+    bases = Base.objects.select_related('empresa')
+    if not perfil.is_admin:
+        bases = bases.filter(pk__in=perfil.regionais.values_list('pk', flat=True))
+    base = bases.filter(pk=base_id).first()
+    if base:
+        request.session['estoque_base_contexto_id'] = base.pk
+    return base
+
+
 # ----------------- DASHBOARD -----------------
 @login_required
 #@cache_page(60 * 5)
@@ -104,10 +127,16 @@ def index(request):
             messages.error(request, "Acesso negado a esta regional.")
             return redirect('estoque:index')
         equipamentos = equipamentos.filter(regional_id=regional_id)
+        request.session['estoque_base_contexto_id'] = int(regional_id)
 
     # KPI SUPERIOR
     total_filtrado = equipamentos.count()
-    ativos_filtrado = equipamentos.filter(status='ATIVO').count()
+    ativos_filtrado = equipamentos.filter(
+        status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+    ).count()
+    administrativos_filtrado = equipamentos.filter(
+        finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+    ).exclude(status='BAIXA').count()
     sick_filtrado = equipamentos.filter(status='SICK').count()
     inativos_filtrado = equipamentos.filter(status='INATIVO').count()
     manutencao_filtrado = equipamentos.filter(status='MANUTENCAO').count()
@@ -123,7 +152,12 @@ def index(request):
             )
             .annotate(
                 total=Count('id'),
-                ativos=Count('id', filter=Q(status='ATIVO')),
+                ativos=Count('id', filter=Q(
+                    status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+                )),
+                administrativos=Count('id', filter=Q(
+                    finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+                ) & ~Q(status='BAIXA')),
                 sick=Count('id', filter=Q(status='SICK')),
                 inativos=Count('id', filter=Q(status='INATIVO')),
                 transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
@@ -144,7 +178,12 @@ def index(request):
             .values('produto__categoria')
             .annotate(
                 total=Count('id'),
-                ativos=Count('id', filter=Q(status='ATIVO')),
+                ativos=Count('id', filter=Q(
+                    status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+                )),
+                administrativos=Count('id', filter=Q(
+                    finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+                ) & ~Q(status='BAIXA')),
                 sick=Count('id', filter=Q(status='SICK')),
                 inativos=Count('id', filter=Q(status='INATIVO')),
                 transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
@@ -172,7 +211,12 @@ def index(request):
         equip_regional = equipamentos.filter(regional_id__in=bases_ids)
 
         total = equip_regional.count()
-        ativos = equip_regional.filter(status='ATIVO').count()
+        ativos = equip_regional.filter(
+            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+        ).count()
+        administrativos = equip_regional.filter(
+            finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+        ).exclude(status='BAIXA').count()
         sick = equip_regional.filter(status='SICK').count()
         inativos = equip_regional.filter(status='INATIVO').count()
 
@@ -181,6 +225,7 @@ def index(request):
             'regional__nome': regional.nome,
             'total': total,
             'ativos': ativos,
+            'administrativos': administrativos,
             'sick': sick,
             'inativos': inativos,
             'disponibilidade': round((ativos / total * 100), 2) if total else 0,
@@ -192,7 +237,12 @@ def index(request):
                 'produto__id', 'produto__descricao'
             ).annotate(
                 total=Count('id'),
-                ativos=Count('id', filter=Q(status='ATIVO')),
+                ativos=Count('id', filter=Q(
+                    status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+                )),
+                administrativos=Count('id', filter=Q(
+                    finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+                ) & ~Q(status='BAIXA')),
                 sick=Count('id', filter=Q(status='SICK')),
                 transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
             ).order_by('produto__descricao')
@@ -208,7 +258,12 @@ def index(request):
                 .values('produto__categoria')
                 .annotate(
                     total=Count('id'),
-                    ativos=Count('id', filter=Q(status='ATIVO')),
+                    ativos=Count('id', filter=Q(
+                        status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+                    )),
+                    administrativos=Count('id', filter=Q(
+                        finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+                    ) & ~Q(status='BAIXA')),
                     sick=Count('id', filter=Q(status='SICK')),
                     inativos=Count('id', filter=Q(status='INATIVO')),
                     transferencia=Count('id', filter=Q(status='TRANSFERENCIA')),
@@ -221,6 +276,7 @@ def index(request):
                 categoria: {
                     'total': produtos_dict.get(categoria, {}).get('total', 0),
                     'ativos': produtos_dict.get(categoria, {}).get('ativos', 0),
+                    'administrativos': produtos_dict.get(categoria, {}).get('administrativos', 0),
                     'sick': produtos_dict.get(categoria, {}).get('sick', 0),
                     'transferencia': produtos_dict.get(categoria, {}).get('transferencia', 0),
                 }
@@ -258,6 +314,7 @@ def index(request):
         'kpis_totais': {
             'total': total_filtrado,
             'ativos': ativos_filtrado,
+            'administrativos': administrativos_filtrado,
             'sick': sick_filtrado,
             'inativos': inativos_filtrado,
             'manutencao': manutencao_filtrado,
@@ -352,7 +409,9 @@ def detalhes_regional_api(request, regional_id):
         )
         .annotate(
             total=Count('id'),
-            ativos=Count('id', filter=Q(status='ATIVO')),
+            ativos=Count('id', filter=Q(
+                status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+            )),
             sick=Count('id', filter=Q(status='SICK')),
             inativos=Count('id', filter=Q(status='INATIVO')),
             manutencao=Count('id', filter=Q(status='MANUTENCAO')),
@@ -383,7 +442,9 @@ def detalhes_regional_api(request, regional_id):
     ]
 
     total = equipamentos.count()
-    ativos = equipamentos.filter(status='ATIVO').count()
+    ativos = equipamentos.filter(
+        status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+    ).count()
 
     disponibilidade = round((ativos / total * 100), 2) if total else 0
 
@@ -773,8 +834,12 @@ def verificar_consistencia_api(request):
 @login_required
 @role_required('admin', 'gestor', 'operador')
 def cadastrar_equipamento_view(request):
+    base_selecionada = _base_contexto_usuario(request)
     if request.method == 'POST':
-        form = EquipamentoForm(request.POST, request.FILES, user=request.user)
+        form = EquipamentoForm(
+            request.POST, request.FILES, user=request.user,
+            base_selecionada=base_selecionada,
+        )
         if form.is_valid():
             equipamento = form.save()
             print("FOTO:", equipamento.foto)
@@ -789,10 +854,11 @@ def cadastrar_equipamento_view(request):
             messages.success(request, "Equipamento cadastrado com sucesso.")
             return redirect('estoque:index')
     else:
-        form = EquipamentoForm(user=request.user)
+        form = EquipamentoForm(user=request.user, base_selecionada=base_selecionada)
 
     return render(request, 'estoque/cadastrar_equipamento.html', {
-        'form': form
+        'form': form,
+        'base_selecionada': base_selecionada,
     })
 
 @login_required
@@ -829,9 +895,15 @@ def estoque_view(request):
         equipamentos = equipamentos.filter(
             regional_id=regional_id
         )
+        request.session['estoque_base_contexto_id'] = int(regional_id)
 
     total_estoque = equipamentos.count()
-    ativos_estoque = equipamentos.filter(status='ATIVO').count()
+    ativos_estoque = equipamentos.filter(
+        status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+    ).count()
+    administrativos_estoque = equipamentos.filter(
+        finalidade=Equipamento.Finalidade.ADMINISTRATIVO
+    ).exclude(status='BAIXA').count()
     sick_estoque = equipamentos.filter(status='SICK').count()
     manutencao_estoque = equipamentos.filter(status='MANUTENCAO').count()
 
@@ -851,7 +923,14 @@ def estoque_view(request):
 
             ativos=Count(
                 'id',
-                filter=Q(status='ATIVO')
+                filter=Q(
+                    status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+                )
+            ),
+
+            administrativos=Count(
+                'id',
+                filter=Q(finalidade=Equipamento.Finalidade.ADMINISTRATIVO) & ~Q(status='BAIXA')
             ),
 
             sick=Count(
@@ -938,6 +1017,7 @@ def estoque_view(request):
             'kpis_estoque': {
                 'total': total_estoque,
                 'ativos': ativos_estoque,
+                'administrativos': administrativos_estoque,
                 'sick': sick_estoque,
                 'manutencao': manutencao_estoque,
                 'disponibilidade': int((ativos_estoque / total_estoque) * 100) if total_estoque else 0,
@@ -971,23 +1051,10 @@ def detalhes_produto_view(request, produto_id, regional_id):
 
         # ---------------- SICK ----------------
         if acao == 'sick':
-
-            if not perfil.pode_marcar_sick():
-                messages.error(request, "Sem permissão.")
-                return redirect(request.path)
-
-            equipamento = get_object_or_404(Equipamento, id=equipamento_id)
-
-            equipamento.status = 'SICK'
-            equipamento.save()
-
-            Sick.objects.create(
-                equipamento=equipamento,
-                motivo=request.POST.get('motivo_sick'),
-                categoria="OPERACIONAL"
+            messages.error(
+                request,
+                "Use a ação SICK do equipamento para informar categoria, motivo e observação.",
             )
-
-            messages.success(request, "Equipamento movido para SICK.")
             return redirect(request.path)
 
         # ---------------- TRANSFERÊNCIA ----------------
@@ -1119,7 +1186,7 @@ def detalhes_produto(request, produto_id):
 
 # ----------------- SICK -----------------
 @login_required
-@role_required('admin', 'gestor')
+@role_required('admin', 'gestor', 'operador')
 def sick_view(request):
 
     perfil = request.user.perfil
@@ -1127,6 +1194,7 @@ def sick_view(request):
     pode_acessar = (
             perfil.is_admin or
             perfil.is_gestor or
+            perfil.is_operador or
             pode_realizar_manutencao_sick(request.user)
     )
 
@@ -1135,6 +1203,87 @@ def sick_view(request):
         return redirect('estoque:index')
 
     if request.method == 'POST':
+
+        acao = request.POST.get('acao', '').strip()
+        if acao:
+            sick_id = request.POST.get('sick_id')
+            resultado = None
+            try:
+                if acao == 'atualizar_informacoes':
+                    resultado = SickService.atualizar_informacoes(
+                        sick_id=sick_id,
+                        usuario=request.user,
+                        categoria=request.POST.get('categoria'),
+                        motivo=request.POST.get('motivo'),
+                        observacao=request.POST.get('observacao'),
+                    )
+                elif acao == 'enviar_para_manutencao':
+                    resultado = SickService.enviar_para_manutencao(
+                        sick_id=sick_id,
+                        usuario=request.user,
+                        destino=request.POST.get('destino_manutencao'),
+                        transportadora=request.POST.get('transportadora_ou_portador'),
+                        protocolo=request.POST.get('protocolo_envio'),
+                        observacao=request.POST.get('observacao'),
+                    )
+                elif acao == 'confirmar_recebimento':
+                    resultado = SickService.confirmar_recebimento(
+                        sick_id=sick_id, usuario=request.user,
+                        observacao=request.POST.get('observacao'),
+                    )
+                elif acao == 'iniciar_avaliacao':
+                    resultado = SickService.iniciar_avaliacao(
+                        sick_id=sick_id, usuario=request.user,
+                        observacao=request.POST.get('observacao'),
+                    )
+                elif acao == 'iniciar_manutencao':
+                    resultado = SickService.iniciar_manutencao(
+                        sick_id=sick_id, usuario=request.user,
+                        causa=request.POST.get('causa_identificada'),
+                        diagnostico=request.POST.get('diagnostico'),
+                        observacao=request.POST.get('observacao_tecnica'),
+                        previsao_retorno=request.POST.get('previsao_retorno'),
+                    )
+                elif acao == 'concluir_manutencao':
+                    resultado = SickService.concluir_manutencao(
+                        sick_id=sick_id, usuario=request.user,
+                        solucao=request.POST.get('solucao_aplicada'),
+                        resultado=request.POST.get('resultado_manutencao'),
+                        apto_retorno=request.POST.get('apto_retorno'),
+                        observacao=request.POST.get('observacao'),
+                    )
+                elif acao == 'inativar_sem_reparo':
+                    resultado = SickService.inativar_sem_reparo(
+                        sick_id=sick_id, usuario=request.user,
+                        motivo=request.POST.get('motivo_inativacao'),
+                    )
+                elif acao == 'confirmar_retorno':
+                    resultado = SickService.confirmar_retorno(
+                        sick_id=sick_id, usuario=request.user,
+                        observacao=request.POST.get('observacao'),
+                    )
+                else:
+                    raise ValidationError('Ação de SICK inválida.')
+            except (ValidationError, PermissionDenied, Sick.DoesNotExist) as exc:
+                if isinstance(exc, ValidationError):
+                    texto = '; '.join(exc.messages)
+                else:
+                    texto = str(exc)
+                messages.error(request, texto)
+            else:
+                messages.success(request, 'Etapa do SICK atualizada com sucesso.')
+            etapa_retorno = 'INATIVOS' if acao == 'inativar_sem_reparo' and resultado else (
+                resultado.etapa if resultado else
+                Sick.objects.filter(pk=sick_id).values_list('etapa', flat=True).first()
+            )
+            etapa_retorno = etapa_retorno or Sick.Etapa.IDENTIFICADO
+            return redirect(
+                f"{reverse('estoque:sick')}?etapa={etapa_retorno}&sick={sick_id}#sick-{sick_id}"
+            )
+
+        if request.POST.get('novo_status'):
+            messages.error(request, 'O fluxo antigo foi desativado. Use a próxima etapa indicada.')
+            return redirect('estoque:sick')
 
         sick_id = request.POST.get('sick_id')
         #acao = request.POST.get('acao')
@@ -1353,8 +1502,30 @@ def sick_view(request):
     qs = Sick.objects.select_related(
         'equipamento',
         'equipamento__produto',
-        'equipamento__regional',
-        'resolvido_por'
+        'equipamento__regional__empresa',
+        'resolvido_por',
+        'enviado_manutencao_por',
+        'recebido_manutencao_por',
+        'avaliacao_iniciada_por',
+        'manutencao_iniciada_por',
+        'manutencao_concluida_por',
+        'retorno_confirmado_por',
+    ).prefetch_related(
+        Prefetch(
+            'equipamento__sicks',
+            queryset=Sick.objects.select_related(
+                'resolvido_por', 'enviado_manutencao_por',
+                'recebido_manutencao_por', 'avaliacao_iniciada_por',
+                'manutencao_iniciada_por', 'manutencao_concluida_por',
+                'retorno_confirmado_por',
+            ).order_by('-data_ocorrencia'),
+            to_attr='historico_sick_prefetch',
+        ),
+        Prefetch(
+            'equipamento__historico_set',
+            queryset=Historico.objects.select_related('usuario').order_by('data'),
+            to_attr='eventos_sick_prefetch',
+        ),
     )
 
     if pode_realizar_manutencao_sick(request.user):
@@ -1373,10 +1544,17 @@ def sick_view(request):
                 equipamento__regional__in=perfil.regionais.all()
             )
 
-    status_filter = request.GET.get('status', 'todos')
+    situacao_filter = (
+        request.GET.get('situacao') or request.GET.get('status') or ''
+    ).strip().lower()
     produto_filter = request.GET.get('produto', '')
     categoria_filter = request.GET.get('categoria', '')
     regional_filter = request.GET.get('regional', '')
+    busca = request.GET.get('q', '').strip()
+    etapa_solicitada = request.GET.get('etapa', '').strip()
+    etapa_filter = etapa_solicitada or (
+        'TODOS' if situacao_filter else Sick.Etapa.IDENTIFICADO
+    )
 
     if categoria_filter:
         sicks = sicks.filter(
@@ -1393,6 +1571,18 @@ def sick_view(request):
             equipamento__regional_id=regional_filter
         )
 
+    if busca:
+        sicks = sicks.filter(
+            Q(equipamento__produto__descricao__icontains=busca) |
+            Q(equipamento__produto__fabricante__icontains=busca) |
+            Q(equipamento__produto__modelo__icontains=busca) |
+            Q(equipamento__numero_serie__icontains=busca) |
+            Q(equipamento__patrimonio__icontains=busca) |
+            Q(equipamento__codigo__icontains=busca) |
+            Q(equipamento__regional__nome__icontains=busca) |
+            Q(equipamento__regional__empresa__nome__icontains=busca)
+        )
+
     sicks_base_filtros = sicks
 
     total_sick = sicks_base_filtros.filter(
@@ -1401,11 +1591,17 @@ def sick_view(request):
 
     total_pendentes = sicks_base_filtros.filter(
         ativo=True,
-        status_final__isnull=True
+        etapa__in=[
+            Sick.Etapa.IDENTIFICADO,
+            Sick.Etapa.EM_TRANSITO,
+            Sick.Etapa.RECEBIDO,
+            Sick.Etapa.EM_AVALIACAO,
+            Sick.Etapa.AGUARDANDO_RETORNO,
+        ]
     ).count()
 
     total_manutencao = sicks_base_filtros.filter(
-        status_final='MANUTENCAO'
+        etapa=Sick.Etapa.EM_MANUTENCAO
     ).count()
 
     total_inativos = sicks_base_filtros.filter(
@@ -1413,45 +1609,184 @@ def sick_view(request):
     ).count()
 
     total_resolvidos = sicks_base_filtros.filter(
-        status_final='ATIVO'
+        etapa=Sick.Etapa.FINALIZADO
     ).count()
 
-    if status_filter == 'pendentes':
+    total_identificados = sicks_base_filtros.filter(etapa=Sick.Etapa.IDENTIFICADO).count()
+    total_em_transito = sicks_base_filtros.filter(etapa=Sick.Etapa.EM_TRANSITO).count()
+    total_recebidos = sicks_base_filtros.filter(etapa=Sick.Etapa.RECEBIDO).count()
+    total_em_avaliacao = sicks_base_filtros.filter(etapa=Sick.Etapa.EM_AVALIACAO).count()
+    total_aguardando_retorno = sicks_base_filtros.filter(
+        etapa=Sick.Etapa.AGUARDANDO_RETORNO
+    ).count()
+
+    if etapa_filter == 'INATIVOS':
+        sicks = sicks.filter(status_final__in=['INATIVO', 'SUCATA'])
+    elif etapa_filter in Sick.Etapa.values:
+        sicks = sicks.filter(etapa=etapa_filter)
+
+    if situacao_filter == 'pendentes':
         sicks = sicks.filter(
             ativo=True,
-            status_final__isnull=True
-        )
+        ).exclude(etapa=Sick.Etapa.FINALIZADO)
 
-    elif status_filter == 'manutencao':
+    elif situacao_filter == 'manutencao':
         sicks = sicks.filter(
-            status_final='MANUTENCAO'
+            ativo=True,
+            etapa__in=[
+                Sick.Etapa.EM_TRANSITO,
+                Sick.Etapa.RECEBIDO,
+                Sick.Etapa.EM_AVALIACAO,
+                Sick.Etapa.EM_MANUTENCAO,
+                Sick.Etapa.AGUARDANDO_RETORNO,
+            ],
         )
 
-    elif status_filter == 'inativos':
+    elif situacao_filter == 'inativos':
         sicks = sicks.filter(
             status_final__in=['INATIVO', 'SUCATA']
         )
 
-    elif status_filter == 'resolvidos':
+    elif situacao_filter == 'resolvidos':
         sicks = sicks.filter(
-            status_final='ATIVO'
+            etapa=Sick.Etapa.FINALIZADO,
+            status_final='ATIVO',
         )
 
-    elif status_filter == 'todos':
+    elif situacao_filter == 'abertos':
         sicks = sicks.filter(
             ativo=True
         )
 
     sicks = sicks.order_by('-data_ocorrencia')
 
-    for sick in sicks:
-        sick.historico_completo = sick.equipamento.sicks.all().order_by(
-            '-data_ocorrencia'
-        )
+    permissoes_manutencao = [
+        'estoque.receber_equipamento_manutencao',
+        'estoque.avaliar_equipamento_sick',
+        'estoque.iniciar_manutencao_equipamento',
+        'estoque.concluir_manutencao_equipamento',
+    ]
+    usuario_manutencao = (
+        pode_realizar_manutencao_sick(request.user) or
+        any(request.user.has_perm(permissao) for permissao in permissoes_manutencao)
+    )
+    bases_usuario_ids = set(perfil.regionais.values_list('pk', flat=True))
 
-        sick.ultimo_sick = sick.equipamento.sicks.order_by(
-            '-data_ocorrencia'
-        ).first()
+    for sick in sicks:
+        tem_acesso_base = (
+            perfil.is_admin or
+            sick.equipamento.regional_id in bases_usuario_ids
+        )
+        sick.pode_acao_base = (
+            perfil.is_admin or
+            (
+                not usuario_manutencao and tem_acesso_base and
+                (perfil.is_gestor or perfil.is_operador)
+            )
+        )
+        sick.pode_acao_manutencao = perfil.is_admin or usuario_manutencao
+        sick.pode_enviar_base = (
+            not usuario_manutencao and tem_acesso_base and
+            (perfil.is_gestor or perfil.is_operador)
+        )
+        sick.pode_confirmar_recebimento = (
+            perfil.is_admin or request.user.username == 'rafael.ribeiro'
+        )
+        sick.historico_completo = sick.equipamento.historico_sick_prefetch
+        eventos_por_sick = {}
+        for evento in sick.equipamento.eventos_sick_prefetch:
+            sick_evento_id = (evento.detalhes or {}).get('sick_id')
+            if sick_evento_id is not None:
+                eventos_por_sick.setdefault(str(sick_evento_id), []).append(evento)
+        for ocorrencia in sick.historico_completo:
+            eventos = eventos_por_sick.get(str(ocorrencia.pk), [])
+
+            def evento_etapa(*tipos):
+                return next(
+                    (evento for evento in eventos if evento.tipo_acao in tipos),
+                    None,
+                )
+
+            ocorrencia.evento_identificacao = evento_etapa('SICK')
+            ocorrencia.evento_envio = evento_etapa('SICK_ENVIO_MANUTENCAO')
+            ocorrencia.evento_recebimento = evento_etapa('SICK_RECEBIMENTO_MANUTENCAO')
+            ocorrencia.evento_avaliacao = evento_etapa('SICK_AVALIACAO')
+            ocorrencia.evento_manutencao = evento_etapa('MANUTENCAO_INICIADA')
+            ocorrencia.evento_conclusao = evento_etapa(
+                'MANUTENCAO_CONCLUIDA', 'MANUTENCAO_ATUALIZADA'
+            )
+            ocorrencia.evento_finalizacao = evento_etapa(
+                'SICK_RETORNO_CONFIRMADO', 'SICK_INATIVADO', 'RESOLUCAO_SICK'
+            )
+            ocorrencia.detalhes_identificacao = (
+                ocorrencia.evento_identificacao.detalhes
+                if ocorrencia.evento_identificacao else {}
+            ) or {}
+            ocorrencia.detalhes_envio = (
+                ocorrencia.evento_envio.detalhes if ocorrencia.evento_envio else {}
+            ) or {}
+            ocorrencia.detalhes_recebimento = (
+                ocorrencia.evento_recebimento.detalhes
+                if ocorrencia.evento_recebimento else {}
+            ) or {}
+            ocorrencia.detalhes_avaliacao = (
+                ocorrencia.evento_avaliacao.detalhes
+                if ocorrencia.evento_avaliacao else {}
+            ) or {}
+            ocorrencia.detalhes_manutencao = (
+                ocorrencia.evento_manutencao.detalhes
+                if ocorrencia.evento_manutencao else {}
+            ) or {}
+            ocorrencia.detalhes_conclusao = (
+                ocorrencia.evento_conclusao.detalhes
+                if ocorrencia.evento_conclusao else {}
+            ) or {}
+            ocorrencia.detalhes_finalizacao = (
+                ocorrencia.evento_finalizacao.detalhes
+                if ocorrencia.evento_finalizacao else {}
+            ) or {}
+            ocorrencia.observacao_identificacao_historico = (
+                ocorrencia.detalhes_identificacao.get('observacao', '')
+            )
+            ocorrencia.observacao_envio_historico = (
+                ocorrencia.detalhes_envio.get('observacao', '')
+            )
+            ocorrencia.observacao_recebimento_historico = (
+                ocorrencia.detalhes_recebimento.get('observacao', '')
+            )
+            ocorrencia.observacao_avaliacao_historico = (
+                ocorrencia.detalhes_avaliacao.get('observacao', '')
+            )
+            ocorrencia.observacao_manutencao_historico = (
+                ocorrencia.detalhes_manutencao.get('observacao', '')
+            )
+            ocorrencia.observacao_conclusao_historico = (
+                ocorrencia.detalhes_conclusao.get('observacao', '')
+            )
+            ocorrencia.observacao_finalizacao_historico = (
+                ocorrencia.detalhes_finalizacao.get('observacao', '')
+            )
+        sick.total_ocorrencias = len(sick.historico_completo)
+        sick.total_envios_manutencao = sum(
+            1 for ocorrencia in sick.historico_completo
+            if ocorrencia.enviado_manutencao_em
+        )
+        sick.reincidente = sick.total_ocorrencias > 1
+
+        sick.ultimo_sick = sick.historico_completo[0] if sick.historico_completo else None
+        sick.timeline = [
+            {'nome': Sick.Etapa.IDENTIFICADO.label, 'data': sick.data_ocorrencia, 'usuario': None},
+            {'nome': Sick.Etapa.EM_TRANSITO.label, 'data': sick.enviado_manutencao_em, 'usuario': sick.enviado_manutencao_por},
+            {'nome': Sick.Etapa.RECEBIDO.label, 'data': sick.recebido_manutencao_em, 'usuario': sick.recebido_manutencao_por},
+            {'nome': Sick.Etapa.EM_AVALIACAO.label, 'data': sick.avaliacao_iniciada_em, 'usuario': sick.avaliacao_iniciada_por},
+            {'nome': Sick.Etapa.EM_MANUTENCAO.label, 'data': sick.manutencao_iniciada_em, 'usuario': sick.manutencao_iniciada_por},
+            {'nome': Sick.Etapa.AGUARDANDO_RETORNO.label, 'data': sick.manutencao_concluida_em, 'usuario': sick.manutencao_concluida_por},
+            {
+                'nome': Sick.Etapa.FINALIZADO.label,
+                'data': sick.retorno_confirmado_em or sick.data_resolucao,
+                'usuario': sick.retorno_confirmado_por or sick.resolvido_por,
+            },
+        ]
 
     categorias = Produto.objects.values_list(
         'categoria',
@@ -1459,13 +1794,17 @@ def sick_view(request):
     ).distinct().order_by('categoria')
 
     produtos_lista = Produto.objects.filter(
-        equipamento__sicks__in=sicks
+        equipamento__sicks__in=sicks_base_filtros
     ).distinct().order_by('descricao')
 
     if pode_realizar_manutencao_sick(request.user):
         regionais = Base.objects.all().order_by('nome')
     else:
         regionais = perfil.regionais.all().order_by('nome')
+
+    filtros_abas = request.GET.copy()
+    filtros_abas.pop('etapa', None)
+    filtros_abas.pop('sick', None)
 
     context = {
 
@@ -1476,10 +1815,21 @@ def sick_view(request):
         'total_resolvidos': total_resolvidos,
         'total_manutencao': total_manutencao,
         'total_inativos': total_inativos,
-        'status_filter': status_filter,
+        'total_identificados': total_identificados,
+        'total_em_transito': total_em_transito,
+        'total_recebidos': total_recebidos,
+        'total_em_avaliacao': total_em_avaliacao,
+        'total_aguardando_retorno': total_aguardando_retorno,
+        'status_filter': situacao_filter,
+        'situacao_filter': situacao_filter,
+        'busca': busca,
         'produto_filter': produto_filter,
         'categoria_filter': categoria_filter,
         'regional_filter': regional_filter,
+        'etapa_filter': etapa_filter,
+        'filtros_abas': filtros_abas.urlencode(),
+        'etapas': Sick.Etapa.choices,
+        'usuario_manutencao': usuario_manutencao,
         'produtos_lista': produtos_lista,
         'categorias': categorias,
         'produtos_lista': produtos_lista,
@@ -1505,19 +1855,12 @@ def marcar_sick(request, equipamento_id):
         )
 
         if form.is_valid():
-            sick = form.save()
-
-            equipamento.status = 'SICK'
-            equipamento.save()
-
-            Historico.objects.create(
-                equipamento=equipamento,
-                tipo_acao='SICK',
+            SickService.marcar_como_sick(
+                equipamento_id=equipamento.pk,
                 usuario=request.user,
-                detalhes={
-                    'motivo': sick.motivo,
-                    'categoria': sick.categoria
-                }
+                categoria=form.cleaned_data['categoria'],
+                motivo=form.cleaned_data['motivo'],
+                observacao='Ocorrência registrada pelo formulário de SICK.',
             )
 
             messages.success(request, "Equipamento marcado como SICK.")
@@ -1557,31 +1900,30 @@ def marcar_sick_ajax(request, equipamento_id):
     try:
         body = json.loads(request.body)
         motivo = body.get('motivo', '').strip()
+        categoria = body.get('categoria', 'OPERACIONAL').strip()
+        observacao = body.get('observacao', '').strip()
     except json.JSONDecodeError:
         motivo = ''
+        categoria = 'OPERACIONAL'
+        observacao = ''
 
     # Se não veio motivo ou está vazio, usa um valor padrão
     if not motivo:
         motivo = 'Via sistema'
 
-    with transaction.atomic():
-        equipamento.status = 'SICK'
-        equipamento.save(update_fields=['status'])
-
-        Sick.objects.create(
-            equipamento=equipamento,
-            motivo=motivo,
-            categoria='OPERACIONAL',
-        )
-
-        Historico.objects.create(
-            equipamento=equipamento,
-            tipo_acao='STATUS',
+    try:
+        sick = SickService.marcar_como_sick(
+            equipamento_id=equipamento.pk,
             usuario=request.user,
-            detalhes={'novo_status': 'SICK', 'motivo': motivo}
+            categoria=categoria,
+            motivo=motivo,
+            observacao=observacao,
         )
+    except (ValidationError, PermissionDenied) as exc:
+        texto = '; '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
+        return JsonResponse({'success': False, 'message': texto}, status=400)
 
-    return JsonResponse({'sucesso': True})
+    return JsonResponse({'sucesso': True, 'sick_id': sick.pk, 'etapa': sick.etapa})
 
 @login_required
 def detalhes_sick(request, sick_id):
@@ -4298,6 +4640,8 @@ def equipamentos_por_regional(request, produto_id, regional_id):
     equipamentos = Equipamento.objects.filter(
         produto_id=produto_id,
         regional_id=regional_id
+    ).select_related('produto', 'regional__empresa').prefetch_related(
+        Prefetch('sicks', queryset=Sick.objects.order_by('-data_ocorrencia'), to_attr='sicks_ordenados')
     )
 
     data = {
@@ -4307,6 +4651,26 @@ def equipamentos_por_regional(request, produto_id, regional_id):
                 'numero_serie': e.numero_serie,
                 'patrimonio': e.patrimonio,
                 'status': e.status,
+                'status_label': e.get_status_display(),
+                'finalidade': e.finalidade,
+                'finalidade_label': e.get_finalidade_display(),
+                'empresa': e.regional.empresa.nome,
+                'base': e.regional.nome,
+                'categoria': e.produto.categoria if e.produto else '',
+                'produto': e.produto.descricao if e.produto else '',
+                'fabricante': e.produto.fabricante if e.produto else '',
+                'modelo': e.produto.modelo if e.produto else '',
+                'responsavel': e.responsavel,
+                'sick': (
+                    {
+                        'etapa': e.sicks_ordenados[0].etapa,
+                        'etapa_label': e.sicks_ordenados[0].get_etapa_display(),
+                        'data_ocorrencia': e.sicks_ordenados[0].data_ocorrencia.isoformat(),
+                        'enviado_em': e.sicks_ordenados[0].enviado_manutencao_em.isoformat() if e.sicks_ordenados[0].enviado_manutencao_em else None,
+                        'recebido_em': e.sicks_ordenados[0].recebido_manutencao_em.isoformat() if e.sicks_ordenados[0].recebido_manutencao_em else None,
+                    }
+                    if e.sicks_ordenados else None
+                ),
                 'foto': e.foto.url if e.foto else None
             }
             for e in equipamentos
@@ -4322,9 +4686,9 @@ def equipamentos_por_regional(request, produto_id, regional_id):
 def editar_equipamento(request, equipamento_id):
 
     equipamento = get_object_or_404(
-        Equipamento.objects.select_related(
-            'produto',
-            'regional'
+        secure_queryset(
+            Equipamento.objects.select_related('produto', 'regional__empresa'),
+            request.user,
         ),
         id=equipamento_id
     )
@@ -4369,6 +4733,7 @@ def editar_equipamento(request, equipamento_id):
                 'bases': bases,
                 'produtos': produtos,
                 'status_choices': Equipamento.STATUS_CHOICES,
+                'finalidade_choices': Equipamento.Finalidade.choices,
                 'is_admin': is_admin,
                 'is_gestor': is_gestor,
             }
@@ -4429,6 +4794,8 @@ def editar_equipamento(request, equipamento_id):
         ''
     ).strip()
 
+    finalidade = request.POST.get('finalidade', '').strip()
+
     try:
 
         with transaction.atomic():
@@ -4448,6 +4815,7 @@ def editar_equipamento(request, equipamento_id):
                 ),
                 'responsavel': equipamento.responsavel,
                 'status': equipamento.status,
+                'finalidade': equipamento.finalidade,
                 'foto': (
                     str(equipamento.foto)
                     if equipamento.foto else None
@@ -4455,6 +4823,13 @@ def editar_equipamento(request, equipamento_id):
             }
 
             alteracoes = {}
+
+            if finalidade and finalidade in Equipamento.Finalidade.values and finalidade != equipamento.finalidade:
+                alteracoes['finalidade'] = {
+                    'antes': equipamento.finalidade,
+                    'depois': finalidade,
+                }
+                equipamento.finalidade = finalidade
 
             if patrimonio != equipamento.patrimonio:
 
@@ -4547,6 +4922,13 @@ def editar_equipamento(request, equipamento_id):
                     status != equipamento.status
                 ):
 
+                    if equipamento.sicks.filter(ativo=True).exclude(
+                        etapa=Sick.Etapa.FINALIZADO
+                    ).exists():
+                        raise ValidationError(
+                            'O status de um equipamento em SICK deve ser alterado pelo fluxo de etapas.'
+                        )
+
                     alteracoes['status'] = {
                         'antes': equipamento.status,
                         'depois': status,
@@ -4593,6 +4975,7 @@ def editar_equipamento(request, equipamento_id):
                         ),
                         'responsavel': equipamento.responsavel,
                         'status': equipamento.status,
+                        'finalidade': equipamento.finalidade,
                         'foto': (
                             str(equipamento.foto)
                             if equipamento.foto else None
@@ -4744,6 +5127,23 @@ def checklist_view(request):
             for categoria in categorias_equipamentos:
                 equipamentos_ids.extend(request.POST.getlist(f'equipamentos_{categoria}'))
 
+            if inventario.pessoas is not None:
+                limite_coletores = inventario.pessoas + 5
+                total_coletores = (
+                    Equipamento.objects
+                    .filter(
+                        id__in=equipamentos_ids,
+                        regional_id=inventario.base_id,
+                        produto__categoria='Coletores',
+                    )
+                    .count()
+                )
+                if total_coletores > limite_coletores:
+                    raise ValidationError(
+                        f'Este inventário permite no máximo {limite_coletores} '
+                        f'coletores ({inventario.pessoas} pessoas + 5 de backup).'
+                    )
+
             # Captura insumos enviados pela tabela carregada via JavaScript.
             insumos_payload = []
             for key, quantidade in request.POST.items():
@@ -4764,6 +5164,20 @@ def checklist_view(request):
                 messages.error(request, 'Selecione ao menos um equipamento, informe um insumo ou adicione um lote de TAG.')
                 return redirect('estoque:checklist')
 
+            try:
+                quantidade_volumes = int(
+                    request.POST.get('quantidade_volumes', '0')
+                )
+            except (TypeError, ValueError):
+                raise ValidationError(
+                    'Informe uma quantidade de volumes válida para a declaração.'
+                )
+            if quantidade_volumes <= 0:
+                raise ValidationError(
+                    'Informe ao menos um volume para a declaração de transporte.'
+                )
+            transporte = request.POST.get('transporte', '').strip()
+
             with transaction.atomic():
                 if lider_informado and lider_editavel:
                     inventario.lider = lider_informado
@@ -4772,7 +5186,9 @@ def checklist_view(request):
                 checklist = ChecklistService.criar(
                     inventario=inventario,
                     usuario=request.user,
-                    observacao=request.POST.get('observacao', '')
+                    observacao=request.POST.get('observacao', ''),
+                    quantidade_volumes=quantidade_volumes,
+                    transporte=transporte,
                 )
 
                 if equipamentos_ids:
@@ -4846,7 +5262,7 @@ def checklist_view(request):
                 ComunicadoService.checklist_criado(checklist, request.user)
 
             messages.success(request, 'Checklist criado e estoque movimentado com sucesso!')
-            return redirect('estoque:checklist')
+            return redirect('insumos:imprimir_checklist', pk=checklist.pk)
 
         except Exception as e:
             messages.error(request, f'Erro ao criar checklist: {str(e)}')
@@ -4858,7 +5274,9 @@ def checklist_view(request):
     regionais_ids = perfil.bases_checklist_ids
 
     if perfil.is_admin:
-        equipamentos = Equipamento.objects.filter(status='ATIVO')
+        equipamentos = Equipamento.objects.filter(
+            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+        )
         inventarios = Inventario.objects.filter(
             status='PLANEJADO',
             data_inicio=date.today()
@@ -4867,6 +5285,7 @@ def checklist_view(request):
     else:
         equipamentos = Equipamento.objects.filter(
             status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
             regional_id__in=regionais_ids
         )
         inventarios = Inventario.objects.filter(
@@ -4969,7 +5388,12 @@ def get_equipamentos_disponiveis(request):
         if int(regional_id) not in regionais_ids:
             return JsonResponse({'results': []}, status=403)
 
-    equipamentos = Equipamento.objects.filter(status='ATIVO', regional_id=regional_id, produto__categoria=categoria).select_related('produto')
+    equipamentos = Equipamento.objects.filter(
+        status='ATIVO',
+        finalidade=Equipamento.Finalidade.OPERACIONAL,
+        regional_id=regional_id,
+        produto__categoria=categoria,
+    ).select_related('produto')
 
     data = [{
         'id': eq.id,

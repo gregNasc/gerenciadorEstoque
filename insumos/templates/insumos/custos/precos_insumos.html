@@ -3,44 +3,106 @@
 
 {% block title %}{% trans "Preços de insumos" %}{% endblock %}
 
+{% block extra_css %}
+{% include 'insumos/custos/_management_styles.html' %}
+{% endblock %}
+
 {% block content %}
-<main class="container-fluid p-4">
-    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
-        <div><h1 class="h3 mb-1">{% trans "Preços unitários" %}</h1><p class="text-secondary mb-0">{% trans "Histórico de cotações e custo atual utilizado nos novos consumos." %}</p></div>
-        <div class="d-flex gap-2 flex-wrap"><a class="btn btn-outline-secondary" href="{% url 'insumos:dashboard_custos' %}"><i class="bi bi-bar-chart"></i> {% trans "Custos" %}</a><a class="btn btn-outline-primary" href="{% url 'insumos:fornecedores_insumos' %}"><i class="bi bi-building"></i> {% trans "Fornecedores" %}</a><!--a class="btn btn-outline-primary" href="{% url 'insumos:pesquisa_precos_online' %}"><i class="bi bi-search"></i> {% trans "Pesquisa online" %}</a--></div>
+<main class="container-fluid cost-page">
+    <header class="cost-header d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <span class="cost-title-icon"><i class="bi bi-tags"></i></span>
+            <div>
+                <h1 class="h3 fw-bold mb-1">{% trans "Preços unitários" %}</h1>
+                <p class="text-secondary mb-0">{% trans "Histórico de cotações e custo atual utilizado nos novos consumos." %}</p>
+            </div>
+        </div>
+        <nav class="cost-toolbar" aria-label="{% trans 'Navegação financeira' %}">
+            <a class="btn btn-outline-primary" href="{% url 'insumos:dashboard_custos' %}"><i class="bi bi-graph-up-arrow"></i> {% trans "Custos" %}</a>
+            <a class="btn btn-outline-primary" href="{% url 'insumos:fornecedores_insumos' %}"><i class="bi bi-building"></i> {% trans "Fornecedores" %}</a>
+        </nav>
     </header>
 
-    <section class="border-bottom pb-4 mb-4">
-        <h2 class="h5">{% trans "Comparar preços por insumo" %}</h2>
-        <form method="get" class="row g-2 align-items-end mb-3">
-            <div class="col-lg-10"><label class="form-label" for="comparar-insumo">{% trans "Insumo" %}</label><select class="form-select" id="comparar-insumo" name="comparar_insumo"><option value="">{% trans "Selecione um insumo" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" {% if comparar_insumo.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
-            <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-arrow-left-right"></i> {% trans "Comparar" %}</button></div>
-        </form>
-        {% if comparar_insumo %}
-        <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>{% trans "Fornecedor" %}</th><th>{% trans "CNPJ" %}</th><th>{% trans "Preço unitário" %}</th><th>{% trans "Vigente desde" %}</th><th>{% trans "Resultado" %}</th></tr></thead><tbody>{% for preco in comparacao_precos %}<tr {% if preco.valor_unitario == menor_preco %}class="table-success"{% endif %}><td>{{ preco.fornecedor.nome }}</td><td>{{ preco.fornecedor.cnpj_formatado }}</td><td><strong>R$ {{ preco.valor_unitario|floatformat:4 }}</strong></td><td>{{ preco.vigente_desde|date:'d/m/Y' }}</td><td>{% if preco.valor_unitario == menor_preco %}<span class="badge text-bg-success">{% trans "Menor preço" %}</span>{% else %}<span class="text-secondary">{% trans "Acima do menor preço" %}</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="text-center text-secondary py-3">{% trans "Cadastre preços de pelo menos um fornecedor para comparar este insumo." %}</td></tr>{% endfor %}</tbody></table></div>
-        {% endif %}
+    <section class="row g-3 mb-3" aria-label="{% trans 'Indicadores de preços' %}">
+        <div class="col-xl-3 col-6"><div class="cost-kpi"><span class="kpi-icon"><i class="bi bi-receipt"></i></span><div class="label">{% trans "Preços cadastrados" %}</div><div class="value">{{ total_precos }}</div></div></div>
+        <div class="col-xl-3 col-6"><div class="cost-kpi" style="--kpi-color:#3568d4;--kpi-soft:#edf3ff"><span class="kpi-icon"><i class="bi bi-check-circle"></i></span><div class="label">{% trans "Preços ativos" %}</div><div class="value">{{ total_precos_ativos }}</div></div></div>
+        <div class="col-xl-3 col-6"><div class="cost-kpi" style="--kpi-color:#d98b22;--kpi-soft:#fff5e8"><span class="kpi-icon"><i class="bi bi-boxes"></i></span><div class="label">{% trans "Insumos cotados" %}</div><div class="value">{{ total_insumos_cotados }}</div></div></div>
+        <div class="col-xl-3 col-6"><div class="cost-kpi" style="--kpi-color:#7657c8;--kpi-soft:#f2effc"><span class="kpi-icon"><i class="bi bi-buildings"></i></span><div class="label">{% trans "Fornecedores cotados" %}</div><div class="value">{{ total_fornecedores_cotados }}</div></div></div>
     </section>
 
-    <div class="row g-4">
+    <form method="get" class="cost-filter mb-3">
+        <div class="d-flex align-items-center gap-2 mb-3"><i class="bi bi-funnel text-primary"></i><strong class="small">{% trans "Filtros de preços" %}</strong></div>
+        <div class="row g-2 align-items-end">
+            <div class="col-lg-7"><label class="form-label" for="price-search">{% trans "Busca rápida" %}</label><input class="form-control" id="price-search" type="search" name="q" value="{{ busca }}" placeholder="{% trans 'Buscar insumo ou fornecedor...' %}"></div>
+            <div class="col-lg-3"><label class="form-label" for="price-status">{% trans "Status" %}</label><select class="form-select" id="price-status" name="status"><option value="">{% trans "Todos" %}</option><option value="ativos" {% if status == 'ativos' %}selected{% endif %}>{% trans "Ativos" %}</option><option value="inativos" {% if status == 'inativos' %}selected{% endif %}>{% trans "Inativos" %}</option></select></div>
+            <div class="col-lg-2 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit"><i class="bi bi-search"></i> {% trans "Filtrar" %}</button><a class="btn btn-outline-secondary" href="{% url 'insumos:precos_insumos' %}" title="{% trans 'Limpar filtros' %}"><i class="bi bi-x-lg"></i></a></div>
+        </div>
+    </form>
+
+    <section class="cost-panel mb-3">
+        <div class="cost-panel-header"><h2>{% trans "Comparar preços por insumo" %}</h2><p>{% trans "Visualize a cotação vigente de cada fornecedor e identifique o menor valor." %}</p></div>
+        <div class="cost-panel-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-lg-10"><label class="form-label" for="comparar-insumo">{% trans "Insumo" %}</label><select class="form-select" id="comparar-insumo" name="comparar_insumo"><option value="">{% trans "Selecione um insumo" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" {% if comparar_insumo.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
+                <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-arrow-left-right"></i> {% trans "Comparar" %}</button></div>
+            </form>
+            {% if comparar_insumo %}
+            <div class="table-responsive mt-3">
+                <table class="table cost-table cost-responsive-table align-middle">
+                    <thead><tr><th>{% trans "Fornecedor" %}</th><th>{% trans "CNPJ" %}</th><th>{% trans "Preço unitário" %}</th><th>{% trans "Vigente desde" %}</th><th>{% trans "Resultado" %}</th></tr></thead>
+                    <tbody>
+                    {% for preco in comparacao_precos %}
+                    <tr {% if preco.valor_unitario == menor_preco %}class="cost-comparison-best"{% endif %}>
+                        <td data-label="{% trans 'Fornecedor' %}"><strong>{{ preco.fornecedor.nome }}</strong></td>
+                        <td data-label="{% trans 'CNPJ' %}">{{ preco.fornecedor.cnpj_formatado }}</td>
+                        <td data-label="{% trans 'Preço unitário' %}" class="money-cell">R$ {{ preco.valor_unitario|floatformat:4 }}</td>
+                        <td data-label="{% trans 'Vigente desde' %}">{{ preco.vigente_desde|date:'d/m/Y' }}</td>
+                        <td data-label="{% trans 'Resultado' %}">{% if preco.valor_unitario == menor_preco %}<span class="badge text-bg-success">{% trans "Menor preço" %}</span>{% else %}<span class="text-secondary">{% trans "Acima do menor preço" %}</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}<tr><td colspan="5" class="cost-empty"><i class="bi bi-tags"></i>{% trans "Cadastre preços de pelo menos um fornecedor para comparar este insumo." %}</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="row g-3 align-items-start">
         {% if pode_editar %}
         <section class="col-xl-4">
-            <div class="border rounded-2 p-3 bg-light">
-                <h2 class="h5">{% if editando %}{% trans "Editar preço" %}{% else %}{% trans "Cadastrar preço" %}{% endif %}</h2>
-                <form method="post" novalidate>{% csrf_token %}{% if editando %}<input type="hidden" name="preco_id" value="{{ editando.id }}">{% endif %}
-                    {% for field in form %}<div class="mb-3">{% if field.field.widget.input_type == 'checkbox' %}<div class="form-check">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
-                    <div class="d-flex gap-2"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> {% trans "Salvar preço" %}</button>{% if editando %}<a class="btn btn-outline-secondary" href="{% url 'insumos:precos_insumos' %}">{% trans "Cancelar" %}</a>{% endif %}</div>
-                </form>
+            <div class="cost-panel">
+                <div class="cost-panel-header"><h2>{% if editando %}{% trans "Editar preço" %}{% else %}{% trans "Cadastrar preço" %}{% endif %}</h2><p>{% trans "Registre fornecedor, vigência e valor unitário." %}</p></div>
+                <div class="cost-panel-body">
+                    <form method="post" novalidate class="cost-form">{% csrf_token %}{% if editando %}<input type="hidden" name="preco_id" value="{{ editando.id }}">{% endif %}
+                        {% for field in form %}<div class="mb-3">{% if field.field.widget.input_type == 'checkbox' %}<div class="form-check">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+                        <div class="cost-form-actions"><button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> {% trans "Salvar preço" %}</button>{% if editando %}<a class="btn btn-outline-secondary" href="{% url 'insumos:precos_insumos' %}">{% trans "Cancelar" %}</a>{% endif %}</div>
+                    </form>
+                </div>
             </div>
         </section>
         {% endif %}
 
         <section class="{% if pode_editar %}col-xl-8{% else %}col-12{% endif %}">
-            <form method="get" class="d-flex gap-2 mb-3"><input class="form-control" type="search" name="q" value="{{ busca }}" placeholder="{% trans 'Buscar insumo ou fornecedor' %}"><button class="btn btn-outline-primary" type="submit"><i class="bi bi-search"></i> {% trans "Buscar" %}</button></form>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th><th>{% trans "Vigência" %}</th><th>{% trans "Custo atual" %}</th><th>{% trans "Status" %}</th>{% if pode_editar %}<th class="text-end">{% trans "Ações" %}</th>{% endif %}</tr></thead>
-                    <tbody>{% for preco in precos %}<tr><td><strong>{{ preco.insumo.descricao }}</strong><div class="small text-secondary">{{ preco.insumo.categoria.nome }}</div></td><td>{{ preco.fornecedor.nome }}</td><td>R$ {{ preco.valor_unitario|floatformat:4 }}</td><td>{{ preco.vigente_desde|date:'d/m/Y' }}{% if preco.vigente_ate %} - {{ preco.vigente_ate|date:'d/m/Y' }}{% endif %}</td><td>{% if preco.insumo.preco_referencia_id == preco.id %}<span class="badge text-bg-success">{% trans "Referência" %}</span>{% else %}R$ {{ preco.insumo.valor_medio|floatformat:2 }}{% endif %}</td><td>{% if preco.ativo %}{% trans "Ativo" %}{% else %}{% trans "Inativo" %}{% endif %}</td>{% if pode_editar %}<td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="?editar={{ preco.id }}" title="{% trans 'Editar' %}"><i class="bi bi-pencil"></i></a></td>{% endif %}</tr>{% empty %}<tr><td colspan="7" class="text-center text-secondary py-4">{% trans "Nenhum preço cadastrado." %}</td></tr>{% endfor %}</tbody>
-                </table>
+            <div class="cost-panel">
+                <div class="cost-panel-header d-flex justify-content-between align-items-center gap-2 flex-wrap"><div><h2>{% trans "Histórico de preços" %}</h2><p>{% trans "Cotações mais recentes e custo de referência de cada insumo." %}</p></div><span class="badge rounded-pill text-bg-light border px-3 py-2">{{ precos|length }} {% trans "exibidos" %}</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover cost-table cost-responsive-table align-middle">
+                        <thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th><th>{% trans "Vigência" %}</th><th>{% trans "Custo atual" %}</th><th>{% trans "Status" %}</th>{% if pode_editar %}<th class="text-end">{% trans "Ações" %}</th>{% endif %}</tr></thead>
+                        <tbody>
+                        {% for preco in precos %}
+                        <tr>
+                            <td data-label="{% trans 'Insumo' %}"><strong>{{ preco.insumo.descricao }}</strong><div class="small text-secondary">{{ preco.insumo.categoria.nome }}</div></td>
+                            <td data-label="{% trans 'Fornecedor' %}">{{ preco.fornecedor.nome }}</td>
+                            <td data-label="{% trans 'Preço unitário' %}" class="money-cell">R$ {{ preco.valor_unitario|floatformat:4 }}</td>
+                            <td data-label="{% trans 'Vigência' %}">{{ preco.vigente_desde|date:'d/m/Y' }}{% if preco.vigente_ate %} – {{ preco.vigente_ate|date:'d/m/Y' }}{% endif %}</td>
+                            <td data-label="{% trans 'Custo atual' %}">{% if preco.insumo.preco_referencia_id == preco.id %}<span class="badge text-bg-success">{% trans "Referência" %}</span>{% else %}R$ {{ preco.insumo.valor_medio|floatformat:2 }}{% endif %}</td>
+                            <td data-label="{% trans 'Status' %}"><span class="status-pill {% if preco.ativo %}active{% else %}inactive{% endif %}">{% if preco.ativo %}{% trans "Ativo" %}{% else %}{% trans "Inativo" %}{% endif %}</span></td>
+                            {% if pode_editar %}<td data-label="{% trans 'Ações' %}" class="text-end"><a class="btn btn-sm btn-outline-secondary" href="?editar={{ preco.id }}" title="{% trans 'Editar' %}" aria-label="{% trans 'Editar preço' %}"><i class="bi bi-pencil"></i></a></td>{% endif %}
+                        </tr>
+                        {% empty %}<tr><td colspan="7" class="cost-empty"><i class="bi bi-receipt"></i>{% trans "Nenhum preço encontrado." %}</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </div>

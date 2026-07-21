@@ -46,6 +46,7 @@ class EquipamentoForm(forms.ModelForm):
             'numero_serie',
             'patrimonio',
             'regional',
+            'finalidade',
             'responsavel',
             'foto'
         ]
@@ -54,11 +55,14 @@ class EquipamentoForm(forms.ModelForm):
             'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
             'patrimonio': forms.TextInput(attrs={'class': 'form-control'}),
             'regional': forms.Select(attrs={'class': 'form-control'}),
+            'finalidade': forms.Select(attrs={'class': 'form-control'}),
             'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, base_selecionada=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
+        self.base_selecionada = base_selecionada
 
         self.fields['produto'].queryset = Produto.objects.none()
 
@@ -88,6 +92,11 @@ class EquipamentoForm(forms.ModelForm):
                     if regionais.count() == 1:
                         self.fields['regional'].initial = regionais.first()
 
+        if base_selecionada is not None:
+            self.fields['regional'].queryset = Base.objects.filter(pk=base_selecionada.pk)
+            self.fields['regional'].initial = base_selecionada
+            self.fields['regional'].disabled = True
+
     def clean_numero_serie(self):
         serie = self.cleaned_data['numero_serie'].strip().upper()
         if Equipamento.objects.filter(numero_serie=serie).exclude(pk=self.instance.pk).exists():
@@ -99,6 +108,20 @@ class EquipamentoForm(forms.ModelForm):
         if Equipamento.objects.filter(patrimonio=patrimonio).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Patrimônio já cadastrado.")
         return patrimonio
+
+    def clean_regional(self):
+        regional = self.cleaned_data.get('regional')
+        if regional is None:
+            raise ValidationError("Informe uma base válida.")
+
+        perfil = getattr(self.user, 'perfil', None)
+        if not perfil:
+            raise ValidationError("Usuário sem perfil de acesso.")
+        if not perfil.is_admin and not perfil.regionais.filter(pk=regional.pk).exists():
+            raise ValidationError("Você não possui acesso a esta base.")
+        if self.base_selecionada and regional.pk != self.base_selecionada.pk:
+            raise ValidationError("A base informada diverge do contexto selecionado.")
+        return regional
 
 # ================= TRANSFERÊNCIA =================
 class TransferenciaForm(forms.ModelForm):

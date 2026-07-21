@@ -71,7 +71,13 @@ class EstoqueService:
     def get_kpis_gerais(cls, queryset):
         return queryset.aggregate(
             total=Count('id'),
-            ativos=Count('id', filter=Q(status=cls.STATUS_ATIVO)),
+            ativos=Count('id', filter=Q(
+                status=cls.STATUS_ATIVO,
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
+            )),
+            administrativos=Count('id', filter=Q(
+                finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+            ) & ~Q(status=cls.STATUS_BAIXA)),
             sick=Count('id', filter=Q(status=cls.STATUS_SICK)),
             transferencia=Count('id', filter=Q(status=cls.STATUS_TRANSFERENCIA)),
             manutencao=Count('id', filter=Q(status=cls.STATUS_MANUTENCAO)),
@@ -110,6 +116,7 @@ class EstoqueService:
                 'regional__nome': regional.nome,
                 'total': kpis_regional['total'],
                 'ativos': kpis_regional['ativos'],
+                'administrativos': kpis_regional['administrativos'],
                 'sick': kpis_regional['sick'],
                 'transferencia': kpis_regional['transferencia'],
                 'manutencao': kpis_regional['manutencao'],
@@ -146,7 +153,13 @@ class EstoqueService:
             )
             .annotate(
                 total=Count('id'),
-                ativos=Count('id', filter=Q(status=cls.STATUS_ATIVO)),
+                ativos=Count('id', filter=Q(
+                    status=cls.STATUS_ATIVO,
+                    finalidade=Equipamento.Finalidade.OPERACIONAL,
+                )),
+                administrativos=Count('id', filter=Q(
+                    finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+                ) & ~Q(status=cls.STATUS_BAIXA)),
                 sick=Count('id', filter=Q(status=cls.STATUS_SICK)),
                 transferencia=Count('id', filter=Q(status=cls.STATUS_TRANSFERENCIA)),
                 manutencao=Count('id', filter=Q(status=cls.STATUS_MANUTENCAO)),

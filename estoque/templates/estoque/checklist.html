@@ -117,6 +117,33 @@
         border-bottom-color: #198754;
     }
 
+    .logistics-grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(160px, 240px);
+        gap: 14px;
+        margin: -10px 0 18px;
+        padding: 14px 18px;
+        border: 1px solid #cbd8e6;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .logistics-grid label {
+        display: block;
+        margin-bottom: 5px;
+        color: #1e3c72;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .logistics-grid input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid #b8c6d6;
+        border-radius: 6px;
+        padding: 8px 10px;
+    }
+
     /* ================================
        OBS / SIGNATURES
     =================================*/
@@ -327,6 +354,11 @@
         .equipment-grid {
             grid-template-columns: 1fr;
         }
+
+        .info-grid,
+        .logistics-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     /* ================================
@@ -499,6 +531,29 @@
                     </option>
                 {% endfor %}
             </select>
+        </div>
+
+        <div class="logistics-grid" aria-label="Dados da declaração de transporte">
+            <div>
+                <label for="transporte">TRANSPORTE / MOTORISTA</label>
+                <input type="text"
+                       id="transporte"
+                       name="transporte"
+                       maxlength="200"
+                       value="{% if editando %}{{ checklist.transporte|default:'' }}{% endif %}"
+                       placeholder="Veículo, transportadora ou nome do motorista">
+            </div>
+            <div>
+                <label for="quantidade_volumes">QUANTIDADE DE VOLUMES</label>
+                <input type="number"
+                       id="quantidade_volumes"
+                       name="quantidade_volumes"
+                       min="1"
+                       max="9999"
+                       step="1"
+                       required
+                       value="{% if editando %}{{ checklist.quantidade_volumes|default:1 }}{% else %}1{% endif %}">
+            </div>
         </div>
 
         <div id="historicoChecklistInfo" class="alert alert-info mt-3 d-none" role="status"></div>
@@ -717,22 +772,22 @@
 const equipamentos = {
     router: [
         {% for eq in routers %}
-            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ],
     coletor: [
         {% for eq in coletores %}
-            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ],
     notebook: [
         {% for eq in notebooks %}
-            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ],
     impressora: [
         {% for eq in impressoras %}
-            { id: {{ eq.id }}, descricao: "{{ eq.patrimonio }} - {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ]
 };
@@ -761,6 +816,8 @@ let selecionados = {
     notebook: [],
     impressora: []
 };
+let limiteColetores = null;
+let quantidadePessoasInventario = null;
 
 /*    HELPERS
 */
@@ -1244,18 +1301,30 @@ function abrirModal(categoria) {
         impressora: 'Selecionar Impressoras'
     };
     title.textContent = nomes[categoria] || 'Selecionar Itens';
+    if (categoria === 'coletor' && limiteColetores !== null) {
+        title.textContent += ` · máximo ${limiteColetores}`;
+    }
 
     let html = '';
-    const itens = equipamentos[categoria] || [];
+    const selectInventario = document.getElementById('inventario');
+    const baseSelecionada = parseInt(
+        selectInventario?.options[selectInventario.selectedIndex]?.dataset.base || '0',
+        10
+    );
+    const itens = (equipamentos[categoria] || []).filter(
+        item => baseSelecionada && item.baseId === baseSelecionada
+    );
 
-    if (itens.length === 0) {
+    if (!baseSelecionada) {
+        html = '<p class="text-muted">Selecione primeiro o inventário e a base.</p>';
+    } else if (itens.length === 0) {
         html = '<p class="text-muted">Nenhum item disponível.</p>';
     } else {
         html = `
             <div class="modal-search">
                 <input type="search"
                        id="modalSearchEquipamentos"
-                       placeholder="Pesquisar por patrimonio ou descricao"
+                       placeholder="Pesquisar por número de série ou patrimônio"
                        oninput="filtrarEquipamentosModal()">
             </div>
         `;
@@ -1312,6 +1381,18 @@ function confirmarSelecao() {
     const body = document.getElementById('customModalBody');
     const checkboxes = body.querySelectorAll('input[type="checkbox"]:checked');
     const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+    if (
+        categoriaAtual === 'coletor' &&
+        limiteColetores !== null &&
+        ids.length > limiteColetores
+    ) {
+        alert(
+            `Selecione no máximo ${limiteColetores} coletores ` +
+            `(${quantidadePessoasInventario} pessoas + 5 de backup).`
+        );
+        return;
+    }
 
     selecionados[categoriaAtual] = ids;
     atualizarResumoCategoria(categoriaAtual);
@@ -1470,9 +1551,24 @@ function carregarDadosInventario(inventarioId) {
         campoBairro.value = '';
         campoCidade.value = '';
         aplicarLider('');
+        limiteColetores = null;
+        quantidadePessoasInventario = null;
         document.getElementById('insumosContainer').style.display = 'none';
         return;
     }
+
+    const baseSelecionada = parseInt(
+        selectInventario.options[selectInventario.selectedIndex].dataset.base || '0',
+        10
+    );
+    Object.keys(selecionados).forEach(categoria => {
+        selecionados[categoria] = (selecionados[categoria] || []).filter(id => {
+            const item = (equipamentos[categoria] || []).find(eq => eq.id === id);
+            return item && item.baseId === baseSelecionada;
+        });
+        atualizarResumoCategoria(categoria);
+    });
+    atualizarInputsEquipamentosETags();
 
     fetch(`/insumos/api/inventario/${inventarioId}/`)
         .then(response => response.json())
@@ -1483,6 +1579,17 @@ function carregarDadosInventario(inventarioId) {
             campoBairro.value = data.bairro || '';
             campoCidade.value = data.cidade || '';
             aplicarLider(data.lider || '');
+            quantidadePessoasInventario = data.pessoas;
+            limiteColetores = data.limite_coletores;
+
+            if (
+                limiteColetores !== null &&
+                (selecionados.coletor || []).length > limiteColetores
+            ) {
+                selecionados.coletor = selecionados.coletor.slice(0, limiteColetores);
+                atualizarResumoCategoria('coletor');
+                atualizarInputsEquipamentosETags();
+            }
 
             const baseId = selectInventario.options[selectInventario.selectedIndex].dataset.base;
             carregarInsumos(baseId).then(() => {
@@ -1602,6 +1709,17 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             alert('Existem campos inválidos no checklist. Revise os insumos e/ou o lote de TAG.');
             return;
+        }
+
+        if (
+            limiteColetores !== null &&
+            (selecionados.coletor || []).length > limiteColetores
+        ) {
+            e.preventDefault();
+            alert(
+                `O limite deste inventário é ${limiteColetores} coletores ` +
+                `(${quantidadePessoasInventario} pessoas + 5 de backup).`
+            );
         }
     });
 

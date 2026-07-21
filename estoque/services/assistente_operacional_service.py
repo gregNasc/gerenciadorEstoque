@@ -611,6 +611,7 @@ class AssistenteOperacionalService:
         coletores_cadastrados = coletores.count()
         coletores_ativos = coletores.filter(
             status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
         ).count()
 
         if not inventarios_lista:
@@ -666,6 +667,7 @@ class AssistenteOperacionalService:
         coletores_ativos = equipamentos.filter(
             produto__categoria__iexact='Coletores',
             status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
         ).count()
         saldo = coletores_ativos - pessoas
         if not inventarios:
@@ -700,7 +702,9 @@ class AssistenteOperacionalService:
         produtos = (
             equipamentos.values('produto__categoria', 'produto__descricao')
             .annotate(
-                ativos=Count('id', filter=Q(status='ATIVO')),
+                ativos=Count('id', filter=Q(
+                    status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+                )),
                 em_uso=Count('id', filter=Q(status='EM_USO')),
                 manutencao=Count('id', filter=Q(status__in=['MANUTENCAO', 'SICK'])),
                 total=Count('id'),
@@ -751,7 +755,10 @@ class AssistenteOperacionalService:
         equipamentos_por_base = {}
         for item in (
             cls._equipamentos_visiveis(user)
-            .filter(regional__in=bases, status='ATIVO')
+            .filter(
+                regional__in=bases, status='ATIVO',
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
+            )
             .values('regional_id', 'produto__categoria')
             .annotate(total=Count('id'))
         ):
@@ -1972,6 +1979,7 @@ class AssistenteOperacionalService:
                 regional__in=bases,
                 produto__categoria__iexact='Coletores',
                 status='ATIVO',
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
             ).values('regional_id').annotate(total=Count('id'))
         }
 
@@ -2022,7 +2030,9 @@ class AssistenteOperacionalService:
             return cls._equipamentos_categoria_por_base(user, interpretacao, qs)
 
         total = qs.count()
-        ativos = qs.filter(status='ATIVO').count()
+        ativos = qs.filter(
+            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+        ).count()
         em_uso = qs.filter(status='EM_USO').count()
         sick = qs.filter(status='SICK').count()
         manutencao = qs.filter(status='MANUTENCAO').count()

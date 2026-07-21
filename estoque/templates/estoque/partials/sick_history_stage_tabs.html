@@ -1,0 +1,94 @@
+{% load i18n %}
+<div class="history-stage-shell">
+  <nav class="nav history-stage-tabs" role="tablist" aria-label="{% trans 'Detalhes das etapas desta ocorrência' %}">
+    <button class="nav-link active {% if ocorrencia.data_ocorrencia %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-identificado-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-identificado" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-identificado" aria-selected="true"><span>1</span>{% trans "Identificado" %}</button>
+    <button class="nav-link {% if ocorrencia.enviado_manutencao_em %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-envio-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-envio" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-envio" aria-selected="false"><span>2</span>{% trans "Envio" %}</button>
+    <button class="nav-link {% if ocorrencia.recebido_manutencao_em %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-recebido-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-recebido" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-recebido" aria-selected="false"><span>3</span>{% trans "Recebimento" %}</button>
+    <button class="nav-link {% if ocorrencia.avaliacao_iniciada_em %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-avaliacao-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-avaliacao" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-avaliacao" aria-selected="false"><span>4</span>{% trans "Avaliação" %}</button>
+    <button class="nav-link {% if ocorrencia.manutencao_iniciada_em %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-manutencao-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-manutencao" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-manutencao" aria-selected="false"><span>5</span>{% trans "Manutenção" %}</button>
+    <button class="nav-link {% if ocorrencia.manutencao_concluida_em %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-retorno-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-retorno" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-retorno" aria-selected="false"><span>6</span>{% trans "Retorno" %}</button>
+    <button class="nav-link {% if ocorrencia.data_resolucao or ocorrencia.retorno_confirmado_em %}completed{% endif %}" id="hist-{{ ocorrencia.id }}-final-tab" data-bs-toggle="tab" data-bs-target="#hist-{{ ocorrencia.id }}-final" type="button" role="tab" aria-controls="hist-{{ ocorrencia.id }}-final" aria-selected="false"><span>7</span>{% trans "Finalização" %}</button>
+  </nav>
+
+  <div class="tab-content history-stage-content">
+    <section class="tab-pane fade show active" id="hist-{{ ocorrencia.id }}-identificado" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-identificado-tab" tabindex="0">
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Data e hora" %}</small><strong>{{ ocorrencia.data_ocorrencia|date:"d/m/Y H:i" }}</strong></div>
+        <div><small>{% trans "Registrado por" %}</small><strong>{% if ocorrencia.evento_identificacao %}{{ ocorrencia.evento_identificacao.usuario.get_full_name|default:ocorrencia.evento_identificacao.usuario.username }}{% else %}{% trans "Não registrado" %}{% endif %}</strong></div>
+        <div><small>{% trans "Categoria do problema" %}</small><strong>{{ ocorrencia.categoria|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Motivo" %}</small><strong>{{ ocorrencia.motivo|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Observação inicial" %}</small><span>{{ ocorrencia.descricao|default:ocorrencia.observacao_identificacao_historico|default:"—" }}</span></div>
+      </div>
+    </section>
+
+    <section class="tab-pane fade" id="hist-{{ ocorrencia.id }}-envio" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-envio-tab" tabindex="0">
+      {% if ocorrencia.enviado_manutencao_em %}
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Enviado em" %}</small><strong>{{ ocorrencia.enviado_manutencao_em|date:"d/m/Y H:i" }}</strong></div>
+        <div><small>{% trans "Enviado por" %}</small><strong>{{ ocorrencia.enviado_manutencao_por.get_full_name|default:ocorrencia.enviado_manutencao_por.username|default:"—" }}</strong></div>
+        <div><small>{% trans "Destino" %}</small><strong>{{ ocorrencia.destino_manutencao|default:"—" }}</strong></div>
+        <div><small>{% trans "Transportadora ou portador" %}</small><strong>{{ ocorrencia.transportadora_ou_portador|default:"—" }}</strong></div>
+        <div><small>{% trans "Protocolo ou rastreio" %}</small><strong>{{ ocorrencia.protocolo_envio|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Observação do envio" %}</small><span>{{ ocorrencia.observacao_envio_historico|default:"—" }}</span></div>
+      </div>
+      {% else %}<div class="stage-empty"><i class="bi bi-hourglass"></i>{% trans "Envio ainda não registrado." %}</div>{% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="hist-{{ ocorrencia.id }}-recebido" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-recebido-tab" tabindex="0">
+      {% if ocorrencia.recebido_manutencao_em %}
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Recebido em" %}</small><strong>{{ ocorrencia.recebido_manutencao_em|date:"d/m/Y H:i" }}</strong></div>
+        <div><small>{% trans "Confirmado por" %}</small><strong>{{ ocorrencia.recebido_manutencao_por.get_full_name|default:ocorrencia.recebido_manutencao_por.username|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Observação do recebimento" %}</small><span>{{ ocorrencia.observacao_recebimento_historico|default:"—" }}</span></div>
+      </div>
+      {% else %}<div class="stage-empty"><i class="bi bi-inbox"></i>{% trans "Recebimento ainda não confirmado." %}</div>{% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="hist-{{ ocorrencia.id }}-avaliacao" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-avaliacao-tab" tabindex="0">
+      {% if ocorrencia.avaliacao_iniciada_em %}
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Avaliação iniciada em" %}</small><strong>{{ ocorrencia.avaliacao_iniciada_em|date:"d/m/Y H:i" }}</strong></div>
+        <div><small>{% trans "Responsável" %}</small><strong>{{ ocorrencia.avaliacao_iniciada_por.get_full_name|default:ocorrencia.avaliacao_iniciada_por.username|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Observação da avaliação" %}</small><span>{{ ocorrencia.observacao_avaliacao_historico|default:"—" }}</span></div>
+      </div>
+      {% else %}<div class="stage-empty"><i class="bi bi-search"></i>{% trans "Avaliação técnica ainda não iniciada." %}</div>{% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="hist-{{ ocorrencia.id }}-manutencao" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-manutencao-tab" tabindex="0">
+      {% if ocorrencia.manutencao_iniciada_em %}
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Manutenção iniciada em" %}</small><strong>{{ ocorrencia.manutencao_iniciada_em|date:"d/m/Y H:i" }}</strong></div>
+        <div><small>{% trans "Responsável" %}</small><strong>{{ ocorrencia.manutencao_iniciada_por.get_full_name|default:ocorrencia.manutencao_iniciada_por.username|default:"—" }}</strong></div>
+        <div><small>{% trans "Previsão de retorno" %}</small><strong>{{ ocorrencia.previsao_retorno|date:"d/m/Y"|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Causa identificada" %}</small><strong>{{ ocorrencia.causa_identificada|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Diagnóstico" %}</small><span>{{ ocorrencia.diagnostico|default:"—" }}</span></div>
+        <div class="detail-wide"><small>{% trans "Observação técnica / ação planejada" %}</small><span>{{ ocorrencia.observacao_tecnica|default:ocorrencia.observacao_manutencao_historico|default:"—" }}</span></div>
+      </div>
+      {% else %}<div class="stage-empty"><i class="bi bi-tools"></i>{% trans "Manutenção ainda não iniciada." %}</div>{% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="hist-{{ ocorrencia.id }}-retorno" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-retorno-tab" tabindex="0">
+      {% if ocorrencia.manutencao_concluida_em %}
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Manutenção concluída em" %}</small><strong>{{ ocorrencia.manutencao_concluida_em|date:"d/m/Y H:i" }}</strong></div>
+        <div><small>{% trans "Responsável" %}</small><strong>{{ ocorrencia.manutencao_concluida_por.get_full_name|default:ocorrencia.manutencao_concluida_por.username|default:"—" }}</strong></div>
+        <div><small>{% trans "Apto para retorno" %}</small><strong>{{ ocorrencia.apto_retorno|yesno:"Sim,Não,—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Solução aplicada" %}</small><strong>{{ ocorrencia.solucao_aplicada|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Resultado da manutenção" %}</small><span>{{ ocorrencia.resultado_manutencao|default:"—" }}</span></div>
+        <div class="detail-wide"><small>{% trans "Observação da conclusão" %}</small><span>{{ ocorrencia.observacao_conclusao_historico|default:ocorrencia.observacao_resolucao|default:"—" }}</span></div>
+      </div>
+      {% else %}<div class="stage-empty"><i class="bi bi-box-arrow-left"></i>{% trans "Conclusão e retorno ainda não registrados." %}</div>{% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="hist-{{ ocorrencia.id }}-final" role="tabpanel" aria-labelledby="hist-{{ ocorrencia.id }}-final-tab" tabindex="0">
+      {% if ocorrencia.data_resolucao or ocorrencia.retorno_confirmado_em %}
+      <div class="stage-detail-grid">
+        <div><small>{% trans "Finalizado em" %}</small><strong>{% if ocorrencia.retorno_confirmado_em %}{{ ocorrencia.retorno_confirmado_em|date:"d/m/Y H:i" }}{% else %}{{ ocorrencia.data_resolucao|date:"d/m/Y H:i" }}{% endif %}</strong></div>
+        <div><small>{% trans "Finalizado por" %}</small><strong>{% if ocorrencia.retorno_confirmado_por %}{{ ocorrencia.retorno_confirmado_por.get_full_name|default:ocorrencia.retorno_confirmado_por.username }}{% elif ocorrencia.resolvido_por %}{{ ocorrencia.resolvido_por.get_full_name|default:ocorrencia.resolvido_por.username }}{% else %}—{% endif %}</strong></div>
+        <div><small>{% trans "Situação final" %}</small><strong>{{ ocorrencia.get_status_final_display|default:"—" }}</strong></div>
+        <div class="detail-wide"><small>{% trans "Observação da finalização" %}</small><span>{{ ocorrencia.observacao_resolucao|default:ocorrencia.observacao_finalizacao_historico|default:"—" }}</span></div>
+      </div>
+      {% else %}<div class="stage-empty"><i class="bi bi-flag"></i>{% trans "Ocorrência ainda não finalizada." %}</div>{% endif %}
+    </section>
+  </div>
+</div>

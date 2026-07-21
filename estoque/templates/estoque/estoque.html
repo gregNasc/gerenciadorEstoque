@@ -92,6 +92,12 @@
                     </div>
                 </div>
                 <div class="col-md-2 col-6">
+                    <div class="kpi-card filtro-card" data-status-filter="administrativos">
+                        <span>{% trans "Administrativos" %}</span>
+                        <strong id="kpiAdministrativos">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
                     <div class="kpi-card filtro-card" data-status-filter="sick">
                         <span>{% trans "Sick" %}</span>
                         <strong id="kpiSick">0</strong>
@@ -163,6 +169,7 @@
                             <th>{% trans "Descrição" %}</th>
                             <th class="text-center">{% trans "Total" %}</th>
                             <th class="text-center">{% trans "Ativos" %}</th>
+                            <th class="text-center">{% trans "Administrativos" %}</th>
                             <th class="text-center">{% trans "Sick" %}</th>
                             <th class="text-center">{% trans "Em trânsito" %}</th>
                             <th class="text-center">{% trans "Manutenção" %}</th>
@@ -180,6 +187,7 @@
                             data-categoria="{{ item.produto__categoria|default:'' }}"
                             data-total="{{ item.total }}"
                             data-ativos="{{ item.ativos }}"
+                            data-administrativos="{{ item.administrativos }}"
                             data-sick="{{ item.sick }}"
                             data-transito="{{ item.em_transito|default:0 }}"
                             data-manutencao="{{ item.manutencao|default:0 }}"
@@ -188,6 +196,7 @@
                             <td class="fw-semibold">{{ item.produto__descricao }}</td>
                             <td class="text-center fw-semibold">{{ item.total }}</td>
                             <td class="text-center">{{ item.ativos }}</td>
+                            <td class="text-center">{{ item.administrativos }}</td>
                             <td class="text-center">{{ item.sick }}</td>
                             <td class="text-center">{{ item.em_transito|default:0 }}</td>
                             <td class="text-center">{{ item.manutencao|default:0 }}</td>
@@ -263,6 +272,16 @@
             </div>
             <label class="form-label fw-semibold">{% trans "Motivo" %}</label>
             <textarea id="sickMotivo" class="form-control" rows="4" required></textarea>
+            <label class="form-label fw-semibold mt-3">{% trans "Categoria do problema" %}</label>
+            <select id="sickCategoria" class="form-select" required>
+                <option value="">{% trans "Selecione" %}</option>
+                <option value="HARDWARE">Hardware</option>
+                <option value="SOFTWARE">Software</option>
+                <option value="DANO">{% trans "Dano" %}</option>
+                <option value="OUTRO">{% trans "Outro" %}</option>
+            </select>
+            <label class="form-label fw-semibold mt-3">{% trans "Observação" %}</label>
+            <textarea id="sickObservacao" class="form-control" rows="2" required></textarea>
             <div id="sickMotivoErro" class="text-danger small mt-2" style="display:none;">
                 {% trans "Informe o motivo antes de confirmar." %}
             </div>
@@ -421,6 +440,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelSickModalBtn = document.getElementById('cancelSickModal');
     const confirmSickModalBtn = document.getElementById('confirmSickModal');
     const sickMotivoInput = document.getElementById('sickMotivo');
+    const sickCategoriaInput = document.getElementById('sickCategoria');
+    const sickObservacaoInput = document.getElementById('sickObservacao');
     const sickMotivoErro = document.getElementById('sickMotivoErro');
     const sickEquipamentoLabel = document.getElementById('sickEquipamentoLabel');
 
@@ -482,6 +503,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sickPendente = { equipamentoId, serie, produtoId, regionalId, regionalNome };
         sickEquipamentoLabel.innerText = serie || '-';
         sickMotivoInput.value = '';
+        sickCategoriaInput.value = '';
+        sickObservacaoInput.value = '';
         sickMotivoErro.style.display = 'none';
         sickModalEl.classList.remove('hidden');
         setTimeout(() => sickMotivoInput.focus(), 80);
@@ -491,6 +514,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sickModalEl.classList.add('hidden');
         sickPendente = null;
         sickMotivoInput.value = '';
+        sickCategoriaInput.value = '';
+        sickObservacaoInput.value = '';
         sickMotivoErro.style.display = 'none';
     };
 
@@ -671,7 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // MODIFICADO: agora recebe 'motivo' e envia no corpo da requisição
-        async marcarSick(equipamentoId, motivo) {
+        async marcarSick(equipamentoId, motivo, categoria, observacao) {
 
             return this.request(
                 `/marcar-sick/${equipamentoId}/`,
@@ -681,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'X-CSRFToken': getCSRFToken(),
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ motivo: motivo })
+                    body: JSON.stringify({ motivo, categoria, observacao })
                 }
             );
         }
@@ -805,6 +830,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             );
 
+            const resumoEquipamentos = data.equipamentos.reduce((acc, eq) => {
+                if (eq.status === 'ATIVO' && eq.finalidade === 'OPERACIONAL') acc.ativos += 1;
+                if (eq.finalidade === 'ADMINISTRATIVO' && eq.status !== 'BAIXA') acc.administrativos += 1;
+                if (eq.status === 'SICK') acc.sick += 1;
+                if (eq.status === 'MANUTENCAO') acc.manutencao += 1;
+                if (['EM_TRANSITO', 'RESERVADO_TRANSFERENCIA'].includes(eq.status)) acc.transferencia += 1;
+                if (eq.status === 'BAIXA') acc.baixa += 1;
+                return acc;
+            }, {ativos: 0, administrativos: 0, sick: 0, manutencao: 0, transferencia: 0, baixa: 0});
+
             let html = `
                 <div class="d-flex justify-content-between align-items-center mb-3">
 
@@ -817,6 +852,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         {% trans "equipamento(s)" %}
                     </span>
 
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-3 small">
+                    <span class="badge bg-secondary">{% trans "Total" %}: ${data.equipamentos.length}</span>
+                    <span class="badge bg-success">{% trans "Ativos" %}: ${resumoEquipamentos.ativos}</span>
+                    <span class="badge bg-info text-dark">{% trans "Administrativos" %}: ${resumoEquipamentos.administrativos}</span>
+                    <span class="badge bg-danger">SICK: ${resumoEquipamentos.sick}</span>
+                    <span class="badge bg-primary">{% trans "Manutenção" %}: ${resumoEquipamentos.manutencao}</span>
+                    <span class="badge bg-warning text-dark">{% trans "Transferência" %}: ${resumoEquipamentos.transferencia}</span>
+                    <span class="badge bg-dark">{% trans "Baixa" %}: ${resumoEquipamentos.baixa}</span>
                 </div>
 
                 <div class="row mb-3">
@@ -841,6 +886,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr>
                                 <th>{% trans "Série" %}</th>
                                 <th>{% trans "Patrimônio" %}</th>
+                                <th>{% trans "Empresa / Base" %}</th>
+                                <th>{% trans "Finalidade" %}</th>
                                 <th>{% trans "Status" %}</th>
                                 <th width="100"></th>
                             </tr>
@@ -857,7 +904,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 html += `
                     <tr
                         class="eq-row"
-                        data-id="${eq.id}">
+                        data-id="${eq.id}"
+                        data-finalidade="${escapeHtml(eq.finalidade || '')}"
+                        data-status="${escapeHtml(eq.status || '')}"
+                        data-etapa="${escapeHtml(eq.sick?.etapa || '')}">
 
                         <td class="text-nowrap fw-semibold">
                             ${escapeHtml(eq.numero_serie || '-')}
@@ -868,9 +918,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
 
                         <td>
-                            <span class="badge bg-light text-dark border">
-                                ${escapeHtml(eq.status)}
+                            <strong>${escapeHtml(eq.empresa || '-')}</strong><br>
+                            <small class="text-secondary">${escapeHtml(eq.base || '-')}</small>
+                        </td>
+
+                        <td>
+                            <span class="badge ${eq.finalidade === 'ADMINISTRATIVO' ? 'bg-info text-dark' : 'bg-primary'}">
+                                ${escapeHtml(eq.finalidade_label || eq.finalidade)}
                             </span>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                ${escapeHtml(eq.status_label || eq.status)}
+                            </span>
+                            ${eq.sick ? `<br><small class="text-danger">SICK / ${escapeHtml(eq.sick.etapa_label)}</small>` : ''}
                         </td>
 
                         <td>
@@ -904,28 +966,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const filtro = document.getElementById(
                 'filtroEquipamentos'
             );
+            const filtroStatus = document.getElementById('filtroEquipamentosStatus');
+
+            const aplicarFiltroEquipamentos = () => {
+                const termo = (filtro?.value || '').toLowerCase().trim();
+                const valor = filtroStatus?.value || '';
+                document.querySelectorAll('.eq-row').forEach((row) => {
+                    const okTexto = row.innerText.toLowerCase().includes(termo);
+                    let okTipo = !valor;
+                    if (valor === 'OPERACIONAL' || valor === 'ADMINISTRATIVO') okTipo = row.dataset.finalidade === valor;
+                    else if (valor === 'ATIVO_OPERACIONAL') okTipo = row.dataset.status === 'ATIVO' && row.dataset.finalidade === 'OPERACIONAL';
+                    else if (valor === 'MANUTENCAO' || valor === 'SICK' || valor === 'BAIXA') okTipo = row.dataset.status === valor;
+                    else if (valor) okTipo = row.dataset.etapa === valor;
+                    row.style.display = okTexto && okTipo ? '' : 'none';
+                });
+            };
 
             if (filtro) {
 
-                filtro.addEventListener('input', function () {
-
-                    const termo =
-                        this.value.toLowerCase().trim();
-
-                    document
-                        .querySelectorAll('.eq-row')
-                        .forEach((row) => {
-
-                            const texto =
-                                row.innerText.toLowerCase();
-
-                            row.style.display =
-                                texto.includes(termo)
-                                    ? ''
-                                    : 'none';
-                        });
-                });
+                filtro.addEventListener('input', aplicarFiltroEquipamentos);
             }
+            filtroStatus?.addEventListener('change', aplicarFiltroEquipamentos);
 
             // Histórico
             document
@@ -1068,6 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const labelsFiltroStatus = {
         total: '{% trans "Todos" %}',
         ativos: '{% trans "Ativos" %}',
+        administrativos: '{% trans "Administrativos" %}',
         sick: '{% trans "Sick" %}',
         transito: '{% trans "Em trânsito" %}',
         manutencao: '{% trans "Manutenção" %}',
@@ -1081,12 +1143,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const totais = rows.reduce((acc, row) => {
             acc.total += parseInt(row.dataset.total || '0', 10) || 0;
             acc.ativos += parseInt(row.dataset.ativos || '0', 10) || 0;
+            acc.administrativos += parseInt(row.dataset.administrativos || '0', 10) || 0;
             acc.sick += parseInt(row.dataset.sick || '0', 10) || 0;
             acc.transito += parseInt(row.dataset.transito || '0', 10) || 0;
             acc.manutencao += parseInt(row.dataset.manutencao || '0', 10) || 0;
             acc.inativos += parseInt(row.dataset.inativos || '0', 10) || 0;
             return acc;
-        }, { total: 0, ativos: 0, sick: 0, transito: 0, manutencao: 0, inativos: 0 });
+        }, { total: 0, ativos: 0, administrativos: 0, sick: 0, transito: 0, manutencao: 0, inativos: 0 });
 
         const setText = (id, value) => {
             const el = document.getElementById(id);
@@ -1095,6 +1158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setText('kpiTotal', totais.total);
         setText('kpiAtivos', totais.ativos);
+        setText('kpiAdministrativos', totais.administrativos);
         setText('kpiSick', totais.sick);
         setText('kpiTransito', totais.transito);
         setText('kpiManutencao', totais.manutencao);
@@ -1201,9 +1265,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sickPendente) return;
 
         const motivo = sickMotivoInput.value.trim();
-        if (!motivo) {
+        const categoria = sickCategoriaInput.value;
+        const observacao = sickObservacaoInput.value.trim();
+        if (!motivo || !categoria || !observacao) {
             sickMotivoErro.style.display = 'block';
-            sickMotivoInput.focus();
+            sickMotivoErro.innerText = '{% trans "Informe motivo, categoria e observação antes de confirmar." %}';
             return;
         }
 
@@ -1211,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmSickModalBtn.innerText = '{% trans "Salvando..." %}';
 
         try {
-            await api.marcarSick(sickPendente.equipamentoId, motivo);
+            await api.marcarSick(sickPendente.equipamentoId, motivo, categoria, observacao);
             const { produtoId, regionalId, regionalNome } = sickPendente;
             fecharSickModal();
             await loadEquipamentos(produtoId, regionalId, regionalNome);

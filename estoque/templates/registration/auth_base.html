@@ -1,0 +1,62 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Acesso ao sistema{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; padding: 20px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #2c3e50 0%, #1a2632 100%);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .auth-shell { width: min(100%, 460px); }
+    .auth-card {
+      overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 16px;
+      background: #fff; color: #263849; box-shadow: 0 22px 55px rgba(0,0,0,.28);
+    }
+    .auth-head { padding: 25px 24px; color: #fff; text-align: center; background: #1e3c72; }
+    .auth-head i { display: block; margin-bottom: 8px; font-size: 2rem; }
+    .auth-head h1 { margin: 0; font-size: 1.35rem; font-weight: 800; }
+    .auth-body { padding: 26px; }
+    .auth-body p { line-height: 1.55; }
+    .form-label { color: #31465c; font-weight: 700; }
+    .form-control {
+      min-height: 48px; border-color: #b8c6d6; border-radius: 9px;
+      color: #1f3144; background: #fff;
+    }
+    .form-control:focus { border-color: #1e3c72; box-shadow: 0 0 0 .2rem rgba(30,60,114,.14); }
+    .btn-auth {
+      min-height: 48px; width: 100%; border: 0; border-radius: 9px;
+      color: #fff; background: #1e3c72; font-weight: 800;
+    }
+    .btn-auth:hover { color: #fff; background: #162f5d; }
+    .auth-link { display: inline-flex; align-items: center; gap: 6px; color: #1e3c72; font-weight: 700; }
+    .errorlist { margin: 7px 0 0; padding-left: 18px; color: #b42318; font-size: .9rem; }
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .auth-head { padding: 21px 18px; }
+      .auth-body { padding: 21px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card">
+      <header class="auth-head">
+        <i class="bi {% block icon %}bi-shield-lock{% endblock %}"></i>
+        <h1>{% block heading %}Gerenciador de Estoque{% endblock %}</h1>
+      </header>
+      <div class="auth-body">
+        {% block auth_content %}{% endblock %}
+      </div>
+    </section>
+  </main>
+</body>
+</html>

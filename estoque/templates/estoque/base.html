@@ -142,12 +142,14 @@
 
                         </li>
                         {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
-                        <!--li>
+                        <!--
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_custos' %}">
                                 <i class="bi bi-bar-chart-line"></i>
                                 {% trans "Custos de insumos" %}
                             </a>
-                        </li-->
+                        </li>
+                        -->
                         <!--li>
                             <a class="dropdown-item" href="{% url 'insumos:precos_insumos' %}">
                                 <i class="bi bi-tags"></i>
@@ -484,7 +486,7 @@
                 </li>
 
                 <!-- SICK -->
-                {% if perfil.role == 'admin' or pode_realizar_manutencao_sick %}
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.role == 'operador' or pode_realizar_manutencao_sick %}
                 <li class="nav-item">
 
                     <a class="nav-link {% if url_name == 'sick' %}active{% endif %}"

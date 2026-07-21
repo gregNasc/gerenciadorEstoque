@@ -175,15 +175,21 @@ def precos_insumos(request):
     else:
         form = PrecoFornecedorInsumoForm(instance=instancia)
 
-    precos = PrecoFornecedorInsumo.objects.select_related(
+    precos_base = PrecoFornecedorInsumo.objects.select_related(
         'insumo', 'fornecedor', 'cadastrado_por'
-    ).order_by('-vigente_desde', 'insumo__descricao')
+    )
+    precos = precos_base.order_by('-vigente_desde', 'insumo__descricao')
     busca = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip().lower()
     if busca:
         precos = precos.filter(
             Q(insumo__descricao__icontains=busca) |
             Q(fornecedor__nome__icontains=busca)
         )
+    if status == 'ativos':
+        precos = precos.filter(ativo=True)
+    elif status == 'inativos':
+        precos = precos.filter(ativo=False)
 
     comparar_insumo_id = _id_opcional(request.GET.get('comparar_insumo'))
     comparar_insumo = Insumo.objects.filter(pk=comparar_insumo_id).first()
@@ -211,10 +217,15 @@ def precos_insumos(request):
         'pode_editar': _pode_editar(request.user),
         'editando': instancia,
         'busca': busca,
+        'status': status,
         'insumos': Insumo.objects.filter(ativo=True).order_by('descricao'),
         'comparar_insumo': comparar_insumo,
         'comparacao_precos': comparacao_precos,
         'menor_preco': menor_preco,
+        'total_precos': precos_base.count(),
+        'total_precos_ativos': precos_base.filter(ativo=True).count(),
+        'total_insumos_cotados': precos_base.values('insumo_id').distinct().count(),
+        'total_fornecedores_cotados': precos_base.values('fornecedor_id').distinct().count(),
     })
 
 
@@ -236,21 +247,46 @@ def fornecedores_insumos(request):
     else:
         form = FornecedorInsumoForm(instance=instancia)
 
-    fornecedores = FornecedorInsumo.objects.annotate(
+    fornecedores_base = FornecedorInsumo.objects.annotate(
         itens=Count('precos__insumo', distinct=True),
         cotacoes=Count('precos'),
         menor_preco=Min('precos__valor_unitario', filter=Q(precos__ativo=True)),
         preco_medio=Avg('precos__valor_unitario', filter=Q(precos__ativo=True)),
         maior_preco=Max('precos__valor_unitario', filter=Q(precos__ativo=True)),
-    ).order_by('nome')
+    )
+    busca = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip().lower()
+    fornecedores = fornecedores_base
+    if busca:
+        fornecedores = fornecedores.filter(
+            Q(nome__icontains=busca) |
+            Q(documento__icontains=busca) |
+            Q(contato__icontains=busca) |
+            Q(email__icontains=busca)
+        )
+    if status == 'ativos':
+        fornecedores = fornecedores.filter(ativo=True)
+    elif status == 'inativos':
+        fornecedores = fornecedores.filter(ativo=False)
+    fornecedores = fornecedores.order_by('nome')
+
+    precos_recentes = PrecoFornecedorInsumo.objects.select_related(
+        'fornecedor', 'insumo'
+    ).filter(ativo=True).order_by('-vigente_desde')[:20]
     return render(request, 'insumos/custos/fornecedores_insumos.html', {
         'form': form,
         'fornecedores': fornecedores,
-        'precos_recentes': PrecoFornecedorInsumo.objects.select_related(
-            'fornecedor', 'insumo'
-        ).filter(ativo=True).order_by('-vigente_desde')[:20],
+        'precos_recentes': precos_recentes,
         'pode_editar': _pode_editar(request.user),
         'editando': instancia,
+        'busca': busca,
+        'status': status,
+        'total_fornecedores': FornecedorInsumo.objects.count(),
+        'total_fornecedores_ativos': FornecedorInsumo.objects.filter(ativo=True).count(),
+        'total_itens_cotados': PrecoFornecedorInsumo.objects.values(
+            'insumo_id'
+        ).distinct().count(),
+        'total_cotacoes_ativas': PrecoFornecedorInsumo.objects.filter(ativo=True).count(),
     })
 
 

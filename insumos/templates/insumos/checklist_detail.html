@@ -156,9 +156,14 @@
             </span>
         </div>
 
-        <a href="{% url 'insumos:lista_checklists' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'insumos:imprimir_checklist' checklist.pk %}" class="btn btn-primary">
+                <i class="bi bi-printer"></i> Check-List / Declaração
+            </a>
+            <a href="{% url 'insumos:lista_checklists' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
     </div>
 
     {% if messages %}

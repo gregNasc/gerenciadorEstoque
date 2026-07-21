@@ -481,6 +481,8 @@ class ChecklistDiario(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='ABERTO')
     responsavel = models.ForeignKey(User, on_delete=models.PROTECT)
     observacao = models.TextField(blank=True)
+    quantidade_volumes = models.PositiveIntegerField(default=0)
+    transporte = models.CharField(max_length=200, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 #   finalizado = models.BooleanField(default=False)
     finalizado_em = models.DateTimeField(null=True, blank=True)

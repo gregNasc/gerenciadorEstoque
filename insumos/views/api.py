@@ -38,6 +38,9 @@ from django.contrib.auth.models import User
 from insumos.services.checklist_service import ChecklistService
 from insumos.services.movimentacao_service import MovimentacaoService
 from collections import defaultdict
+from io import BytesIO
+from pathlib import Path
+from django.conf import settings
 
 @login_required
 @role_required('admin', 'gestor', 'operador')
@@ -352,9 +355,15 @@ def get_equipamentos_disponiveis(request, categoria):
     regionais_ids = request.user.perfil.bases_checklist_ids
 
     if request.user.perfil.is_admin:
-        equipamentos = Equipamento.objects.filter(status='ATIVO', produto__categoria=categoria)
+        equipamentos = Equipamento.objects.filter(
+            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL,
+            produto__categoria=categoria,
+        )
     else:
-        equipamentos = Equipamento.objects.filter(status='ATIVO', produto__categoria=categoria, regional_id__in=regionais_ids)
+        equipamentos = Equipamento.objects.filter(
+            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL,
+            produto__categoria=categoria, regional_id__in=regionais_ids,
+        )
 
     data = [{
         'id': eq.id,
@@ -1068,6 +1077,12 @@ def inventario_detalhes(request, inventario_id):
         'bairro': inventario.bairro or '',
         'cidade': inventario.cidade or '',
         'lider': inventario.lider or '',
+        'pessoas': inventario.pessoas,
+        'limite_coletores': (
+            inventario.pessoas + 5
+            if inventario.pessoas is not None
+            else None
+        ),
     }
     return JsonResponse(data)
 
@@ -1486,24 +1501,36 @@ def exportar_excel(request):
     wb.save(response)
     return response
 
+@login_required
 def insumos_por_base(request):
     base_id = request.GET.get('base_id')
     if not base_id:
         return JsonResponse({'insumos': []})
 
-    # Buscar todos os insumos ativos
-    insumos = Insumo.objects.filter(ativo=True).select_related('categoria')
-    data = []
-    for insumo in insumos:
-        saldo = MovimentacaoService.saldo(base_id, insumo)
-        if saldo > 0:
-            data.append({
-                'id': insumo.id,
-                'descricao': insumo.descricao,
-                'categoria': insumo.categoria.nome,
-                'unidade': insumo.unidade_medida,
-                'saldo': float(saldo),
-            })
+    perfil = request.user.perfil
+    base = get_object_or_404(Base.objects.select_related('empresa'), pk=base_id)
+    if (
+        not perfil.is_admin and
+        (
+            base.pk not in perfil.bases_checklist_ids or
+            base.empresa_id != perfil.empresa_id
+        )
+    ):
+        return JsonResponse(
+            {'insumos': [], 'erro': 'Base não autorizada.'},
+            status=403,
+        )
+
+    data = [
+        {
+            'id': item['id'],
+            'descricao': item['descricao'],
+            'categoria': item['categoria'],
+            'unidade': item['insumo'].unidade_medida,
+            'saldo': float(item['saldo']),
+        }
+        for item in ChecklistService.insumos_disponiveis_para_checklist(base)
+    ]
     return JsonResponse({'insumos': data})
 
 @login_required
@@ -1789,6 +1816,224 @@ def checklist_detail(request, pk):
     return render(request, 'insumos/checklist_detail.html', context)
 
 @login_required
+def imprimir_checklist(request, pk):
+    checklist = get_object_or_404(
+        ChecklistDiario.objects.select_related(
+            'inventario__cliente',
+            'inventario__base',
+            'inventario__base__empresa',
+            'responsavel',
+        ),
+        pk=pk,
+    )
+    perfil = request.user.perfil
+    if (
+        not perfil.is_admin and
+        (
+            checklist.inventario.base_id not in perfil.bases_checklist_ids or
+            checklist.inventario.base.empresa_id != perfil.empresa_id
+        )
+    ):
+        messages.error(request, 'Você não tem acesso a este checklist.')
+        return redirect('insumos:lista_checklists')
+
+    itens = list(
+        checklist.itens
+        .select_related('insumo__categoria')
+        .filter(quantidade_enviada__gt=0)
+        .order_by('insumo__categoria__nome', 'insumo__descricao')
+    )
+    equipamentos = list(
+        checklist.equipamentos_utilizados
+        .select_related('equipamento__produto')
+        .order_by(
+            'equipamento__produto__categoria',
+            'equipamento__produto__descricao',
+            'equipamento__patrimonio',
+        )
+    )
+    equipamentos_por_categoria = defaultdict(list)
+    for item in equipamentos:
+        categoria = (
+            item.equipamento.produto.categoria
+            if item.equipamento.produto_id
+            else 'Equipamentos'
+        )
+        equipamentos_por_categoria[categoria].append(item)
+
+    grupos_declaracao = defaultdict(float)
+    for item in itens:
+        categoria = (
+            item.insumo.categoria.nome
+            if item.insumo.categoria_id
+            else 'Insumos'
+        )
+        grupos_declaracao[categoria] += float(item.quantidade_enviada)
+    for categoria, lista in equipamentos_por_categoria.items():
+        grupos_declaracao[categoria] += len(lista)
+
+    return render(
+        request,
+        'insumos/checklist_impressao.html',
+        {
+            'checklist': checklist,
+            'itens': itens,
+            'equipamentos': equipamentos,
+            'equipamentos_por_categoria': dict(equipamentos_por_categoria),
+            'grupos_declaracao': sorted(grupos_declaracao.items()),
+        },
+    )
+
+
+@login_required
+def exportar_checklist_modelo(request, pk):
+    checklist = get_object_or_404(
+        ChecklistDiario.objects.select_related(
+            'inventario__cliente',
+            'inventario__base',
+            'inventario__base__empresa',
+        ),
+        pk=pk,
+    )
+    perfil = request.user.perfil
+    if (
+        not perfil.is_admin and
+        (
+            checklist.inventario.base_id not in perfil.bases_checklist_ids or
+            checklist.inventario.base.empresa_id != perfil.empresa_id
+        )
+    ):
+        messages.error(request, 'Você não tem acesso a este checklist.')
+        return redirect('insumos:lista_checklists')
+
+    modelo = (
+        Path(settings.BASE_DIR) /
+        'insumos' /
+        'templates_xlsx' /
+        'checklist_declaracao_modelo.xlsx'
+    )
+    workbook = openpyxl.load_workbook(modelo)
+    planilha_checklist = workbook['Check - List']
+    planilha_declaracao = workbook['Declaração']
+
+    for planilha in list(workbook.worksheets):
+        if planilha not in (planilha_checklist, planilha_declaracao):
+            workbook.remove(planilha)
+    workbook._sheets = [planilha_declaracao, planilha_checklist]
+    workbook.active = 0
+
+    inventario = checklist.inventario
+    data_formatada = inventario.data_inicio.strftime('%d/%m/%Y')
+    cliente = inventario.cliente.sigla
+    loja = f'Loja {inventario.loja}'
+
+    planilha_checklist['C3'] = cliente
+    planilha_checklist['E3'] = loja
+    planilha_checklist['G3'] = data_formatada
+    planilha_checklist['C5'] = inventario.endereco or ''
+    planilha_checklist['C7'] = inventario.bairro or ''
+    planilha_checklist['G7'] = inventario.cidade or ''
+    planilha_checklist['E76'] = checklist.quantidade_volumes
+
+    def chave_descricao(valor):
+        texto = unicodedata.normalize('NFKD', str(valor or ''))
+        return ''.join(
+            caractere for caractere in texto
+            if not unicodedata.combining(caractere)
+        ).strip().casefold()
+
+    quantidades_por_descricao = defaultdict(Decimal)
+    for item in checklist.itens.select_related('insumo'):
+        quantidades_por_descricao[
+            chave_descricao(item.insumo.descricao)
+        ] += item.quantidade_enviada
+
+    equipamentos_por_categoria = defaultdict(int)
+    for item in checklist.equipamentos_utilizados.select_related(
+        'equipamento__produto'
+    ):
+        categoria = (
+            item.equipamento.produto.categoria
+            if item.equipamento.produto_id
+            else 'Equipamentos'
+        )
+        equipamentos_por_categoria[chave_descricao(categoria)] += 1
+
+    linha_equipamento = {
+        'routers': 38,
+        'roteadores': 38,
+        'coletores': 51,
+        'notebooks': 61,
+        'impressoras': 63,
+    }
+    for linha in range(11, 75):
+        descricao = planilha_checklist.cell(linha, 3).value
+        quantidade = quantidades_por_descricao.get(chave_descricao(descricao), 0)
+        planilha_checklist.cell(linha, 5).value = quantidade or ''
+    for categoria, linha in linha_equipamento.items():
+        quantidade = equipamentos_por_categoria.get(categoria, 0)
+        if quantidade:
+            planilha_checklist.cell(linha, 5).value = quantidade
+
+    planilha_declaracao['C4'] = cliente
+    planilha_declaracao['E4'] = loja
+    planilha_declaracao['G4'] = data_formatada
+    planilha_declaracao['C6'] = inventario.endereco or ''
+    planilha_declaracao['C8'] = inventario.bairro or ''
+    planilha_declaracao['F8'] = inventario.cidade or ''
+    planilha_declaracao['C10'] = (
+        inventario.horario_ponto.strftime('%H:%M')
+        if inventario.horario_ponto else ''
+    )
+    planilha_declaracao['G10'] = (
+        inventario.horario_inicio.strftime('%H:%M')
+        if inventario.horario_inicio else ''
+    )
+    planilha_declaracao['D12'] = inventario.ponto_encontro or ''
+    planilha_declaracao['D14'] = checklist.transporte or ''
+
+    grupos_declaracao = {
+        27: Decimal('0'),
+        29: Decimal('0'),
+        31: Decimal(equipamentos_por_categoria.get('coletores', 0)),
+        33: Decimal(equipamentos_por_categoria.get('impressoras', 0)),
+        35: quantidades_por_descricao.get(chave_descricao('Escada'), Decimal('0')),
+        37: quantidades_por_descricao.get(chave_descricao('Balança'), Decimal('0')),
+        39: quantidades_por_descricao.get(
+            chave_descricao('Extensor de Rede / Carrinho'),
+            Decimal('0'),
+        ),
+    }
+    for item in checklist.itens.select_related('insumo__categoria'):
+        categoria = chave_descricao(
+            item.insumo.categoria.nome
+            if item.insumo.categoria_id else ''
+        )
+        if categoria == chave_descricao('Departamento Pessoal'):
+            grupos_declaracao[27] += item.quantidade_enviada
+        elif categoria == chave_descricao('Fios e Cabos'):
+            grupos_declaracao[29] += item.quantidade_enviada
+
+    for linha, quantidade in grupos_declaracao.items():
+        planilha_declaracao.cell(linha, 6).value = quantidade or ''
+    planilha_declaracao['F41'] = checklist.quantidade_volumes
+
+    arquivo = BytesIO()
+    workbook.save(arquivo)
+    arquivo.seek(0)
+    response = HttpResponse(
+        arquivo.getvalue(),
+        content_type=(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ),
+    )
+    response['Content-Disposition'] = (
+        f'attachment; filename="checklist_{checklist.pk}_modelo_oficial.xlsx"'
+    )
+    return response
+
+
+@login_required
 def editar_itens_checklist(request, pk):
     checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base'), pk=pk)
 
@@ -1930,10 +2175,11 @@ def editar_checklist(request, pk):
     checklist = get_object_or_404(ChecklistDiario.objects.select_related(
         'inventario__base', 'inventario__cliente'
     ), pk=pk)
+    perfil = request.user.perfil
 
     # Verifica permissão (admin, gestor, ou responsável)
-    if not request.user.perfil.is_admin:
-        if not request.user.perfil.is_gestor and checklist.responsavel != request.user:
+    if not perfil.is_admin:
+        if not perfil.is_gestor and checklist.responsavel != request.user:
             messages.error(request, 'Você não tem permissão para editar este checklist.')
             return redirect('insumos:lista_checklists')
 
@@ -1944,6 +2190,36 @@ def editar_checklist(request, pk):
     if request.method == 'POST':
         try:
             with transaction.atomic():
+                try:
+                    quantidade_volumes = int(
+                        request.POST.get(
+                            'quantidade_volumes',
+                            checklist.quantidade_volumes,
+                        )
+                    )
+                except (TypeError, ValueError):
+                    raise ValueError(
+                        'Informe uma quantidade de volumes válida.'
+                    )
+                if quantidade_volumes <= 0:
+                    raise ValueError(
+                        'Informe ao menos um volume para a declaração.'
+                    )
+                checklist.quantidade_volumes = quantidade_volumes
+                checklist.transporte = request.POST.get(
+                    'transporte',
+                    checklist.transporte,
+                ).strip()
+                checklist.observacao = request.POST.get(
+                    'observacao',
+                    checklist.observacao,
+                ).strip()
+                checklist.save(update_fields=[
+                    'quantidade_volumes',
+                    'transporte',
+                    'observacao',
+                ])
+
                 # Atualizar insumos (quantidades utilizada, retornada, perdida)
                 for item in checklist.itens.select_related('insumo'):
                     utilizada = request.POST.get(f'insumo_{item.insumo.id}_utilizada', 0)
@@ -1977,11 +2253,14 @@ def editar_checklist(request, pk):
 
     regionais_ids = perfil.bases_checklist_ids
     if perfil.is_admin:
-        equipamentos = Equipamento.objects.filter(status='ATIVO')
+        equipamentos = Equipamento.objects.filter(
+            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
+        )
         lotes_tags = RoloTag.objects.filter(status__in=['DISPONIVEL', 'EM_USO'], lote__ativo=True).select_related('lote', 'lote__base')
     else:
         equipamentos = Equipamento.objects.filter(
             status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
             regional_id__in=regionais_ids,
             regional__empresa=perfil.empresa,
         )

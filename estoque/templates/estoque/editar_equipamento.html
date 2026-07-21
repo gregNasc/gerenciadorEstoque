@@ -1,0 +1,29 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Editar equipamento" %}{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h1 class="h5 mb-0">{% trans "Editar equipamento" %} — {{ equipamento.codigo }}</h1></div>
+    <form method="post" enctype="multipart/form-data" class="card-body">
+      {% csrf_token %}
+      <div class="alert alert-light border"><strong>{% trans "Empresa / Base" %}:</strong> {{ equipamento.regional.empresa.nome }} / {{ equipamento.regional.nome }}</div>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">{% trans "Número de série" %}</label><input name="numero_serie" value="{{ equipamento.numero_serie }}" required class="form-control"></div>
+        <div class="col-md-6"><label class="form-label">{% trans "Patrimônio" %}</label><input name="patrimonio" value="{{ equipamento.patrimonio }}" required class="form-control"></div>
+        <div class="col-md-6"><label class="form-label">{% trans "Finalidade" %}</label><select name="finalidade" class="form-select">{% for valor, nome in finalidade_choices %}<option value="{{ valor }}" {% if equipamento.finalidade == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+        {% if is_admin %}
+        <div class="col-md-6"><label class="form-label">{% trans "Produto" %}</label><select name="produto" class="form-select">{% for produto in produtos %}<option value="{{ produto.id }}" {% if equipamento.produto_id == produto.id %}selected{% endif %}>{{ produto.descricao }}</option>{% endfor %}</select></div>
+        <div class="col-md-6"><label class="form-label">{% trans "Base" %}</label><select name="regional" class="form-select">{% for base in bases %}<option value="{{ base.id }}" {% if equipamento.regional_id == base.id %}selected{% endif %}>{{ base.nome }} — {{ base.empresa.nome }}</option>{% endfor %}</select></div>
+        <div class="col-md-6"><label class="form-label">{% trans "Status" %}</label><select name="status" class="form-select">{% for valor, nome in status_choices %}<option value="{{ valor }}" {% if equipamento.status == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+        <div class="col-md-6"><label class="form-label">{% trans "Responsável" %}</label><input name="responsavel" value="{{ equipamento.responsavel }}" class="form-control"></div>
+        {% endif %}
+        <div class="col-md-6"><label class="form-label">{% trans "Nova foto" %}</label><input type="file" name="foto" accept="image/*" class="form-control"></div>
+        <div class="col-12"><label class="form-label">{% trans "Justificativa da edição" %}</label><textarea name="observacao_edicao" required class="form-control"></textarea></div>
+        <div class="col-md-6"><label class="form-label">{% trans "Confirme sua senha" %}</label><input type="password" name="senha_confirmacao" required class="form-control"></div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4"><a href="{% url 'estoque:estoque' %}" class="btn btn-outline-secondary">{% trans "Cancelar" %}</a><button class="btn btn-primary">{% trans "Salvar alterações" %}</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

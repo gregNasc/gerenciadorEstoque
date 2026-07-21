@@ -4,7 +4,7 @@ from estoque.models import Equipamento, Produto
 def get_estoque_por_produto():
     estoque = (
         Equipamento.objects
-        .filter(status='ATIVO')
+        .filter(status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL)
         .values(
             'produto_id',
             'produto__descricao',

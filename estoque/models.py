@@ -200,6 +200,10 @@ class Produto(models.Model):
 
 # ---------------- EQUIPAMENTO ----------------
 class Equipamento(models.Model):
+    class Finalidade(models.TextChoices):
+        OPERACIONAL = 'OPERACIONAL', _('Operacional')
+        ADMINISTRATIVO = 'ADMINISTRATIVO', _('Administrativo')
+
     class Meta:
         indexes = [
             models.Index(fields=['status']),
@@ -223,6 +227,12 @@ class Equipamento(models.Model):
     regional = models.ForeignKey(Base, on_delete=models.PROTECT)
     responsavel = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=40, choices=STATUS_CHOICES, default='ATIVO')
+    finalidade = models.CharField(
+        max_length=20,
+        choices=Finalidade.choices,
+        default=Finalidade.OPERACIONAL,
+        db_index=True,
+    )
     data_aquisicao = models.DateField(auto_now_add=True)
     foto = models.ImageField(upload_to='equipamentos/', null=True, blank=True)
     data_cadastro = models.DateTimeField(auto_now_add=True)
@@ -560,6 +570,15 @@ class StatusEquipamento(models.TextChoices):
     INATIVO = 'INATIVO', _('Inativo')
 
 class Sick(models.Model):
+    class Etapa(models.TextChoices):
+        IDENTIFICADO = 'IDENTIFICADO', _('Identificado na base')
+        EM_TRANSITO = 'EM_TRANSITO', _('Em trânsito para manutenção')
+        RECEBIDO = 'RECEBIDO', _('Recebido pela manutenção')
+        EM_AVALIACAO = 'EM_AVALIACAO', _('Em avaliação técnica')
+        EM_MANUTENCAO = 'EM_MANUTENCAO', _('Em manutenção')
+        AGUARDANDO_RETORNO = 'AGUARDANDO_RETORNO', _('Aguardando retorno para a base')
+        FINALIZADO = 'FINALIZADO', _('Finalizado')
+
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='sicks')
     categoria = models.CharField(max_length=100)
     motivo = models.TextField(blank=True, null=True)
@@ -571,6 +590,62 @@ class Sick(models.Model):
     descricao = models.TextField(null=True, blank=True)
     status_final = models.CharField(max_length=40, choices=StatusEquipamento.choices, null=True, blank=True)
     observacao_resolucao = models.TextField(null=True, blank=True)
+    etapa = models.CharField(
+        max_length=30,
+        choices=Etapa.choices,
+        default=Etapa.IDENTIFICADO,
+        db_index=True,
+    )
+    enviado_manutencao_em = models.DateTimeField(null=True, blank=True)
+    enviado_manutencao_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sicks_enviados_manutencao',
+    )
+    recebido_manutencao_em = models.DateTimeField(null=True, blank=True)
+    recebido_manutencao_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sicks_recebidos_manutencao',
+    )
+    avaliacao_iniciada_em = models.DateTimeField(null=True, blank=True)
+    avaliacao_iniciada_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sicks_avaliados',
+    )
+    manutencao_iniciada_em = models.DateTimeField(null=True, blank=True)
+    manutencao_iniciada_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sicks_manutencao_iniciada',
+    )
+    manutencao_concluida_em = models.DateTimeField(null=True, blank=True)
+    manutencao_concluida_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sicks_manutencao_concluida',
+    )
+    retorno_confirmado_em = models.DateTimeField(null=True, blank=True)
+    retorno_confirmado_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sicks_retorno_confirmado',
+    )
+    destino_manutencao = models.CharField(max_length=255, blank=True)
+    protocolo_envio = models.CharField(max_length=100, blank=True)
+    transportadora_ou_portador = models.CharField(max_length=255, blank=True)
+    causa_identificada = models.TextField(blank=True)
+    diagnostico = models.TextField(blank=True)
+    solucao_aplicada = models.TextField(blank=True)
+    resultado_manutencao = models.TextField(blank=True)
+    apto_retorno = models.BooleanField(null=True, blank=True)
+    observacao_tecnica = models.TextField(blank=True)
+
+    class Meta:
+        permissions = [
+            ('enviar_equipamento_manutencao', 'Pode enviar equipamento para manutenção'),
+            ('receber_equipamento_manutencao', 'Pode confirmar recebimento na manutenção'),
+            ('avaliar_equipamento_sick', 'Pode avaliar equipamento SICK'),
+            ('iniciar_manutencao_equipamento', 'Pode iniciar manutenção'),
+            ('concluir_manutencao_equipamento', 'Pode concluir manutenção'),
+            ('confirmar_retorno_equipamento', 'Pode confirmar retorno do equipamento'),
+            ('corrigir_fluxo_sick', 'Pode corrigir etapas do fluxo SICK'),
+        ]
 
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):
@@ -579,6 +654,18 @@ class Historico(models.Model):
         ('TRANSFERENCIA', _('Transferência')),
         ('STATUS', _('SICK')),
         ('EDICAO', _('Edição')),
+        ('SICK', _('Marcado como SICK')),
+        ('SICK_ATUALIZADO', _('SICK atualizado')),
+        ('SICK_ENVIO_MANUTENCAO', _('Enviado para manutenção')),
+        ('SICK_RECEBIMENTO_MANUTENCAO', _('Recebido pela manutenção')),
+        ('SICK_AVALIACAO', _('Avaliação técnica iniciada')),
+        ('MANUTENCAO_INICIADA', _('Manutenção iniciada')),
+        ('MANUTENCAO_ATUALIZADA', _('Manutenção atualizada')),
+        ('MANUTENCAO_CONCLUIDA', _('Manutenção concluída')),
+        ('SICK_AGUARDANDO_RETORNO', _('Aguardando retorno')),
+        ('SICK_RETORNO_CONFIRMADO', _('Retorno confirmado')),
+        ('RESOLUCAO_SICK', _('SICK finalizado')),
+        ('SICK_REABERTO', _('SICK reaberto')),
     ]
 
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE)
@@ -621,6 +708,8 @@ class Comunicado(models.Model):
     ativo = models.BooleanField(default=True)
     expira_em = models.DateTimeField(null=True, blank=True)
     permitir_limpar = models.BooleanField(default=True)
+    dados = models.JSONField(blank=True, null=True)
+    url = models.CharField(max_length=500, blank=True)
 
     def expirado(self):
         from django.utils import timezone

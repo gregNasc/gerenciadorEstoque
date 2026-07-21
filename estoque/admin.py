@@ -108,6 +108,7 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
         "patrimonio",
         "get_produto",
         "regional",
+        "finalidade",
         "status_colored",
         "preview_foto",
         "data_atualizacao"
@@ -123,7 +124,7 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
         "responsavel"
     )
 
-    list_filter = ("status", "regional", "produto__fabricante")
+    list_filter = ("finalidade", "status", "regional", "produto__fabricante")
 
     readonly_fields = (
         "data_cadastro",
@@ -204,6 +205,7 @@ class SickAdmin(EmpresaAdminMixin, admin.ModelAdmin):
     list_display = (
         "equipamento",
         "categoria",
+        "etapa",
         "motivo_resumido",
         "previsao_retorno",
         "data_ocorrencia",
@@ -219,7 +221,7 @@ class SickAdmin(EmpresaAdminMixin, admin.ModelAdmin):
         "categoria"
     )
 
-    list_filter = ("categoria", "data_ocorrencia", "resolvido_por")
+    list_filter = ("etapa", "categoria", "data_ocorrencia", "resolvido_por")
 
     readonly_fields = ("data_ocorrencia",)
 

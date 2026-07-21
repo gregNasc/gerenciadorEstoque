@@ -10,6 +10,12 @@
             {% trans "➕ Novo Equipamento" %}
         </div>
         <div class="card-body">
+            {% if base_selecionada %}
+            <div class="alert alert-info py-2">
+                <strong>{% trans "Base do contexto:" %}</strong>
+                {{ base_selecionada.nome }} — {{ base_selecionada.empresa.nome }}
+            </div>
+            {% endif %}
             <form method="post" enctype="multipart/form-data" id="formEquipamento">
                 {% csrf_token %}
                 <div class="row">
@@ -80,6 +86,7 @@
                     <div class="col-md-6 mb-2"><strong>{% trans "Nº de Série:" %}</strong> <span id="modalNumeroSerie"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Patrimônio:" %}</strong> <span id="modalPatrimonio"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Regional:" %}</strong> <span id="modalRegional"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "Finalidade:" %}</strong> <span id="modalFinalidade"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Responsável:" %}</strong> <span id="modalResponsavel"></span></div>
                     <div class="col-12 mb-2">
                         <strong>Foto:</strong>
@@ -215,6 +222,10 @@
                 const regSelect = document.querySelector('[name="regional"]');
                 const regText = regSelect?.options[regSelect.selectedIndex]?.text || '';
                 document.getElementById('modalRegional').innerText = regText || '(não selecionada)';
+
+                const finalidadeSelect = document.querySelector('[name="finalidade"]');
+                const finalidadeText = finalidadeSelect?.options[finalidadeSelect.selectedIndex]?.text || '';
+                document.getElementById('modalFinalidade').innerText = finalidadeText || '(não selecionada)';
 
                 // Responsável
                 const resp = document.querySelector('[name="responsavel"]');

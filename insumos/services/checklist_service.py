@@ -17,6 +17,7 @@ from insumos.services.consumo_service import ConsumoService
 from insumos.services.movimentacao_service import MovimentacaoService
 from estoque.models import Comunicado, Equipamento, Historico, Sick
 from estoque.services.comunicado_service import ComunicadoService
+from estoque.services.sick_service import SickService
 from django.contrib.auth.models import User
 
 
@@ -24,13 +25,23 @@ class ChecklistService:
 
     @staticmethod
     @transaction.atomic
-    def criar(*, inventario, usuario, responsavel=None, observacao=''):
+    def criar(
+        *,
+        inventario,
+        usuario,
+        responsavel=None,
+        observacao='',
+        quantidade_volumes=0,
+        transporte='',
+    ):
         return ChecklistDiario.objects.create(
             inventario=inventario,
             data_inicio=timezone.now(),
             criado_por=usuario,
             responsavel=responsavel or usuario,
             observacao=observacao,
+            quantidade_volumes=quantidade_volumes,
+            transporte=(transporte or '').strip(),
             status='EM_EXECUCAO',
         )
 
@@ -235,22 +246,25 @@ class ChecklistService:
         item_equip.resolvido_em = agora if status_retorno != 'PENDENTE' else None
 
         if status_retorno == 'RETORNADO':
+            if Sick.objects.filter(equipamento=equipamento, ativo=True).exclude(
+                etapa=Sick.Etapa.FINALIZADO
+            ).exists():
+                raise ValueError(
+                    'O equipamento possui SICK ativo; confirme o retorno pelo fluxo de manutenção.'
+                )
             item_equip.data_retorno = item_equip.data_retorno or agora
             equipamento.status = 'ATIVO'
             equipamento.save(update_fields=['status', 'data_atualizacao'])
         elif status_retorno in ('SICK', 'DANO'):
             item_equip.data_retorno = None
-            equipamento.status = 'SICK'
-            equipamento.save(update_fields=['status', 'data_atualizacao'])
             if gerar_ocorrencia:
-                Sick.objects.create(
-                    equipamento=equipamento,
+                SickService.marcar_como_sick(
+                    equipamento_id=equipamento.pk,
+                    usuario=usuario,
                     categoria=status_retorno,
                     motivo=observacao,
-                    descricao=f'Ocorrência registrada no retorno do checklist #{item_equip.checklist_id}.',
-                    ativo=True,
+                    observacao=f'Ocorrência registrada no retorno do checklist #{item_equip.checklist_id}.',
                 )
-                ChecklistService._comunicar_admins_equipamento(item_equip, usuario)
         elif status_retorno in ('PERDA', 'ROUBO'):
             item_equip.data_retorno = None
             equipamento.status = 'INATIVO'

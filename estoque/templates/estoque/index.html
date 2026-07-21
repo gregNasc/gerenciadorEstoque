@@ -112,10 +112,18 @@
                     <span class="text-secondary">{% trans "Ativos" %}</span>
                     <strong class="text-success">{{ item.ativos }}</strong>
                 </div>
+                <!--div class="d-flex justify-content-between small">
+                    <span class="text-secondary">{% trans "Administrativos" %}</span>
+                    <strong class="text-info">{{ item.administrativos }}</strong>
+                </div-->
                 <div class="d-flex justify-content-between small">
                     <span class="text-secondary">{% trans "Sick" %}</span>
                     <strong class="text-danger">{{ item.sick }}</strong>
                 </div>
+                <!--div class="d-flex justify-content-between small">
+                    <span class="text-secondary">{% trans "Inativos" %}</span>
+                    <strong class="text-secondary">{{ item.inativos }}</strong>
+                </div-->
 
             </div>
         </div>
@@ -134,6 +142,9 @@
             <div class="card border-0 shadow-sm h-100 bg-white regional-card"
                  data-regional-id="{{ r.regional__id }}"
                  data-regional-nome="{{ r.regional__nome }}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="{% blocktrans with nome=r.regional__nome %}Ver detalhes da regional {{ nome }}{% endblocktrans %}"
                  style="cursor: pointer;">
                 <div class="card-body p-3">
                     <h6 class="fw-semibold mb-3 pb-1 border-bottom">{{ r.regional__nome }}</h6>
@@ -207,6 +218,10 @@
                         <span class="text-secondary">{% trans "Inativos" %}</span>
                         <strong class="text-secondary">{{ r.inativos }}</strong>
                     </div>
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span class="text-secondary">{% trans "Administrativos" %}</span>
+                        <strong class="text-info">{{ r.administrativos }}</strong>
+                    </div>
 
                     <!-- Barra de disponibilidade -->
                     <div class="small text-secondary mb-1">{% trans "Disponibilidade:" %} {{ r.disponibilidade }}%</div>
@@ -222,9 +237,9 @@
                     </div>
 
                     <div class="text-center mt-3">
-                        <small class="text-secondary">
+                        <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none p-2 regional-details-button">
                             <i class="bi bi-chevron-right"></i> {% trans "Ver detalhes" %}
-                        </small>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -344,6 +359,18 @@
 
 .text-success { color: #137333; }
 .text-danger { color: #c5221f; }
+
+@media (max-width: 767.98px) {
+    .container-fluid.px-4 { padding-left: .8rem !important; padding-right: .8rem !important; }
+    .regional-card { padding: 0; }
+    #modal { padding: .55rem; align-items: flex-start; overflow-y: auto; }
+    #modal .modal-content { max-width: 100% !important; max-height: calc(100dvh - 1.1rem); margin: 0; overflow: hidden; }
+    #modal .modal-header { padding: .8rem 1rem !important; }
+    #modal .modal-body { padding: 1rem !important; overflow-y: auto; }
+    #modal .produtos-grid { grid-template-columns: 1fr; gap: .75rem; }
+    #modal .produto-card { padding: .85rem; }
+    .regional-details-button { min-height: 44px; min-width: 140px; }
+}
 </style>
 
 <script>
@@ -359,7 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentRegionalNome = null;
 
     const closeModal = () => {
-        if (DOM.modal) DOM.modal.classList.add('hidden');
+        if (DOM.modal) {
+            DOM.modal.classList.remove('show');
+            DOM.modal.classList.add('hidden');
+        }
         currentRegionalId = null;
         currentRegionalNome = null;
     };
@@ -453,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentRegionalNome = nome;
         DOM.modalTitle.innerText = nome;
         DOM.modal.classList.remove('hidden');
+        DOM.modal.classList.add('show');
         showLoading();
 
         try {
@@ -467,11 +498,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Cards regionais
     document.querySelectorAll('.regional-card').forEach(card => {
-        card.addEventListener('click', () => {
+        const abrir = () => {
             const regionalId = card.dataset.regionalId;
             const regionalNome = card.dataset.regionalNome;
             if (regionalId && regionalNome) {
                 carregarDetalhesRegional(regionalId, regionalNome);
+            }
+        };
+        card.addEventListener('click', abrir);
+        card.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                abrir();
             }
         });
     });

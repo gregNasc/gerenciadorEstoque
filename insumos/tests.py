@@ -1,5 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
+from io import BytesIO
+
+import openpyxl
 
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
@@ -9,7 +12,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from estoque.models import Base, Empresa, Perfil
+from estoque.models import Base, Empresa, Equipamento, Perfil, Produto
 from insumos.constants import GruposInsumos
 from insumos.models import (
     CategoriaInsumo,
@@ -18,6 +21,7 @@ from insumos.models import (
     Insumo,
     Inventario,
     MovimentacaoInsumo,
+    ItemChecklist,
     ItemSolicitacaoInsumo,
     SolicitacaoInsumo,
 )
@@ -274,6 +278,124 @@ class UltimoChecklistPorLojaTests(TestCase):
         self.assertIsNone(resposta.json()['dados'])
 
 
+class ChecklistModeloOficialTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa checklist modelo')
+        self.base = Base.objects.create(
+            nome='BASE CHECKLIST MODELO',
+            empresa=self.empresa,
+        )
+        self.admin = User.objects.create_user(
+            'admin_checklist_modelo',
+            password='teste',
+        )
+        Perfil.objects.update_or_create(
+            user=self.admin,
+            defaults={'empresa': None, 'role': Perfil.Role.ADMIN},
+        )
+        self.cliente = Cliente.objects.create(
+            sigla='MOD',
+            nome='Cliente Modelo',
+        )
+        self.inventario = Inventario.objects.create(
+            cliente=self.cliente,
+            loja='101',
+            base=self.base,
+            data_inicio=date.today(),
+            status='PLANEJADO',
+            criado_por=self.admin,
+            pessoas=15,
+            endereco='Rua do Modelo, 100',
+            bairro='Centro',
+            cidade='São Paulo',
+        )
+        categoria = CategoriaInsumo.objects.create(
+            nome='DEPARTAMENTO PESSOAL',
+        )
+        self.insumo = Insumo.objects.create(
+            descricao='Toner Impressora Laser',
+            categoria=categoria,
+            unidade_medida='UN',
+        )
+
+    def test_modelo_xlsx_preserva_abas_e_campos_oficiais(self):
+        checklist = ChecklistDiario.objects.create(
+            inventario=self.inventario,
+            data_inicio=timezone.now(),
+            criado_por=self.admin,
+            responsavel=self.admin,
+            status='EM_EXECUCAO',
+            quantidade_volumes=7,
+            transporte='Motorista Teste',
+        )
+        ItemChecklist.objects.create(
+            checklist=checklist,
+            insumo=self.insumo,
+            quantidade_enviada=Decimal('3'),
+        )
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(
+            reverse('insumos:exportar_checklist_modelo', args=[checklist.pk])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        workbook = openpyxl.load_workbook(BytesIO(resposta.content))
+        self.assertEqual(workbook.sheetnames, ['Declaração', 'Check - List'])
+        self.assertEqual(workbook['Declaração']['F41'].value, 7)
+        self.assertEqual(workbook['Check - List']['E76'].value, 7)
+        self.assertEqual(workbook['Check - List']['E11'].value, 3)
+        self.assertEqual(workbook['Check - List']['C3'].value, 'MOD')
+
+    def test_limite_de_coletores_e_pessoas_mais_cinco(self):
+        produto = Produto.objects.create(
+            codigo='COLETOR-LIMITE',
+            descricao='Coletor Limite',
+            fabricante='Teste',
+            modelo='Teste',
+            categoria='Coletores',
+        )
+        equipamentos = [
+            Equipamento.objects.create(
+                produto=produto,
+                numero_serie=f'SERIE-LIMITE-{indice}',
+                patrimonio=f'PAT-LIMITE-{indice}',
+                regional=self.base,
+                codigo=f'EQ-LIMITE-{indice}',
+                status='ATIVO',
+            )
+            for indice in range(21)
+        ]
+        self.client.force_login(self.admin)
+
+        resposta = self.client.post(
+            reverse('estoque:checklist'),
+            {
+                'inventario': self.inventario.pk,
+                'quantidade_volumes': 1,
+                'equipamentos_coletor': [
+                    equipamento.pk for equipamento in equipamentos
+                ],
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        self.assertFalse(
+            ChecklistDiario.objects.filter(inventario=self.inventario).exists()
+        )
+
+    def test_api_inventario_informa_limite_de_coletores(self):
+        self.client.force_login(self.admin)
+        resposta = self.client.get(
+            reverse(
+                'insumos:inventario_detalhes',
+                args=[self.inventario.pk],
+            )
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()['limite_coletores'], 20)
+
+
 class AcessoCustosInsumosTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa custos')
@@ -296,7 +418,10 @@ class AcessoCustosInsumosTests(TestCase):
 
     def _usuario(self, username, role, grupo=None):
         user = User.objects.create_user(username, password='teste')
-        Perfil.objects.create(user=user, empresa=self.empresa, role=role)
+        Perfil.objects.update_or_create(
+            user=user,
+            defaults={'empresa': self.empresa, 'role': role},
+        )
         if grupo:
             user.groups.add(Group.objects.create(name=grupo))
         return user
@@ -337,6 +462,15 @@ class AcessoCustosInsumosTests(TestCase):
             'inventario': '',
         })
         self.assertEqual(resposta.status_code, 200)
+
+    def test_precos_e_fornecedores_usam_layout_responsivo_de_custos(self):
+        self.client.force_login(self.admin)
+        for nome_url in ('precos_insumos', 'fornecedores_insumos'):
+            resposta = self.client.get(reverse(f'insumos:{nome_url}'))
+            self.assertEqual(resposta.status_code, 200)
+            self.assertContains(resposta, 'cost-page')
+            self.assertContains(resposta, 'cost-kpi')
+            self.assertContains(resposta, 'cost-responsive-table')
 
     def test_financeiro_visualiza_mas_nao_executa_pesquisa_online(self):
         self.client.force_login(self.financeiro)
