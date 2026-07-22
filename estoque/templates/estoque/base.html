@@ -30,6 +30,10 @@
     <!-- CSS -->
     <link rel="stylesheet"
           href="{% static 'css/style.css' %}?v=4">
+    {% if request.user.is_authenticated %}
+    <link rel="stylesheet"
+          href="{% static 'css/tory.css' %}?v=1">
+    {% endif %}
     {% block extra_css %}{% endblock %}
 
 </head>
@@ -186,15 +190,17 @@
                         </li-->
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos %}
-                        <li>
+                        <!--li>
                             <hr class="dropdown-divider">
                         </li-->
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:lista_inventarios' %}">
                                 <i class="bi bi-list-ul"></i>
                                 Inventários
                             </a>
                         </li>
+                        -->
                         {% endif %}
                         {% if perms.integracao.gerenciar_mapeamentos_planning %}
                         <!--li>
@@ -690,6 +696,10 @@ document.addEventListener('DOMContentLoaded', function() {
 {% block extra_js %}{% endblock %}
 {% if request.user.is_authenticated %}
     {% include 'estoque/partials/assistente_widget.html' %}
+    <script src="{% static 'js/tory-api.js' %}?v=1" defer></script>
+    <script src="{% static 'js/tory-renderer.js' %}?v=1" defer></script>
+    <script src="{% static 'js/tory-resultados.js' %}?v=1" defer></script>
+    <script src="{% static 'js/tory.js' %}?v=1" defer></script>
 {% endif %}
 </body>
 </html>

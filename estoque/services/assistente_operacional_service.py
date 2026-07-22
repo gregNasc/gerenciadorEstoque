@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 from math import ceil
 from numbers import Number
 
-from django.db.models import Case, Count, DecimalField, Q, Sum, Value, When
+from django.db.models import Case, Count, DecimalField, Prefetch, Q, Sum, Value, When, prefetch_related_objects
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
@@ -31,6 +31,8 @@ class InterpretacaoOperacional:
     opcoes_base: list[str] = field(default_factory=list)
     todas_bases: bool = False
     status: str = ''
+    finalidade: str = ''
+    equipamento_identificador: str = ''
     data: object | None = None
     protocolo: str = ''
     cliente: object | None = None
@@ -189,6 +191,12 @@ class AssistenteOperacionalService:
         texto = cls._remover_vocativo_tory(texto)
         texto = cls._interpretar_linguagem_cotidiana(texto)
         continuacao = cls._eh_continuacao(texto)
+        consulta_equipamento_explicita = bool(
+            re.search(
+                r'\b(equipamento|equipamentos|patrimonio|patrimonios|serie|serial)\b',
+                texto,
+            )
+        ) and not bool(re.search(r'\b(inventario|inventarios)\b', texto))
         consulta_relatorio = cls._pergunta_relatorio_inventario(texto)
         consulta_tempo_operacional = cls._pergunta_tempos_operacionais(texto)
         consulta_custo = not consulta_tempo_operacional and (cls._pergunta_custo_insumo(texto) or (
@@ -260,11 +268,16 @@ class AssistenteOperacionalService:
         if grupo_solicitado and cls._normalizar(grupo_solicitado.nome).startswith('oxxo '):
             uf_solicitada = ''
         base_visivel = cls._validar_base_visivel(user, base_solicitada) if base_solicitada else None
+        base_bloqueada = (
+            base_solicitada.nome
+            if base_solicitada and not base_visivel
+            else ''
+        )
         if not base_visivel and not todas_bases and not uf_solicitada:
             base_visivel = cls._extrair_base(user, texto)
         grupo_visivel = cls._validar_grupo_visivel(user, grupo_solicitado) if grupo_solicitado else None
         sem_novo_escopo = not (base_solicitada or uf_solicitada or grupo_solicitado or todas_bases)
-        if not base_visivel and sem_novo_escopo:
+        if not base_visivel and not base_bloqueada and sem_novo_escopo:
             base_visivel = cls._base_do_contexto(user, contexto)
         if not grupo_visivel and sem_novo_escopo:
             grupo_visivel = cls._grupo_do_contexto(user, contexto)
@@ -277,7 +290,10 @@ class AssistenteOperacionalService:
             base_visivel = bases_visiveis[0]
             uf = ''
             uf_bloqueada = ''
-        if not base_visivel and not grupo_visivel and not uf and not todas_bases:
+        if (
+            not base_visivel and not base_bloqueada and not grupo_visivel and
+            not uf and not todas_bases
+        ):
             if len(bases_visiveis) == 1:
                 base_visivel = bases_visiveis[0]
         categoria = cls._extrair_categoria(texto)
@@ -285,6 +301,17 @@ class AssistenteOperacionalService:
             categoria = 'Coletores'
         if todas_bases and not categoria:
             categoria = contexto.get('categoria', '')
+        equipamento_identificador = cls._extrair_identificador_equipamento(texto)
+        if not equipamento_identificador and contexto.get('equipamento_identificador') and (
+            continuacao or cls._tem(
+                texto, 'status', 'finalidade', 'sick', 'etapa', 'transferencia',
+                'emprestimo', 'checklist', 'onde', 'situacao', 'andamento',
+            )
+        ):
+            equipamento_identificador = contexto.get('equipamento_identificador', '')
+        finalidade = cls._extrair_finalidade_equipamento(texto)
+        if not finalidade and equipamento_identificador:
+            finalidade = contexto.get('finalidade', '')
 
         contexto_planejamento = contexto.get('intencao') == 'planejamento'
         planning_action = cls._planning_action(texto, contexto)
@@ -320,11 +347,13 @@ class AssistenteOperacionalService:
             base=base_visivel,
             grupo=grupo_visivel,
             uf=uf,
-            base_bloqueada=base_solicitada.nome if base_solicitada and not base_visivel else '',
+            base_bloqueada=base_bloqueada,
             grupo_bloqueado=grupo_solicitado.nome if grupo_solicitado and not grupo_visivel else '',
             uf_bloqueada=uf_bloqueada,
             todas_bases=todas_bases,
-            status='ATIVO' if cls._tem(texto, 'ativo', 'ativos', 'disponivel', 'disponiveis') else contexto.get('status', ''),
+            status=cls._extrair_status_equipamento(texto) or contexto.get('status', ''),
+            finalidade=finalidade,
+            equipamento_identificador=equipamento_identificador,
             data=data_interpretada,
             protocolo=cls._extrair_protocolo(pergunta),
             cliente=cliente,
@@ -403,6 +432,12 @@ class AssistenteOperacionalService:
             (continuacao or re.search(r'\b(semana|mes|hoje|amanha|ontem)\b', texto))
         ):
             interpretacao.intencao = 'testes_sistema'
+        elif consulta_equipamento_explicita:
+            interpretacao.intencao = (
+                'equipamentos_categoria' if interpretacao.categoria else 'equipamentos'
+            )
+        elif interpretacao.equipamento_identificador:
+            interpretacao.intencao = 'equipamentos'
         elif contexto.get('intencao') == 'inventarios_relatorio' and (
             continuacao or re.search(r'\b(semana|mes|hoje|amanha|ontem)\b', texto)
         ):
@@ -491,10 +526,28 @@ class AssistenteOperacionalService:
             interpretacao.intencao = 'historico'
         elif cls._tem(texto, 'insumo', 'insumos', 'tag', 'tags', 'material', 'materiais'):
             interpretacao.intencao = 'insumos'
-        elif cls._tem(texto, 'inventario', 'inventarios', 'checklist', 'checklists'):
+        elif cls._tem(texto, 'checklist', 'checklists'):
             interpretacao.intencao = 'inventarios_checklists'
+        elif cls._tem(texto, 'inventario', 'inventarios'):
+            interpretacao.intencao = 'inventarios_data_base'
         elif cls._tem(texto, 'estoque', 'equipamento', 'equipamentos', 'patrimonio', 'serie', 'base'):
             interpretacao.intencao = 'equipamentos'
+
+        if (
+            consulta_equipamento_explicita and
+            not continuacao and
+            not base_solicitada and
+            not grupo_solicitado and
+            not uf_solicitada and
+            contexto.get('intencao') not in {'equipamentos', 'equipamentos_categoria'}
+        ):
+            # Uma pergunta completa sobre equipamentos inicia um novo domínio.
+            # Não herda silenciosamente a base de uma consulta anterior de
+            # inventários; o queryset continuará limitado a todas as bases
+            # autorizadas do usuário.
+            interpretacao.base = None
+            interpretacao.grupo = None
+            interpretacao.uf = ''
 
         selecao_base_contextual = bool(
             base_explicita and
@@ -548,6 +601,12 @@ class AssistenteOperacionalService:
             return
 
         if interpretacao.intencao in {'transferencias', 'historico'} and interpretacao.protocolo:
+            return
+
+        # Pesquisas de equipamentos podem percorrer todas as bases já autorizadas.
+        # O queryset seguro continua sendo a barreira definitiva e cada drill-down
+        # revalida o mesmo escopo no backend.
+        if interpretacao.intencao == 'equipamentos':
             return
 
         if interpretacao.todas_bases or interpretacao.grupo or interpretacao.uf:
@@ -2021,18 +2080,19 @@ class AssistenteOperacionalService:
 
     @classmethod
     def _equipamentos_categoria(cls, user, interpretacao):
-        qs = cls._equipamentos_visiveis(user).filter(produto__categoria=interpretacao.categoria)
+        qs = cls._equipamentos_visiveis(user).filter(produto__categoria__iexact=interpretacao.categoria)
         if interpretacao.base:
             qs = qs.filter(regional=interpretacao.base)
         elif interpretacao.uf:
             qs = qs.filter(regional__in=cls._bases_da_uf_visiveis(user, interpretacao.uf))
+        qs = cls._aplicar_filtros_equipamentos(qs, interpretacao)
         if interpretacao.todas_bases or interpretacao.uf:
             return cls._equipamentos_categoria_por_base(user, interpretacao, qs)
 
         total = qs.count()
-        ativos = qs.filter(
-            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
-        ).count()
+        ativos = qs.filter(status='ATIVO').count()
+        operacionais = qs.filter(finalidade=Equipamento.Finalidade.OPERACIONAL).count()
+        administrativos = qs.filter(finalidade=Equipamento.Finalidade.ADMINISTRATIVO).count()
         em_uso = qs.filter(status='EM_USO').count()
         sick = qs.filter(status='SICK').count()
         manutencao = qs.filter(status='MANUTENCAO').count()
@@ -2042,8 +2102,11 @@ class AssistenteOperacionalService:
         linhas = [
             f'{interpretacao.categoria}{escopo}',
             '',
-            'TOTAL VISÍVEL | ATIVOS | EM USO | SICK | MANUTENÇÃO | INATIVOS',
-            f'{total} | {ativos} | {em_uso} | {sick} | {manutencao} | {inativos}',
+            'TOTAL VISÍVEL | ATIVOS | EM USO | SICK | MANUTENÇÃO | INATIVOS | OPERACIONAIS | ADMINISTRATIVOS',
+            (
+                f'{total} | {ativos} | {em_uso} | {sick} | {manutencao} | '
+                f'{inativos} | {operacionais} | {administrativos}'
+            ),
         ]
 
         por_produto = (
@@ -2059,13 +2122,11 @@ class AssistenteOperacionalService:
                     f'{item["produto__descricao"] or "-"} | {item["total"]} | '
                     f'{cls._formatar_decimal(participacao)}%'
                 )
+        linhas.extend(cls._linhas_detalhes_equipamentos(user, qs, total=total))
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
     def _equipamentos_categoria_por_base(cls, user, interpretacao, qs):
-        if interpretacao.status:
-            qs = qs.filter(status=interpretacao.status)
-
         totais_por_base = {
             item['regional_id']: item['total']
             for item in qs.values('regional_id')
@@ -2095,6 +2156,7 @@ class AssistenteOperacionalService:
                 key=lambda item: (-totais_por_base.get(item.pk, 0), item.nome),
             )
         )
+        linhas.extend(cls._linhas_detalhes_equipamentos(user, qs, total=total))
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
@@ -2104,9 +2166,16 @@ class AssistenteOperacionalService:
             qs = qs.filter(regional=interpretacao.base)
         elif interpretacao.uf:
             qs = qs.filter(regional__in=cls._bases_da_uf_visiveis(user, interpretacao.uf))
+        qs = cls._aplicar_filtros_equipamentos(qs, interpretacao)
 
         total = qs.count()
+        if interpretacao.equipamento_identificador and not total:
+            return cls._resposta(
+                'estoque',
+                'não encontrei esse equipamento no seu escopo de acesso.',
+            )
         por_status = qs.values('status').annotate(total=Count('id')).order_by('-total')[:8]
+        por_finalidade = qs.values('finalidade').annotate(total=Count('id')).order_by('-total')
         por_categoria = qs.values('produto__categoria').annotate(total=Count('id')).order_by('-total')
         escopo = cls._descricao_escopo_geografico(interpretacao, prefixo=' em')
 
@@ -2124,6 +2193,15 @@ class AssistenteOperacionalService:
                     f'{item["status"] or "-"} | {item["total"]} | '
                     f'{cls._formatar_decimal(participacao)}%'
                 )
+        if por_finalidade:
+            linhas.extend(['', 'FINALIDADE | QUANTIDADE | %'])
+            labels_finalidade = dict(Equipamento.Finalidade.choices)
+            for item in por_finalidade:
+                participacao = Decimal(item['total'] * 100) / total if total else Decimal('0')
+                linhas.append(
+                    f'{labels_finalidade.get(item["finalidade"], item["finalidade"] or "-")} | '
+                    f'{item["total"]} | {cls._formatar_decimal(participacao)}%'
+                )
         if por_categoria:
             linhas.extend(['', 'CATEGORIA | QUANTIDADE | %'])
             for item in por_categoria:
@@ -2132,6 +2210,7 @@ class AssistenteOperacionalService:
                     f'{item["produto__categoria"] or "-"} | {item["total"]} | '
                     f'{cls._formatar_decimal(participacao)}%'
                 )
+        linhas.extend(cls._linhas_detalhes_equipamentos(user, qs, total=total))
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
@@ -2197,7 +2276,7 @@ class AssistenteOperacionalService:
             linhas = []
             for t in itens:
                 linhas.append(
-                    f'{t.protocolo}: {t.regional_origem.nome} -> {t.regional_destino.nome}, '
+                    f'{t.protocolo}: {cls._rota_autorizada(user, t.regional_origem, t.regional_destino)}, '
                     f'status {t.status}, {t.itens.count()} item(ns).'
                 )
             return cls._resposta('transferencias', '\n'.join(linhas))
@@ -2252,15 +2331,9 @@ class AssistenteOperacionalService:
         if interpretacao.data:
             inventarios = inventarios.filter(data_inicio=interpretacao.data)
 
-        checklists = ChecklistDiario.objects.select_related('inventario__base', 'inventario__cliente')
-        if not user.perfil.is_admin:
-            checklists = checklists.filter(inventario__base__in=user.perfil.regionais.all())
-        if interpretacao.base:
-            checklists = checklists.filter(inventario__base=interpretacao.base)
-        elif interpretacao.uf:
-            checklists = checklists.filter(inventario__base__in=cls._bases_da_uf_visiveis(user, interpretacao.uf))
-        if interpretacao.data:
-            checklists = checklists.filter(inventario__data_inicio=interpretacao.data)
+        checklists = ChecklistDiario.objects.select_related(
+            'inventario__base', 'inventario__cliente'
+        ).filter(inventario__in=inventarios)
 
         inv_status = inventarios.values('status').annotate(total=Count('id')).order_by('-total')
         chk_status = checklists.values('status').annotate(total=Count('id')).order_by('-total')
@@ -2330,7 +2403,7 @@ class AssistenteOperacionalService:
     def _base_sem_acesso(cls, user, interpretacao):
         return cls._resposta(
             'permissao',
-            f'nao posso consultar a base {interpretacao.base_bloqueada}, porque ela nao esta vinculada ao seu usuario.'
+            f'Não posso consultar a base {interpretacao.base_bloqueada}, porque ela não está vinculada ao seu usuário.'
         )
 
     @classmethod
@@ -2766,15 +2839,226 @@ class AssistenteOperacionalService:
             campo_regional='regional',
         )
 
+    @staticmethod
+    def _aplicar_filtros_equipamentos(qs, interpretacao):
+        if interpretacao.status:
+            qs = qs.filter(status=interpretacao.status)
+        if interpretacao.finalidade:
+            qs = qs.filter(finalidade=interpretacao.finalidade)
+        if interpretacao.equipamento_identificador:
+            identificador = interpretacao.equipamento_identificador
+            qs = qs.filter(
+                Q(patrimonio__iexact=identificador) |
+                Q(numero_serie__iexact=identificador) |
+                Q(codigo__iexact=identificador)
+            )
+        return qs
+
+    @classmethod
+    def _linhas_detalhes_equipamentos(cls, user, qs, *, total, limite=25):
+        if not total:
+            return []
+
+        from estoque.models import ItemEmprestimo, Sick, TransferenciaItem
+        from insumos.models import ChecklistEquipamento
+
+        equipamentos = list(
+            qs.order_by(
+                'regional__nome', 'produto__categoria', 'produto__descricao', 'patrimonio'
+            )[:limite]
+        )
+        if not equipamentos:
+            return []
+
+        transferencias = cls._transferencias_visiveis(user).exclude(
+            status__in=['CONCLUIDA', 'CANCELADA'],
+        )
+        emprestimos = cls._emprestimos_visiveis(user).exclude(
+            status__in=['FINALIZADO', 'CANCELADO'],
+        )
+        bases_visiveis = cls._bases_visiveis(user)
+        bases_visiveis_ids = {base.pk for base in bases_visiveis}
+        prefetch_related_objects(
+            equipamentos,
+            Prefetch(
+                'sicks',
+                queryset=Sick.objects.filter(ativo=True).order_by('-data_ocorrencia'),
+                to_attr='sicks_ativos_tory',
+            ),
+            Prefetch(
+                'transferenciaitem_set',
+                queryset=(
+                    TransferenciaItem.objects.filter(transferencia__in=transferencias)
+                    .select_related(
+                        'transferencia',
+                        'transferencia__regional_origem',
+                        'transferencia__regional_destino',
+                    )
+                    .order_by('-transferencia__data_criacao')
+                ),
+                to_attr='transferencias_ativas_tory',
+            ),
+            Prefetch(
+                'itememprestimo_set',
+                queryset=(
+                    ItemEmprestimo.objects.filter(emprestimo__in=emprestimos)
+                    .select_related(
+                        'emprestimo',
+                        'emprestimo__regional_origem',
+                        'emprestimo__regional_destino',
+                    )
+                    .order_by('-emprestimo__criado_em')
+                ),
+                to_attr='emprestimos_ativos_tory',
+            ),
+            Prefetch(
+                'checklistequipamento_set',
+                queryset=(
+                    ChecklistEquipamento.objects.filter(
+                        checklist__inventario__base__in=bases_visiveis,
+                    )
+                    .select_related(
+                        'checklist',
+                        'checklist__inventario',
+                        'checklist__inventario__cliente',
+                    )
+                    .order_by('-checklist__criado_em')
+                ),
+                to_attr='checklists_tory',
+            ),
+        )
+
+        linhas = [
+            '',
+            f'Detalhamento operacional (exibindo {len(equipamentos)} de {total}):',
+            '',
+            (
+                'PATRIMÔNIO | SÉRIE | CÓDIGO | PRODUTO | CATEGORIA | BASE | STATUS | '
+                'FINALIDADE | SICK / ETAPA | TRANSFERÊNCIA | EMPRÉSTIMO | CHECKLIST'
+            ),
+        ]
+        for equipamento in equipamentos:
+            sick = next(iter(equipamento.sicks_ativos_tory), None)
+            transferencia_item = next(iter(equipamento.transferencias_ativas_tory), None)
+            emprestimo_item = next(iter(equipamento.emprestimos_ativos_tory), None)
+            checklist_item = next(iter(equipamento.checklists_tory), None)
+            linhas.append(
+                ' | '.join((
+                    cls._valor_celula_equipamento(equipamento.patrimonio),
+                    cls._valor_celula_equipamento(equipamento.numero_serie),
+                    cls._valor_celula_equipamento(equipamento.codigo),
+                    cls._valor_celula_equipamento(
+                        equipamento.produto.descricao if equipamento.produto else '-'
+                    ),
+                    cls._valor_celula_equipamento(
+                        equipamento.produto.categoria if equipamento.produto else '-'
+                    ),
+                    cls._valor_celula_equipamento(equipamento.regional.nome),
+                    cls._valor_celula_equipamento(equipamento.get_status_display()),
+                    cls._valor_celula_equipamento(equipamento.get_finalidade_display()),
+                    cls._resumo_sick_equipamento(equipamento, sick),
+                    cls._resumo_transferencia_equipamento(
+                        user, transferencia_item, bases_visiveis_ids
+                    ),
+                    cls._resumo_emprestimo_equipamento(
+                        user, emprestimo_item, bases_visiveis_ids
+                    ),
+                    cls._resumo_checklist_equipamento(checklist_item),
+                ))
+            )
+        if total > len(equipamentos):
+            linhas.extend([
+                '',
+                f'Foram localizados muitos registros. Exibindo {len(equipamentos)} de {total}; refine por base, categoria, status, finalidade, patrimônio ou série.',
+            ])
+        return linhas
+
+    @staticmethod
+    def _valor_celula_equipamento(valor):
+        return str(valor or '-').replace('|', '/').replace('\n', ' ').strip() or '-'
+
+    @classmethod
+    def _resumo_sick_equipamento(cls, equipamento, sick):
+        if not sick:
+            return 'SICK sem ocorrência ativa' if equipamento.status == 'SICK' else '-'
+        partes = [sick.get_etapa_display()]
+        if sick.categoria:
+            partes.append(sick.categoria)
+        if sick.previsao_retorno:
+            partes.append(f'retorno {sick.previsao_retorno:%d/%m/%Y}')
+        return cls._valor_celula_equipamento(' · '.join(partes))
+
+    @classmethod
+    def _resumo_transferencia_equipamento(cls, user, item, bases_visiveis_ids):
+        if not item:
+            return '-'
+        transferencia = item.transferencia
+        return cls._valor_celula_equipamento(
+            f'{transferencia.protocolo} · {transferencia.get_status_display()} · ' +
+            cls._rota_autorizada(
+                user, transferencia.regional_origem, transferencia.regional_destino,
+                bases_visiveis_ids,
+            )
+        )
+
+    @classmethod
+    def _resumo_emprestimo_equipamento(cls, user, item, bases_visiveis_ids):
+        if not item:
+            return '-'
+        emprestimo = item.emprestimo
+        return cls._valor_celula_equipamento(
+            f'{emprestimo.protocolo} · {emprestimo.get_status_display()} · ' +
+            cls._rota_autorizada(
+                user, emprestimo.regional_origem, emprestimo.regional_destino,
+                bases_visiveis_ids,
+            )
+        )
+
+    @classmethod
+    def _rota_autorizada(cls, user, origem, destino, bases_visiveis_ids=None):
+        if user.perfil.is_admin:
+            return f'{origem.nome} -> {destino.nome}'
+        ids = bases_visiveis_ids or {base.pk for base in cls._bases_visiveis(user)}
+        nome_origem = origem.nome if origem.pk in ids else 'base não exibida'
+        nome_destino = destino.nome if destino.pk in ids else 'base não exibida'
+        return f'{nome_origem} -> {nome_destino}'
+
+    @classmethod
+    def _resumo_checklist_equipamento(cls, item):
+        if not item:
+            return '-'
+        checklist = item.checklist
+        inventario = checklist.inventario
+        return cls._valor_celula_equipamento(
+            f'#{checklist.pk} · {checklist.get_status_display()} · '
+            f'{inventario.cliente.sigla} loja {inventario.loja} · '
+            f'{item.get_status_retorno_display()}'
+        )
+
     @classmethod
     def _transferencias_visiveis(cls, user):
         perfil = user.perfil
         qs = Transferencia.objects.all()
         if perfil.is_admin:
             return qs
+        bases = cls._bases_visiveis(user)
         return qs.filter(
-            Q(regional_origem__in=perfil.regionais.all()) |
-            Q(regional_destino__in=perfil.regionais.all())
+            Q(regional_origem__in=bases) |
+            Q(regional_destino__in=bases)
+        )
+
+    @classmethod
+    def _emprestimos_visiveis(cls, user):
+        from estoque.models import Emprestimo
+
+        perfil = user.perfil
+        qs = Emprestimo.objects.all()
+        if perfil.is_admin:
+            return qs
+        bases = cls._bases_visiveis(user)
+        return qs.filter(
+            Q(regional_origem__in=bases) |
+            Q(regional_destino__in=bases)
         )
 
     @classmethod
@@ -2782,6 +3066,64 @@ class AssistenteOperacionalService:
         for termo, categoria in cls.CATEGORIAS.items():
             if re.search(rf'\b{re.escape(termo)}\b', texto):
                 return categoria
+        return ''
+
+    @staticmethod
+    def _extrair_identificador_equipamento(texto):
+        rotulados = (
+            r'\b(?:patrimonio|pat)\s*(?:n(?:umero)?\s*)?[:#-]?\s*([a-z0-9][a-z0-9._/-]{1,99})',
+            r'\b(?:numero\s+de\s+serie|serie|serial)\s*[:#-]?\s*([a-z0-9][a-z0-9._/-]{1,99})',
+            r'\b(?:codigo|cod)\s*[:#-]?\s*([a-z0-9][a-z0-9._/-]{1,99})',
+        )
+        ignorar = {
+            'ativo', 'ativos', 'administrativo', 'administrativos', 'operacional',
+            'operacionais', 'status', 'finalidade', 'sick', 'checklist',
+        }
+        for padrao in rotulados:
+            match = re.search(padrao, texto)
+            if match and match.group(1) not in ignorar:
+                return match.group(1).rstrip('.,;:')
+
+        if re.search(r'\b(?:equipamento|equipamentos|patrimonio|serie|serial|codigo)\b', texto):
+            padrao_candidato = r'\b(?=[a-z0-9._/-]*\d)[a-z0-9][a-z0-9._/-]{3,99}\b'
+        else:
+            # Evita confundir lojas alfanuméricas (por exemplo A063) com um
+            # equipamento em perguntas sobre inventários.
+            padrao_candidato = r'\b(?:eqp|pat|ser|sn)[-_][a-z0-9._/-]*\d[a-z0-9._/-]*\b'
+        candidatos = re.findall(padrao_candidato, texto)
+        ignorar_numericos = {'2024', '2025', '2026', '2027'}
+        return next(
+            (item.rstrip('.,;:') for item in candidatos if item not in ignorar_numericos),
+            '',
+        )
+
+    @classmethod
+    def _extrair_finalidade_equipamento(cls, texto):
+        tem_administrativo = cls._tem(texto, 'administrativo', 'administrativos')
+        tem_operacional = cls._tem(texto, 'operacional', 'operacionais')
+        if tem_administrativo and not tem_operacional and not cls._tem(
+            texto, 'inclua', 'incluindo', 'incluir', 'tambem', 'todos', 'todas',
+        ):
+            return Equipamento.Finalidade.ADMINISTRATIVO
+        if tem_operacional and not tem_administrativo:
+            return Equipamento.Finalidade.OPERACIONAL
+        return ''
+
+    @classmethod
+    def _extrair_status_equipamento(cls, texto):
+        aliases = (
+            (('reservado para transferencia', 'reservados para transferencia'), 'RESERVADO_TRANSFERENCIA'),
+            (('em transito',), 'EM_TRANSITO'),
+            (('em manutencao', 'manutencao'), 'MANUTENCAO'),
+            (('em uso',), 'EM_USO'),
+            (('inativo', 'inativos'), 'INATIVO'),
+            (('baixa', 'baixados'), 'BAIXA'),
+            (('sick',), 'SICK'),
+            (('ativo', 'ativos', 'disponivel', 'disponiveis'), 'ATIVO'),
+        )
+        for termos, status in aliases:
+            if any(re.search(rf'\b{re.escape(termo)}\b', texto) for termo in termos):
+                return status
         return ''
 
     @classmethod
@@ -3080,8 +3422,10 @@ class AssistenteOperacionalService:
         perfil = user.perfil
         if perfil.is_admin:
             bases = Base.objects.all().order_by('nome')
+        elif perfil.empresa_id:
+            bases = perfil.regionais.filter(empresa_id=perfil.empresa_id).order_by('nome')
         else:
-            bases = perfil.regionais.all().order_by('nome')
+            bases = Base.objects.none()
         return [base for base in bases if AssistenteOperacionalService._base_operacional(base)]
 
     @classmethod
@@ -4199,7 +4543,12 @@ class AssistenteOperacionalService:
         return {
             'intencao': intencao,
             'categoria': interpretacao.categoria,
-            'status': interpretacao.status if intencao == 'equipamentos_categoria' else '',
+            'status': interpretacao.status if intencao in {'equipamentos_categoria', 'equipamentos'} else '',
+            'finalidade': interpretacao.finalidade if intencao in {'equipamentos_categoria', 'equipamentos'} else '',
+            'equipamento_identificador': (
+                interpretacao.equipamento_identificador
+                if intencao in {'equipamentos_categoria', 'equipamentos'} else ''
+            ),
             'base': interpretacao.base.nome if interpretacao.base else '',
             'grupo': interpretacao.grupo.nome if interpretacao.grupo else '',
             'uf': interpretacao.uf,

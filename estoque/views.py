@@ -10,6 +10,7 @@ from .services.emprestimo_service import EmprestimoService
 from .services.comunicado_service import ComunicadoService
 from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
+from .services.assistente.response_builder import construir_erro, construir_resposta
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
 from django.db import transaction
@@ -47,7 +48,10 @@ from estoque.permissions import pode_realizar_manutencao_sick
 import json
 from django.urls import reverse
 import re
+import logging
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 from collections import defaultdict
 from .services.estoque_service import get_estoque_por_produto
 from django.contrib.auth import authenticate
@@ -346,12 +350,56 @@ def assistente_operacional(request):
     pergunta = ''
 
     if request.method == 'POST':
-        pergunta = request.POST.get('pergunta', '').strip()
-        contexto = request.session.get('assistente_operacional_contexto', {})
-        resultado = AssistenteOperacionalService.responder(request.user, pergunta, contexto=contexto)
-        request.session['assistente_operacional_contexto'] = resultado.get('contexto', {})
+        ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        if request.POST.get('acao') == 'limpar_contexto':
+            request.session.pop('assistente_operacional_contexto', None)
+            resposta = construir_resposta({
+                'resposta': 'Conversa reiniciada.',
+                'tipo': 'texto',
+            })
+            return JsonResponse(resposta) if ajax else redirect('estoque:assistente_operacional')
 
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        pergunta = request.POST.get('pergunta', '').strip()
+        if not pergunta:
+            resultado = construir_erro(
+                'Digite uma pergunta antes de enviar.',
+                codigo='pergunta_vazia',
+                status=400,
+            )
+            if ajax:
+                return JsonResponse(resultado, status=400)
+        else:
+            contexto = request.session.get('assistente_operacional_contexto', {})
+            try:
+                resposta_servico = AssistenteOperacionalService.responder(
+                    request.user,
+                    pergunta,
+                    contexto=contexto,
+                )
+                request.session['assistente_operacional_contexto'] = resposta_servico.get('contexto', {})
+                resultado = construir_resposta(resposta_servico)
+            except PermissionDenied:
+                resultado = construir_erro(
+                    'Você não possui permissão para consultar essas informações.',
+                    codigo='permissao',
+                    status=403,
+                )
+                if ajax:
+                    return JsonResponse(resultado, status=403)
+            except Exception:
+                logger.exception(
+                    'Falha controlada ao processar consulta da Tory para user_id=%s',
+                    request.user.pk,
+                )
+                resultado = construir_erro(
+                    'Não foi possível processar a consulta neste momento.',
+                    codigo='processamento',
+                    status=500,
+                )
+                if ajax:
+                    return JsonResponse(resultado, status=500)
+
+        if ajax:
             return JsonResponse(resultado)
 
     return render(
@@ -5172,24 +5220,97 @@ def checklist_view(request):
                 messages.error(request, 'Selecione ao menos um equipamento, informe um insumo ou adicione um lote de TAG.')
                 return redirect('estoque:checklist')
 
+            campos_declaracao = {
+                'departamento_pessoal': 'declaracao_departamento_pessoal',
+                'fios_cabos': 'declaracao_fios_cabos',
+                'coletor_dados': 'declaracao_coletor_dados',
+                'impressora': 'declaracao_impressora',
+                'escada': 'declaracao_escada',
+                'balanca': 'declaracao_balanca',
+                'extensor_rede_carrinho': 'declaracao_extensor_rede_carrinho',
+            }
+            declaracao_quantidades = {}
+            if any(nome in request.POST for nome in campos_declaracao.values()):
+                for chave, nome_post in campos_declaracao.items():
+                    try:
+                        quantidade = int(request.POST.get(nome_post, '0') or '0')
+                    except (TypeError, ValueError) as exc:
+                        raise ValidationError(
+                            'As quantidades da declaração devem ser números inteiros.'
+                        ) from exc
+                    if quantidade < 0:
+                        raise ValidationError(
+                            'As quantidades da declaração não podem ser negativas.'
+                        )
+                    declaracao_quantidades[chave] = quantidade
             try:
                 quantidade_volumes = int(
                     request.POST.get('quantidade_volumes', '0')
                 )
-            except (TypeError, ValueError):
+            except (TypeError, ValueError) as exc:
                 raise ValidationError(
                     'Informe uma quantidade de volumes válida para a declaração.'
-                )
-            if quantidade_volumes <= 0:
+                ) from exc
+            if quantidade_volumes <= 0 or quantidade_volumes > 9999:
                 raise ValidationError(
-                    'Informe ao menos um volume para a declaração de transporte.'
+                    'Informe uma quantidade de volumes entre 1 e 9999.'
                 )
             transporte = request.POST.get('transporte', '').strip()
 
+            def ler_horario_declaracao(nome):
+                valor = request.POST.get(nome, '').strip()
+                if not valor:
+                    return None
+                try:
+                    return datetime.strptime(valor, '%H:%M').time()
+                except ValueError as exc:
+                    raise ValidationError(
+                        f'Informe um horário válido para {nome.replace("_", " ")}.'
+                    ) from exc
+
+            ponto_encontro = request.POST.get('ponto_encontro', '').strip()
+            horario_ponto = ler_horario_declaracao('horario_ponto')
+            horario_inicio = ler_horario_declaracao('horario_inicio')
+            declaracao_dados = {
+                'cliente': request.POST.get(
+                    'declaracao_cliente', inventario.cliente.sigla
+                ).strip(),
+                'loja': request.POST.get(
+                    'declaracao_loja', str(inventario.loja)
+                ).strip(),
+                'data': request.POST.get(
+                    'declaracao_data', inventario.data_inicio.strftime('%d/%m/%Y')
+                ).strip(),
+                'endereco': request.POST.get(
+                    'declaracao_endereco', inventario.endereco or ''
+                ).strip(),
+                'bairro': request.POST.get(
+                    'declaracao_bairro', inventario.bairro or ''
+                ).strip(),
+                'cidade': request.POST.get(
+                    'declaracao_cidade', inventario.cidade or ''
+                ).strip(),
+                'horario_entrega': request.POST.get('horario_ponto', '').strip(),
+                'horario_inicio': request.POST.get('horario_inicio', '').strip(),
+                'ponto_encontro': ponto_encontro,
+                'transporte': transporte,
+            }
+
             with transaction.atomic():
+                campos_inventario = []
                 if lider_informado and lider_editavel:
                     inventario.lider = lider_informado
-                    inventario.save(update_fields=['lider'])
+                    campos_inventario.append('lider')
+
+                inventario.ponto_encontro = ponto_encontro
+                inventario.horario_ponto = horario_ponto
+                inventario.horario_inicio = horario_inicio
+                campos_inventario.extend([
+                    'ponto_encontro',
+                    'horario_ponto',
+                    'horario_inicio',
+                ])
+                inventario.save(update_fields=campos_inventario)
 
                 checklist = ChecklistService.criar(
                     inventario=inventario,
@@ -5197,6 +5318,8 @@ def checklist_view(request):
                     observacao=request.POST.get('observacao', ''),
                     quantidade_volumes=quantidade_volumes,
                     transporte=transporte,
+                    declaracao_quantidades=declaracao_quantidades,
+                    declaracao_dados=declaracao_dados,
                 )
 
                 if equipamentos_ids:

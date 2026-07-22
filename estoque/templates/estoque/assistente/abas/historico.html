@@ -1,0 +1,16 @@
+{% load i18n %}
+<section id="tory-panel-historico" class="tory-panel" role="tabpanel" aria-labelledby="tory-tab-historico" data-tory-panel="historico" hidden>
+    <div class="tory-section-heading">
+        <div>
+            <span class="tory-eyebrow">{% trans "Nesta sessão" %}</span>
+            <h3>{% trans "Histórico de consultas" %}</h3>
+        </div>
+    </div>
+    <div id="tory-history" class="tory-record-list"></div>
+    <div id="tory-history-empty" class="tory-panel-empty">
+        <i class="bi bi-clock-history" aria-hidden="true"></i>
+        <h3>{% trans "Seu histórico está vazio" %}</h3>
+        <p>{% trans "As perguntas feitas nesta página aparecerão aqui." %}</p>
+    </div>
+</section>
+

@@ -474,22 +474,409 @@
     }
 
     /* ================================
+       DOCUMENTOS OFICIAIS EDITÁVEIS
+    =================================*/
+    .document-switcher {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .document-switcher button {
+        min-height: 42px;
+        padding: 8px 18px;
+        border: 1px solid #1e3c72;
+        border-radius: 6px;
+        background: #fff;
+        color: #1e3c72;
+        font-weight: 700;
+    }
+
+    .document-switcher button.active {
+        background: #1e3c72;
+        color: #fff;
+    }
+
+    .editable-document {
+        display: none;
+        max-width: 1180px;
+        margin: 0 auto 20px;
+        padding: 24px;
+        border: 1px solid #9da7b2;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(30, 60, 114, .08);
+        color: #111;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .editable-document.active { display: block; }
+    .editable-document h1 {
+        margin: 0 0 18px;
+        text-align: center;
+        font-size: 1.35rem;
+        font-weight: 800;
+    }
+
+    #checklist-document > h1 {
+        margin: -24px -24px 18px;
+        padding: 17px 24px;
+        background: #17365d;
+        border-bottom: 5px solid #f2b705;
+        color: #fff;
+        letter-spacing: .025em;
+    }
+
+    .official-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 12px;
+        border: 1px solid #7b9cbd;
+        background: #f7fafc;
+    }
+
+    .official-meta-grid label,
+    .declaration-row label {
+        margin: 0;
+        font-size: .75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .official-field input,
+    .official-field select,
+    .official-meta-grid select {
+        width: 100%;
+        min-height: 31px;
+        padding: 4px 7px;
+        border: 1px solid #222;
+        border-radius: 0;
+        background: #fff;
+        color: #111;
+    }
+
+    .official-field {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .official-field label {
+        padding: 6px 9px;
+        background: #d9e8f5;
+        border: 1px solid #7b9cbd;
+        border-bottom: 0;
+        color: #17365d;
+        font-weight: 900;
+    }
+
+    .official-field input,
+    .official-field select {
+        flex: 1;
+        border: 1px solid #7b9cbd;
+    }
+
+    .official-field input[readonly] { background: #f4f4f4; }
+    .official-field input:focus,
+    .official-field select:focus,
+    .official-meta-grid select:focus {
+        outline: 2px solid rgba(30, 60, 114, .2);
+        outline-offset: 0;
+    }
+
+    .official-address { grid-column: 1 / -1; }
+    .official-checklist-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 155px;
+        align-items: stretch;
+    }
+
+    .official-checklist-table {
+        width: 100%;
+        min-width: 850px;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: .72rem;
+    }
+
+    .official-checklist-table th,
+    .official-checklist-table td {
+        border: 1px solid #111;
+        padding: 4px 5px;
+        color: #111;
+        background: #fff;
+    }
+
+    .official-checklist-table thead th {
+        background: #17365d;
+        color: #fff;
+        font-weight: 800;
+        letter-spacing: .02em;
+        vertical-align: middle;
+    }
+
+    .official-checklist-table .category-col { width: 14%; font-weight: 800; text-transform: uppercase; }
+    .official-checklist-table .description-col { width: 31%; text-align: left; }
+    .official-checklist-table .quantity-col { width: 11%; }
+    .official-checklist-table .check-col { width: 11%; }
+    .official-checklist-table .input-cell input,
+    .official-checklist-table .input-cell select {
+        min-height: 28px;
+        border: 0;
+        border-bottom: 1px dashed #555;
+        background: #fff;
+    }
+
+    .equipment-official-row .equipment-picker {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .equipment-official-row .btn-selecionar { flex: 0 0 auto; }
+    .equipment-official-row .resumo-selecionados { margin-top: 3px; }
+    .attention-panel {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #111;
+        border-left: 0;
+        background: #d7d7d7;
+    }
+
+    .attention-panel > strong {
+        margin: 0;
+        padding: 7px 5px;
+        border-bottom: 1px solid #111;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 900;
+    }
+
+    .attention-panel p {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        margin: 0;
+        padding: 10px;
+        text-align: center;
+        font-size: .68rem;
+        font-weight: 700;
+        line-height: 1.4;
+    }
+
+    .official-observation {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        font-size: .72rem;
+        font-weight: 800;
+    }
+
+    .official-observation input { flex: 1; }
+    .official-volume-row {
+        display: grid;
+        grid-template-columns: 1fr 120px;
+        align-items: end;
+        gap: 20px;
+        margin-top: 18px;
+    }
+
+    .official-volume-row label { text-align: right; font-size: .8rem; font-weight: 900; }
+    .coordinator-line { display: flex; gap: 8px; align-items: center; padding-top: 7px; border-top: 1px solid #111; text-align: center; font-size: .7rem; }
+    .coordinator-line input { flex: 1; border: 0; border-bottom: 1px solid #111; }
+    .official-signatures {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-top: 46px;
+    }
+
+    .official-signatures input {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid #111;
+        text-align: center;
+    }
+
+    .official-signatures label { display: block; margin-top: 5px; text-align: center; font-size: .68rem; }
+    .declaration-document { max-width: 900px; }
+    .declaration-document > h1 {
+        margin: -24px -24px 20px;
+        padding: 18px 24px;
+        background: #17365d;
+        color: #fff;
+        border-bottom: 5px solid #f2b705;
+        letter-spacing: .025em;
+    }
+
+    .declaration-section-title {
+        margin: 18px 0 0;
+        padding: 9px 12px;
+        background: #d9e8f5;
+        border: 1px solid #7b9cbd;
+        color: #17365d;
+        font-size: .88rem;
+        font-weight: 900;
+        letter-spacing: .04em;
+    }
+    .declaration-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        padding: 12px;
+        border: 1px solid #7b9cbd;
+        border-top: 0;
+        background: #f7fafc;
+    }
+
+    .declaration-row {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .declaration-row.one-field { grid-template-columns: 180px minmax(0, 1fr); }
+    .declaration-row.two-fields { grid-template-columns: 180px minmax(0, 1fr) 180px minmax(0, 1fr); }
+    .declaration-row.three-fields { grid-template-columns: 90px minmax(0, 1fr) 65px minmax(0, 1fr) 55px minmax(0, 1fr); }
+
+    .declaration-row label,
+    .declaration-totals label,
+    .declaration-volume label {
+        display: flex;
+        align-items: center;
+        min-height: 35px;
+        padding: 6px 9px;
+        background: #17365d;
+        color: #fff;
+        font-weight: 800;
+    }
+
+    .declaration-row input,
+    .declaration-totals input,
+    .declaration-volume input {
+        min-height: 31px;
+        padding: 4px 7px;
+        border: 2px solid #7b9cbd;
+        border-radius: 0;
+        background: #fffdf0;
+        color: #111;
+        font-weight: 600;
+        pointer-events: auto !important;
+        user-select: text;
+        cursor: text;
+        opacity: 1 !important;
+    }
+
+    .declaration-row input:focus,
+    .declaration-totals input:focus,
+    .declaration-volume input:focus {
+        outline: 3px solid rgba(242, 183, 5, .35);
+        border-color: #17365d;
+        background: #fff;
+    }
+
+    .declaration-row input[readonly],
+    .declaration-totals input[readonly] { background: #f4f4f4; }
+
+    .declaration-row.full { grid-column: 1 / -1; }
+    .declaration-statement {
+        margin: 32px 0 24px;
+        padding: 14px 16px;
+        border-left: 5px solid #f2b705;
+        background: #f3f6f9;
+        font-size: .78rem;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    .declaration-totals {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid #7b9cbd;
+        border-top: 0;
+        background: #f7fafc;
+    }
+
+    .declaration-totals > div {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 120px;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .declaration-totals label { font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+    .declaration-totals input { text-align: center; font-weight: 800; }
+    .declaration-volume {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 120px;
+        align-items: center;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 10px;
+        border-top: 1px solid #111;
+        background: #e8f1f8;
+        padding: 12px;
+    }
+
+    .declaration-volume input {
+        font-size: 1rem;
+        font-weight: 900;
+        text-align: center;
+    }
+
+    .support-controls { max-width: 1180px; margin: 0 auto; }
+
+    @media (max-width: 760px) {
+        .editable-document { padding: 14px; overflow-x: auto; }
+        .official-meta-grid,
+        .declaration-grid { grid-template-columns: 1fr; }
+        .official-address,
+        .declaration-row.full { grid-column: auto; }
+        .official-checklist-grid { grid-template-columns: minmax(850px, 1fr) 135px; }
+        .official-volume-row,
+        .official-signatures { grid-template-columns: 1fr; }
+        .declaration-row.one-field,
+        .declaration-row.two-fields,
+        .declaration-row.three-fields { grid-template-columns: 140px minmax(180px, 1fr); }
+    }
+
+    /* ================================
        PRINT
     =================================*/
     @media print {
+        .document-switcher,
+        .support-controls,
         .print-btn,
         .btn-selecionar,
         .custom-modal-overlay {
             display: none !important;
         }
+
+        .editable-document {
+            display: none !important;
+            max-width: none;
+            padding: 0;
+            border: 0;
+            box-shadow: none;
+        }
+
+        .editable-document.active { display: block !important; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1>CHECK LIST DE EQUIPAMENTOS</h1>
-
     <form method="POST"
           id="checklistForm"
           action="{% if editando %}{% url 'insumos:editar_checklist' checklist.id %}{% else %}{% url 'estoque:checklist' %}{% endif %}">
@@ -497,141 +884,95 @@
 
         {# inputs hidden de equipamentos selecionados e TAG #}
         <div id="payloadHiddenContainer"></div>
+        <input type="hidden" id="quantidade_volumes" name="quantidade_volumes"
+               value="{% if editando %}{{ checklist.quantidade_volumes|default:1 }}{% else %}1{% endif %}">
+        <input type="hidden" id="transporte" name="transporte"
+               value="{% if editando %}{{ checklist.transporte|default:'' }}{% endif %}">
 
-        <!-- Dados do cliente e inventário -->
-        <div class="info-grid">
-            <label for="cliente">CLIENTE</label>
-            <input type="text" id="cliente" name="cliente" placeholder="Preenchido automaticamente" value="" readonly>
-
-            <label for="data">DATA</label>
-            <input type="text" id="data" name="data" placeholder="DD/MM/AAAA" value="{% now 'd/m/Y' %}" readonly>
-
-            <label for="endereco">ENDEREÇO</label>
-            <input type="text" id="endereco" name="endereco" placeholder="Preenchido automaticamente" value="" readonly>
-
-            <label for="bairro">BAIRRO</label>
-            <input type="text" id="bairro" name="bairro" placeholder="Preenchido automaticamente" value="" readonly>
-
-            <label for="cidade">CIDADE</label>
-            <input type="text" id="cidade" name="cidade" placeholder="Preenchido automaticamente" value="" readonly>
-
-            <label for="lider">LIDER</label>
-            <input type="text" id="lider" name="lider" placeholder="Preenchido automaticamente" value="" readonly>
-
-            <label for="inventario">INVENTÁRIO</label>
-            <select id="inventario" name="inventario" required>
-                <option value="">Selecione.</option>
-                {% for inv in inventarios %}
-                    <option
-                        value="{{ inv.id }}"
-                        data-base="{{ inv.base.id }}"
-                        {% if editando and checklist.inventario_id == inv.id %}selected{% endif %}
-                    >
-                        {{ inv.cliente.sigla }} - Loja {{ inv.loja }}
-                    </option>
-                {% endfor %}
-            </select>
+        <div class="document-switcher" role="tablist" aria-label="Documento em edição">
+            <button type="button" class="active" data-document-target="checklist-document" aria-selected="true">Check-list de equipamentos e insumos</button>
+            <button type="button" data-document-target="declaration-document" aria-selected="false">Declaração de retirada</button>
         </div>
 
-        <div class="logistics-grid" aria-label="Dados da declaração de transporte">
-            <div>
-                <label for="transporte">TRANSPORTE / MOTORISTA</label>
-                <input type="text"
-                       id="transporte"
-                       name="transporte"
-                       maxlength="200"
-                       value="{% if editando %}{{ checklist.transporte|default:'' }}{% endif %}"
-                       placeholder="Veículo, transportadora ou nome do motorista">
+        <section id="checklist-document" class="editable-document active">
+            <h1>CHECK-LIST DE EQUIPAMENTOS E INSUMOS</h1>
+            <div class="official-meta-grid">
+                <div class="official-field"><label for="cliente">CLIENTE</label><input id="cliente" name="cliente" readonly></div>
+                <div class="official-field"><label for="loja">LOJA</label><input id="loja" readonly></div>
+                <div class="official-field"><label for="data">DATA</label><input id="data" name="data" value="{% now 'd/m/Y' %}" readonly></div>
+                <div class="official-field official-address"><label for="endereco">ENDEREÇO</label><input id="endereco" name="endereco" readonly></div>
+                <div class="official-field"><label for="bairro">BAIRRO</label><input id="bairro" name="bairro" readonly></div>
+                <div class="official-field"><label for="cidade">CIDADE</label><input id="cidade" name="cidade" readonly></div>
+                <div class="official-field"><label for="lider">LÍDER</label><input id="lider" name="lider" readonly></div>
+                <div class="official-field official-address">
+                    <label for="inventario">INVENTÁRIO</label>
+                    <select id="inventario" name="inventario" required>
+                        <option value="">Selecione.</option>
+                        {% for inv in inventarios %}
+                            <option value="{{ inv.id }}" data-base="{{ inv.base.id }}" {% if editando and checklist.inventario_id == inv.id %}selected{% endif %}>{{ inv.cliente.sigla }} - Loja {{ inv.loja }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
-            <div>
-                <label for="quantidade_volumes">QUANTIDADE DE VOLUMES</label>
-                <input type="number"
-                       id="quantidade_volumes"
-                       name="quantidade_volumes"
-                       min="1"
-                       max="9999"
-                       step="1"
-                       required
-                       value="{% if editando %}{{ checklist.quantidade_volumes|default:1 }}{% else %}1{% endif %}">
+
+            <div class="official-checklist-grid">
+                <div class="table-wrap" id="insumosContainer">
+                    <table class="official-checklist-table">
+                        <thead>
+                            <tr><th>CATEGORIA</th><th>DESCRIÇÃO</th><th>ENVIO<br>QUANTIDADE</th><th>SAÍDA<br>LOGÍSTICA</th><th colspan="2">CONFERÊNCIA LOJA</th><th>RETORNO<br>LOGÍSTICA</th></tr>
+                            <tr><th></th><th></th><th></th><th></th><th>ENTRADA</th><th>SAÍDA</th><th></th></tr>
+                        </thead>
+                        <tbody id="insumosBody"><tr><td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td></tr></tbody>
+                        <tbody>
+                            <tr class="equipment-official-row"><td rowspan="4">EQUIPAMENTOS</td><td><strong>ROTEADORES</strong><button type="button" class="btn-selecionar" onclick="abrirModal('router')">Selecionar</button><span id="router-contador" class="contador">0 selecionados</span><div id="router-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="router">0</td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>COLETORES DE DADOS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Selecionar</button><span id="coletor-contador" class="contador">0 selecionados</span><div id="coletor-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="coletor">0</td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>NOTEBOOKS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Selecionar</button><span id="notebook-contador" class="contador">0 selecionados</span><div id="notebook-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="notebook">0</td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>IMPRESSORAS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Selecionar</button><span id="impressora-contador" class="contador">0 selecionados</span><div id="impressora-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="impressora">0</td><td></td><td></td><td></td><td></td></tr>
+                        </tbody>
+                    </table>
+                    <div id="insumosAlert" class="alert-inline error"></div>
+                </div>
+                <aside class="attention-panel"><strong>ATENÇÃO</strong><p>Todo equipamento e insumo deve ser conferido na saída da logística, na entrada e saída da loja e no retorno à logística.</p><p>As quantidades registradas devem refletir exatamente os materiais transportados.</p></aside>
             </div>
-        </div>
+            <div class="official-observation"><strong>OBS:</strong><input type="text" name="observacao" value="{% if editando %}{{ checklist.observacao|default:'' }}{% endif %}"></div>
+            <div class="official-volume-row"><label for="checklist_quantidade_volumes">QUANTIDADE DE VOLUMES</label><input type="number" id="checklist_quantidade_volumes" data-sync-field="quantidade_volumes" min="1" max="9999" step="1"></div>
+            <div class="coordinator-line"><span>COORDENADOR:</span><input type="text" name="coordenador"></div>
+            <div class="official-signatures">
+                <div><input type="text" name="assinatura_preparacao"><label>RESPONSÁVEL PELA PREPARAÇÃO</label></div>
+                <div><input type="text" name="assinatura_conferencia"><label>RESPONSÁVEL PELA CONFERÊNCIA LOJA</label></div>
+                <div><input type="text" name="assinatura_retorno"><label>RESPONSÁVEL PELO RETORNO</label></div>
+            </div>
+        </section>
+
+        <section id="declaration-document" class="editable-document declaration-document">
+            <h1>DECLARAÇÃO DE RETIRADA DE EQUIPAMENTOS</h1>
+            <h2 class="declaration-section-title">DADOS DA RETIRADA</h2>
+            <div class="declaration-grid">
+                <div class="declaration-row three-fields"><label for="declaration_cliente">CLIENTE</label><input id="declaration_cliente" name="declaracao_cliente" value="{% if editando %}{{ checklist.declaracao_dados.cliente|default:'' }}{% endif %}"><label for="declaration_loja">LOJA</label><input id="declaration_loja" name="declaracao_loja" value="{% if editando %}{{ checklist.declaracao_dados.loja|default:'' }}{% endif %}"><label for="declaration_data">DATA</label><input id="declaration_data" name="declaracao_data" placeholder="DD/MM/AAAA" value="{% if editando %}{{ checklist.declaracao_dados.data|default:'' }}{% endif %}"></div>
+                <div class="declaration-row one-field"><label for="declaration_endereco">ENDEREÇO</label><input id="declaration_endereco" name="declaracao_endereco" value="{% if editando %}{{ checklist.declaracao_dados.endereco|default:'' }}{% endif %}"></div>
+                <div class="declaration-row two-fields"><label for="declaration_bairro">BAIRRO</label><input id="declaration_bairro" name="declaracao_bairro" value="{% if editando %}{{ checklist.declaracao_dados.bairro|default:'' }}{% endif %}"><label for="declaration_cidade">CIDADE</label><input id="declaration_cidade" name="declaracao_cidade" value="{% if editando %}{{ checklist.declaracao_dados.cidade|default:'' }}{% endif %}"></div>
+                <div class="declaration-row two-fields"><label for="horario_ponto">HORÁRIO DE ENTREGA</label><input type="time" id="horario_ponto" name="horario_ponto" value="{% if editando %}{{ checklist.declaracao_dados.horario_entrega|default:'' }}{% endif %}"><label for="horario_inicio">HORÁRIO DE INÍCIO</label><input type="time" id="horario_inicio" name="horario_inicio" value="{% if editando %}{{ checklist.declaracao_dados.horario_inicio|default:'' }}{% endif %}"></div>
+                <div class="declaration-row one-field"><label for="ponto_encontro">PONTO DE ENCONTRO</label><input id="ponto_encontro" name="ponto_encontro" maxlength="255" value="{% if editando %}{{ checklist.declaracao_dados.ponto_encontro|default:'' }}{% endif %}"></div>
+                <div class="declaration-row one-field"><label for="declaration_transporte">TRANSPORTE</label><input id="declaration_transporte" data-sync-field="transporte" maxlength="200" placeholder="Veículo, transportadora ou motorista"></div>
+            </div>
+            <p class="declaration-statement">A REVELAÇÃO ASSESSORIA EMPRESARIAL S/S LTDA, CNPJ: 04.304.329/0001-05, vem através desta declarar a entrega e retirada dos equipamentos e insumos abaixo:</p>
+            <h2 class="declaration-section-title">QUANTIDADES DECLARADAS</h2>
+            <div class="declaration-totals">
+                <div><label for="declaration_total_dp">DEPARTAMENTO PESSOAL</label><input type="number" id="declaration_total_dp" name="declaracao_departamento_pessoal" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.departamento_pessoal|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_fios">FIOS E CABOS</label><input type="number" id="declaration_total_fios" name="declaracao_fios_cabos" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.fios_cabos|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_coletor">COLETOR DE DADOS</label><input type="number" id="declaration_total_coletor" name="declaracao_coletor_dados" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.coletor_dados|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_impressora">IMPRESSORA</label><input type="number" id="declaration_total_impressora" name="declaracao_impressora" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.impressora|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_escada">ESCADA</label><input type="number" id="declaration_total_escada" name="declaracao_escada" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.escada|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_balanca">BALANÇA</label><input type="number" id="declaration_total_balanca" name="declaracao_balanca" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.balanca|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_extensor">EXTENSOR DE REDE / CARRINHO</label><input type="number" id="declaration_total_extensor" name="declaracao_extensor_rede_carrinho" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.extensor_rede_carrinho|default:0 }}{% else %}0{% endif %}"></div>
+            </div>
+            <div class="declaration-volume"><label for="declaration_quantidade_volumes">QUANTIDADE DE VOLUMES</label><input type="number" id="declaration_quantidade_volumes" data-sync-field="quantidade_volumes" min="1" max="9999" step="1"></div>
+        </section>
 
         <div id="historicoChecklistInfo" class="alert alert-info mt-3 d-none" role="status"></div>
 
-        <div class="obs">
-            <strong>OBS:</strong>
-            <input type="text"
-                   name="observacao"
-                   value="{% if editando %}{{ checklist.observacao|default:'' }}{% endif %}"
-                   style="border:none; border-bottom:1px dashed #7a8b9f; background:transparent; width:80%;">
-        </div>
-
-        <!-- INSUMOS -->
-        <div class="insumos-block" id="insumosContainer" style="display:none;">
-            <h5>
-                <i class="bi bi-box"></i> Insumos Disponíveis na Base
-            </h5>
-
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="th-sub" style="text-align:left;">Insumo</th>
-                            <th class="th-sub">Categoria</th>
-                            <th class="th-sub">Unidade</th>
-                            <th class="th-sub">Saldo</th>
-                            <th class="th-sub">Qtd. enviada</th>
-                        </tr>
-                    </thead>
-                    <tbody id="insumosBody">
-                        <tr>
-                            <td colspan="5" class="text-muted">Selecione um inventário para carregar os insumos da base.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="insumosAlert" class="alert-inline error"></div>
-        </div>
-
-        <!-- EQUIPAMENTOS -->
-        <div class="section-block">
-            <div class="section-head">
-                <h5><i class="bi bi-pc-display"></i> Equipamentos enviados</h5>
-                <span class="small-muted">Selecione apenas os equipamentos que sairão para o inventário.</span>
-            </div>
-            <div class="section-body">
-                <div class="equipment-grid">
-                    <div class="equipment-item">
-                        <strong>Routers</strong>
-                        <button type="button" class="btn-selecionar" onclick="abrirModal('router')">Selecionar</button>
-                        <span class="contador" id="router-contador">0 selecionados</span>
-                        <div id="router-selecionados" class="resumo-selecionados"></div>
-                    </div>
-                    <div class="equipment-item">
-                        <strong>Coletores</strong>
-                        <button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Selecionar</button>
-                        <span class="contador" id="coletor-contador">0 selecionados</span>
-                        <div id="coletor-selecionados" class="resumo-selecionados"></div>
-                    </div>
-                    <div class="equipment-item">
-                        <strong>Notebooks</strong>
-                        <button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Selecionar</button>
-                        <span class="contador" id="notebook-contador">0 selecionados</span>
-                        <div id="notebook-selecionados" class="resumo-selecionados"></div>
-                    </div>
-                    <div class="equipment-item">
-                        <strong>Impressoras</strong>
-                        <button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Selecionar</button>
-                        <span class="contador" id="impressora-contador">0 selecionados</span>
-                        <div id="impressora-selecionados" class="resumo-selecionados"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- TAGS / LOTES -->
-<div class="accordion-item" style="margin-top:20px;">
+<div class="accordion-item support-controls" style="margin-top:20px;">
     <h2 class="accordion-header">
         <button class="accordion-button collapsed"
                 type="button"
@@ -721,24 +1062,6 @@
     </div>
 </div>
 
-        <!-- Assinaturas -->
-        <div class="signature-area">
-            <div class="signature-box">
-                <label>Assinatura do Responsável pela Preparação</label>
-                <input type="text" name="assinatura_preparacao" placeholder="___________________________________________________________">
-            </div>
-
-            <div class="signature-box">
-                <label>Assinatura do Responsável pela Conferência Loja</label>
-                <input type="text" name="assinatura_conferencia" placeholder="___________________________________________________________">
-            </div>
-
-            <div class="signature-box">
-                <label>Assinatura do Responsável pelo Retorno</label>
-                <input type="text" name="assinatura_retorno" placeholder="___________________________________________________________">
-            </div>
-        </div>
-
         <!-- Botões -->
         <div class="custom-modal-overlay" id="customModalOverlay">
             <div class="custom-modal">
@@ -818,6 +1141,7 @@ let selecionados = {
 };
 let limiteColetores = null;
 let quantidadePessoasInventario = null;
+const declaracaoPossuiDadosSalvos = {% if editando and checklist.declaracao_dados %}true{% else %}false{% endif %};
 
 /*    HELPERS
 */
@@ -841,22 +1165,7 @@ function limparErro(containerId) {
 }
 
 function obterContainerInsumos() {
-    const atual = document.getElementById('insumosBody');
-    if (!atual) return null;
-
-    if (atual.tagName !== 'TBODY') return atual;
-
-    const accordion = document.createElement('div');
-    accordion.id = 'insumosBody';
-    accordion.className = 'accordion insumos-accordion';
-    accordion.innerHTML = '<div class="text-muted p-3">Selecione um inventario para carregar os insumos da base.</div>';
-
-    const tableWrap = atual.closest('.table-wrap');
-    if (tableWrap) {
-        tableWrap.replaceWith(accordion);
-    }
-
-    return accordion;
+    return document.getElementById('insumosBody');
 }
 
 /*    INSUMOS
@@ -866,21 +1175,10 @@ function criarLinhaInsumo(insumo) {
     const ehTag = isCategoriaTags(insumo.categoria || '');
 
     tr.innerHTML = `
-        <td class="desc-col">
-            ${insumo.descricao}
-        </td>
-
-        <td>${insumo.categoria || '-'}</td>
-
-        <td>${insumo.unidade || '-'}</td>
-
-        <td>
-            <span class="saldo-disponivel">${insumo.saldo}</span>
-            <span class="insumo-help">Disponível na base</span>
-        </td>
-
-        ${ehTag ? `
-            <td class="input-cell tag-modo-cell">
+        <td class="insumo-categoria">${insumo.categoria || 'SEM CATEGORIA'}</td>
+        <td class="desc-col"><strong>${insumo.descricao}</strong><span class="insumo-help">${insumo.unidade || '-'} · saldo ${insumo.saldo}</span></td>
+        <td class="input-cell">
+            ${ehTag ? `
                 <select
                     name="insumo_${insumo.id}_modo_tag"
                     class="tag-modo-select"
@@ -888,14 +1186,7 @@ function criarLinhaInsumo(insumo) {
                     <option value="NOVO">Novo</option>
                     <option value="REUTILIZACAO">Reutilizar</option>
                 </select>
-
-                <span class="insumo-help">
-                    Novo baixa estoque; reutilizar não baixa.
-                </span>
-            </td>
-        ` : ''}
-
-        <td class="input-cell">
+            ` : ''}
             <input
                 type="number"
                 name="insumo_${insumo.id}_enviada"
@@ -906,18 +1197,17 @@ function criarLinhaInsumo(insumo) {
                 class="insumo-enviado"
                 data-insumo-id="${insumo.id}"
                 data-insumo-desc="${insumo.descricao}"
+                data-insumo-categoria="${insumo.categoria || ''}"
                 data-saldo="${insumo.saldo}">
-
-            <span class="insumo-help">
-                Quantidade enviada
-            </span>
         </td>
+        <td></td><td></td><td></td><td></td>
     `;
 
     const input = tr.querySelector('.insumo-enviado');
 
     input.addEventListener('input', function() {
         validarInputInsumo(this, true);
+        atualizarResumoDeclaracao();
     });
 
     return tr;
@@ -935,8 +1225,8 @@ function isCategoriaTags(categoria) {
 }
 
 function renderizarInsumosAgrupados(insumos) {
-    const accordion = obterContainerInsumos();
-    if (!accordion) return;
+    const tbody = obterContainerInsumos();
+    if (!tbody) return;
 
     const grupos = new Map();
 
@@ -947,96 +1237,30 @@ function renderizarInsumosAgrupados(insumos) {
         grupos.get(categoria).push(insumo);
     });
 
-    accordion.innerHTML = '';
+    tbody.innerHTML = '';
 
     if (grupos.size === 0) {
-        accordion.innerHTML = '<div class="text-muted p-3">Nenhum insumo disponível para esta base.</div>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Nenhum insumo disponível para esta base.</td></tr>';
         return;
     }
 
-    Array.from(grupos.keys()).sort((a, b) => a.localeCompare(b)).forEach((categoria, index) => {
+    Array.from(grupos.keys()).sort((a, b) => a.localeCompare(b)).forEach(categoria => {
         const itens = grupos.get(categoria).sort((a, b) =>
             String(a.descricao || '').localeCompare(String(b.descricao || ''))
         );
-
-        const collapseId = `insumosCategoria${index}`;
-        const item = document.createElement('div');
-        item.className = 'accordion-item';
-
-        const header = document.createElement('h2');
-        header.className = 'accordion-header';
-        header.innerHTML = `
-            <button class="accordion-button ${index === 0 ? '' : 'collapsed'}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#${collapseId}">
-                <span>${categoria}</span>
-                <span class="insumo-category-meta">${itens.length} item${itens.length !== 1 ? 's' : ''}</span>
-            </button>
-        `;
-
-        const collapse = document.createElement('div');
-        collapse.id = collapseId;
-        collapse.className = `accordion-collapse collapse ${index === 0 ? 'show' : ''}`;
-        collapse.setAttribute('data-bs-parent', '#insumosBody');
-
-        const body = document.createElement('div');
-        body.className = 'accordion-body';
-
-        const wrap = document.createElement('div');
-        wrap.className = 'table-wrap';
-        const ehCategoriaTags = isCategoriaTags(categoria);
-
-        wrap.innerHTML = `
-            <table>
-                <thead>
-                    <tr>
-                        <th class="th-sub" style="text-align:left;">
-                            Insumo
-                        </th>
-
-                        <th class="th-sub">
-                            Unidade
-                        </th>
-
-                        <th class="th-sub">
-                            Saldo
-                        </th>
-
-                        ${ehCategoriaTags ? `
-                            <th class="th-sub">
-                                Tipo de envio
-                            </th>
-                        ` : ''}
-
-                        <th class="th-sub">
-                            Qtd. enviada
-                        </th>
-                    </tr>
-                </thead>
-
-                <tbody></tbody>
-            </table>
-        `;
-
-        const tbody = wrap.querySelector('tbody');
-
-        itens.forEach(insumo => {
+        itens.forEach((insumo, index) => {
             const linha = criarLinhaInsumo(insumo);
-
-            // remove a coluna categoria, pois o accordion já representa a categoria
-            const categoriaCell = linha.children[1];
-            if (categoriaCell) categoriaCell.remove();
-
+            const categoriaCell = linha.querySelector('.insumo-categoria');
+            if (index === 0) {
+                categoriaCell.rowSpan = itens.length;
+            } else {
+                categoriaCell.remove();
+            }
             tbody.appendChild(linha);
         });
-
-        body.appendChild(wrap);
-        collapse.appendChild(body);
-        item.appendChild(header);
-        item.appendChild(collapse);
-        accordion.appendChild(item);
     });
+
+    atualizarResumoDeclaracao();
 }
 
 function validarInputInsumo(input, corrigir = false) {
@@ -1094,10 +1318,10 @@ function carregarInsumosLegado(baseId) {
     if (!baseId) {
         insumosBody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-muted">Selecione um inventário para carregar os insumos da base.</td>
+                <td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td>
             </tr>
         `;
-        container.style.display = 'none';
+        container.style.display = 'block';
         return;
     }
 
@@ -1110,7 +1334,7 @@ function carregarInsumosLegado(baseId) {
             if (!data.insumos || data.insumos.length === 0) {
                 insumosBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-muted">Nenhum insumo disponível para esta base.</td>
+                        <td colspan="7" class="text-muted">Nenhum insumo disponível para esta base.</td>
                     </tr>
                 `;
                 container.style.display = 'block';
@@ -1124,7 +1348,7 @@ function carregarInsumosLegado(baseId) {
             console.error('Erro ao carregar insumos:', error);
             insumosBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-danger">Erro ao carregar insumos da base.</td>
+                    <td colspan="7" class="text-danger">Erro ao carregar insumos da base.</td>
                 </tr>
             `;
             container.style.display = 'block';
@@ -1138,8 +1362,8 @@ function carregarInsumos(baseId) {
     const insumosBody = obterContainerInsumos();
 
     if (!baseId) {
-        insumosBody.innerHTML = '<div class="text-muted p-3">Selecione um inventario para carregar os insumos da base.</div>';
-        container.style.display = 'none';
+        insumosBody.innerHTML = '<tr><td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td></tr>';
+        container.style.display = 'block';
         return Promise.resolve();
     }
 
@@ -1149,7 +1373,7 @@ function carregarInsumos(baseId) {
             limparErro('insumosAlert');
 
             if (!data.insumos || data.insumos.length === 0) {
-                insumosBody.innerHTML = '<div class="text-muted p-3">Nenhum insumo disponivel para esta base.</div>';
+                insumosBody.innerHTML = '<tr><td colspan="7" class="text-muted">Nenhum insumo disponível para esta base.</td></tr>';
                 container.style.display = 'block';
                 return;
             }
@@ -1159,7 +1383,7 @@ function carregarInsumos(baseId) {
         })
         .catch(error => {
             console.error('Erro ao carregar insumos:', error);
-            insumosBody.innerHTML = '<div class="text-danger p-3">Erro ao carregar insumos da base.</div>';
+            insumosBody.innerHTML = '<tr><td colspan="7" class="text-danger">Erro ao carregar insumos da base.</td></tr>';
             container.style.display = 'block';
         });
 }
@@ -1419,6 +1643,41 @@ function atualizarResumoCategoria(categoria) {
 
         resumo.textContent = nomes.join(', ');
     }
+
+    const quantidadeCell = document.querySelector(`[data-equipment-count="${categoria}"]`);
+    if (quantidadeCell) quantidadeCell.textContent = ids.length;
+    atualizarResumoDeclaracao();
+}
+
+function atualizarResumoDeclaracao() {
+    // Os totais da declaração são informados manualmente conforme a embalagem.
+}
+
+function sincronizarCampoCompartilhado(nome, valor) {
+    const principal = document.getElementById(nome);
+    if (principal) principal.value = valor;
+    document.querySelectorAll(`[data-sync-field="${nome}"]`).forEach(campo => {
+        if (campo.value !== String(valor ?? '')) campo.value = valor ?? '';
+    });
+}
+
+function preencherDadosDeclaracaoPadrao(dados = {}) {
+    if (declaracaoPossuiDadosSalvos) return;
+    const valores = {
+        declaration_cliente: dados.sigla || dados.cliente || '',
+        declaration_loja: dados.loja || '',
+        declaration_data: dados.data || "{% now 'd/m/Y' %}",
+        declaration_endereco: dados.endereco || '',
+        declaration_bairro: dados.bairro || '',
+        declaration_cidade: dados.cidade || '',
+        ponto_encontro: dados.ponto_encontro || '',
+        horario_ponto: dados.horario_ponto || '',
+        horario_inicio: dados.horario_inicio || ''
+    };
+    Object.entries(valores).forEach(([id, valor]) => {
+        const campo = document.getElementById(id);
+        if (campo) campo.value = valor;
+    });
 }
 
 /*    TAGS
@@ -1534,6 +1793,7 @@ function aplicarLider(valor) {
 
 function carregarDadosInventario(inventarioId) {
     const campoCliente = document.getElementById('cliente');
+    const campoLoja = document.getElementById('loja');
     const campoData = document.getElementById('data');
     const campoEndereco = document.getElementById('endereco');
     const campoBairro = document.getElementById('bairro');
@@ -1546,14 +1806,16 @@ function carregarDadosInventario(inventarioId) {
 
     if (!inventarioId) {
         campoCliente.value = '';
+        campoLoja.value = '';
         campoData.value = "{% now 'd/m/Y' %}";
         campoEndereco.value = '';
         campoBairro.value = '';
         campoCidade.value = '';
         aplicarLider('');
+        preencherDadosDeclaracaoPadrao({});
         limiteColetores = null;
         quantidadePessoasInventario = null;
-        document.getElementById('insumosContainer').style.display = 'none';
+        document.getElementById('insumosContainer').style.display = 'block';
         return;
     }
 
@@ -1573,12 +1835,14 @@ function carregarDadosInventario(inventarioId) {
     fetch(`/insumos/api/inventario/${inventarioId}/`)
         .then(response => response.json())
         .then(data => {
-            campoCliente.value = data.cliente || '';
+            campoCliente.value = data.sigla || data.cliente || '';
+            campoLoja.value = data.loja || '';
             campoData.value = data.data || "{% now 'd/m/Y' %}";
             campoEndereco.value = data.endereco || '';
             campoBairro.value = data.bairro || '';
             campoCidade.value = data.cidade || '';
             aplicarLider(data.lider || '');
+            preencherDadosDeclaracaoPadrao(data);
             quantidadePessoasInventario = data.pessoas;
             limiteColetores = data.limite_coletores;
 
@@ -1644,6 +1908,7 @@ function preencherEdicaoChecklistAtual() {
         {% endfor %}
 
         atualizarInputsEquipamentosETags();
+        atualizarResumoDeclaracao();
     {% endif %}
 }
 
@@ -1662,6 +1927,37 @@ function existeAlgumEnvioNoChecklist() {
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('checklistForm');
     const selectInventario = document.getElementById('inventario');
+
+    document.querySelectorAll('[data-document-target]').forEach(botao => {
+        botao.addEventListener('click', function() {
+            document.querySelectorAll('[data-document-target]').forEach(item => {
+                const ativo = item === this;
+                item.classList.toggle('active', ativo);
+                item.setAttribute('aria-selected', ativo ? 'true' : 'false');
+            });
+            document.querySelectorAll('.editable-document').forEach(documento => {
+                documento.classList.toggle('active', documento.id === this.dataset.documentTarget);
+            });
+        });
+    });
+
+    ['quantidade_volumes', 'transporte'].forEach(nome => {
+        const valorInicial = document.getElementById(nome)?.value || (nome === 'quantidade_volumes' ? '1' : '');
+        sincronizarCampoCompartilhado(nome, valorInicial);
+        document.querySelectorAll(`[data-sync-field="${nome}"]`).forEach(campo => {
+            campo.addEventListener('input', function() {
+                sincronizarCampoCompartilhado(nome, this.value);
+            });
+        });
+    });
+
+    atualizarResumoDeclaracao();
+
+    document.querySelectorAll('.declaration-quantity-input').forEach(campo => {
+        campo.addEventListener('input', function() {
+            this.dataset.manual = 'true';
+        });
+    });
 
     // seleção de inventário
     selectInventario.addEventListener('change', function() {
@@ -1696,6 +1992,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const insumosOk = validarTodosInsumos();
         const tagsOk = validarTags();
+
+        const volumes = Number(document.getElementById('quantidade_volumes').value || '0');
+        if (!Number.isInteger(volumes) || volumes < 1 || volumes > 9999) {
+            e.preventDefault();
+            alert('Informe manualmente uma quantidade de volumes entre 1 e 9999.');
+            return;
+        }
 
         atualizarInputsEquipamentosETags();
 

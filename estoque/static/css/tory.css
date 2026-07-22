@@ -1,0 +1,930 @@
+:root {
+    --tory-border: #dfe3e7;
+    --tory-muted: #68727d;
+    --tory-soft: #f5f7f9;
+    --tory-ink: #20252a;
+    --tory-primary: #0d6efd;
+}
+
+.tory-widget {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .65rem;
+}
+
+.tory-toggle {
+    display: inline-flex;
+    width: 58px;
+    height: 58px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #adb5bd;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #fff, #dfe3e8);
+    box-shadow: 0 .45rem 1rem rgba(0, 0, 0, .18);
+    color: #495057;
+    cursor: pointer;
+    font-size: 1.5rem;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.tory-toggle:hover,
+.tory-toggle:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 .75rem 1.5rem rgba(0, 0, 0, .22);
+}
+
+.tory-toggle:focus-visible,
+.tory-minimized-open:focus-visible,
+.tory-tab:focus-visible {
+    outline: 3px solid rgba(13, 110, 253, .3);
+    outline-offset: 2px;
+}
+
+.tory-character {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    transition: filter .2s ease, transform .2s ease;
+}
+
+.tory-character-neutral {
+    background-image: url("../images/tory/tory-neutral.png");
+}
+
+.tory-character-thinking {
+    background-image: url("../images/tory/tory-thinking.png");
+}
+
+.tory-character-responding {
+    background-image: url("../images/tory/tory-responding.png");
+}
+
+.tory-character-attention {
+    background-image: url("../images/tory/tory-attention.png");
+}
+
+.tory-character-success {
+    background-image: url("../images/tory/tory-success.png");
+}
+
+.tory-toggle .tory-character {
+    width: 52px;
+    height: 52px;
+}
+
+.tory-toggle .tory-character-thinking {
+    animation: tory-thinking-pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes tory-thinking-pulse {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(13, 110, 253, 0)); }
+    50% { filter: drop-shadow(0 0 .32rem rgba(13, 110, 253, .34)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tory-character,
+    .tory-toggle .tory-character-thinking {
+        transition: none;
+        animation: none;
+    }
+}
+
+.tory-minimized {
+    display: flex;
+    max-width: min(340px, calc(100vw - 44px));
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem .6rem .5rem .8rem;
+    border: 1px solid var(--tory-border);
+    border-radius: .75rem;
+    background: #fff;
+    box-shadow: 0 .6rem 1.5rem rgba(0, 0, 0, .16);
+}
+
+.tory-minimized-open {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--tory-ink);
+    font-weight: 600;
+}
+
+.tory-status-dot {
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+    background: #198754;
+    box-shadow: 0 0 0 3px rgba(25, 135, 84, .13);
+}
+
+.tory-modal .modal-dialog {
+    width: min(88vw, 1500px);
+    max-width: none;
+    height: min(90vh, 980px);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.tory-modal .modal-content {
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: .9rem;
+    box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, .25);
+}
+
+.tory-header {
+    min-height: 72px;
+    padding: .85rem 1.1rem;
+    border-bottom: 1px solid var(--tory-border);
+    background: #fff;
+}
+
+.tory-heading,
+.tory-header-actions,
+.tory-composer-actions,
+.tory-message-heading,
+.tory-results-header,
+.tory-section-heading,
+.tory-record-heading {
+    display: flex;
+    align-items: center;
+}
+
+.tory-heading {
+    gap: .75rem;
+}
+
+.tory-avatar,
+.tory-message-avatar {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cfd4da;
+    border-radius: .7rem;
+    background: linear-gradient(180deg, #f8f9fa, #e4e7ea);
+    color: #4f5963;
+}
+
+.tory-avatar {
+    width: 42px;
+    height: 42px;
+    font-size: 1.15rem;
+}
+
+.tory-avatar .tory-character {
+    width: 38px;
+    height: 38px;
+}
+
+.tory-heading h2 {
+    color: var(--tory-ink);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.tory-heading p {
+    margin: .1rem 0 0;
+    color: var(--tory-muted);
+    font-size: .8rem;
+}
+
+.tory-header-actions {
+    gap: .5rem;
+}
+
+.tory-processing {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin-right: .25rem;
+    color: var(--tory-muted);
+    font-size: .8rem;
+}
+
+.tory-tabs {
+    display: flex;
+    flex: 0 0 auto;
+    gap: .15rem;
+    overflow-x: auto;
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--tory-border);
+    background: #fbfcfd;
+    scrollbar-width: thin;
+}
+
+.tory-tab {
+    display: inline-flex;
+    min-height: 50px;
+    align-items: center;
+    gap: .45rem;
+    padding: .65rem .85rem;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: #5d6670;
+    font-size: .9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tory-tab:hover {
+    color: var(--tory-ink);
+}
+
+.tory-tab.active {
+    border-bottom-color: var(--tory-primary);
+    color: var(--tory-primary);
+}
+
+.tory-workspace {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--tory-soft);
+}
+
+.tory-panel {
+    height: 100%;
+    overflow-y: auto;
+    padding: 1.2rem;
+}
+
+.tory-panel[hidden] {
+    display: none !important;
+}
+
+.tory-messages {
+    width: min(100%, 1120px);
+    min-height: 100%;
+    margin: 0 auto;
+}
+
+.tory-message {
+    display: flex;
+    align-items: flex-start;
+    gap: .7rem;
+    margin-bottom: 1rem;
+}
+
+.tory-message-user {
+    flex-direction: row-reverse;
+}
+
+.tory-message-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: .85rem;
+}
+
+.tory-message-avatar .tory-character {
+    width: 31px;
+    height: 31px;
+}
+
+.tory-message-user .tory-message-avatar {
+    border-color: #606870;
+    background: #6c757d;
+    color: #fff;
+}
+
+.tory-message-content {
+    width: fit-content;
+    max-width: min(86%, 900px);
+    padding: .85rem 1rem;
+    border: 1px solid var(--tory-border);
+    border-radius: .8rem;
+    border-top-left-radius: .2rem;
+    background: #fff;
+    box-shadow: 0 .12rem .35rem rgba(25, 35, 45, .05);
+    color: var(--tory-ink);
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.tory-message-user .tory-message-content {
+    border-color: #5e6871;
+    border-radius: .8rem;
+    border-top-right-radius: .2rem;
+    background: #68727c;
+    color: #fff;
+}
+
+.tory-message-heading {
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .45rem;
+    font-size: .78rem;
+}
+
+.tory-message-heading time {
+    color: var(--tory-muted);
+    font-size: .72rem;
+    font-weight: 400;
+}
+
+.tory-message-user .tory-message-heading time {
+    color: rgba(255, 255, 255, .75);
+}
+
+.tory-message-content p:last-child,
+.tory-component:last-child {
+    margin-bottom: 0;
+}
+
+.tory-message-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-top: .75rem;
+    padding-top: .65rem;
+    border-top: 1px solid #edf0f2;
+}
+
+.tory-message-action {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    gap: .35rem;
+    padding: .3rem .65rem;
+    border: 1px solid #cfd5da;
+    border-radius: .5rem;
+    background: #fff;
+    color: #47515b;
+    font-size: .78rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.tory-message-action:hover {
+    border-color: #9da8b2;
+    background: #f5f7f9;
+    color: #20252a;
+}
+
+.tory-more-actions {
+    flex: 1 0 100%;
+}
+
+.tory-more-actions summary {
+    width: fit-content;
+    padding: .25rem .1rem;
+    color: #53606b;
+    cursor: pointer;
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.tory-more-actions-grid {
+    display: flex;
+    max-height: 190px;
+    flex-wrap: wrap;
+    gap: .4rem;
+    overflow-y: auto;
+    margin-top: .35rem;
+    padding: .55rem;
+    border: 1px solid #e0e4e8;
+    border-radius: .55rem;
+    background: #f8f9fa;
+}
+
+.tory-component {
+    margin-bottom: .8rem;
+}
+
+.tory-component-text {
+    white-space: pre-wrap;
+}
+
+.tory-component-source {
+    display: block;
+    margin-top: .6rem;
+    color: var(--tory-muted);
+    font-size: .75rem;
+}
+
+.tory-indicator-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: .65rem;
+}
+
+.tory-indicator {
+    padding: .85rem;
+    border: 1px solid var(--tory-border);
+    border-radius: .65rem;
+    background: #f8f9fa;
+}
+
+.tory-indicator span {
+    display: block;
+    color: var(--tory-muted);
+    font-size: .75rem;
+}
+
+.tory-indicator strong {
+    display: block;
+    margin-top: .15rem;
+    color: var(--tory-ink);
+    font-size: 1.45rem;
+}
+
+.tory-list-card {
+    overflow: hidden;
+    border: 1px solid var(--tory-border);
+    border-radius: .65rem;
+}
+
+.tory-list-card h4 {
+    margin: 0;
+    padding: .65rem .8rem;
+    border-bottom: 1px solid var(--tory-border);
+    background: #f8f9fa;
+    font-size: .85rem;
+}
+
+.tory-list-card ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tory-list-card li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .55rem .8rem;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.tory-list-card li:last-child {
+    border-bottom: 0;
+}
+
+.tory-list-card li span:last-child {
+    font-weight: 700;
+    text-align: right;
+}
+
+.tory-empty-state {
+    display: grid;
+    max-width: 760px;
+    place-items: center;
+    gap: 1rem;
+    margin: 2.2rem auto 0;
+    padding: 1.4rem;
+    text-align: center;
+}
+
+.tory-empty-state h3,
+.tory-panel-empty h3 {
+    margin: .55rem 0 .25rem;
+    font-size: 1rem;
+}
+
+.tory-empty-state p,
+.tory-panel-empty p {
+    margin: 0;
+    color: var(--tory-muted);
+    font-size: .85rem;
+}
+
+.tory-empty-icon {
+    display: inline-flex;
+    width: 46px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--tory-border);
+    border-radius: 50%;
+    background: #fff;
+    color: #5e6974;
+    font-size: 1.1rem;
+}
+
+.tory-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .55rem;
+}
+
+.tory-suggestions button {
+    min-height: 38px;
+    padding: .4rem .75rem;
+    border: 1px solid #ccd2d8;
+    border-radius: 999px;
+    background: #fff;
+    color: #48525c;
+    font-size: .8rem;
+}
+
+.tory-suggestions button:hover {
+    border-color: #8f9aa5;
+    background: #f0f2f4;
+}
+
+.tory-panel-empty {
+    display: grid;
+    min-height: 100%;
+    place-content: center;
+    justify-items: center;
+    padding: 2rem;
+    color: #6a747e;
+    text-align: center;
+}
+
+.tory-panel-empty > i {
+    font-size: 1.8rem;
+}
+
+.tory-results-header,
+.tory-section-heading {
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.tory-results-header h3,
+.tory-section-heading h3 {
+    margin: .1rem 0 .25rem;
+    font-size: 1.15rem;
+}
+
+.tory-eyebrow {
+    color: var(--tory-muted);
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.tory-total-badge {
+    flex: 0 0 auto;
+    padding: .45rem .7rem;
+    border: 1px solid #cbd2d8;
+    border-radius: 999px;
+    background: #fff;
+    color: #4f5963;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.tory-results-toolbar {
+    display: flex;
+    margin-bottom: .8rem;
+}
+
+.tory-search {
+    position: relative;
+    width: min(100%, 520px);
+}
+
+.tory-search i {
+    position: absolute;
+    top: 50%;
+    left: .8rem;
+    z-index: 1;
+    color: #78838e;
+    transform: translateY(-50%);
+}
+
+.tory-search input {
+    padding-left: 2.3rem;
+}
+
+.tory-table-wrap {
+    overflow: auto;
+    border: 1px solid var(--tory-border);
+    border-radius: .7rem;
+    background: #fff;
+}
+
+.tory-table {
+    min-width: 720px;
+    margin: 0;
+    font-size: .83rem;
+}
+
+.tory-table > :not(caption) > * > * {
+    padding: .68rem .75rem;
+    border-bottom-color: #e7eaed;
+    vertical-align: middle;
+}
+
+.tory-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #eef1f3;
+    color: #39434d;
+    font-size: .73rem;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.tory-sort-button {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    text-transform: inherit;
+}
+
+.tory-cell-action {
+    padding: .15rem .2rem;
+    border: 0;
+    border-bottom: 1px dashed currentColor;
+    background: transparent;
+    color: #0b5ed7;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+}
+
+.tory-cell-action:hover,
+.tory-cell-action:focus-visible {
+    border-bottom-style: solid;
+    color: #084298;
+}
+
+.tory-pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .8rem;
+}
+
+.tory-pagination span {
+    margin: 0 .35rem;
+    color: var(--tory-muted);
+    font-size: .8rem;
+}
+
+.tory-record-list {
+    display: grid;
+    gap: .7rem;
+}
+
+.tory-record {
+    padding: .85rem 1rem;
+    border: 1px solid var(--tory-border);
+    border-radius: .7rem;
+    background: #fff;
+}
+
+.tory-record-heading {
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .3rem;
+}
+
+.tory-record-heading strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tory-record-heading time,
+.tory-record-summary {
+    color: var(--tory-muted);
+    font-size: .75rem;
+}
+
+.tory-record-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0 0 .65rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.tory-record-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.tory-error {
+    padding: .75rem;
+    border: 1px solid #f1aeb5;
+    border-radius: .55rem;
+    background: #fff5f5;
+    color: #9f2430;
+}
+
+.tory-loading {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    color: var(--tory-muted);
+}
+
+.tory-composer {
+    flex: 0 0 auto;
+    padding: .8rem 1rem;
+    border-top: 1px solid var(--tory-border);
+    background: #fff;
+}
+
+.tory-composer textarea {
+    max-height: 130px;
+    resize: none;
+    line-height: 1.45;
+}
+
+.tory-composer-actions {
+    justify-content: flex-end;
+    gap: .55rem;
+    margin-top: .55rem;
+}
+
+.tory-keyboard-hint {
+    margin-right: auto;
+    color: var(--tory-muted);
+    font-size: .72rem;
+}
+
+@media (max-width: 991.98px) {
+    .tory-modal .modal-dialog {
+        width: 96vw;
+        height: 94vh;
+    }
+
+    .tory-panel {
+        padding: .9rem;
+    }
+
+    .tory-message-content {
+        max-width: 90%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .tory-widget {
+        right: 14px;
+        bottom: 14px;
+    }
+
+    .tory-toggle {
+        width: 54px;
+        height: 54px;
+    }
+
+    .tory-modal .modal-dialog,
+    .tory-modal .modal-content {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .tory-header {
+        min-height: 62px;
+        padding: .65rem .75rem;
+    }
+
+    .tory-avatar {
+        width: 36px;
+        height: 36px;
+    }
+
+    .tory-header-actions {
+        gap: .25rem;
+    }
+
+    .tory-header-actions .btn {
+        width: 38px;
+        min-height: 38px;
+        padding: .3rem;
+    }
+
+    .tory-processing span:last-child,
+    .tory-keyboard-hint {
+        display: none;
+    }
+
+    .tory-tabs {
+        padding: 0 .35rem;
+    }
+
+    .tory-tab {
+        min-height: 46px;
+        padding: .55rem .65rem;
+        font-size: .8rem;
+    }
+
+    .tory-panel {
+        padding: .75rem;
+    }
+
+    .tory-message {
+        gap: .45rem;
+    }
+
+    .tory-message-avatar {
+        width: 30px;
+        height: 30px;
+    }
+
+    .tory-message-content {
+        max-width: calc(100% - 38px);
+        padding: .72rem .8rem;
+        font-size: .88rem;
+    }
+
+    .tory-composer {
+        padding: .65rem .7rem;
+    }
+
+    .tory-composer-actions .btn {
+        min-height: 40px;
+    }
+
+    .tory-results-header {
+        align-items: flex-start;
+    }
+
+    .tory-table-wrap {
+        overflow: visible;
+        border: 0;
+        background: transparent;
+    }
+
+    .tory-table,
+    .tory-table tbody,
+    .tory-table tr,
+    .tory-table td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .tory-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    .tory-table tr {
+        margin-bottom: .65rem;
+        padding: .35rem .7rem;
+        border: 1px solid var(--tory-border);
+        border-radius: .65rem;
+        background: #fff;
+    }
+
+    .tory-table td {
+        display: grid;
+        grid-template-columns: minmax(105px, 38%) 1fr;
+        gap: .65rem;
+        padding: .5rem 0;
+        border-bottom: 1px solid #edf0f2;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .tory-table td::before {
+        content: attr(data-label);
+        color: #68727d;
+        font-size: .72rem;
+        font-weight: 700;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .tory-table td:last-child {
+        border-bottom: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tory-toggle {
+        transition: none;
+    }
+}

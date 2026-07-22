@@ -1072,11 +1072,21 @@ def inventario_detalhes(request, inventario_id):
         'cliente': f"{inventario.cliente.sigla} - {inventario.cliente.nome}",
         'sigla': inventario.cliente.sigla,
         'loja': inventario.loja,
+        'base': inventario.base.nome,
         'data': inventario.data_inicio.strftime('%d/%m/%Y'),
         'endereco': inventario.endereco or '',
         'bairro': inventario.bairro or '',
         'cidade': inventario.cidade or '',
         'lider': inventario.lider or '',
+        'ponto_encontro': inventario.ponto_encontro or '',
+        'horario_ponto': (
+            inventario.horario_ponto.strftime('%H:%M')
+            if inventario.horario_ponto else ''
+        ),
+        'horario_inicio': (
+            inventario.horario_inicio.strftime('%H:%M')
+            if inventario.horario_inicio else ''
+        ),
         'pessoas': inventario.pessoas,
         'limite_coletores': (
             inventario.pessoas + 5
@@ -1872,6 +1882,97 @@ def imprimir_checklist(request, pk):
     for categoria, lista in equipamentos_por_categoria.items():
         grupos_declaracao[categoria] += len(lista)
 
+    linhas_por_categoria = defaultdict(list)
+    for item in itens:
+        categoria = (
+            item.insumo.categoria.nome
+            if item.insumo.categoria_id
+            else 'INSUMOS'
+        )
+        linhas_por_categoria[categoria].append({
+            'descricao': item.insumo.descricao,
+            'quantidade_enviada': item.quantidade_enviada,
+            'unidade': item.insumo.unidade_medida,
+            'quantidade_retornada': (
+                item.quantidade_retornada
+                if item.status_retorno == 'CONFERIDO'
+                else None
+            ),
+            'retorno_informado': item.status_retorno == 'CONFERIDO',
+        })
+
+    equipamentos_agrupados = defaultdict(lambda: {
+        'quantidade_enviada': 0,
+        'quantidade_retornada': 0,
+    })
+    for item in equipamentos:
+        produto = item.equipamento.produto
+        categoria = (
+            produto.get_categoria_display()
+            if produto
+            else 'EQUIPAMENTOS'
+        )
+        descricao = produto.descricao if produto else 'Equipamento'
+        chave = (categoria, descricao)
+        equipamentos_agrupados[chave]['quantidade_enviada'] += 1
+        if item.status_retorno == 'RETORNADO':
+            equipamentos_agrupados[chave]['quantidade_retornada'] += 1
+
+    for (categoria, descricao), quantidades in equipamentos_agrupados.items():
+        linhas_por_categoria[categoria].append({
+            'descricao': descricao,
+            'quantidade_enviada': quantidades['quantidade_enviada'],
+            'unidade': '',
+            'quantidade_retornada': (
+                quantidades['quantidade_retornada']
+                if quantidades['quantidade_retornada']
+                else None
+            ),
+            'retorno_informado': bool(quantidades['quantidade_retornada']),
+        })
+
+    grupos_checklist = [
+        {'categoria': categoria, 'linhas': linhas}
+        for categoria, linhas in linhas_por_categoria.items()
+    ]
+
+    if checklist.declaracao_quantidades:
+        rotulos_declaracao = [
+            ('departamento_pessoal', 'DEPARTAMENTO PESSOAL'),
+            ('fios_cabos', 'FIOS E CABOS'),
+            ('coletor_dados', 'COLETOR DE DADOS'),
+            ('impressora', 'IMPRESSORA'),
+            ('escada', 'ESCADA'),
+            ('balanca', 'BALANÇA'),
+            ('extensor_rede_carrinho', 'EXTENSOR DE REDE / CARRINHO'),
+        ]
+        grupos_declaracao = [
+            (rotulo, checklist.declaracao_quantidades.get(chave, 0))
+            for chave, rotulo in rotulos_declaracao
+        ]
+    else:
+        grupos_declaracao = sorted(grupos_declaracao.items())
+
+    dados_declaracao = {
+        'cliente': checklist.inventario.cliente.sigla,
+        'loja': str(checklist.inventario.loja),
+        'data': checklist.inventario.data_inicio.strftime('%d/%m/%Y'),
+        'endereco': checklist.inventario.endereco or '',
+        'bairro': checklist.inventario.bairro or '',
+        'cidade': checklist.inventario.cidade or '',
+        'horario_entrega': (
+            checklist.inventario.horario_ponto.strftime('%H:%M')
+            if checklist.inventario.horario_ponto else ''
+        ),
+        'horario_inicio': (
+            checklist.inventario.horario_inicio.strftime('%H:%M')
+            if checklist.inventario.horario_inicio else ''
+        ),
+        'ponto_encontro': checklist.inventario.ponto_encontro or '',
+        'transporte': checklist.transporte or '',
+    }
+    dados_declaracao.update(checklist.declaracao_dados or {})
+
     return render(
         request,
         'insumos/checklist_impressao.html',
@@ -1880,7 +1981,9 @@ def imprimir_checklist(request, pk):
             'itens': itens,
             'equipamentos': equipamentos,
             'equipamentos_por_categoria': dict(equipamentos_por_categoria),
-            'grupos_declaracao': sorted(grupos_declaracao.items()),
+            'grupos_declaracao': grupos_declaracao,
+            'dados_declaracao': dados_declaracao,
+            'grupos_checklist': grupos_checklist,
         },
     )
 
@@ -1975,22 +2078,35 @@ def exportar_checklist_modelo(request, pk):
         if quantidade:
             planilha_checklist.cell(linha, 5).value = quantidade
 
-    planilha_declaracao['C4'] = cliente
-    planilha_declaracao['E4'] = loja
-    planilha_declaracao['G4'] = data_formatada
-    planilha_declaracao['C6'] = inventario.endereco or ''
-    planilha_declaracao['C8'] = inventario.bairro or ''
-    planilha_declaracao['F8'] = inventario.cidade or ''
-    planilha_declaracao['C10'] = (
-        inventario.horario_ponto.strftime('%H:%M')
-        if inventario.horario_ponto else ''
-    )
-    planilha_declaracao['G10'] = (
-        inventario.horario_inicio.strftime('%H:%M')
-        if inventario.horario_inicio else ''
-    )
-    planilha_declaracao['D12'] = inventario.ponto_encontro or ''
-    planilha_declaracao['D14'] = checklist.transporte or ''
+    dados_declaracao = {
+        'cliente': cliente,
+        'loja': loja,
+        'data': data_formatada,
+        'endereco': inventario.endereco or '',
+        'bairro': inventario.bairro or '',
+        'cidade': inventario.cidade or '',
+        'horario_entrega': (
+            inventario.horario_ponto.strftime('%H:%M')
+            if inventario.horario_ponto else ''
+        ),
+        'horario_inicio': (
+            inventario.horario_inicio.strftime('%H:%M')
+            if inventario.horario_inicio else ''
+        ),
+        'ponto_encontro': inventario.ponto_encontro or '',
+        'transporte': checklist.transporte or '',
+    }
+    dados_declaracao.update(checklist.declaracao_dados or {})
+    planilha_declaracao['C4'] = dados_declaracao['cliente']
+    planilha_declaracao['E4'] = dados_declaracao['loja']
+    planilha_declaracao['G4'] = dados_declaracao['data']
+    planilha_declaracao['C6'] = dados_declaracao['endereco']
+    planilha_declaracao['C8'] = dados_declaracao['bairro']
+    planilha_declaracao['F8'] = dados_declaracao['cidade']
+    planilha_declaracao['C10'] = dados_declaracao['horario_entrega']
+    planilha_declaracao['G10'] = dados_declaracao['horario_inicio']
+    planilha_declaracao['D12'] = dados_declaracao['ponto_encontro']
+    planilha_declaracao['D14'] = dados_declaracao['transporte']
 
     grupos_declaracao = {
         27: Decimal('0'),
@@ -2013,6 +2129,23 @@ def exportar_checklist_modelo(request, pk):
             grupos_declaracao[27] += item.quantidade_enviada
         elif categoria == chave_descricao('Fios e Cabos'):
             grupos_declaracao[29] += item.quantidade_enviada
+
+    if checklist.declaracao_quantidades:
+        chaves_por_linha = {
+            27: 'departamento_pessoal',
+            29: 'fios_cabos',
+            31: 'coletor_dados',
+            33: 'impressora',
+            35: 'escada',
+            37: 'balanca',
+            39: 'extensor_rede_carrinho',
+        }
+        grupos_declaracao = {
+            linha: Decimal(str(
+                checklist.declaracao_quantidades.get(chave, 0)
+            ))
+            for linha, chave in chaves_por_linha.items()
+        }
 
     for linha, quantidade in grupos_declaracao.items():
         planilha_declaracao.cell(linha, 6).value = quantidade or ''
@@ -2190,6 +2323,37 @@ def editar_checklist(request, pk):
     if request.method == 'POST':
         try:
             with transaction.atomic():
+                campos_declaracao = {
+                    'departamento_pessoal': 'declaracao_departamento_pessoal',
+                    'fios_cabos': 'declaracao_fios_cabos',
+                    'coletor_dados': 'declaracao_coletor_dados',
+                    'impressora': 'declaracao_impressora',
+                    'escada': 'declaracao_escada',
+                    'balanca': 'declaracao_balanca',
+                    'extensor_rede_carrinho': 'declaracao_extensor_rede_carrinho',
+                }
+                declaracao_enviada = any(
+                    nome_post in request.POST
+                    for nome_post in campos_declaracao.values()
+                )
+                if declaracao_enviada:
+                    declaracao_quantidades = {}
+                    for chave, nome_post in campos_declaracao.items():
+                        try:
+                            quantidade = int(
+                                request.POST.get(nome_post, '0') or '0'
+                            )
+                        except (TypeError, ValueError) as exc:
+                            raise ValueError(
+                                'As quantidades da declaração devem ser números inteiros.'
+                            ) from exc
+                        if quantidade < 0:
+                            raise ValueError(
+                                'As quantidades da declaração não podem ser negativas.'
+                            )
+                        declaracao_quantidades[chave] = quantidade
+                else:
+                    declaracao_quantidades = checklist.declaracao_quantidades
                 try:
                     quantidade_volumes = int(
                         request.POST.get(
@@ -2197,15 +2361,16 @@ def editar_checklist(request, pk):
                             checklist.quantidade_volumes,
                         )
                     )
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as exc:
                     raise ValueError(
                         'Informe uma quantidade de volumes válida.'
-                    )
-                if quantidade_volumes <= 0:
+                    ) from exc
+                if quantidade_volumes <= 0 or quantidade_volumes > 9999:
                     raise ValueError(
-                        'Informe ao menos um volume para a declaração.'
+                        'Informe uma quantidade de volumes entre 1 e 9999.'
                     )
                 checklist.quantidade_volumes = quantidade_volumes
+                checklist.declaracao_quantidades = declaracao_quantidades
                 checklist.transporte = request.POST.get(
                     'transporte',
                     checklist.transporte,
@@ -2214,10 +2379,81 @@ def editar_checklist(request, pk):
                     'observacao',
                     checklist.observacao,
                 ).strip()
+                inventario = checklist.inventario
+                dados_atuais = checklist.declaracao_dados or {}
+
+                def valor_declaracao(nome_post, chave, padrao=''):
+                    return request.POST.get(
+                        nome_post,
+                        dados_atuais.get(chave, padrao),
+                    ).strip()
+
+                checklist.declaracao_dados = {
+                    'cliente': valor_declaracao(
+                        'declaracao_cliente', 'cliente', inventario.cliente.sigla
+                    ),
+                    'loja': valor_declaracao(
+                        'declaracao_loja', 'loja', str(inventario.loja)
+                    ),
+                    'data': valor_declaracao(
+                        'declaracao_data', 'data',
+                        inventario.data_inicio.strftime('%d/%m/%Y')
+                    ),
+                    'endereco': valor_declaracao(
+                        'declaracao_endereco', 'endereco', inventario.endereco or ''
+                    ),
+                    'bairro': valor_declaracao(
+                        'declaracao_bairro', 'bairro', inventario.bairro or ''
+                    ),
+                    'cidade': valor_declaracao(
+                        'declaracao_cidade', 'cidade', inventario.cidade or ''
+                    ),
+                    'horario_entrega': valor_declaracao(
+                        'horario_ponto', 'horario_entrega',
+                        inventario.horario_ponto.strftime('%H:%M')
+                        if inventario.horario_ponto else ''
+                    ),
+                    'horario_inicio': valor_declaracao(
+                        'horario_inicio', 'horario_inicio',
+                        inventario.horario_inicio.strftime('%H:%M')
+                        if inventario.horario_inicio else ''
+                    ),
+                    'ponto_encontro': valor_declaracao(
+                        'ponto_encontro', 'ponto_encontro',
+                        inventario.ponto_encontro or ''
+                    ),
+                    'transporte': checklist.transporte,
+                }
                 checklist.save(update_fields=[
                     'quantidade_volumes',
+                    'declaracao_quantidades',
+                    'declaracao_dados',
                     'transporte',
                     'observacao',
+                ])
+
+                def ler_horario(nome):
+                    if nome not in request.POST:
+                        return getattr(inventario, nome)
+                    valor = request.POST.get(nome, '').strip()
+                    if not valor:
+                        return None
+                    try:
+                        return datetime.strptime(valor, '%H:%M').time()
+                    except ValueError as exc:
+                        raise ValueError(
+                            f'Informe um horário válido para {nome.replace("_", " ")}.'
+                        ) from exc
+
+                inventario.ponto_encontro = request.POST.get(
+                    'ponto_encontro', inventario.ponto_encontro or ''
+                ).strip()
+                inventario.horario_ponto = ler_horario('horario_ponto')
+                inventario.horario_inicio = ler_horario('horario_inicio')
+                inventario.save(update_fields=[
+                    'ponto_encontro',
+                    'horario_ponto',
+                    'horario_inicio',
                 ])
 
                 # Atualizar insumos (quantidades utilizada, retornada, perdida)

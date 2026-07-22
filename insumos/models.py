@@ -483,6 +483,8 @@ class ChecklistDiario(models.Model):
     observacao = models.TextField(blank=True)
     quantidade_volumes = models.PositiveIntegerField(default=0)
     transporte = models.CharField(max_length=200, blank=True)
+    declaracao_quantidades = models.JSONField(default=dict, blank=True)
+    declaracao_dados = models.JSONField(default=dict, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 #   finalizado = models.BooleanField(default=False)
     finalizado_em = models.DateTimeField(null=True, blank=True)

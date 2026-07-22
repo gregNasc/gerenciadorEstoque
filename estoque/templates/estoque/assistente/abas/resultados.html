@@ -1,0 +1,28 @@
+{% load i18n %}
+<section id="tory-panel-resultados" class="tory-panel" role="tabpanel" aria-labelledby="tory-tab-resultados" data-tory-panel="resultados" hidden>
+    <div id="tory-results-empty" class="tory-panel-empty">
+        <i class="bi bi-table" aria-hidden="true"></i>
+        <h3>{% trans "Nenhum resultado estruturado ainda" %}</h3>
+        <p>{% trans "Tabelas e listas extensas aparecerão aqui sem ocupar toda a conversa." %}</p>
+    </div>
+    <div id="tory-results" class="d-none">
+        <div class="tory-results-header">
+            <div>
+                <span class="tory-eyebrow">{% trans "Resultado atual" %}</span>
+                <h3 id="tory-results-title">{% trans "Resultados da consulta" %}</h3>
+                <p id="tory-results-summary" class="mb-0"></p>
+            </div>
+            <span id="tory-results-total" class="tory-total-badge"></span>
+        </div>
+        <div class="tory-results-toolbar">
+            <label class="tory-search">
+                <span class="visually-hidden">{% trans "Pesquisar nos resultados" %}</span>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="tory-results-search" type="search" class="form-control" placeholder="{% trans 'Pesquisar nos resultados...' %}">
+            </label>
+        </div>
+        <div id="tory-results-content"></div>
+        <div id="tory-results-pagination" class="tory-pagination" aria-label="{% trans 'Paginação dos resultados' %}"></div>
+    </div>
+</section>
+

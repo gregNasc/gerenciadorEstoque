@@ -33,6 +33,8 @@ class ChecklistService:
         observacao='',
         quantidade_volumes=0,
         transporte='',
+        declaracao_quantidades=None,
+        declaracao_dados=None,
     ):
         return ChecklistDiario.objects.create(
             inventario=inventario,
@@ -42,6 +44,8 @@ class ChecklistService:
             observacao=observacao,
             quantidade_volumes=quantidade_volumes,
             transporte=(transporte or '').strip(),
+            declaracao_quantidades=declaracao_quantidades or {},
+            declaracao_dados=declaracao_dados or {},
             status='EM_EXECUCAO',
         )
 

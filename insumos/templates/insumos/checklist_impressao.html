@@ -44,12 +44,67 @@
     border: 2px solid #263b55; background: #edf2f7;
     display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 800;
   }
-  .check-columns { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; }
-  .compact-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
-  .compact-table th, .compact-table td { border: 1px solid #526477; padding: 4px 6px; vertical-align: middle; }
-  .compact-table th { color: #fff; background: #17365d; }
-  .category-row td { background: #e8eef5; font-weight: 800; }
-  .asset-list { margin: 0; padding-left: 16px; }
+  .official-checklist { color: #111; font-family: Arial, Helvetica, sans-serif; }
+  .official-checklist .document-title {
+    margin: 0 0 14px; font-size: 1.28rem; letter-spacing: .01em;
+  }
+  .official-meta {
+    display: grid; grid-template-columns: 90px 1fr 70px 120px;
+    align-items: end; gap: 8px 10px; margin-bottom: 12px;
+    font-size: .8rem;
+  }
+  .official-meta .field-label { font-weight: 800; text-transform: uppercase; }
+  .official-meta .field-value {
+    min-height: 25px; padding: 4px 6px 2px; border: 1px solid #222;
+    overflow-wrap: anywhere;
+  }
+  .official-meta .field-wide { grid-column: span 3; }
+  .official-meta .field-address { grid-column: 2 / -1; }
+  .official-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) 145px;
+    align-items: stretch;
+  }
+  .official-table {
+    width: 100%; border-collapse: collapse; table-layout: fixed;
+    font-size: .68rem;
+  }
+  .official-table th,
+  .official-table td {
+    border: 1px solid #111; padding: 3px 4px; vertical-align: middle;
+  }
+  .official-table thead th { background: #fff; font-weight: 800; text-align: center; }
+  .official-table .category-cell {
+    width: 13%; text-align: center; font-weight: 800; text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+  .official-table .description-cell { width: 31%; text-align: left; }
+  .official-table .quantity-cell { width: 10%; text-align: center; font-weight: 700; }
+  .official-table .check-cell { width: 12%; text-align: center; }
+  .official-table .empty-row td { height: 24px; }
+  .attention-panel {
+    display: flex; flex-direction: column; border: 1px solid #111; border-left: 0;
+    background: #d9d9d9;
+  }
+  .attention-title {
+    padding: 6px 5px; border-bottom: 1px solid #111;
+    background: #cfcfcf; text-align: center; font-size: 1rem; font-weight: 900;
+  }
+  .attention-copy {
+    display: flex; flex: 1; align-items: center; justify-content: center;
+    padding: 10px; text-align: center; font-size: .68rem; font-weight: 700;
+    line-height: 1.35;
+  }
+  .official-note {
+    margin-top: 8px; padding: 5px 7px; border: 1px solid #111;
+    font-size: .7rem;
+  }
+  .official-footer {
+    display: grid; grid-template-columns: 1fr 120px 1.35fr;
+    align-items: end; gap: 18px; margin-top: 18px;
+  }
+  .volume-label { font-size: .8rem; font-weight: 900; text-align: right; }
+  .volume-value { min-height: 28px; border: 1px solid #111; text-align: center; font-weight: 800; padding: 5px; }
+  .coordinator-signature { padding-top: 6px; border-top: 1px solid #111; text-align: center; font-size: .68rem; }
   .signatures {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
     margin-top: 44px; text-align: center;
@@ -61,13 +116,16 @@
   @media (max-width: 760px) {
     .print-hub { padding: 10px; }
     .document-sheet { min-height: 0; padding: 15px; }
-    .document-meta, .declaration-grid, .check-columns, .signatures { grid-template-columns: 1fr; }
+    .document-meta, .declaration-grid, .signatures { grid-template-columns: 1fr; }
     .meta-field.wide { grid-column: auto; }
-    .compact-table { font-size: .72rem; }
+    .official-meta { grid-template-columns: 76px 1fr; }
+    .official-meta .field-wide,
+    .official-meta .field-address { grid-column: auto; }
+    .official-grid { grid-template-columns: minmax(620px, 1fr) 125px; overflow-x: auto; }
     .signature { margin-top: 28px; }
   }
 
-  @page { size: A4 landscape; margin: 7mm; }
+  @page { size: A4 portrait; margin: 6mm; }
   @media print {
     body { background: #fff !important; }
     body > nav, body > header, body > footer, .sidebar, .navbar,
@@ -80,8 +138,8 @@
     body.print-declaration #declaracao-documento,
     body.print-checklist #checklist-documento { display: block !important; }
     .document-sheet {
-      width: 100%; height: 190mm; min-height: 0; overflow: hidden;
-      padding: 4mm; border: 1px solid #222; border-radius: 0; box-shadow: none;
+      width: 100%; min-height: 0; overflow: visible;
+      padding: 3mm; border: 0; border-radius: 0; box-shadow: none;
       break-after: avoid; page-break-after: avoid;
     }
     .document-title { font-size: 14pt; }
@@ -90,9 +148,22 @@
     .declaration-copy { margin: 8mm auto 5mm; font-size: 10pt; }
     .declaration-row { padding: 1.5mm 1mm; font-size: 9pt; }
     .volume-total { margin: 5mm auto; padding: 3mm; }
-    .compact-table { font-size: 7.4pt; }
-    .compact-table th, .compact-table td { padding: 1.2mm 1.5mm; }
+    .official-checklist .document-title { margin-bottom: 3mm; font-size: 12pt; }
+    .official-meta { grid-template-columns: 22mm 1fr 15mm 32mm; gap: 1.5mm 2mm; margin-bottom: 2.5mm; font-size: 7pt; }
+    .official-meta .field-value { min-height: 5mm; padding: 1mm; }
+    .official-grid { grid-template-columns: minmax(0, 1fr) 31mm; overflow: visible; }
+    .official-table { font-size: 5.8pt; }
+    .official-table th, .official-table td { padding: .65mm .8mm; }
+    .attention-title { padding: 1.5mm 1mm; font-size: 8pt; }
+    .attention-copy { padding: 2mm; font-size: 5.8pt; }
+    .official-note { margin-top: 1.5mm; padding: 1mm; font-size: 6pt; }
+    .official-footer { margin-top: 4mm; gap: 4mm; grid-template-columns: 1fr 27mm 1.25fr; }
+    .volume-label { font-size: 7pt; }
+    .volume-value { min-height: 6mm; padding: 1mm; }
+    .coordinator-signature { font-size: 6pt; }
     .signatures { margin-top: 9mm; gap: 8mm; }
+    .official-checklist .signatures { margin-top: 8mm; }
+    .official-checklist .signature { font-size: 6pt; }
   }
 </style>
 {% endblock %}
@@ -131,16 +202,16 @@
       <article class="document-sheet">
         <div class="document-title">DECLARAÇÃO DE RETIRADA DE EQUIPAMENTOS</div>
         <div class="document-meta">
-          <div class="meta-field"><small>Cliente</small><strong>{{ checklist.inventario.cliente.sigla }}</strong></div>
-          <div class="meta-field"><small>Loja</small><strong>{{ checklist.inventario.loja }}</strong></div>
-          <div class="meta-field"><small>Data</small><strong>{{ checklist.inventario.data_inicio|date:"d/m/Y" }}</strong></div>
-          <div class="meta-field"><small>Base</small><strong>{{ checklist.inventario.base.nome }}</strong></div>
-          <div class="meta-field wide"><small>Endereço</small><strong>{{ checklist.inventario.endereco|default:"—" }}</strong></div>
-          <div class="meta-field"><small>Bairro</small><strong>{{ checklist.inventario.bairro|default:"—" }}</strong></div>
-          <div class="meta-field"><small>Cidade</small><strong>{{ checklist.inventario.cidade|default:"—" }}</strong></div>
-          <div class="meta-field wide"><small>Transporte / motorista</small><strong>{{ checklist.transporte|default:"—" }}</strong></div>
-          <div class="meta-field"><small>Horário de encontro</small><strong>{{ checklist.inventario.horario_ponto|time:"H:i"|default:"—" }}</strong></div>
-          <div class="meta-field"><small>Horário de início</small><strong>{{ checklist.inventario.horario_inicio|time:"H:i"|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Cliente</small><strong>{{ dados_declaracao.cliente|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Loja</small><strong>{{ dados_declaracao.loja|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Data</small><strong>{{ dados_declaracao.data|default:"—" }}</strong></div>
+          <div class="meta-field wide"><small>Endereço</small><strong>{{ dados_declaracao.endereco|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Bairro</small><strong>{{ dados_declaracao.bairro|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Cidade</small><strong>{{ dados_declaracao.cidade|default:"—" }}</strong></div>
+          <div class="meta-field wide"><small>Ponto de encontro</small><strong>{{ dados_declaracao.ponto_encontro|default:"—" }}</strong></div>
+          <div class="meta-field wide"><small>Transporte / motorista</small><strong>{{ dados_declaracao.transporte|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Horário de entrega</small><strong>{{ dados_declaracao.horario_entrega|default:"—" }}</strong></div>
+          <div class="meta-field"><small>Horário de início</small><strong>{{ dados_declaracao.horario_inicio|default:"—" }}</strong></div>
         </div>
 
         <p class="declaration-copy">
@@ -170,70 +241,97 @@
     </section>
 
     <section class="tab-pane fade show active" id="checklist-documento" role="tabpanel" aria-labelledby="checklist-tab">
-      <article class="document-sheet">
+      <article class="document-sheet official-checklist">
         <div class="document-title">CHECK-LIST DE EQUIPAMENTOS E INSUMOS</div>
-        <div class="document-meta">
-          <div class="meta-field"><small>Cliente</small><strong>{{ checklist.inventario.cliente.sigla }} · Loja {{ checklist.inventario.loja }}</strong></div>
-          <div class="meta-field"><small>Data</small><strong>{{ checklist.inventario.data_inicio|date:"d/m/Y" }}</strong></div>
-          <div class="meta-field"><small>Base</small><strong>{{ checklist.inventario.base.nome }}</strong></div>
-          <div class="meta-field"><small>Volumes</small><strong>{{ checklist.quantidade_volumes }}</strong></div>
-          <div class="meta-field wide"><small>Endereço</small><strong>{{ checklist.inventario.endereco|default:"—" }}</strong></div>
-          <div class="meta-field"><small>Bairro</small><strong>{{ checklist.inventario.bairro|default:"—" }}</strong></div>
-          <div class="meta-field"><small>Cidade</small><strong>{{ checklist.inventario.cidade|default:"—" }}</strong></div>
+        <div class="official-meta">
+          <div class="field-label">Cliente</div>
+          <div class="field-value">{{ checklist.inventario.cliente.sigla }}</div>
+          <div class="field-label">Loja</div>
+          <div class="field-value">{{ checklist.inventario.loja }}</div>
+
+          <div class="field-label">Data</div>
+          <div class="field-value">{{ checklist.inventario.data_inicio|date:"d/m/Y" }}</div>
+          <div class="field-label">Base</div>
+          <div class="field-value">{{ checklist.inventario.base.nome }}</div>
+
+          <div class="field-label">Endereço</div>
+          <div class="field-value field-address">{{ checklist.inventario.endereco|default:"—" }}</div>
+
+          <div class="field-label">Bairro</div>
+          <div class="field-value">{{ checklist.inventario.bairro|default:"—" }}</div>
+          <div class="field-label">Cidade</div>
+          <div class="field-value">{{ checklist.inventario.cidade|default:"—" }}</div>
         </div>
 
-        <div class="check-columns">
-          <table class="compact-table">
+        <div class="official-grid">
+          <table class="official-table">
             <thead>
-              <tr><th>Insumo</th><th>Envio</th><th>Saída</th><th>Retorno</th></tr>
+              <tr>
+                <th rowspan="2" class="category-cell">#</th>
+                <th rowspan="2" class="description-cell">Descrição</th>
+                <th rowspan="2" class="quantity-cell">Envio<br>Quantidade</th>
+                <th rowspan="2" class="check-cell">Saída<br>Logística</th>
+                <th colspan="2" class="check-cell">Conferência Loja</th>
+                <th rowspan="2" class="check-cell">Retorno<br>Logística</th>
+              </tr>
+              <tr>
+                <th class="check-cell">Entrada</th>
+                <th class="check-cell">Saída</th>
+              </tr>
             </thead>
             <tbody>
-              {% regroup itens by insumo.categoria.nome as categorias_insumos %}
-              {% for grupo in categorias_insumos %}
-                <tr class="category-row"><td colspan="4">{{ grupo.grouper|default:"Insumos" }}</td></tr>
-                {% for item in grupo.list %}
+              {% for grupo in grupos_checklist %}
+                {% for linha in grupo.linhas %}
                   <tr>
-                    <td>{{ item.insumo.descricao }}</td>
-                    <td>{{ item.quantidade_enviada|floatformat:"-2" }} {{ item.insumo.unidade_medida }}</td>
-                    <td></td><td></td>
+                    {% if forloop.first %}
+                      <td rowspan="{{ grupo.linhas|length }}" class="category-cell">{{ grupo.categoria }}</td>
+                    {% endif %}
+                    <td class="description-cell">{{ linha.descricao }}</td>
+                    <td class="quantity-cell">
+                      {{ linha.quantidade_enviada|floatformat:"-2" }}{% if linha.unidade %} {{ linha.unidade }}{% endif %}
+                    </td>
+                    <td class="check-cell"></td>
+                    <td class="check-cell"></td>
+                    <td class="check-cell"></td>
+                    <td class="check-cell">{% if linha.retorno_informado %}{{ linha.quantidade_retornada|floatformat:"-2" }}{% endif %}</td>
                   </tr>
                 {% endfor %}
               {% empty %}
-                <tr><td colspan="4">Nenhum insumo enviado.</td></tr>
+                <tr class="empty-row">
+                  <td class="category-cell">—</td>
+                  <td class="description-cell">Nenhum equipamento ou insumo enviado.</td>
+                  <td class="quantity-cell">0</td>
+                  <td class="check-cell"></td>
+                  <td class="check-cell"></td>
+                  <td class="check-cell"></td>
+                  <td class="check-cell"></td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
 
-          <table class="compact-table">
-            <thead>
-              <tr><th>Equipamentos vinculados</th><th>Qtd.</th><th>Conferência</th></tr>
-            </thead>
-            <tbody>
-              {% for categoria, lista in equipamentos_por_categoria.items %}
-                <tr class="category-row"><td>{{ categoria }}</td><td>{{ lista|length }}</td><td></td></tr>
-                {% for item in lista %}
-                  <tr>
-                    <td>
-                      {{ item.equipamento.produto.descricao|default:"Equipamento" }}
-                      · {{ item.equipamento.patrimonio|default:item.equipamento.numero_serie }}
-                    </td>
-                    <td>1</td><td></td>
-                  </tr>
-                {% endfor %}
-              {% empty %}
-                <tr><td colspan="3">Nenhum equipamento enviado.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <aside class="attention-panel">
+            <div class="attention-title">ATENÇÃO</div>
+            <div class="attention-copy">
+              Eu, responsável pelo inventário descrito neste check-list, estou ciente de que o não retorno de todos os equipamentos conferidos pela logística implicará minha responsabilidade pela reposição dos itens faltantes em até 15 dias corridos, após notificação da logística.
+            </div>
+          </aside>
         </div>
 
         {% if checklist.observacao %}
-          <p class="mt-2 mb-0"><strong>Observação:</strong> {{ checklist.observacao }}</p>
+          <div class="official-note"><strong>OBS.:</strong> {{ checklist.observacao }}</div>
         {% endif %}
+
+        <div class="official-footer">
+          <div class="volume-label">QUANTIDADE DE VOLUMES</div>
+          <div class="volume-value">{{ checklist.quantidade_volumes }}</div>
+          <div class="coordinator-signature">Assinatura do Coordenador</div>
+        </div>
+
         <div class="signatures">
-          <div class="signature">Responsável pela preparação</div>
-          <div class="signature">Conferência na loja</div>
-          <div class="signature">Conferência do retorno</div>
+          <div class="signature">Assinatura do responsável pela Preparação</div>
+          <div class="signature">Assinatura do responsável pela Conferência Loja</div>
+          <div class="signature">Assinatura do responsável pelo Retorno</div>
         </div>
       </article>
     </section>

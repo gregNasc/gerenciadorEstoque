@@ -1,0 +1,32 @@
+{% load i18n %}
+<section id="tory-panel-conversa" class="tory-panel active" role="tabpanel" aria-labelledby="tory-tab-conversa" data-tory-panel="conversa">
+    <div id="tory-messages" class="tory-messages">
+        <article class="tory-message tory-message-bot">
+            <div class="tory-message-avatar" aria-hidden="true">
+                <span class="tory-character tory-character-neutral" data-tory-character></span>
+            </div>
+            <div class="tory-message-content">
+                <div class="tory-message-heading">
+                    <strong>Tory</strong>
+                    <time>{% now "H:i" %}</time>
+                </div>
+                <p>{% blocktrans with nome=request.user.get_full_name|default:request.user.username %}Olá, {{ nome }}! Posso consultar planejamento, execução, estoque, insumos e indicadores dentro do seu perfil de acesso.{% endblocktrans %}</p>
+            </div>
+        </article>
+
+        <div id="tory-suggestions" class="tory-empty-state">
+            <div>
+                <span class="tory-empty-icon" aria-hidden="true"><i class="bi bi-stars"></i></span>
+                <h3>{% trans "O que você deseja consultar?" %}</h3>
+                <p>{% trans "Use uma sugestão ou escreva a pergunta do seu jeito." %}</p>
+            </div>
+            <div class="tory-suggestions" aria-label="{% trans 'Sugestões de perguntas' %}">
+                <button type="button" data-tory-suggestion="Quantos coletores ativos existem?">{% trans "Coletores ativos" %}</button>
+                <button type="button" data-tory-suggestion="Quais inventários estão planejados para amanhã?">{% trans "Planejados amanhã" %}</button>
+                <button type="button" data-tory-suggestion="Quais transferências estão pendentes?">{% trans "Transferências pendentes" %}</button>
+                <button type="button" data-tory-suggestion="Mostre os indicadores gerais.">{% trans "Indicadores gerais" %}</button>
+                <button type="button" data-tory-suggestion="Como cadastrar um equipamento?">{% trans "Como usar" %}</button>
+            </div>
+        </div>
+    </div>
+</section>

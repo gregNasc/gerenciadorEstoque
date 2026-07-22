@@ -3,19 +3,23 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from estoque.models import (
-    Base, Comunicado, Empresa, Equipamento, GrupoRegional, Perfil, Produto, Sick,
+    Base, Comunicado, Empresa, Emprestimo, Equipamento, GrupoRegional,
+    ItemEmprestimo, Perfil, Produto, Sick, Transferencia, TransferenciaItem,
 )
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
+from estoque.services.assistente.response_builder import construir_erro, construir_resposta
 from estoque.services.comunicado_service import ComunicadoService
 from estoque.services.emprestimo_service import EmprestimoService
 from estoque.services.transferencia_services import criar_transferencia
 from insumos.models import (
     CategoriaInsumo,
+    ChecklistEquipamento,
     ChecklistDiario,
     Cliente,
     ConsumoInsumo,
@@ -129,7 +133,11 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertIn('Duração total: -', resultado['resposta'])
         self.assertIn('não usa 20h–6h nem qualquer outra jornada fixa', resultado['resposta'])
 
-    def test_sao_paulo_ambiguo_pede_base_com_acoes_clicaveis(self):
+    @patch(
+        'estoque.services.assistente_operacional_service.timezone.localdate',
+        return_value=date(2026, 7, 15),
+    )
+    def test_sao_paulo_ambiguo_pede_base_com_acoes_clicaveis(self, _localdate_mock):
         base_sao_paulo = Base.objects.create(nome='SÃO PAULO', empresa=self.empresa)
         Base.objects.create(nome='SP INT BAURU', empresa=self.empresa)
         Base.objects.create(nome='RIO DE JANEIRO', empresa=self.empresa)
@@ -639,3 +647,489 @@ class ComunicadoManutencaoTests(TestCase):
             set(comunicado.usuarios.values_list('username', flat=True)),
             {'admin_manutencao', 'rafael.ribeiro'},
         )
+
+
+class ToryResponseBuilderTests(TestCase):
+    def test_converte_resposta_legada_com_tabela_em_componentes(self):
+        resposta = construir_resposta({
+            'categoria': 'estoque',
+            'resposta': (
+                'Foram encontrados 2 equipamentos.\n'
+                'PATRIMÔNIO | BASE\n'
+                '12345 | Campinas\n'
+                '12346 | Sorocaba'
+            ),
+            'acoes': [{'label': 'Na base Campinas', 'pergunta': 'Na base Campinas'}],
+        })
+
+        self.assertTrue(resposta['sucesso'])
+        self.assertEqual(resposta['tipo'], 'agrupamento')
+        self.assertEqual(resposta['metadados']['total'], 2)
+        tabela = next(item for item in resposta['componentes'] if item['tipo'] == 'tabela')
+        self.assertEqual(tabela['registros'][0]['PATRIMÔNIO'], '12345')
+        self.assertEqual(
+            tabela['registros'][0]['_acoes_celulas']['BASE']['pergunta'],
+            'Na base Campinas',
+        )
+        self.assertEqual(
+            resposta['acoes'][0],
+            {'label': 'Na base Campinas', 'pergunta': 'Na base Campinas'},
+        )
+
+    def test_preserva_componentes_estruturados_validos(self):
+        resposta = construir_resposta({
+            'mensagem': 'Existem 42 equipamentos em SICK.',
+            'tipo': 'agrupamento',
+            'componentes': [
+                {'tipo': 'indicador', 'titulo': 'Equipamentos em SICK', 'valor': 42},
+                {
+                    'tipo': 'lista',
+                    'titulo': 'Por categoria',
+                    'itens': [{'nome': 'Coletores', 'valor': 18}],
+                },
+                {'tipo': 'desconhecido', 'valor': 'ignorado'},
+            ],
+        })
+
+        self.assertEqual(len(resposta['componentes']), 2)
+        self.assertEqual(resposta['componentes'][0]['valor'], 42)
+        self.assertEqual(resposta['resposta'], resposta['mensagem'])
+
+    def test_cria_drill_down_controlado_para_loja_de_inventario(self):
+        resposta = construir_resposta({
+            'resposta': (
+                'Inventários encontrados:\n'
+                'CLIENTE | LOJA | BASE | STATUS\n'
+                'OXX | 58 | SP SUL | PLANEJADO'
+            ),
+        })
+
+        tabela = next(item for item in resposta['componentes'] if item['tipo'] == 'tabela')
+        acoes = tabela['registros'][0]['_acoes_celulas']
+        self.assertEqual(
+            acoes['LOJA']['pergunta'],
+            'Fale sobre o inventário OXX loja 58',
+        )
+        self.assertEqual(acoes['BASE']['pergunta'], 'Na base SP SUL')
+
+    def test_erro_controlado_nao_expoe_excecao(self):
+        resposta = construir_erro('Não foi possível processar.', codigo='processamento')
+
+        self.assertFalse(resposta['sucesso'])
+        self.assertEqual(resposta['tipo'], 'erro')
+        self.assertNotIn('traceback', str(resposta).lower())
+
+
+class ToryInterfaceTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa Interface Tory')
+        self.usuario = User.objects.create_user('tory_interface')
+        Perfil.objects.update_or_create(
+            user=self.usuario,
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
+        )
+        self.client.force_login(self.usuario)
+        self.url = reverse('estoque:assistente_operacional')
+
+    @patch('estoque.views.AssistenteOperacionalService.responder')
+    def test_endpoint_ajax_expoe_contrato_novo_e_legado(self, responder):
+        responder.return_value = {
+            'categoria': 'estoque',
+            'resposta': 'TOTAL | BASE\n3 | Campinas',
+            'contexto': {'intencao': 'equipamentos'},
+            'acoes': [],
+        }
+
+        response = self.client.post(
+            self.url,
+            {'pergunta': 'Quantos equipamentos existem?'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['sucesso'])
+        self.assertEqual(payload['resposta'], payload['mensagem'])
+        self.assertTrue(payload['resposta_id'])
+        self.assertEqual(payload['componentes'][0]['tipo'], 'tabela')
+        self.assertEqual(
+            self.client.session['assistente_operacional_contexto'],
+            {'intencao': 'equipamentos'},
+        )
+
+    def test_endpoint_ajax_rejeita_pergunta_vazia(self):
+        response = self.client.post(
+            self.url,
+            {'pergunta': '   '},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['sucesso'])
+        self.assertEqual(response.json()['erro']['codigo'], 'pergunta_vazia')
+
+    @patch('estoque.views.AssistenteOperacionalService.responder', side_effect=PermissionDenied)
+    def test_endpoint_ajax_trata_erro_de_permissao(self, responder):
+        response = self.client.post(
+            self.url,
+            {'pergunta': 'Mostre custos'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()['erro']['codigo'], 'permissao')
+
+    def test_limpar_conversa_remove_contexto_da_sessao(self):
+        session = self.client.session
+        session['assistente_operacional_contexto'] = {'intencao': 'estoque'}
+        session.save()
+
+        response = self.client.post(
+            self.url,
+            {'acao': 'limpar_contexto'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('assistente_operacional_contexto', self.client.session)
+
+    def test_pagina_inclui_modal_amplo_e_modulos_estaticos(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'id="tory-modal"')
+        self.assertContains(response, 'id="tory-tab-resultados"')
+        self.assertContains(response, 'id="tory-question"')
+        self.assertContains(response, 'css/tory.css')
+        self.assertContains(response, 'js/tory-renderer.js')
+
+
+class ToryEquipamentosOperacionaisTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa Equipamentos Tory')
+        self.base = Base.objects.create(nome='SP EQUIPAMENTOS', empresa=self.empresa)
+        self.destino = Base.objects.create(nome='SP DESTINO', empresa=self.empresa)
+        self.usuario = User.objects.create_user('tory_equipamentos')
+        Perfil.objects.update_or_create(
+            user=self.usuario,
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
+        )
+        self.usuario.refresh_from_db()
+        self.produto = Produto.objects.create(
+            codigo='NOTE-TORY',
+            descricao='Notebook Tory',
+            fabricante='Fabricante Tory',
+            modelo='Modelo Tory',
+            categoria='Notebooks',
+        )
+        self.administrativo = Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SER-ADM-01',
+            patrimonio='PAT-ADM-01',
+            regional=self.base,
+            status='SICK',
+            finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+            codigo='EQP-ADM-01',
+        )
+        self.operacional = Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SER-OPE-01',
+            patrimonio='PAT-OPE-01',
+            regional=self.base,
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
+            codigo='EQP-OPE-01',
+        )
+        Sick.objects.create(
+            equipamento=self.administrativo,
+            categoria='HARDWARE',
+            motivo='Falha de placa',
+            etapa=Sick.Etapa.EM_MANUTENCAO,
+            previsao_retorno=date(2026, 7, 30),
+            ativo=True,
+        )
+        transferencia = Transferencia.objects.create(
+            solicitado_por=self.usuario,
+            regional_origem=self.base,
+            regional_destino=self.destino,
+            status='EM_TRANSITO',
+            protocolo='TRF-TORY-01',
+        )
+        TransferenciaItem.objects.create(
+            transferencia=transferencia,
+            equipamento=self.administrativo,
+            status='ENVIADO',
+        )
+        grupo = GrupoRegional.objects.create(nome='Grupo Equipamentos Tory')
+        emprestimo = Emprestimo.objects.create(
+            protocolo='EMP-TORY-01',
+            grupo=grupo,
+            regional_origem=self.base,
+            regional_destino=self.destino,
+            solicitado_por=self.usuario,
+            motivo='Apoio administrativo',
+            data_emprestimo=date(2026, 7, 20),
+            data_prevista_devolucao=date(2026, 7, 31),
+            status='EMPRESTADO',
+        )
+        ItemEmprestimo.objects.create(
+            emprestimo=emprestimo,
+            equipamento=self.administrativo,
+            status='RECEBIDO',
+            quantidade=1,
+        )
+        cliente = Cliente.objects.create(sigla='TEQ', nome='Cliente Equipamentos Tory')
+        inventario = Inventario.objects.create(
+            cliente=cliente,
+            loja='101',
+            base=self.base,
+            data_inicio=date(2026, 7, 22),
+            criado_por=self.usuario,
+            status='EM_ANDAMENTO',
+        )
+        checklist = ChecklistDiario.objects.create(
+            inventario=inventario,
+            data_inicio=timezone.now(),
+            criado_por=self.usuario,
+            responsavel=self.usuario,
+            status='EM_EXECUCAO',
+        )
+        ChecklistEquipamento.objects.create(
+            checklist=checklist,
+            equipamento=self.administrativo,
+            tag_saida='TAG-ADM-01',
+            status_retorno='PENDENTE',
+        )
+
+    def test_detalhe_inclui_finalidade_e_vinculos_operacionais(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Detalhe o equipamento de patrimônio PAT-ADM-01',
+        )
+
+        self.assertEqual(resultado['categoria'], 'estoque')
+        self.assertEqual(resultado['contexto']['equipamento_identificador'], 'pat-adm-01')
+        self.assertIn('Administrativo', resultado['resposta'])
+        self.assertIn('Em manutenção · HARDWARE · retorno 30/07/2026', resultado['resposta'])
+        self.assertIn('TRF-TORY-01 · Em trânsito', resultado['resposta'])
+        self.assertIn('EMP-TORY-01 · Emprestado', resultado['resposta'])
+        self.assertIn('TEQ loja 101', resultado['resposta'])
+
+    def test_resumo_inclui_administrativos_e_operacionais(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Mostre os equipamentos da base SP EQUIPAMENTOS',
+        )
+
+        self.assertIn('Administrativo | 1 | 50,00%', resultado['resposta'])
+        self.assertIn('Operacional | 1 | 50,00%', resultado['resposta'])
+        self.assertIn('PAT-ADM-01', resultado['resposta'])
+        self.assertIn('PAT-OPE-01', resultado['resposta'])
+
+    def test_filtro_administrativo_nao_retorna_operacional(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quais equipamentos administrativos existem?',
+        )
+
+        self.assertEqual(resultado['contexto']['finalidade'], 'ADMINISTRATIVO')
+        self.assertIn('PAT-ADM-01', resultado['resposta'])
+        self.assertNotIn('PAT-OPE-01', resultado['resposta'])
+
+    def test_manutencao_com_etapa_prioriza_equipamentos_sobre_contexto_de_inventario(self):
+        self.administrativo.status = 'MANUTENCAO'
+        self.administrativo.save(update_fields=['status', 'data_atualizacao'])
+
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quais equipamentos estão em manutenção e em qual etapa estão',
+            contexto={
+                'intencao': 'inventarios_data_base',
+                'base': self.destino.nome,
+            },
+        )
+
+        self.assertEqual(resultado['contexto']['intencao'], 'equipamentos')
+        self.assertEqual(resultado['contexto']['status'], 'MANUTENCAO')
+        self.assertIn('PAT-ADM-01', resultado['resposta'])
+        self.assertIn('Em manutenção · HARDWARE', resultado['resposta'])
+        self.assertNotIn('Resumo de inventários', resultado['resposta'])
+
+    def test_sick_com_etapa_nao_herda_base_de_inventario_anterior(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quais equipamentos estão no SICK e em qual etapa estão?',
+            contexto={
+                'intencao': 'inventarios_data_base',
+                'base': self.destino.nome,
+            },
+        )
+
+        self.assertEqual(resultado['contexto']['intencao'], 'equipamentos')
+        self.assertEqual(resultado['contexto']['status'], 'SICK')
+        self.assertEqual(resultado['contexto']['base'], '')
+        self.assertIn('PAT-ADM-01', resultado['resposta'])
+        self.assertIn('Em manutenção · HARDWARE', resultado['resposta'])
+
+    def test_contrato_torna_identificadores_do_equipamento_clicaveis(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Detalhe o equipamento de série SER-ADM-01',
+        )
+        contrato = construir_resposta(resultado)
+        tabela = next(
+            item for item in contrato['componentes']
+            if item['tipo'] == 'tabela' and item['titulo'] == 'Resultados'
+            and item['registros'] and 'PATRIMÔNIO' in item['registros'][0]
+        )
+        acoes = tabela['registros'][0]['_acoes_celulas']
+
+        self.assertEqual(
+            acoes['PATRIMÔNIO']['pergunta'],
+            'Detalhe o equipamento de patrimônio PAT-ADM-01',
+        )
+        self.assertEqual(
+            acoes['SÉRIE']['pergunta'],
+            'Detalhe o equipamento de série SER-ADM-01',
+        )
+
+
+class ToryIsolamentoBasesTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa Escopo Tory')
+        self.santa_isabel = Base.objects.create(
+            nome='SP INT STA ISABEL', empresa=self.empresa
+        )
+        self.outra_base = Base.objects.create(
+            nome='SP INT CPN', empresa=self.empresa
+        )
+        self.outra_empresa = Empresa.objects.create(nome='Outra Empresa Tory')
+        self.base_outra_empresa = Base.objects.create(
+            nome='BASE OUTRA EMPRESA', empresa=self.outra_empresa
+        )
+        self.usuario = User.objects.create_user('tory_santa_isabel')
+        perfil, _ = Perfil.objects.update_or_create(
+            user=self.usuario,
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.GESTOR},
+        )
+        perfil.regionais.set([self.santa_isabel, self.base_outra_empresa])
+        self.usuario.refresh_from_db()
+
+        self.produto = Produto.objects.create(
+            codigo='COL-ESCOPO-TORY',
+            descricao='Coletor Escopo Tory',
+            fabricante='Fabricante Tory',
+            modelo='Modelo Tory',
+            categoria='Coletores',
+        )
+        self.equipamento_permitido = Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SER-STA-01',
+            patrimonio='PAT-STA-01',
+            regional=self.santa_isabel,
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+            codigo='EQP-STA-01',
+        )
+        Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SER-FORA-01',
+            patrimonio='PAT-FORA-01',
+            regional=self.outra_base,
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
+            codigo='EQP-FORA-01',
+        )
+        Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SER-EMPRESA-01',
+            patrimonio='PAT-EMPRESA-01',
+            regional=self.base_outra_empresa,
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
+            codigo='EQP-EMPRESA-01',
+        )
+
+        self.cliente = Cliente.objects.create(
+            sigla='ESC', nome='Cliente Escopo Tory'
+        )
+        Inventario.objects.create(
+            cliente=self.cliente,
+            loja='STA-101',
+            base=self.santa_isabel,
+            data_inicio=timezone.localdate(),
+            criado_por=self.usuario,
+            status='EM_ANDAMENTO',
+        )
+        Inventario.objects.create(
+            cliente=self.cliente,
+            loja='FORA-999',
+            base=self.outra_base,
+            data_inicio=timezone.localdate(),
+            criado_por=self.usuario,
+            status='EM_ANDAMENTO',
+        )
+        Inventario.objects.create(
+            cliente=self.cliente,
+            loja='EMPRESA-999',
+            base=self.base_outra_empresa,
+            data_inicio=timezone.localdate(),
+            criado_por=self.usuario,
+            status='EM_ANDAMENTO',
+        )
+
+        transferencia = Transferencia.objects.create(
+            solicitado_por=self.usuario,
+            regional_origem=self.santa_isabel,
+            regional_destino=self.outra_base,
+            status='EM_TRANSITO',
+            protocolo='TRF-ESCOPO-01',
+        )
+        TransferenciaItem.objects.create(
+            transferencia=transferencia,
+            equipamento=self.equipamento_permitido,
+            status='ENVIADO',
+        )
+
+    def test_equipamentos_ficam_restritos_a_base_e_empresa_autorizadas(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario, 'Mostre todos os equipamentos'
+        )
+
+        self.assertIn('PAT-STA-01', resultado['resposta'])
+        self.assertNotIn('PAT-FORA-01', resultado['resposta'])
+        self.assertNotIn('PAT-EMPRESA-01', resultado['resposta'])
+
+    def test_pesquisa_direta_nao_localiza_equipamento_de_outra_base(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario, 'Detalhe o equipamento de patrimônio PAT-FORA-01'
+        )
+
+        self.assertIn('não encontrei esse equipamento no seu escopo', resultado['resposta'])
+        self.assertNotIn('SER-FORA-01', resultado['resposta'])
+
+    def test_inventarios_ficam_restritos_a_base_e_empresa_autorizadas(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario, 'Mostre todos os inventários'
+        )
+
+        self.assertIn('STA-101', resultado['resposta'])
+        self.assertNotIn('FORA-999', resultado['resposta'])
+        self.assertNotIn('EMPRESA-999', resultado['resposta'])
+
+    def test_base_proibida_e_negada_sem_substituicao_silenciosa(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario, 'Mostre os equipamentos da base SP INT CPN'
+        )
+
+        self.assertEqual(resultado['contexto']['intencao'], 'base_sem_acesso')
+        self.assertIn('não está vinculada ao seu usuário', resultado['resposta'])
+        self.assertNotIn('PAT-STA-01', resultado['resposta'])
+
+    def test_movimentacao_nao_revela_nome_de_base_fora_do_escopo(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario, 'Detalhe o equipamento de patrimônio PAT-STA-01'
+        )
+
+        self.assertIn('TRF-ESCOPO-01', resultado['resposta'])
+        self.assertIn('base não exibida', resultado['resposta'])
+        self.assertNotIn('SP INT CPN', resultado['resposta'])

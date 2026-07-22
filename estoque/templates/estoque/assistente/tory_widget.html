@@ -1,0 +1,24 @@
+{% load i18n %}
+<div id="tory-widget" class="tory-widget" data-tory-api-url="{% url 'estoque:assistente_operacional' %}">
+    <div id="tory-minimized" class="tory-minimized d-none" role="status">
+        <button type="button" class="tory-minimized-open" data-tory-open>
+            <span class="tory-status-dot" aria-hidden="true"></span>
+            <span>{% trans "Tory · conversa em andamento" %}</span>
+        </button>
+        <button type="button" class="btn-close" data-tory-dismiss-minimized aria-label="{% trans 'Dispensar' %}"></button>
+    </div>
+
+    <button
+        id="tory-toggle"
+        class="tory-toggle"
+        type="button"
+        data-tory-open
+        aria-haspopup="dialog"
+        aria-controls="tory-modal"
+        aria-label="{% trans 'Abrir Tory, Assistente Operacional' %}"
+        title="{% trans 'Assistente Operacional' %}"
+    >
+        <i class="bi bi-box-fill fs-3" aria-hidden="true"></i>
+        <span class="visually-hidden">{% trans "Abrir Tory" %}</span>
+    </button>
+</div>

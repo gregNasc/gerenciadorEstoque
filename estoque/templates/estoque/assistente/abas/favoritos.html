@@ -1,0 +1,16 @@
+{% load i18n %}
+<section id="tory-panel-favoritos" class="tory-panel" role="tabpanel" aria-labelledby="tory-tab-favoritos" data-tory-panel="favoritos" hidden>
+    <div class="tory-section-heading">
+        <div>
+            <span class="tory-eyebrow">{% trans "Acesso rápido" %}</span>
+            <h3>{% trans "Consultas favoritas" %}</h3>
+        </div>
+    </div>
+    <div id="tory-favorites" class="tory-record-list"></div>
+    <div id="tory-favorites-empty" class="tory-panel-empty">
+        <i class="bi bi-star" aria-hidden="true"></i>
+        <h3>{% trans "Nenhuma consulta favoritada" %}</h3>
+        <p>{% trans "Favorite uma resposta para reutilizar a pergunta durante esta sessão." %}</p>
+    </div>
+</section>
+

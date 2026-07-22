@@ -17,6 +17,7 @@ from insumos.constants import GruposInsumos
 from insumos.models import (
     CategoriaInsumo,
     ChecklistDiario,
+    ChecklistEquipamento,
     Cliente,
     Insumo,
     Inventario,
@@ -327,6 +328,27 @@ class ChecklistModeloOficialTests(TestCase):
             status='EM_EXECUCAO',
             quantidade_volumes=7,
             transporte='Motorista Teste',
+            declaracao_quantidades={
+                'departamento_pessoal': 1,
+                'fios_cabos': 1,
+                'coletor_dados': 1,
+                'impressora': 1,
+                'escada': 1,
+                'balanca': 1,
+                'extensor_rede_carrinho': 1,
+            },
+            declaracao_dados={
+                'cliente': 'CLIENTE EDITADO',
+                'loja': 'LOJA EDITADA',
+                'data': '20/07/2026',
+                'endereco': 'Endereço editado',
+                'bairro': 'Bairro editado',
+                'cidade': 'Cidade editada',
+                'horario_entrega': '06:30',
+                'horario_inicio': '07:00',
+                'ponto_encontro': 'Doca editada',
+                'transporte': 'Transporte editado',
+            },
         )
         ItemChecklist.objects.create(
             checklist=checklist,
@@ -343,9 +365,66 @@ class ChecklistModeloOficialTests(TestCase):
         workbook = openpyxl.load_workbook(BytesIO(resposta.content))
         self.assertEqual(workbook.sheetnames, ['Declaração', 'Check - List'])
         self.assertEqual(workbook['Declaração']['F41'].value, 7)
+        self.assertEqual(workbook['Declaração']['F27'].value, 1)
+        self.assertEqual(workbook['Declaração']['F39'].value, 1)
+        self.assertEqual(workbook['Declaração']['C4'].value, 'CLIENTE EDITADO')
+        self.assertEqual(workbook['Declaração']['D12'].value, 'Doca editada')
         self.assertEqual(workbook['Check - List']['E76'].value, 7)
         self.assertEqual(workbook['Check - List']['E11'].value, 3)
         self.assertEqual(workbook['Check - List']['C3'].value, 'MOD')
+
+    def test_impressao_reproduz_estrutura_do_checklist_oficial(self):
+        checklist = ChecklistDiario.objects.create(
+            inventario=self.inventario,
+            data_inicio=timezone.now(),
+            criado_por=self.admin,
+            responsavel=self.admin,
+            status='EM_EXECUCAO',
+            quantidade_volumes=7,
+            observacao='Conferir materiais na chegada.',
+        )
+        ItemChecklist.objects.create(
+            checklist=checklist,
+            insumo=self.insumo,
+            quantidade_enviada=Decimal('3'),
+        )
+        produto = Produto.objects.create(
+            codigo='COLETOR-IMPRESSAO',
+            descricao='Coletor de Dados',
+            fabricante='Teste',
+            modelo='Teste',
+            categoria='Coletores',
+        )
+        equipamento = Equipamento.objects.create(
+            produto=produto,
+            numero_serie='SERIE-IMPRESSAO',
+            patrimonio='PAT-IMPRESSAO',
+            regional=self.base,
+            codigo='EQ-IMPRESSAO',
+            status='ATIVO',
+        )
+        ChecklistEquipamento.objects.create(
+            checklist=checklist,
+            equipamento=equipamento,
+            tag_saida='TAG-IMPRESSAO',
+        )
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(
+            reverse('insumos:imprimir_checklist', args=[checklist.pk])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'CHECK-LIST DE EQUIPAMENTOS E INSUMOS')
+        self.assertContains(resposta, 'Envio<br>Quantidade')
+        self.assertContains(resposta, 'Saída<br>Logística')
+        self.assertContains(resposta, 'Conferência Loja')
+        self.assertContains(resposta, 'Retorno<br>Logística')
+        self.assertContains(resposta, 'DEPARTAMENTO PESSOAL')
+        self.assertContains(resposta, 'Toner Impressora Laser')
+        self.assertContains(resposta, 'Coletor de Dados')
+        self.assertContains(resposta, 'QUANTIDADE DE VOLUMES')
+        self.assertContains(resposta, 'Assinatura do Coordenador')
 
     def test_limite_de_coletores_e_pessoas_mais_cinco(self):
         produto = Produto.objects.create(
@@ -394,6 +473,156 @@ class ChecklistModeloOficialTests(TestCase):
         )
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(resposta.json()['limite_coletores'], 20)
+
+    def test_formulario_exibe_checklist_e_declaracao_editaveis(self):
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(reverse('estoque:checklist'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'CHECK-LIST DE EQUIPAMENTOS E INSUMOS')
+        self.assertContains(resposta, 'DECLARAÇÃO DE RETIRADA DE EQUIPAMENTOS')
+        self.assertContains(resposta, 'id="checklist_quantidade_volumes"')
+        self.assertContains(resposta, 'id="declaration_quantidade_volumes"')
+        self.assertContains(resposta, 'name="quantidade_volumes"', count=1)
+        self.assertContains(resposta, 'name="ponto_encontro"')
+        self.assertContains(resposta, 'name="horario_ponto"')
+        self.assertContains(resposta, 'name="horario_inicio"')
+        self.assertContains(resposta, 'name="declaracao_departamento_pessoal"')
+        self.assertContains(resposta, 'name="declaracao_extensor_rede_carrinho"')
+        self.assertContains(resposta, 'class="declaration-quantity-input"', count=7)
+        self.assertContains(resposta, 'name="declaracao_cliente"')
+        self.assertContains(resposta, 'name="declaracao_loja"')
+        self.assertContains(resposta, 'name="declaracao_endereco"')
+        self.assertNotContains(resposta, 'id="base_nome"')
+        html = resposta.content.decode()
+        campos_editaveis = [
+            'declaration_cliente',
+            'declaration_loja',
+            'declaration_data',
+            'declaration_endereco',
+            'declaration_bairro',
+            'declaration_cidade',
+            'horario_ponto',
+            'horario_inicio',
+            'ponto_encontro',
+            'declaration_transporte',
+            'declaration_total_dp',
+            'declaration_total_fios',
+            'declaration_total_coletor',
+            'declaration_total_impressora',
+            'declaration_total_escada',
+            'declaration_total_balanca',
+            'declaration_total_extensor',
+            'declaration_quantidade_volumes',
+        ]
+        for campo_id in campos_editaveis:
+            inicio = html.index(f'id="{campo_id}"')
+            tag = html[inicio:html.index('>', inicio)]
+            self.assertNotIn('readonly', tag, campo_id)
+
+    def test_edicao_persiste_campos_editaveis_da_declaracao(self):
+        checklist = ChecklistDiario.objects.create(
+            inventario=self.inventario,
+            data_inicio=timezone.now(),
+            criado_por=self.admin,
+            responsavel=self.admin,
+            status='EM_EXECUCAO',
+            quantidade_volumes=1,
+        )
+        self.client.force_login(self.admin)
+
+        resposta = self.client.post(
+            reverse('insumos:editar_checklist', args=[checklist.pk]),
+            {
+                'quantidade_volumes': 12,
+                'transporte': 'Van da operação',
+                'observacao': 'Conferência concluída',
+                'ponto_encontro': 'Portaria de serviço',
+                'horario_ponto': '07:30',
+                'horario_inicio': '08:15',
+                'declaracao_departamento_pessoal': 1,
+                'declaracao_fios_cabos': 2,
+                'declaracao_coletor_dados': 3,
+                'declaracao_impressora': 4,
+                'declaracao_escada': 5,
+                'declaracao_balanca': 6,
+                'declaracao_extensor_rede_carrinho': 7,
+                'declaracao_cliente': 'Cliente livre',
+                'declaracao_loja': 'Loja livre',
+                'declaracao_data': '21/07/2026',
+                'declaracao_endereco': 'Rua livre, 10',
+                'declaracao_bairro': 'Bairro livre',
+                'declaracao_cidade': 'Cidade livre',
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        checklist.refresh_from_db()
+        self.inventario.refresh_from_db()
+        self.assertEqual(checklist.quantidade_volumes, 12)
+        self.assertEqual(checklist.declaracao_quantidades['balanca'], 6)
+        self.assertEqual(checklist.declaracao_dados['cliente'], 'Cliente livre')
+        self.assertEqual(checklist.declaracao_dados['endereco'], 'Rua livre, 10')
+        self.assertEqual(checklist.transporte, 'Van da operação')
+        self.assertEqual(self.inventario.ponto_encontro, 'Portaria de serviço')
+        self.assertEqual(self.inventario.horario_ponto.strftime('%H:%M'), '07:30')
+        self.assertEqual(self.inventario.horario_inicio.strftime('%H:%M'), '08:15')
+
+    def test_criacao_persiste_campos_editaveis_da_declaracao(self):
+        produto = Produto.objects.create(
+            codigo='ROUTER-DECLARACAO',
+            descricao='Roteador da declaração',
+            fabricante='Teste',
+            modelo='Teste',
+            categoria='Routers',
+        )
+        equipamento = Equipamento.objects.create(
+            produto=produto,
+            numero_serie='SERIE-DECLARACAO',
+            patrimonio='PAT-DECLARACAO',
+            regional=self.base,
+            codigo='EQ-DECLARACAO',
+            status='ATIVO',
+        )
+        self.client.force_login(self.admin)
+
+        resposta = self.client.post(
+            reverse('estoque:checklist'),
+            {
+                'inventario': self.inventario.pk,
+                'quantidade_volumes': 5,
+                'transporte': 'Caminhão 01',
+                'ponto_encontro': 'Doca principal',
+                'horario_ponto': '06:45',
+                'horario_inicio': '07:10',
+                'equipamentos_router': equipamento.pk,
+                'declaracao_departamento_pessoal': 2,
+                'declaracao_fios_cabos': 1,
+                'declaracao_coletor_dados': 3,
+                'declaracao_impressora': 1,
+                'declaracao_escada': 2,
+                'declaracao_balanca': 1,
+                'declaracao_extensor_rede_carrinho': 2,
+                'declaracao_cliente': 'Cliente criação',
+                'declaracao_loja': 'Loja criação',
+                'declaracao_data': '22/07/2026',
+                'declaracao_endereco': 'Endereço criação',
+                'declaracao_bairro': 'Bairro criação',
+                'declaracao_cidade': 'Cidade criação',
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        checklist = ChecklistDiario.objects.get(inventario=self.inventario)
+        self.inventario.refresh_from_db()
+        self.assertEqual(checklist.quantidade_volumes, 5)
+        self.assertEqual(checklist.declaracao_quantidades['coletor_dados'], 3)
+        self.assertEqual(checklist.declaracao_dados['cliente'], 'Cliente criação')
+        self.assertEqual(checklist.transporte, 'Caminhão 01')
+        self.assertEqual(self.inventario.ponto_encontro, 'Doca principal')
+        self.assertEqual(self.inventario.horario_ponto.strftime('%H:%M'), '06:45')
+        self.assertEqual(self.inventario.horario_inicio.strftime('%H:%M'), '07:10')
 
 
 class AcessoCustosInsumosTests(TestCase):
