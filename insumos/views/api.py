@@ -1545,22 +1545,178 @@ def insumos_por_base(request):
 
 @login_required
 def lista_checklists(request):
-    perfil = request.user.perfil
-    if request.user.perfil.is_admin:
-        checklists = ChecklistDiario.objects.all().select_related('inventario__cliente', 'inventario__base')
-    else:
-        checklists = ChecklistDiario.objects.filter(
-            inventario__base__in=perfil.regionais.all(),
-            inventario__base__empresa=perfil.empresa,
-        ).select_related('inventario__cliente', 'inventario__base')
+    checklists = (
+        ChecklistDiario.objects
+        .select_related(
+            "inventario",
+            "inventario__cliente",
+            "inventario__base",
+            "criado_por",
+        )
+        .order_by("-data_inicio", "-id")
+    )
 
-    checklists = checklists.order_by('-data_inicio')
+    # =========================================================
+    # PERMISSÕES POR PERFIL E BASE
+    # =========================================================
+    perfil = getattr(request.user, "perfil", None)
+
+    if not request.user.is_superuser:
+        if perfil is None:
+            # Usuário sem perfil não pode visualizar checklists.
+            checklists = checklists.none()
+
+        elif perfil.role == "admin":
+            # Admin visualiza somente os registros da própria empresa.
+            if perfil.empresa_id:
+                checklists = checklists.filter(
+                    inventario__base__empresa_id=perfil.empresa_id
+                )
+            else:
+                checklists = checklists.none()
+
+        else:
+            # Gestores e operadores visualizam somente as bases
+            # associadas ao campo regionais do perfil.
+            bases_permitidas = perfil.regionais.values_list(
+                "id",
+                flat=True,
+            )
+
+            checklists = checklists.filter(
+                inventario__base_id__in=bases_permitidas
+            )
+
+    # =========================================================
+    # PARÂMETROS DOS FILTROS
+    # =========================================================
+    pesquisa = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    data_inicio = request.GET.get("data_inicio", "").strip()
+    data_fim = request.GET.get("data_fim", "").strip()
+    por_pagina = request.GET.get("por_pagina", "10").strip()
+
+    # =========================================================
+    # PESQUISA GERAL
+    # =========================================================
+    if pesquisa:
+        filtros_pesquisa = (
+            Q(inventario__cliente__sigla__icontains=pesquisa)
+            | Q(inventario__cliente__nome__icontains=pesquisa)
+            | Q(inventario__base__nome__icontains=pesquisa)
+            | Q(inventario__loja__icontains=pesquisa)
+            | Q(criado_por__username__icontains=pesquisa)
+        )
+
+        if pesquisa.isdigit():
+            filtros_pesquisa |= Q(id=int(pesquisa))
+
+        checklists = checklists.filter(filtros_pesquisa)
+
+    # =========================================================
+    # FILTRO POR DATA INICIAL
+    # =========================================================
+    if data_inicio:
+        try:
+            data_inicio_convertida = datetime.strptime(
+                data_inicio,
+                "%Y-%m-%d",
+            ).date()
+
+            checklists = checklists.filter(
+                data_inicio__date__gte=data_inicio_convertida
+            )
+        except ValueError:
+            data_inicio = ""
+
+    # =========================================================
+    # FILTRO POR DATA FINAL
+    # =========================================================
+    if data_fim:
+        try:
+            data_fim_convertida = datetime.strptime(
+                data_fim,
+                "%Y-%m-%d",
+            ).date()
+
+            checklists = checklists.filter(
+                data_inicio__date__lte=data_fim_convertida
+            )
+        except ValueError:
+            data_fim = ""
+
+    # =========================================================
+    # CARDS DE RESUMO
+    # Os contadores respeitam as permissões, pesquisa e período.
+    # =========================================================
+    queryset_resumo = checklists
+
+    resumo = {
+        "total": queryset_resumo.count(),
+        "abertos": queryset_resumo.filter(
+            status="ABERTO"
+        ).count(),
+        "em_execucao": queryset_resumo.filter(
+            status="EM_EXECUCAO"
+        ).count(),
+        "finalizados": queryset_resumo.filter(
+            status="FINALIZADO"
+        ).count(),
+    }
+
+    # =========================================================
+    # FILTRO POR STATUS
+    # Aplicado após os cards para não zerar os outros contadores.
+    # =========================================================
+    status_validos = {
+        "ABERTO",
+        "EM_EXECUCAO",
+        "FINALIZADO",
+    }
+
+    if status in status_validos:
+        checklists = checklists.filter(status=status)
+    else:
+        status = ""
+
+    # =========================================================
+    # PAGINAÇÃO
+    # =========================================================
+    opcoes_por_pagina = {10, 25, 50}
+
+    try:
+        por_pagina_int = int(por_pagina)
+    except (TypeError, ValueError):
+        por_pagina_int = 10
+
+    if por_pagina_int not in opcoes_por_pagina:
+        por_pagina_int = 10
+
+    paginator = Paginator(checklists, por_pagina_int)
+    pagina = request.GET.get("page")
+    page_obj = paginator.get_page(pagina)
+
+    # Preserva os filtros durante a paginação.
+    parametros = request.GET.copy()
+    parametros.pop("page", None)
 
     context = {
-        'checklists': checklists,
-        'perfil': perfil,
+        "checklists": page_obj,
+        "page_obj": page_obj,
+        "resumo": resumo,
+        "pesquisa": pesquisa,
+        "status_selecionado": status,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "por_pagina": por_pagina_int,
+        "query_string": parametros.urlencode(),
     }
-    return render(request, 'insumos/lista_checklists.html', context)
+
+    return render(
+        request,
+        "insumos/lista_checklists.html",
+        context,
+    )
 
 @login_required
 def finalizar_checklist(request, pk):
