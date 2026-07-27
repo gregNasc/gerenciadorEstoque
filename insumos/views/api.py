@@ -2143,7 +2143,6 @@ def imprimir_checklist(request, pk):
         },
     )
 
-
 @login_required
 def exportar_checklist_modelo(request, pk):
     checklist = get_object_or_404(
@@ -2320,7 +2319,6 @@ def exportar_checklist_modelo(request, pk):
         f'attachment; filename="checklist_{checklist.pk}_modelo_oficial.xlsx"'
     )
     return response
-
 
 @login_required
 def editar_itens_checklist(request, pk):

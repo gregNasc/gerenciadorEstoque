@@ -1,0 +1,190 @@
+Página 1
+
+Se a sua conexão à Internet for através de um 
+cabo Ethernet diretamente, ao invés de um 
+modem, conecte o cabo Ethernet à porta WAN do 
+roteador e pule as etapas 1, 2 e 3.
+Guia de Instalação Rápida
+http://tplinkwifi.net
+Nova Senha:
+Confirmar Senha:
+Vamos Começar 
+2. Inicie um navegador web e digite http://tplinkwifi.net ou 
+http://192.168.0.1 na barra de endereços. Crie uma 
+senha para fazer login.
+Nota: Se a janela de login não aparecer, consulte FAQ> P1.
+3. Siga as instruções passo a passo para configurar a conexão à Internet.1.  Conecte seu computador ao roteador (com ou sem fio)
+Configure o Roteador
+Com fio
+Desligue o Wi-Fi no seu computador e conecte-o ao roteador 
+através de um cabo Ethernet.
+* As imagens podem diferir dos produtos reais.
+Modem
+Fonte de energia
+Energia
+Internet
+Desligue o modem e remova a 
+bateria de reserva, se houver uma.
+Ligue o modem e aguarde cerca 
+de 2 minutos para reiniciar.
+Conecte a fonte de energia 
+ao roteador.
+Conecte o modem à porta WAN do 
+roteador através de um cabo Ethernet.
+Sem fio
+Conecte seu dispositivo 
+ao Wi-Fi do roteador 
+usando o SSID (nome da 
+rede) e a Senha Wireless 
+impressa na etiqueta na 
+parte inferior do roteador.
+Senha Wireless/PIN:XXXXXXXX
+SSID:TP-Link_XXXX
+Roteador
+Roteador Wi-Fi 300Mbps
+App Tether
+O aplicativo TP-Link T ether fornece uma maneira simples 
+e intuitiva de acessar e gerenciar seu roteador. 
+Acesse o código QR para baixar o T ether na Apple App Store
+ou na Google Play.
+Nota: Se você não tiver certeza do tipo de conexão, clique em DETECTAR 
+AUTOMATICAMENTE ou entre em contato com seu Provedor de Internet para obter ajuda.
+
+Página 2
+
+Modo Extensor de Alcance
+1. Configure
+A. Coloque o roteador próximo ao roteador existente e ligue-o.
+B. Conecte um computador ao roteador novo via cabo Ethernet ou sem fio, 
+usando o SSID (nome da rede) e a Senha Wireless impressa na etiqueta 
+na parte inferior do roteador.
+C. Inicie um navegador web e digite http://tplinkwifi.net na barra de 
+endereço. Crie uma senha para fazer login.
+D. Clique em Alterar modo no canto superior direito ou vá para Avançado> 
+Modo Operacional e selecione Modo Extensor de Alcance. Aguarde o 
+roteador reiniciar.
+E. Use http://tplinkwifi.net para fazer login na página de configurações e 
+siga as instruções passo a passo para configurar a conexão à Internet.
+Nesse modo, o roteador aumenta a cobertura Wi-Fi existente em sua casa.
+     Coloque o Roteador Wi-Fi na metade do caminho entre o roteador 
+existente e a "zona de sombra". O local escolhido deve estar dentro do 
+alcance da sua rede existente.
+2. Realocar
+Modo Ponto de Acesso
+Nesse modo, o roteador transforma sua rede com fio existente em uma 
+rede sem fio.
+A. Ligue o roteador.
+B. Conecte a porta WAN do roteador à porta Ethernet do roteador 
+com fio através de um cabo Ethernet, como mostrado acima.
+C. Conecte um computador ao roteador Wi-Fi via cabo Ethernet ou 
+sem fio, usando o SSID (nome da rede) e a Senha Wireless impressa na 
+etiqueta na parte inferior do roteador.
+D. Inicie um navegador web e digite http://tplinkwifi.net na barra de 
+endereço. Crie uma senha para fazer login.
+E. Clique em Alterar modo no canto superior direito ou vá para 
+Avançado> Modo Operacional e selecione Modo Ponto de Acesso. 
+Aguarde o roteador reiniciar.
+ F.  Use http://tplinkwifi.net para fazer login na página de configurações 
+e siga as instruções passo a passo para configurar a conexão à Internet.
+©2021 TP-Link   7106509448  REV2.0.1
+FAQ (Perguntas Frequentes)Exterior
+Led Internet
+LED Wi-Fi
+Laranja
+Verde
+Green
+     Botão 
+WPS/Reset
+Pressione por 1 segundo para ativar a função WPS.
+Pressione e segure por mais de 5 segundos para 
+redefinir o roteador para as configurações padrão de fábrica.
+* Para evitar danos ao dispositivo, não desconecte ou desligue o roteador durante a atualização.
+Piscando:
+A porta WAN não está conectada enquanto estiver no modo roteador.
+Aceso:
+A função Wi-Fi está ativada.
+Piscando:
+A conexão WPS está em andamento. Isso pode levar até 2 minutos.
+Verde Aceso: pelo menos uma porta LAN está conectada.
+Aceso:
+Modo Roteador / WISP: Internet está disponível.
+Modo de ponto de acesso: a porta WAN está conectada.
+Modo Repetidor de Sinal: O roteador está conectado à rede existente.
+Piscando:
+O sistema está inicializando ou o firmware está sendo atualizado *.
+Item Descrição
+Modo WISP
+Nesse modo, o roteador se conecta à rede do provedor sem fio em áreas 
+sem serviço de cabeamento.
+A.Ligue o roteador. 
+B.Conecte um computador ao roteador via cabo Ethernet ou sem fio 
+usando o SSID (nome da rede) e a Senha Wireless impressa na 
+etiqueta na parte inferior do roteador.
+C.Inicie um navegador web e digite http://tplinkwifi.net na barra de 
+endereço. Crie uma senha para fazer login.  
+D.Clique em Alterar modo no canto superior direito ou vá para  
+Avançado > Modo Operacional e selecione Modo WISP. Aguarde o 
+roteador reiniciar.
+E.Use http://tplinkwifi.net para fazer login na página de configurações e 
+siga as instruções passo a passo para configurar a conexão à 
+Internet. 
+Roteador DispositivosWi-Fi Público
+P3. Como restaurar as configurações padrão de fábrica do roteador?
+Com o roteador ligado, mantenha pressionado o botão WPS / RESET no painel 
+traseiro do roteador por pelo menos 5 segundos até o LED Internet piscar. O 
+roteador será reiniciado.
+          Faça logon na página de configurações do roteador. Vá para
+Avançado > Sistema > Salvar e Restaurar (ou Sistema > Salvar e Restaurar no 
+Modo de Ponto de Acesso e Modo Repetidor de Sinal) e localize a seção 
+Restaurar Padrões de Fábrica. Clique em RESTAURAÇÃO DE FÁBRICA. O 
+roteador irá restaurar e reiniciar automaticamente.
+P4. O que posso fazer se esquecer minha senha de gerenciamento da
+        web?
+Consulte FAQ > P3 para redefinir o roteador e crie uma senha para fazer login.
+P5. O que posso fazer se esquecer minha senha de rede sem fio?
+A Senha Wireless padrão de fábrica está impressa na etiqueta do roteador. 
+Conecte um computador diretamente ao roteador usando um cabo Ethernet. 
+Faça login na página de configurações do roteador e acesse Wireless para obter 
+ou redefinir sua Senha Wireless.
+P1. O que posso fazer se a janela de login não aparecer?
+Se o computador estiver definido como um endereço IP estático, altere suas 
+configurações para obter um endereço IP e o endereço do servidor DNS 
+automaticamente.
+Verifique se http://tplinkwifi.net ou http://192.168.0.1 foi inserido corretamente 
+no navegador web. Como alternativa, digite http://192.168.1.1 no navegador da 
+web e pressione Enter.
+Use outro navegador web e tente novamente.
+Reinicie seu roteador e tente novamente.
+Desabilite e habilite o adaptador de rede que está sendo usado.
+P2. O que posso fazer se não conseguir acessar a Internet no modo      
+        Roteador?
+Verifique se a Internet está funcionando normalmente, conectando um 
+computador diretamente ao modem usando um cabo Ethernet. Caso contrário, 
+entre em contato com o seu provedor de serviços de Internet.
+Efetue login na página de configurações do roteador e acesse a página Mapa 
+de Rede para verificar se o endereço IP da WAN é válido ou não. Caso contrário, 
+verifique a conexão do física ou entre em contato com o seu provedor de 
+serviços de Internet.
+Reinicie seu roteador e tente novamente.
+Para usuários de modem a cabo, efetue login na página de configurações do 
+roteador. Vá para Avançado > Rede > Internet e localize a seção Clone de MAC. 
+Selecione Clonar o MAC do dispositivo atual e clique em SAL VAR. Em seguida, 
+reinicie o modem e o roteador.
+Aceso:
+Modo Roteador: A porta WAN está conectada, mas a Internet não 
+está disponível.
+Modo de ponto de acesso: a porta WAN não está conectada.
+Modo Repetidor de Sinal: O roteador não está conectado à rede 
+existente.
+Modo WISP: a Internet não está disponível.
+LED LAN
+DispositivosRoteador Wi-FiRoteador Cabeado
+Ethernet4Ethernet3Ethernet1Ethernet2Internet
+Ethernet4EthernetInternet WAN
+DispositivosRoteador Existente Roteador Wi-Fi
+Rede AmpliadaRede Existente
+Para suporte técnico, guia do usuário e outras 
+informações, visite https://www.tp-link.com/support/ ou 
+acesse o código QR.
+Para informações de aspectos de segurança e adequação do produto no território 
+brasileiro consulte: www.gov.br/anatel/pt-br/

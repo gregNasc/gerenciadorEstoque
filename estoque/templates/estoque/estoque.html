@@ -508,13 +508,30 @@
                 required
             ></textarea>
 
+            <label for="sickSenha" class="form-label fw-semibold mt-3">
+                {% trans "Confirme sua senha" %}
+            </label>
+
+            <input
+                id="sickSenha"
+                class="form-control"
+                type="password"
+                autocomplete="current-password"
+                aria-describedby="sickSenhaAjuda"
+                required
+            >
+
+            <div id="sickSenhaAjuda" class="form-text">
+                {% trans "Digite a senha do seu usuário para confirmar esta alteração." %}
+            </div>
+
             <div
                 id="sickMotivoErro"
                 class="text-danger small mt-2"
                 role="alert"
                 style="display: none;"
             >
-                {% trans "Informe motivo, categoria e observação antes de confirmar." %}
+                {% trans "Preencha todos os campos e confirme sua senha." %}
             </div>
         </div>
 
@@ -532,7 +549,7 @@
                 id="confirmSickModal"
                 class="btn btn-danger"
             >
-                {% trans "Confirmar SICK" %}
+                {% trans "Confirmar com senha" %}
             </button>
         </div>
     </div>
@@ -702,7 +719,7 @@
         width: 1.2rem;
         height: 1.2rem;
         border: 2px solid #dee2e6;
-        border-top-color: #0d6efd;
+        border-top-color: #1e3c72;
         border-radius: 50%;
         animation: estoque-spin 0.6s linear infinite;
     }
@@ -750,6 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sickMotivoInput = document.getElementById('sickMotivo');
     const sickCategoriaInput = document.getElementById('sickCategoria');
     const sickObservacaoInput = document.getElementById('sickObservacao');
+    const sickSenhaInput = document.getElementById('sickSenha');
     const sickMotivoErro = document.getElementById('sickMotivoErro');
     const sickEquipamentoLabel = document.getElementById('sickEquipamentoLabel');
 
@@ -928,11 +946,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sickMotivoInput) sickMotivoInput.value = '';
         if (sickCategoriaInput) sickCategoriaInput.value = '';
         if (sickObservacaoInput) sickObservacaoInput.value = '';
+        if (sickSenhaInput) sickSenhaInput.value = '';
 
         if (sickMotivoErro) {
             sickMotivoErro.style.display = 'none';
             sickMotivoErro.innerText =
-                '{% trans "Informe motivo, categoria e observação antes de confirmar." %}';
+                '{% trans "Preencha todos os campos e confirme sua senha." %}';
         }
 
         if (modalEl && !modalEl.classList.contains('hidden')) {
@@ -969,6 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sickMotivoInput) sickMotivoInput.value = '';
         if (sickCategoriaInput) sickCategoriaInput.value = '';
         if (sickObservacaoInput) sickObservacaoInput.value = '';
+        if (sickSenhaInput) sickSenhaInput.value = '';
 
         if (sickMotivoErro) {
             sickMotivoErro.style.display = 'none';
@@ -1131,7 +1151,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const data = await response.json();
 
-                    if (data.erro) {
+                    if (data.message) {
+                        errorMessage = data.message;
+                    } else if (data.erro) {
                         errorMessage = data.erro;
                     } else if (data.error) {
                         errorMessage = data.error;
@@ -1182,7 +1204,8 @@ document.addEventListener('DOMContentLoaded', () => {
             equipamentoId,
             motivo,
             categoria,
-            observacao
+            observacao,
+            senha
         ) {
             return this.request(
                 `/marcar-sick/${encodeURIComponent(equipamentoId)}/`,
@@ -1196,7 +1219,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         motivo,
                         categoria,
-                        observacao
+                        observacao,
+                        senha
                     })
                 }
             );
@@ -1435,9 +1459,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         {% trans "Transferência" %}: ${resumoEquipamentos.transferencia}
                     </span>
 
-                    <span class="badge bg-dark">
-                        {% trans "Baixa" %}: ${resumoEquipamentos.baixa}
-                    </span>
                 </div>
 
                 <div class="row g-3 mb-3">
@@ -1457,48 +1478,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         >
                     </div>
 
-                    <div class="col-md-5">
-                        <label
-                            for="filtroEquipamentosStatus"
-                            class="form-label small text-secondary fw-semibold mb-1"
-                        >
-                            {% trans "Status ou finalidade" %}
-                        </label>
-
-                        <select
-                            id="filtroEquipamentosStatus"
-                            class="form-select"
-                        >
-                            <option value="">
-                                {% trans "Todos os equipamentos" %}
-                            </option>
-
-                            <option value="ATIVO_OPERACIONAL">
-                                {% trans "Ativos operacionais" %}
-                            </option>
-
-                            <option value="ADMINISTRATIVO">
-                                {% trans "Administrativos" %}
-                            </option>
-
-                            <option value="SICK">SICK</option>
-
-                            <option value="MANUTENCAO">
-                                {% trans "Manutenção" %}
-                            </option>
-
-                            <option value="EM_TRANSITO">
-                                {% trans "Em trânsito" %}
-                            </option>
-
-                            <option value="RESERVADO_TRANSFERENCIA">
-                                {% trans "Reservado para transferência" %}
-                            </option>
-
-                            <option value="BAIXA">
-                                {% trans "Baixa" %}
-                            </option>
-                        </select>
                     </div>
                 </div>
 
@@ -2218,11 +2197,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const observacao =
                 sickObservacaoInput?.value.trim() || '';
 
-            if (!motivo || !categoria || !observacao) {
+            const senha =
+                sickSenhaInput?.value || '';
+
+            if (!motivo || !categoria || !observacao || !senha) {
                 if (sickMotivoErro) {
                     sickMotivoErro.style.display = 'block';
                     sickMotivoErro.innerText =
-                        '{% trans "Informe motivo, categoria e observação antes de confirmar." %}';
+                        '{% trans "Preencha todos os campos e confirme sua senha." %}';
                 }
 
                 return;
@@ -2237,7 +2219,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     sickPendente.equipamentoId,
                     motivo,
                     categoria,
-                    observacao
+                    observacao,
+                    senha
                 );
 
                 const {
@@ -2263,10 +2246,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     sickMotivoErro.style.display = 'block';
                     sickMotivoErro.innerText = error.message;
                 }
+
+                if (sickSenhaInput) {
+                    sickSenhaInput.value = '';
+                    sickSenhaInput.focus();
+                }
             } finally {
                 confirmSickModalBtn.disabled = false;
                 confirmSickModalBtn.innerText =
-                    '{% trans "Confirmar SICK" %}';
+                    '{% trans "Confirmar com senha" %}';
             }
         }
     );

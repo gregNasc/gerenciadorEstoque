@@ -26,6 +26,8 @@ from insumos.models import (
     Insumo,
     Inventario,
     ItemChecklist,
+    LoteTag,
+    MovimentacaoInsumo,
 )
 
 
@@ -181,6 +183,113 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertEqual(selecionado['contexto']['base'], 'SÃO PAULO')
         self.assertEqual(selecionado['contexto']['data'], '2026-07-15')
         self.assertIn('OXX loja 17 | T | 15', selecionado['resposta'])
+
+    @patch(
+        'estoque.services.assistente_operacional_service.timezone.localdate',
+        return_value=date(2026, 7, 14),
+    )
+    def test_inventarios_hoje_pede_fonte_sem_herdar_cliente_antigo(self, _localdate_mock):
+        cliente_antigo = Cliente.objects.create(sigla='BOM', nome='ATACABOM')
+        contexto_antigo = {
+            'intencao': 'inventarios_relatorio',
+            'base': self.base.nome,
+            'cliente': cliente_antigo.sigla,
+            'loja': '999',
+            'pessoas_filtro': 50,
+            'tipo_inventario': 'PARCIAL',
+        }
+
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Bom dia, quais inventários hoje?',
+            contexto=contexto_antigo,
+        )
+
+        self.assertEqual(resultado['categoria'], 'esclarecimento')
+        self.assertEqual(resultado['contexto']['intencao'], 'esclarecer_inventarios')
+        self.assertEqual(resultado['contexto']['cliente'], '')
+        self.assertEqual(resultado['contexto']['loja'], '')
+        self.assertIsNone(resultado['contexto']['pessoas_filtro'])
+        self.assertEqual(resultado['contexto']['tipo_inventario'], '')
+        self.assertEqual(
+            [acao['label'] for acao in resultado['acoes']],
+            ['Planejamento de hoje', 'Execução local de hoje'],
+        )
+
+        local = AssistenteOperacionalService.responder(
+            self.usuario,
+            resultado['acoes'][1]['pergunta'],
+            contexto=resultado['contexto'],
+        )
+        self.assertEqual(local['contexto']['intencao'], 'inventarios_data_base')
+        self.assertEqual(local['contexto']['cliente'], '')
+        self.assertIn('OXX loja 58', local['resposta'])
+
+    @patch(
+        'estoque.services.assistente_operacional_service.timezone.localdate',
+        return_value=date(2026, 7, 14),
+    )
+    def test_inventarios_locais_hoje_nao_pede_esclarecimento(self, _localdate_mock):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Mostre os inventários locais de hoje',
+        )
+
+        self.assertEqual(resultado['contexto']['intencao'], 'inventarios_data_base')
+        self.assertIn('OXX loja 58', resultado['resposta'])
+
+    @patch(
+        'estoque.services.assistente_operacional_service.timezone.localdate',
+        return_value=date(2026, 7, 14),
+    )
+    def test_lista_completa_fica_disponivel_para_paginacao(self, _localdate_mock):
+        for numero in range(59, 72):
+            Inventario.objects.create(
+                cliente=self.cliente,
+                loja=str(numero),
+                base=self.base,
+                data_inicio=date(2026, 7, 14),
+                criado_por=self.usuario,
+                pessoas=5,
+                tipo='T',
+            )
+
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Mostre os inventários locais de hoje',
+        )
+        envelope = construir_resposta(resultado)
+        tabela = next(
+            item for item in envelope['componentes']
+            if item['tipo'] == 'tabela'
+        )
+
+        self.assertEqual(len(tabela['registros']), 14)
+        self.assertEqual(tabela['titulo'], 'Inventários encontrados')
+        self.assertEqual(tabela['rotulo_total'], 'inventários exibidos')
+
+    @patch(
+        'estoque.services.planning_assistant_service.PlanningAssistantService.respond',
+        return_value={
+            'categoria': 'planejamento',
+            'resposta': 'Eventos PAI e FILHO. Evento PAI com dois eventos FILHO.',
+            'acoes': [
+                {'label': 'Ver PAI/FILHO', 'pergunta': 'Mostre os eventos PAI e FILHO'},
+            ],
+        },
+    )
+    def test_resposta_nao_expoe_terminologia_interna_de_hierarquia(self, _respond_mock):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Quais inventários estão planejados para amanhã?',
+        )
+
+        conteudo_visivel = ' '.join([
+            resultado['resposta'],
+            *[acao['label'] for acao in resultado['acoes']],
+            *[acao['pergunta'] for acao in resultado['acoes']],
+        ])
+        self.assertNotRegex(conteudo_visivel.lower(), r'\b(?:pai|filhos?)\b')
 
     def test_quantidade_de_coletores_usa_tabelas_de_status_e_modelo(self):
         produto_a = Produto.objects.create(
@@ -666,6 +775,8 @@ class ToryResponseBuilderTests(TestCase):
         self.assertEqual(resposta['tipo'], 'agrupamento')
         self.assertEqual(resposta['metadados']['total'], 2)
         tabela = next(item for item in resposta['componentes'] if item['tipo'] == 'tabela')
+        self.assertEqual(tabela['titulo'], 'Equipamentos encontrados')
+        self.assertEqual(tabela['rotulo_total'], 'equipamentos exibidos')
         self.assertEqual(tabela['registros'][0]['PATRIMÔNIO'], '12345')
         self.assertEqual(
             tabela['registros'][0]['_acoes_celulas']['BASE']['pergunta'],
@@ -711,6 +822,30 @@ class ToryResponseBuilderTests(TestCase):
             'Fale sobre o inventário OXX loja 58',
         )
         self.assertEqual(acoes['BASE']['pergunta'], 'Na base SP SUL')
+
+    def test_nomeia_tabelas_de_capacidade_sem_resultado_generico(self):
+        resposta = construir_resposta({
+            'categoria': 'capacidade',
+            'resposta': (
+                'Análise operacional de SÃO PAULO em 27/07/2026\n'
+                'INVENTÁRIO | TIPOS | PESSOAS | STATUS\n'
+                'OXX loja 58 | T | 15 | PLANEJADO\n\n'
+                'Demanda total: 15 pessoa(s)\n'
+                'Resultado para coletores: ATENDE\n\n'
+                'CATEGORIA | PRODUTO | ATIVOS | EM USO | MANUTENÇÃO | TOTAL\n'
+                'Coletores | MC65 | 20 | 0 | 1 | 21'
+            ),
+        })
+
+        tabelas = [
+            item for item in resposta['componentes']
+            if item['tipo'] == 'tabela'
+        ]
+        self.assertEqual(tabelas[0]['titulo'], 'Inventários considerados na análise')
+        self.assertEqual(tabelas[0]['rotulo_total'], 'inventários analisados')
+        self.assertEqual(tabelas[1]['titulo'], 'Equipamentos contabilizados por produto')
+        self.assertEqual(tabelas[1]['rotulo_total'], 'produtos')
+        self.assertEqual(resposta['metadados']['rotulo_total'], 'inventários analisados')
 
     def test_erro_controlado_nao_expoe_excecao(self):
         resposta = construir_erro('Não foi possível processar.', codigo='processamento')
@@ -978,7 +1113,7 @@ class ToryEquipamentosOperacionaisTests(TestCase):
         contrato = construir_resposta(resultado)
         tabela = next(
             item for item in contrato['componentes']
-            if item['tipo'] == 'tabela' and item['titulo'] == 'Resultados'
+            if item['tipo'] == 'tabela' and item['titulo'] == 'Equipamentos encontrados'
             and item['registros'] and 'PATRIMÔNIO' in item['registros'][0]
         )
         acoes = tabela['registros'][0]['_acoes_celulas']
@@ -991,6 +1126,138 @@ class ToryEquipamentosOperacionaisTests(TestCase):
             acoes['SÉRIE']['pergunta'],
             'Detalhe o equipamento de série SER-ADM-01',
         )
+
+
+class ToryRankingPorBaseTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa Ranking Tory')
+        self.base_a = Base.objects.create(nome='BASE ALFA', empresa=self.empresa)
+        self.base_b = Base.objects.create(nome='BASE BETA', empresa=self.empresa)
+        self.usuario = User.objects.create_user('tory_ranking')
+        Perfil.objects.update_or_create(
+            user=self.usuario,
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
+        )
+        self.usuario.refresh_from_db()
+
+        produto = Produto.objects.create(
+            codigo='COL-RANK',
+            descricao='Coletor Ranking',
+            categoria='Coletores',
+        )
+        for indice, base in enumerate((self.base_a, self.base_a, self.base_a, self.base_b), start=1):
+            Equipamento.objects.create(
+                produto=produto,
+                numero_serie=f'RANK-{indice}',
+                patrimonio=f'PAT-RANK-{indice}',
+                regional=base,
+                status='ATIVO',
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
+            )
+
+        self.cliente = Cliente.objects.create(sigla='RNK', nome='Cliente Ranking')
+        for loja, base in (('1', self.base_a), ('2', self.base_a), ('3', self.base_b)):
+            Inventario.objects.create(
+                cliente=self.cliente,
+                loja=loja,
+                base=base,
+                data_inicio=date(2026, 7, 27),
+                criado_por=self.usuario,
+                pessoas=5,
+                tipo='T',
+            )
+
+        categoria = CategoriaInsumo.objects.create(nome='EXPEDIENTE RANKING')
+        self.durex = Insumo.objects.create(
+            descricao='Durex',
+            categoria=categoria,
+            unidade_medida='rolos',
+        )
+        for base, quantidade in ((self.base_a, 10), (self.base_b, 30)):
+            MovimentacaoInsumo.objects.create(
+                base=base,
+                insumo=self.durex,
+                tipo='ENTRADA',
+                quantidade=quantidade,
+                usuario=self.usuario,
+            )
+
+        LoteTag.objects.create(
+            base=self.base_a,
+            numero_inicial=1,
+            numero_final=100,
+            valor_unitario=Decimal('0.10'),
+            quantidade_disponivel=20,
+        )
+        LoteTag.objects.create(
+            base=self.base_b,
+            numero_inicial=101,
+            numero_final=300,
+            valor_unitario=Decimal('0.10'),
+            quantidade_disponivel=80,
+        )
+
+    def _assert_ranking(self, pergunta, base_esperada, trecho_percentual):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            pergunta,
+            contexto={'intencao': 'equipamentos_categoria', 'base': self.base_b.nome},
+        )
+
+        self.assertEqual(resultado['contexto']['intencao'], 'ranking_base')
+        self.assertEqual(resultado['contexto']['base'], '')
+        self.assertTrue(resultado['contexto']['todas_bases'])
+        self.assertIn(base_esperada, resultado['resposta'])
+        self.assertIn(trecho_percentual, resultado['resposta'])
+        self.assertNotIn('Detalhamento operacional', resultado['resposta'])
+        tabela = next(item for item in resultado['componentes'] if item['tipo'] == 'tabela')
+        self.assertEqual(tabela['registros'][0]['BASE'], base_esperada)
+        self.assertEqual(tabela['rotulo_total'], 'bases comparadas')
+
+    def test_ranking_de_equipamentos_ignora_base_antiga_e_exibe_percentual(self):
+        self._assert_ranking(
+            'Qual a base possui mais coletores?',
+            'BASE ALFA',
+            '75,00%',
+        )
+
+    def test_ranking_de_inventarios_usa_dados_locais_agrupados(self):
+        self._assert_ranking(
+            'Qual base possui mais inventários?',
+            'BASE ALFA',
+            '66,67%',
+        )
+
+    def test_ranking_de_pessoas_usa_demanda_dos_inventarios(self):
+        self._assert_ranking(
+            'Qual base possui maior demanda de pessoas?',
+            'BASE ALFA',
+            '66,67%',
+        )
+
+    def test_ranking_de_insumo_dinamico_usa_saldo_atual(self):
+        self._assert_ranking(
+            'Qual base possui mais durex?',
+            'BASE BETA',
+            '75,00%',
+        )
+
+    def test_ranking_de_tags_usa_quantidade_disponivel(self):
+        self._assert_ranking(
+            'Qual base possui mais tags?',
+            'BASE BETA',
+            '80,00%',
+        )
+
+    def test_conceito_desconhecido_pede_esclarecimento(self):
+        resultado = AssistenteOperacionalService.responder(
+            self.usuario,
+            'Qual base possui mais um item que não existe?',
+        )
+
+        self.assertEqual(resultado['contexto']['intencao'], 'esclarecer_ranking')
+        self.assertEqual(resultado['categoria'], 'esclarecimento')
+        self.assertIn('não identifiquei com segurança', resultado['resposta'])
 
 
 class ToryIsolamentoBasesTests(TestCase):

@@ -1,5 +1,6 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
+{% load static %}
 
 {% block title %}{% trans "Solicitações de insumos" %}{% endblock %}
 
@@ -12,7 +13,8 @@
         </div>
         {% if pode_solicitar %}<a class="btn btn-primary" href="{% url 'insumos:criar_solicitacao_insumo' %}"><i class="bi bi-plus-lg"></i> {% trans "Nova solicitação" %}</a>{% endif %}
     </header>
-
+    <!--
+    {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
     <section class="row g-3 mb-3" aria-label="{% trans 'Resumo das solicitações' %}">
         <div class="col-xl col-md-4"><div class="border-start border-4 border-warning px-3 py-2"><div class="small text-secondary">{% trans "Pendentes" %}</div><strong class="fs-4">{{ totais.PENDENTE|default:0 }}</strong></div></div>
         <div class="col-xl col-md-4"><div class="border-start border-4 border-success px-3 py-2"><div class="small text-secondary">{% trans "Aprovadas" %}</div><strong class="fs-4">{{ totais.APROVADA|default:0 }}</strong></div></div>
@@ -20,7 +22,8 @@
         <div class="col-xl col-md-4"><div class="border-start border-4 border-danger px-3 py-2"><div class="small text-secondary">{% trans "Reprovadas" %}</div><strong class="fs-4">{{ totais.REPROVADA|default:0 }}</strong></div></div>
         <div class="col-xl col-md-4"><div class="border-start border-4 border-secondary px-3 py-2"><div class="small text-secondary">{% trans "Finalizadas" %}</div><strong class="fs-4">{{ totais.FINALIZADA|default:0 }}</strong></div></div>
     </section>
-
+    {% endif %}
+    -->
     <form method="get" class="row g-2 align-items-end bg-light border p-3 mb-3">
         <div class="col-lg-7"><label class="form-label" for="busca-solicitacao">{% trans "Pesquisar" %}</label><input id="busca-solicitacao" class="form-control" type="search" name="q" value="{{ busca }}" placeholder="{% trans 'Protocolo, base, solicitante ou insumo' %}"></div>
         <div class="col-lg-3"><label class="form-label" for="status-solicitacao">{% trans "Status" %}</label><select id="status-solicitacao" class="form-select" name="status"><option value="">{% trans "Todos" %}</option>{% for valor, label in status_choices %}<option value="{{ valor }}" {% if status_atual == valor %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>

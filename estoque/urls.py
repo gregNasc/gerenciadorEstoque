@@ -24,6 +24,7 @@ urlpatterns = [
 
     # ---------------- ESTOQUE ----------------
     path('estoque/', views.estoque_view, name='estoque'),
+    path('manuais/', views.manuais_view, name='manuais'),
     path('cadastrar-produto/', views.cadastrar_equipamento_view, name='cadastrar_equipamento'),
     path('produtos-por-categoria/', views.produtos_por_categoria, name='produtos_por_categoria'),
     path('detalhes-produto/<int:produto_id>/', views.detalhes_produto, name='detalhes_produto'),

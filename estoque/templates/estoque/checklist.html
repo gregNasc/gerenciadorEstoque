@@ -8,7 +8,7 @@
     /* ================================
        BASE LAYOUT
     =================================*/
-    .container { max-width: 100% !important; width: 100%; padding: 20px; }
+    .checklist-page { max-width: 100% !important; width: 100%; padding: 20px; }
     .table-wrap { width: 100%; overflow-x: auto; }
 
     table {
@@ -19,7 +19,7 @@
     }
 
     th, td {
-        border: 1px solid #9aa9b9;
+        border: 1px solid #ced4da;
         padding: 6px 8px;
         text-align: center;
         vertical-align: middle;
@@ -34,7 +34,8 @@
     }
 
     .th-sub {
-        background: #d9e2f0;
+        background: #ebf0f6;
+        color: #1e3c72;
         font-weight: 600;
         font-size: 12px;
     }
@@ -58,7 +59,7 @@
     .input-cell select {
         width: 100%;
         border: none;
-        border-bottom: 1px dashed #7a8b9f;
+        border-bottom: 1px dashed #6c757d;
         background: transparent;
         text-align: center;
         font-size: 14px;
@@ -69,7 +70,7 @@
     .input-cell select:focus {
         outline: none;
         border-bottom-color: #1e3c72;
-        background: #f0f7ff;
+        background: #ebf2fa;
     }
 
     /* ================================
@@ -81,7 +82,8 @@
         gap: 8px 20px;
         margin-bottom: 25px;
         align-items: center;
-        background: #f0f4f8;
+        background: #f1f3f5;
+        border: 1px solid #dee2e6;
         padding: 12px 18px;
         border-radius: 8px;
     }
@@ -94,7 +96,7 @@
     .info-grid input,
     .info-grid select {
         border: none;
-        border-bottom: 2px solid #b0c4de;
+        border-bottom: 2px solid #ced4da;
         background: transparent;
         padding: 4px 6px;
         font-size: 15px;
@@ -114,7 +116,7 @@
 
     .info-grid input.is-editable {
         background: #fff;
-        border-bottom-color: #198754;
+        border-bottom-color: #1e3c72;
     }
 
     .logistics-grid {
@@ -123,7 +125,7 @@
         gap: 14px;
         margin: -10px 0 18px;
         padding: 14px 18px;
-        border: 1px solid #cbd8e6;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
         background: #fff;
     }
@@ -139,7 +141,7 @@
     .logistics-grid input {
         width: 100%;
         min-height: 42px;
-        border: 1px solid #b8c6d6;
+        border: 1px solid #ced4da;
         border-radius: 6px;
         padding: 8px 10px;
     }
@@ -149,8 +151,8 @@
     =================================*/
     .obs {
         font-size: 13px;
-        color: #444;
-        background: #f8fafc;
+        color: #343a40;
+        background: #f8f9fa;
         padding: 8px 14px;
         border-left: 4px solid #1e3c72;
         margin: 15px 0;
@@ -178,7 +180,7 @@
     .signature-box input {
         width: 100%;
         border: none;
-        border-bottom: 1px solid #000;
+        border-bottom: 1px solid #343a40;
         background: transparent;
         padding: 6px 4px;
     }
@@ -197,7 +199,7 @@
     }
 
     .btn-selecionar {
-        background: #1e3c72;
+        background: #343a40;
         color: #fff;
         border: none;
         border-radius: 4px;
@@ -214,7 +216,7 @@
 
     .section-block {
         margin-top: 20px;
-        border: 1px solid #d7e0ea;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
         background: #fff;
         overflow: hidden;
@@ -226,8 +228,8 @@
         justify-content: space-between;
         gap: 12px;
         padding: 12px 16px;
-        background: #eef3f8;
-        border-bottom: 1px solid #d7e0ea;
+        background: #f1f3f5;
+        border-bottom: 1px solid #dee2e6;
     }
 
     .section-head h5 {
@@ -247,10 +249,10 @@
     }
 
     .equipment-item {
-        border: 1px solid #d7e0ea;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
         padding: 12px;
-        background: #f8fafc;
+        background: #f8f9fa;
         min-height: 118px;
     }
 
@@ -262,7 +264,7 @@
 
     .resumo-selecionados {
         margin-top: 8px;
-        color: #526173;
+        color: #6c757d;
         font-size: 12px;
         line-height: 1.35;
         word-break: break-word;
@@ -281,7 +283,7 @@
     }
 
     .insumos-accordion {
-        border: 1px solid #d7e0ea;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
         overflow: hidden;
         background: #fff;
@@ -291,13 +293,13 @@
         padding: 10px 14px;
         font-weight: 700;
         color: #1e3c72;
-        background: #eef3f8;
+        background: #f1f3f5;
         box-shadow: none;
     }
 
     .insumos-accordion .accordion-button:not(.collapsed) {
         color: #1e3c72;
-        background: #dfe9f4;
+        background: #ebf0f6;
     }
 
     .insumos-accordion .accordion-body {
@@ -307,7 +309,7 @@
     .insumo-category-meta {
         margin-left: auto;
         padding-left: 12px;
-        color: #526173;
+        color: #6c757d;
         font-size: 12px;
         font-weight: 600;
     }
@@ -319,12 +321,12 @@
         margin: -18px -18px 12px;
         padding: 12px 18px;
         background: #fff;
-        border-bottom: 1px solid #d7e0ea;
+        border-bottom: 1px solid #dee2e6;
     }
 
     .modal-search input {
         width: 100%;
-        border: 1px solid #b8c6d6;
+        border: 1px solid #ced4da;
         border-radius: 6px;
         padding: 8px 10px;
         font-size: 14px;
@@ -332,7 +334,7 @@
 
     .equipamento-opcao {
         padding: 5px 0;
-        border-bottom: 1px solid #eef3f8;
+        border-bottom: 1px solid #f1f3f5;
     }
 
     .equipamento-opcao:last-child {
@@ -340,7 +342,7 @@
     }
 
     .input-cell input.is-invalid {
-        border-bottom-color: #dc3545;
+        border-bottom-color: #9b2c2c;
         background: #fff5f5;
     }
 
@@ -365,16 +367,18 @@
        BADGES
     =================================*/
     .badge-tag {
-        background: #ffc107;
-        color: #212529;
+        border: 1px solid #e7d6b7;
+        background: #f8f1e2;
+        color: #9a6b1f;
         font-size: .65rem;
         padding: 2px 8px;
         border-radius: 10px;
     }
 
     .badge-equip {
-        background: #17a2b8;
-        color: #fff;
+        border: 1px solid #cbd8e8;
+        background: #ebf0f6;
+        color: #3d5a80;
         font-size: .65rem;
         padding: 2px 8px;
         border-radius: 10px;
@@ -401,7 +405,9 @@
         width: min(760px, 92vw);
         max-height: 85vh;
         background: #fff;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
+        box-shadow: 0 14px 34px rgba(33, 37, 41, .14);
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -415,6 +421,18 @@
         justify-content: space-between;
     }
 
+    .custom-modal-header h5 {
+        margin: 0;
+        color: #fff;
+    }
+
+    .custom-modal-header button {
+        border: 0;
+        background: transparent;
+        color: #fff;
+        font-size: 1.35rem;
+    }
+
     .custom-modal-body {
         padding: 18px;
         overflow-y: auto;
@@ -425,6 +443,22 @@
         display: flex;
         justify-content: space-between;
         background: #f8f9fa;
+    }
+
+    .custom-modal-footer button {
+        min-height: 36px;
+        padding: 6px 14px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        background: #fff;
+        color: #343a40;
+        font-weight: 600;
+    }
+
+    .custom-modal-footer button:last-child {
+        border-color: #1e3c72;
+        background: #1e3c72;
+        color: #fff;
     }
 
     /* ================================
@@ -443,9 +477,9 @@
     }
 
     .alert-inline.error {
-        background: #fdeaea;
-        color: #842029;
-        border: 1px solid #f5c2c7;
+        background: #f7e8e8;
+        color: #712323;
+        border: 1px solid #e5c2c2;
     }
     .tag-modo-cell {
     min-width: 165px;
@@ -454,7 +488,7 @@
     .tag-modo-select {
         width: 100%;
         min-width: 135px;
-        border: 1px solid #b8c6d6 !important;
+        border: 1px solid #ced4da !important;
         border-radius: 5px;
         background: #fff !important;
         color: #1e3c72;
@@ -502,10 +536,10 @@
         max-width: 1180px;
         margin: 0 auto 20px;
         padding: 24px;
-        border: 1px solid #9da7b2;
+        border: 1px solid #ced4da;
         background: #fff;
-        box-shadow: 0 8px 24px rgba(30, 60, 114, .08);
-        color: #111;
+        box-shadow: 0 6px 18px rgba(33, 37, 41, .08);
+        color: #212529;
         font-family: Arial, Helvetica, sans-serif;
     }
 
@@ -520,8 +554,8 @@
     #checklist-document > h1 {
         margin: -24px -24px 18px;
         padding: 17px 24px;
-        background: #17365d;
-        border-bottom: 5px solid #f2b705;
+        background: #1e3c72;
+        border-bottom: 5px solid #9a6b1f;
         color: #fff;
         letter-spacing: .025em;
     }
@@ -533,8 +567,8 @@
         gap: 10px;
         margin-bottom: 14px;
         padding: 12px;
-        border: 1px solid #7b9cbd;
-        background: #f7fafc;
+        border: 1px solid #ced4da;
+        background: #f8f9fa;
     }
 
     .official-meta-grid label,
@@ -551,10 +585,10 @@
         width: 100%;
         min-height: 31px;
         padding: 4px 7px;
-        border: 1px solid #222;
+        border: 1px solid #343a40;
         border-radius: 0;
         background: #fff;
-        color: #111;
+        color: #212529;
     }
 
     .official-field {
@@ -565,17 +599,17 @@
 
     .official-field label {
         padding: 6px 9px;
-        background: #d9e8f5;
-        border: 1px solid #7b9cbd;
+        background: #ebf0f6;
+        border: 1px solid #ced4da;
         border-bottom: 0;
-        color: #17365d;
+        color: #1e3c72;
         font-weight: 900;
     }
 
     .official-field input,
     .official-field select {
         flex: 1;
-        border: 1px solid #7b9cbd;
+        border: 1px solid #ced4da;
     }
 
     .official-field input[readonly] { background: #f4f4f4; }
@@ -603,14 +637,14 @@
 
     .official-checklist-table th,
     .official-checklist-table td {
-        border: 1px solid #111;
+        border: 1px solid #343a40;
         padding: 4px 5px;
-        color: #111;
+        color: #212529;
         background: #fff;
     }
 
     .official-checklist-table thead th {
-        background: #17365d;
+        background: #1e3c72;
         color: #fff;
         font-weight: 800;
         letter-spacing: .02em;
@@ -641,15 +675,15 @@
     .attention-panel {
         display: flex;
         flex-direction: column;
-        border: 1px solid #111;
+        border: 1px solid #343a40;
         border-left: 0;
-        background: #d7d7d7;
+        background: #f1f3f5;
     }
 
     .attention-panel > strong {
         margin: 0;
         padding: 7px 5px;
-        border-bottom: 1px solid #111;
+        border-bottom: 1px solid #343a40;
         text-align: center;
         font-size: 1rem;
         font-weight: 900;
@@ -686,8 +720,8 @@
     }
 
     .official-volume-row label { text-align: right; font-size: .8rem; font-weight: 900; }
-    .coordinator-line { display: flex; gap: 8px; align-items: center; padding-top: 7px; border-top: 1px solid #111; text-align: center; font-size: .7rem; }
-    .coordinator-line input { flex: 1; border: 0; border-bottom: 1px solid #111; }
+    .coordinator-line { display: flex; gap: 8px; align-items: center; padding-top: 7px; border-top: 1px solid #343a40; text-align: center; font-size: .7rem; }
+    .coordinator-line input { flex: 1; border: 0; border-bottom: 1px solid #343a40; }
     .official-signatures {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -698,7 +732,7 @@
     .official-signatures input {
         width: 100%;
         border: 0;
-        border-bottom: 1px solid #111;
+        border-bottom: 1px solid #343a40;
         text-align: center;
     }
 
@@ -707,18 +741,18 @@
     .declaration-document > h1 {
         margin: -24px -24px 20px;
         padding: 18px 24px;
-        background: #17365d;
+        background: #1e3c72;
         color: #fff;
-        border-bottom: 5px solid #f2b705;
+        border-bottom: 5px solid #9a6b1f;
         letter-spacing: .025em;
     }
 
     .declaration-section-title {
         margin: 18px 0 0;
         padding: 9px 12px;
-        background: #d9e8f5;
-        border: 1px solid #7b9cbd;
-        color: #17365d;
+        background: #ebf0f6;
+        border: 1px solid #ced4da;
+        color: #1e3c72;
         font-size: .88rem;
         font-weight: 900;
         letter-spacing: .04em;
@@ -728,9 +762,9 @@
         grid-template-columns: 1fr 1fr;
         gap: 0;
         padding: 12px;
-        border: 1px solid #7b9cbd;
+        border: 1px solid #ced4da;
         border-top: 0;
-        background: #f7fafc;
+        background: #f8f9fa;
     }
 
     .declaration-row {
@@ -753,7 +787,7 @@
         align-items: center;
         min-height: 35px;
         padding: 6px 9px;
-        background: #17365d;
+        background: #1e3c72;
         color: #fff;
         font-weight: 800;
     }
@@ -763,10 +797,10 @@
     .declaration-volume input {
         min-height: 31px;
         padding: 4px 7px;
-        border: 2px solid #7b9cbd;
+        border: 2px solid #ced4da;
         border-radius: 0;
-        background: #fffdf0;
-        color: #111;
+        background: #fff;
+        color: #212529;
         font-weight: 600;
         pointer-events: auto !important;
         user-select: text;
@@ -777,8 +811,8 @@
     .declaration-row input:focus,
     .declaration-totals input:focus,
     .declaration-volume input:focus {
-        outline: 3px solid rgba(242, 183, 5, .35);
-        border-color: #17365d;
+        outline: 3px solid rgba(30, 60, 114, .18);
+        border-color: #1e3c72;
         background: #fff;
     }
 
@@ -789,7 +823,7 @@
     .declaration-statement {
         margin: 32px 0 24px;
         padding: 14px 16px;
-        border-left: 5px solid #f2b705;
+        border-left: 5px solid #9a6b1f;
         background: #f3f6f9;
         font-size: .78rem;
         font-weight: 700;
@@ -802,9 +836,9 @@
         gap: 12px;
         align-items: center;
         padding: 12px;
-        border: 1px solid #7b9cbd;
+        border: 1px solid #ced4da;
         border-top: 0;
-        background: #f7fafc;
+        background: #f8f9fa;
     }
 
     .declaration-totals > div {
@@ -823,8 +857,8 @@
         gap: 12px;
         margin-top: 16px;
         padding-top: 10px;
-        border-top: 1px solid #111;
-        background: #e8f1f8;
+        border-top: 1px solid #343a40;
+        background: #ebf0f6;
         padding: 12px;
     }
 
@@ -876,7 +910,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container checklist-page">
     <form method="POST"
           id="checklistForm"
           action="{% if editando %}{% url 'insumos:editar_checklist' checklist.id %}{% else %}{% url 'estoque:checklist' %}{% endif %}">

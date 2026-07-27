@@ -1,0 +1,3357 @@
+Página 1
+
+Pantum P2200/P2500/S2000 Series 
+Pantum P2600 Series 
+Impressora Laser Monocromá tica 
+ 
+ 
+ 
+recomendado ler atentamente esta guia antes do uso
+
+Página 2
+
+I 
+Prefá cio 
+Bem-vindo aos produtos da sé rie de Pantum!  
+Apreciamos de todo o coraç ã o o seu uso dos produtos da sé rie de Pantum!  
+Para proteger os seus interesses vitais, por favor leia atentamente as seguintes declaraç õ es.  
+Para mais informações, visite nosso site oficial (www.pantum.com). 
+Aviso legal  
+Marca comercial  
+Pantum e os logotipos Pantum sã o marcas registradas da Zhuhai Pantum Electronics Co., Ltd.  
+Microsoft®, Windows®, Windows Server® e Windows Vista® sã o marcas registradas da Corporaç ã o 
+de Microsoft nos Estados Unidos ou em outros paí ses / regiõ es.  
+Apple, AirPrint and Mac are trademarks of Apple Inc, registered in the U.S. and other countries. Use 
+of the Works with Apple badge means that an accessory has been designed to work specifically 
+with the technology identified in the badge and has been certified by the developer to meet Apple 
+performance standards. 
+Mopria®, the Mopria® Logo, and the Mopria Alliance ™ word mark and logo are registered and/or 
+unregistered trademarks and service marks of Mopria Alliance, Inc. in the United States and other 
+countries. Unauthorized use is strictly prohibited. 
+Wi-Fi Direct, a configuraç ã o do Wi-Fi Protected (WPS), WPA, WPA2, WPA3 e Wi-Fi Protected 
+Access sã o marcas da Wi-Fi Alliance. 
+A propriedade dos nomes do software nesta Guia do Usuá rio pertence a suas respectivas 
+empresas de acordo com o respectivo contrato de licenç a, e sã o encaminhadas apenas para 
+instruç õ es.  
+Todos os outros produtos e marcas aqui mencionados podem ser marcas registradas, marcas, ou 
+marcas de serviç o dos seus respectivos proprietá rios, e eles sã o encaminhados apenas para 
+instruç õ es.  
+Direito autoral  
+O direito autoral deste Guia do Usuá rio é  de propriedade da Zhuhai Pantum Electronics Co., Ltd..  
+É proibido copiar, traduzir, modificar e transmitir este Guia do Usuá rio por qualquer meio ou em 
+qualquer Formulá rio sem o pré vio consentimento por escrito de Zhuhai Pantum Electronics Co., 
+Ltd.  
+Versã o: V2.3 
+Aviso legal  
+Para uma melhor experiê ncia de usuá rio, Zhuhai Pantum Electronics Co., Ltd. reserva-se o direito 
+de fazer alteraç õ es ao Guia do Usuá rio. As informaç õ es aqui contidas estã o sujeitas a alteraç õ es 
+sem aviso pré vio.  
+Os usuá rios sã o responsá veis por quaisquer danos decorrentes de nã o seguir este Guia do 
+Usuá rio. Enquanto isso, exceto a garantia expressa feita no manual de manutenç ã o do produto ou 
+compromisso de serviç o, Zhuhai Pantum Electronics Co., Ltd. nã o faz nenhuma garantia ou 
+garantia explí cita ou implí cita a este Guia do Usuá rio (incluindo composiç ã o ou palavras).  
+Utilizar eeste produto para copiar, imprimir, digitalizar determinados documentos ou imagens ou 
+fazer outras formas de operaç õ es pode ser proibido pelas leis locais. Se você  estiver incerto sobre 
+a legalidade de utilizar este produto para determinados documentos ou imagens,
+
+Página 3
+
+II 
+você  deve consultar ao seu conselheiro legal com antecedê ncia. 
+Precauç ões de seguranç a  
+Desconecte a fonte de alimentaç ã o 
+O produto deve ser colocado em algum lugar pró ximo ou facilmente acessí vel a tomadas de 
+energia, de modo a permitir a fá cil desconexã o da fonte de alimentaç ã o!  
+Seguranç a do laser  
+A radiaç ã o a laser é  prejudicial para o corpo humano. Uma vez que os componentes do laser estã o 
+completamente selados na impressora, a radiaç ã o a laser nã o se irá  vazar. Para evitar a radiaç ã o a 
+laser, por favor nã o desmonte aleatoriamente a impressora!  
+A impressora segue as disposiç õ es dos produtos a laser da Classe 1 sob o padrã o CFR.  
+ 
+ 
+ 
+A impressora tem um diodo de laser da classe III B, que nã o tem nenhum vazamento da radiaç ã o 
+do laser entre os componentes do laser.  
+Os componentes do laser devem cumprir com os requisitos de: Có digo de Regulamentos Federais 
+dos EUA, 21 CFR 1040, IEC 60825-1  
+A etiqueta a seguir está  anexada aos componentes do laser dentro da impressora:
+
+Página 4
+
+III 
+Aviso de seguranç a  
+Por favor observe os seguintes avisos de seguranç a antes de usar a impressora:  
+Atenç ã o  
+ 
+Há  eletrodo de alta tensã o dentro da impressora. Antes 
+de limpar a impressora, certifique-se de que a fonte de 
+alimentaç ã o está  desligada!  
+ 
+ 
+Conectar e desconectar o plugue do cabo de 
+alimentaç ã o com uma alç a molhada pode resultar em 
+choque elé trico.  
+ 
+ 
+A unidade de fusã o está  quente durante e apó s a 
+impressã o. Tocar na unidade de fusor (a á rea 
+sombreada como mostrada) pode causar queimaduras!  
+ 
+ 
+A unidade de fusor é  anexada com uma etiqueta de 
+advertê ncia de alta temperatura. Por favor nã o remova 
+nem danifique esta etiqueta.
+
+Página 5
+
+IV 
+Precauç ões  
+Precauç õ es antes de utilizar a impressora:  
+1. Leia e entenda todas as instruç õ es;  
+2. Familiarize-se com os princí pios bá sicos associados ao funcionamento de aparelhos elé ctricos;  
+3. Cumpra com todos os avisos e instruç õ es marcadas no equipamento ou especificado no manual 
+fornecido com o equipamento;  
+4. Se as instruç õ es de operaç ã o estiverem em conflito com as informaç õ es de seguranç a, por favor 
+consulte as informaç õ es de seguranç a, pois você  pode ter entendido mal as instruç õ es de 
+operaç ã o. Se você  nã o conseguir resolver os conflitos, por favor ligue para a Linha de Atendimento 
+ao Cliente ou entre em contato com um representante de serviç o para obter ajuda;  
+5. Antes de limpar o equipamento, retire o cabo de alimentaç ã o da tomada de alimentaç ã o de 
+corrente alternada. Nã o utilize produtos de limpeza lí quidos ou em aerossol;  
+6. Certifique-se de que o equipamento está  colocado numa superfí cie está vel para evitar danos 
+graves causados pela falha do equipamento;  
+7. Nã o coloque o equipamento perto de um radiador, de um ar condicionado ou de um tubo de 
+ventilaç ã o;  
+8. Nã o coloque artigos sobre o cabo de alimentaç ã o. Nã o coloque o equipamento no local onde o 
+cabo de alimentaç ã o pode ser pisado por pessoas;  
+9. As tomadas e os cabos de extensã o nã o devem estar sobrecarregados. Isso pode reduzir o 
+desempenho e pode resultar no incê ndio ou no choque elé trico;  
+10. Nã o permita que os animais de estimaç ã o mastiguem o cabo de alimentaç ã o de corrente 
+alternada ou o cabo de interface do computador;  
+11. Nã o permita que os objetos afiados perfurem o entalhe do equipamento, 
+de modo a evitar o contato com o dispositivo de alta tensã o, que de outra maneira poderia resultar 
+no fogo ou no choque elé trico. Tenha cuidado para nã o derramar lí quidos sobre o equipamento;  
+12. Nã o desmonte o equipamento de forma a evitar o risco de choque elé ctrico. As reparaç õ es 
+necessá rias podem apenas ser realizadas por pessoal de manutenç ã o profissional. Abrir ou 
+remover a tampa pode resultar no choque elé trico ou outros perigos potenciais. A desmontagem e 
+a montagem incorretas també m podem resultar no choque elé trico durante o futuro uso;  
+13. Se ocorrer alguma das seguintes situaç õ es, desligue o equipamento do computador e retire o 
+cabo de alimentaç ã o da tomada de parede de corrente alternada e contacte um té cnico qualificado 
+para manutenç ã o:  
+• O líquido está derramado no equipamento.  
+• O equipamento está exposto à chuva ou à água.  
+• O equipamento cai ou a tampa está danificada.  
+• Mudanças significativas no desempenho do equipamento.  
+14. Ajuste somente o controle mencionado nas instruç õ es. O ajuste incorreto de outros controles 
+pode resultar em dano e significar que o pessoal de manutenç ã o profissional precisa gastar mais 
+tempo consertando-o;  
+15. Nã o use o equipamento em uma tempestade para evitar o risco de choque elé trico. Se for 
+possí vel, puxe o cabo de alimentaç ã o de corrente alternada durante uma tempestade;  
+16. Se você  imprimir vá rias pá ginas continuamente, a superfí cie da bandeja ficará  muito quente. 
+Tome cuidado para nã o tocar nessa superfí cie e manter as crianç as ficar longe desta superfí cie;  
+17. O fio de sinal do dispositivo conectado com a impressora nã o pode ser conectado ao exterior;  
+18. Por favor assegure a ventilaç ã o oportuna no caso de uso prolongado ou impressã o de enormes 
+quantidades de documentos em um quarto mal ventilado;
+
+Página 6
+
+V 
+19. No modo de espera, o produto entrará  automaticamente no modo de poupanç a de energia 
+(suspensã o) se nã o receber nenhuma ordem de trabalho durante algum tempo (como 1 minuto);  
+e pode realizar o consumo de energia zero somente se nã o tiver sido conectado com qualquer 
+fonte de alimentaç ã o de entrada externa;  
+20. Como o equipamento de Classe 1, o produto deve ser conectado à  tomada de alimentaç ã o com 
+linha de aterramento protectiva ao usar;  
+21. Este produto deve ser colocado de acordo com as marcas de expediç ã o na caixa da 
+embalagem do produto durante a entrega;  
+22. Este produto é  um tipo do equipamento de baixa tensã o. Ao utilizar este produto abaixo da 
+faixa de tensã o especificada, por favor consulte as precauç õ es do produto ou ligue para o Centro 
+do serviç o de pó s-venda de Pantum, se o toner sair do conteú do impresso ou o equipamento 
+iniciar-se devagar;  
+23. Este produto é  vendido como uma má quina completa. Os consumidores podem ir ao Centro do 
+serviç o de pó s-venda de Pantum para comprar peç as de que necessitam. Se o produto vendido for 
+inconsistente com a lista de pacotes, por favor vá  para o Centro do serviç o de pó s-venda 
+especificado para resolver o problema;  
+24. Instale este produto num local com uma temperatura entre 10 ° C e 32,5 ° C e a humidade 
+relativa fica entre 20% e 80%;  
+25. Pela seguranç a e por outros motivos, a impressora pode mudar para impressã o intermitente 
+apó s uma certa quantidade de impressã o contí nua; 
+26. Este dispositivo conté m transmissor(es)/receptor(es) com a Parte 15 das Regras FCC e 
+isenç ã o de licenç a que cumprem com a(s) RSS(s) de isenç ã o de licenç a de Inovaç ã o,  
+Ciê ncia e Desenvolvimento Econô mico do Canadá . A operaç ã o está  sujeita à s 
+duas condiç õ es a seguir:  
+(1) este dispositivo pode nã o causar interferê ncia nociva e  
+(2) este dispositivo deve aceitar qualquer interferê ncia recebida, incluindo interferê ncias que 
+possam causar operaç õ es indesejadas. 
+27. Declaraç ã o de Exposiç ã o à  Radiaç ã o: 
+Este equipamento está  em conformidade com os limites de exposiç ã o de radiaç ã o do Canadá  e 
+de FCC estabelecidos para ambientes nã o controlados. Este equipamento deve ser instalado e 
+operado com uma distâ ncia mí nima de 20 cm entre o radiador e o seu corpo. 
+Este transmissor nã o deve ser co-localizado ou operar em conjunto com qualquer outra antena ou 
+transmissor. 
+28. NOTA: Este equipamento é  testado e está  em conformidade com os limites para dispositivo 
+digital de 
+Classe B, de acordo com a Parte 15 das Normas de FCC. Estes limites sã o concebidos para 
+fornecer proteç ã o razoá vel contra interferê ncia prejudicial em uma instalaç ã o residencial. Este 
+equipamento gera, utiliza e pode irradiar energia de radiofreqü ê ncia e, se nã o for instalado e 
+usado de acordo com as instruç õ es, pode causar interferê ncia prejudicial à s comunicaç õ es de 
+rá dio. No entanto, nã o há  garantia de que nã o ocorrerá  interferê ncia em uma determinada 
+instalaç ã o. 
+Se este equipamento causar interferê ncia prejudicial à  receç ã o de rá dio ou televisã o, o que pode 
+ser determinado por ligar e desligar o equipamento, o usuá rio é  encorajado a tentar corrigir a 
+interferê ncia por uma ou mais das seguintes medidas: 
+• Reoriente ou reposicione a antena receptora. 
+• Aumente a separação entre o equipamento e o receptor. 
+• Ligue o equipamento para uma tomada num circuito diferente do que está ligado ao receptor.
+
+Página 7
+
+VI 
+• Consulte o revendedor ou um técnico de rádio / TV experiente para obter ajuda. 
+29. Aviso: Alteraç õ es ou modificaç õ es nesta unidade nã o aprovadas expressamente pela parte  
+responsá vel pelo cumprimento podem invalidar a autoridade do usuá rio de operar o equipamento. 
+30. O consumo de energia do produto é  3.0W no modo de espera em rede se todas as portas de 
+rede com fio estiverem conectadas e todas as portas de rede sem fio estiverem ativadas; 
+31. Por favor guarde este manual do utilizador correctamente.
+
+Página 8
+
+VII 
+Informaç ã o legal  
+ 
+Este sí mbolo indica que, no final da vida do seu produto, ele nã o deve ser descartado 
+como lixo domé stico. Em vez disso, você  deve descartar o seu equipamento usado 
+num ponto de coleta designado para a reciclagem de resí duos de equipamentos 
+elé tricos e eletrô nicos. Ref: Directiva 2002/96/EC relativa no Equipamento Elé ctrico e 
+electró nico Residual (WEEE). Por favor entre em contato com seu 
+distribuidor/fornecedor para obter mais informaç õ es.  
+ 
+Este produto é  adequado para apenas o uso interno.  
+ 
+Conformidade com as directivas da Comunidade Europeia (EC)  
+Este produto cumpre com os requisitos de protecç ã o das directivas EC 2014/30/EU e 
+2014/35/EU na aproximaç ã o e harmonizaç ã o das legislaç õ es dos Estados-Membros 
+relacionadas com a compatibilidade electromagné tica e a seguranç a dos 
+equipamentos elé ctricos designados para o uso dentro dos limites de certa tensã o.  
+Diretiva 2014/53/EU de equipamentos de rá dio somente para modelos que terminam 
+com o sufixo “W”. 
+O fabricante deste produto é : Zhuhai Pantum Electronics Co., Ltd., Pré dio 02, 06 e 
+08, Av. Shenping Nº  888, Cidade de Pingsha, Cidade de Zhuhai, Proví ncia de 
+Guangdong, 519000 R. P. da China.  
+Uma declaraç ã o de conformidade com os requisitos das directivas está  disponí vel 
+mediante pedido pelo representante autorizado.  
+Este produto atende aos limites da Classe B da EN 55032 / EN 55035 e aos 
+requisitos de seguranç a da EN 62368-1.  
+ 
+Esta impressora é  totalmente compatí vel com a Directiva ROHS 2009/95/EC e com 
+os requisitos da Directiva 2011/65/EU revista para a gestã o de substâ ncias tó xicas e 
+perigosas.
+
+Página 9
+
+VIII 
+Conteúdo  
+ 
+1. Antes de usar a má quina ................................ ................................ ................................ ........ 1 
+1.1. Acessó rios ................................ ................................ ................................ .................... 1 
+1.2. Vista do produto ................................ ................................ ................................ ............ 2 
+1.3. Cartucho de toner para laser ................................ ................................ ......................... 3 
+1.4. Cartucho de toner para laser com adiç ã o fá cil ................................ ...............................  3 
+1.4.1. Estrutura do cartucho de toner para laser com adiç ã o fá cil ................................ . 3 
+1.4.2. Passos de enchimento do toner ao cartucho de toner para laser com adiç ã o fá cil4 
+2. Papé is e mí dia de impressã o ................................ ................................ ................................ .. 5 
+2.1. Especificaç õ es do papel ................................ ................................ ................................  5 
+2.2. Papel especial ................................ ................................ ................................ ............... 6 
+2.3. Alimentar o papel ................................ ................................ ................................ .......... 7 
+2.3.1. Colocar na bandeja de alimentaç ã o automá tica ................................ .................. 7 
+2.3.2. Colocar na bandeja de alimentaç ã o manual ................................ ....................... 9 
+2.4. Área nã o de impressã o ................................ ................................ ...............................  10 
+2.5. Princí pios de utilizaç ã o do papel ................................ ................................ ................. 10 
+3. Instalaç ã o e desinstalaç ã o do driver ................................ ................................ ..................... 11 
+3.1. Configuraç ã o do Driver ................................ ................................ ...............................  11 
+3.1.1. Instalaç ã o com um clique(Para Windows e macOS) ................................ ......... 11 
+3.1.2. Outros mé todos de configuraç ã o ................................ ................................ ...... 25 
+3.2. Desinstalar Driver ................................ ................................ ................................ ........ 39 
+3.2.1. Mé todo para desinstalar o driver no Windows ................................ ................... 39 
+3.2.2. Mé todo para desinstalar o driver no macOS ................................ ..................... 39 
+4. Configuraç õ es da rede com fio (aplicá vel para o modelo de rede com fio) ............................ 40 
+4.1. Definiç ã o do endereç o IP ................................ ................................ ............................ 40 
+4.1.1. Configuraç ã o automá tica ................................ ................................ .................. 40 
+4.1.2. Configuraç ã o manual ................................ ................................ ........................ 40 
+5. Configuraç õ es da rede sem fio (aplicá vel para o modelo Wi-Fi) ................................ ............ 41 
+5.1. Modo de Infra-estrutura ................................ ................................ ...............................  41 
+5.1.1. Ferramentas de configuraç ã o da rede sem fio ................................ .................. 41 
+5.1.2. Configuraç ã o do Wi-Fi Protected Setup (WPS) ................................ ................. 45 
+5.1.3. Como desligar a rede Wi-Fi conectada ................................ ............................. 46 
+5.2. Modelo de hotspots Wi-Fi ................................ ................................ ............................ 46 
+5.2.1. Assuntos preparató rios ................................ ................................ ..................... 46 
+5.2.2. Conexã o Wi-Fi Bá sica ................................ ................................ ....................... 47 
+5.2.3. Mé todo de configuraç ã o de hotspots Wi-Fi ................................ ....................... 47 
+5.3. Problemas frequentemente encontrados na configuraç ã o da rede sem fio ................. 47 
+6. Servidor da Web ................................ ................................ ................................ ................... 49 
+6.1. Acesso ao Servidor da Web incorporado ................................ ................................ .... 49 
+6.2. Utilizar o Servidor da Web para administrar a impressora ................................ ........... 49 
+6.2.1. Configuraç õ es do endereç o IP ................................ ................................ .......... 50 
+6.2.2. Configuraç ã o do protocolo SNMP ................................ ................................ ..... 51 
+6.2.3. Configuraç õ es sem fio ................................ ................................ ...................... 51 
+6.2.4. Configuraç õ es da má quina ................................ ................................ ............... 52
+
+Página 10
+
+IX 
+6.2.5. Restaurar configuraç õ es de fá brica atravé s do servidor da Web ...................... 52 
+7. Imprimir ................................ ................................ ................................ ................................ . 53 
+7.1. Funç ã o de impressã o ................................ ................................ ................................ .. 53 
+7.2. Configuraç õ es de impressã o ................................ ................................ ....................... 54 
+7.3. Cancelar a impressã o ................................ ................................ ................................ . 54 
+7.4. Impressã o frente e verso manual ................................ ................................ ................ 55 
+7.4.1. Como executar a impressã o frente e verso manual ................................ .......... 55 
+7.5. Abrir o arquivo de ajuda ................................ ................................ ..............................  57 
+8. Impressã o mó vel(somente para modelos com funç ã o Wi-Fi) ................................ ................ 59 
+8.1. Software aplicativo de "Impressã o de Pantum" ................................ ........................... 59 
+8.1.1. Sistemas operacionais compatí veis ................................ ................................ .. 59 
+8.1.2. Como fazer download do aplicativo "Impressã o de Pantum" ............................. 59 
+8.1.3. Como usar o software aplicativo de "Impressã o de Pantum" ............................ 59 
+8.2. Impressã o mó vel de Mopria ................................ ................................ ........................ 60 
+8.2.1 Sistema operacional e software aplicativo suportados pela impressã o mó vel de 
+Mopria 60 
+8.2.2. Como baixar Mopria Print Service ................................ ................................ ..... 60 
+8.2.3. Assuntos preparató rios ................................ ................................ ..................... 61 
+8.2.4. Printing Como Mopria Mó vel ................................ ................................ ............. 61 
+8.3. AirPrint impressã o mó vel ................................ ................................ ............................ 61 
+8.3.1. AirPrint impressã o mó vel Sistemas operacionais suportados ........................... 61 
+8.3.2. Assuntos preparató rios ................................ ................................ ..................... 61 
+8.3.3. Como usar AirPrint para a impressã o mó vel ................................ ..................... 61 
+9. Painel de controle ................................ ................................ ................................ ................. 63 
+9.1. Visã o geral do painel de controle ................................ ................................ ................ 63 
+9.1.1. Funç õ es de teclas do painel de controle ................................ ........................... 63 
+9.1.2. Funç ã o de lâ mpada de indicaç ã o LED do painel de controle ............................ 64 
+10. Manutenç ã o de rotina ................................ ................................ ................................ ......... 68 
+10.1. Limpeza da impressora ................................ ................................ ............................. 68 
+10.2. Manutenç ã o do cartucho de toner a laser ................................ ................................ . 69 
+10.2.1. Sobre o cartucho de toner para laser ................................ ..............................  69 
+10.2.2. Substituir o cartucho de toner para laser ................................ ......................... 70 
+11. Resoluç ã o de falhas................................ ................................ ................................ ............ 73 
+11.1. Eliminar atolamento ................................ ................................ ................................ ... 73 
+11.1.1. Parada de papel na entrada de alimentaç ã o ................................ ................... 73 
+11.1.2. Parada de papel no interior da impressora ................................ ...................... 74 
+11.2. Soluç ã o de falhas comuns ................................ ................................ ........................ 76 
+11.2.1. Falhas comuns ................................ ................................ ................................  76 
+11.2.2. Defeitos na imagem ................................ ................................ ........................ 78 
+12. Especificaç õ es do produto ................................ ................................ ................................ .. 82 
+12.1. Especificaç õ es da sé rie P2200/P2500/S2000 ................................ ........................... 82 
+12.1.1. Visã o geral das especificaç õ es ................................ ................................ ....... 82 
+12.1.2. Especificaç õ es de impressã o ................................ ................................ .......... 83 
+12.2. Especificaç õ es da sé rie P2600................................ ................................ .................. 84 
+12.2.1. Visã o geral das especificaç õ es ................................ ................................ ....... 84
+
+Página 11
+
+X 
+12.2.2. Especificaç õ es de impressã o ................................ ................................ .......... 85
+
+Página 12
+
+1 
+1. Antes de usar a má quina  
+1.1. Acessórios   
+Ao abrir a embalagem, verifique se a caixa conté m os seguintes componentes:  
+ 
+Sé rie P2200/P2500/S2000  Sé rie P2600  Nome de sé rie  
+ 
+ 
+Impressora  
+ 
+ 
+Cartucho de toner para laser  
+ 
+ 
+Cabo de conexã o USB  
+  
+Linha de energia  
+  
+Disco  
+  
+Guia de instalaç ã o rá pida  
+  
+Certificado de garantia  
+ 
+ 
+Nota：  • Em algumas regiões, pode não ter o certificado de garantia.
+
+Página 13
+
+2 
+1.2. Vista do produto  
+| Vista frontal 
+ 
+Nú mero serial  Sé rie P2200/P2500/S2000  Sé rie P2600  
+ 
+  
+1 Compartimento de saí da de papé is  Compartimento de saí da de papé is  
+2 Painel de controle  Painel de controle  
+3 Bandeja de saí da de papé is  Bandeja de saí da de papé is  
+4 Placa de guia de papé is de alimentaç ã o 
+automá tica  Placa-guia de alimentaç ã o manual  
+5 Placa de parada de papé is  Placa de guia de papé is de alimentaç ã o 
+automá tica  
+6 Bandeja de entrada de papé is  Placa de parada de papé is  
+7 Bandeja de entrada de papé is automá tica  Placa de parada de papé is  
+8  Bandeja de entrada de papé is 
+automá tica  
+9  Bandeja de entrada de papé is  
+ 
+| Vista traseira  
+ 
+ 
+Nota：  • As impressoras com diferentes funções e modelos são um pouco diferentes em vista 
+traseira. 
+ 
+  
+ 
+Nú mero serial  Sé rie P2200/P2500/S2000  Sé rie P2600  
+ 
+ 
+ 
+1 Interface de rede  Interface de rede  
+2 Interface USB  Interface USB  
+3 Interruptor de energia  Interruptor de energia  
+4 Interface de fonte de alimentaç ã o  Interface de fonte de alimentaç ã o
+
+Página 14
+
+3 
+1.3. Cartucho de toner para laser  
+| Vida ú til do cartucho de toner para laser  
+ 
+Nome de sé rie  Sé rie P2200/ P2500/ S2000  Sé rie P2600  
+Diagrama 
+esquemá tico  
+ 
+ 
+Tipo  Volume mé dio de imprensa  
+Cartucho de toner 
+para laser com 
+capacidade padrã o  
+Cerca de 1600 folhas  
+(com base nas normas ISO 19752)  
+Cerca de 1500 folhas  
+(com base nas normas ISO 19752)  
+ 
+ 
+Nota：  • Acrescenta-se modelo sem aviso pré vio.  
+• A capacidade de consumo de materiais pode ser diferente devida aos diferentes 
+tipos de utilizaç ã o.  
+• A Empresa não recomenda o uso de outros materiais de consumo fora dos materiais 
+de consumo originais, pois os danos causados pelo uso dos materiais de consumo 
+nã o originais nã o sã o cobertos pela garantia. 
+ 
+1.4. Cartucho de toner para laser com adiç ã o fá cil  
+1.4.1. Estrutura do cartucho de toner para laser com adiç ã o fá cil  
+ 
+ 
+ 
+Nú mero serial  Nome de sé rie  
+1 Abertura de resí duos de toner  
+2 Abertura de adiç ã o de toner  
+3 Silo de resí duos de toner  
+4 Silo de toner
+
+Página 15
+
+4 
+1.4.2. Passos de enchimento do toner ao cartucho de toner para laser 
+com adiç ã o fá cil  
+ 
+ 
+Nota：  • Este produto suporta o toner engarrafada originalmente de Pantum, a operação de 
+complementar tenor deve ser feita por agentes ou profissionais reconhecidos pela 
+Pantum. 
+ 
+  
+ 
+Passo  Diagrama esquemá tico  Explicaç ã o  
+1  
+ 
+Vira-se a abertura de adiç ã o do toner do cartucho de 
+toner para laser para baixo, mexendo verticalmente 5-6 
+vezes.  
+2  
+ 
+Abra a tampa da abertura de resí duos de toner.  
+3  
+ 
+Derrame os resí duos de toner no silo de resí duos de 
+toner.  
+4  
+ 
+Feche a tampa da abertura de resí duos de toner.  
+5  
+ 
+Abra a tampa da abertura de resí duos de toner.  
+6  
+ 
+Alinhe a abertura de toner embalado em garrafa com a 
+abertura de adiç ã o do toner.  
+7 
+ 
+Derrame o toner para o solo de toner. 
+8  
+ 
+Feche a tampa da abertura de adiç ã o do toner.  
+9  
+ 
+Complete a adiç ã o do toner.
+
+Página 16
+
+5 
+2. Papé is e mí dia de impressã o  
+2.1. Especificaç ões do papel  
+Sé rieP2200/ 
+P2500/S2000  
+Sé rie P2600  
+Bandeja de 
+alimentaç ã o 
+automá tica  
+Tipo de mí dia  
+Papel normal, papel fino,papé is especiais (filme 
+transparente, papel de cartã o, papel de etiqueta, 
+envelope, papel grosso, etc.)  
+Tamanho da 
+mí dia  
+A4, A5, JIS B5, ISO B5, A6, Letter, Legal, 
+Executive, Folio, Oficio, Statement, Japanese 
+Postcard, Monarch Env, DL Env, C5 Env, C6 Env, 
+No.10 Env, ZL, Big 16K, Big 32K, 16K, 32K, 
+B6,Yougata4,Postcard,Younaga3,Nagagata3,Youg
+ata2,Personalizado  
+Peso da mí dia 
+em grama  60～163g/m²   
+Capacidade do 
+compartimento 
+de entra da de 
+papé is  
+150 folhas (80 g/m² )  
+Sé rie P2600 
+Bandeja de 
+entrada de 
+papé is 
+automá tica  
+Tipo de mí dia  
+Papel normal, papel fino,papé is especiais (filme 
+transparente, papel de cartã o, papel de etiqueta, 
+envelope, papel grosso, etc.)  
+Peso da mí dia 
+em grama  60～163g/m²   
+Capacidade do 
+compartimento 
+de entra da de 
+papé is  
+1 folhas (80 g/m² )  
+ 
+ 
+Nota：  • Este modelo de impressora é recomendado usar o papel comum de 80g/m² .  
+• Não se recomenda a utilização de um grande número de papéis especiais, o que pode 
+afectar a vida ú til da impressora.  
+• A mídia de impressão não correspondente às diretrizes listadas neste guia do usuário 
+pode conduzir à  pobre qualidade de impressã o, ao aumento de frequê ncia do bloqueio 
+de papé is, ao desgaste excessivo da impressora.  
+• O peso, a composição, a textura, a umidade e outras propriedades são fatores 
+importantes que afectam o desempenho e a qualidade de saí da da impressora. 
+ 
+Ao escolher a mí dia de impressã o, deve considerar as seguintes precauç õ es:  
+1. Resultado pretendido de impressã o: a mí dia de impressã o escolhida deve atender à s 
+necessidades do trabalho de impressã o.  
+2. Suavidade da superfí cie: A suavidade da mí dia de impressã o pode influenciar a clareza do 
+resultado de impressã o.
+
+Página 17
+
+6 
+3. Alguma mí dia de impressã o pode atender a todas as diretrizes desta seç ã o e ainda assim nã o 
+pode produzir resultados de impressã o satisfató rios. Isto pode ser causado pelas operaç õ es 
+inadequadas, temperatura e umidade inaceitá veis ou outros fatores incontroláveis. Antes de 
+adquirir grandes quantidades de mídia de impressão, por favor certifique-se de que a mídia de 
+impressão atende às especificações especificadas neste guia do usuá rio.  
+4. No caso de usar estas mí dias de impressã o que nã o atendem à s exigê ncias de especificaç ã o, 
+poderá  causar danos à  impressora.  
+2.2. Papel especial  
+Este produto suporta a impressã o em papel especial, o papel especial inclui: papel de etiqueta, 
+envelope, pelí cula transparente, papel grosso, cartolina, etc.  
+ 
+ 
+Nota：  • Ao utilizar papel especial ou mídia de impressão, por favor certifique-se de selecionar 
+nas configuraç õ es de impressã o os tipos e tamanhos de impressã o compatí veis, a fim 
+de obter os melhores resultados de impressã o.  
+• Ao utilizar a mídia de impressão especial para imprimir, recomendamos a alimentação 
+de uma folha por uma vez. 
+ 
+Por favor observe os seguintes crité rios:  
+Categoria da mí dia 
+de impressã o  Abordagem correta  Abordagem inadequada  
+Papel de etiqueta  
+Apenas utilize a etiqueta na qual o 
+papel entrefolha nã o está  exposto.  
+Ao utilizar etiqueta deve estar nivelada.  
+Apenas se usam papé is inteiros de 
+etiqueta.  
+Nã o se garante que todos os papé is de 
+etiqueta no mercado sã o capazes de 
+cumprir os requisitos.  
+Usam-se papé is de etiqueta com 
+rugas, bolhas ou danos.  
+Envelope  Os envelopes devem ser implantados 
+planamente.  
+Usam-se envelopes com rugas, 
+cortes, aderê ncias ou danos.  
+Usam-se envelopes com grampos, 
+fechos, janelas ou entrefolhas 
+revestidas.  
+Usam-se envelopes em pelí cula nã o 
+secante auto-adesiva, ou outros 
+materiais sinté ticos.  
+FIlme transparente  
+Apenas se usam pelí culas 
+transparentes aprovados de ser 
+aplicá veis à  impressora a laser.  
+Usam-se pelí culas transparentes 
+nã o aplicá veis à  impressora a laser.  
+Papel grosso, 
+cartolina  
+Apenas se usam papé is pesados que 
+sã o aprovados de ser aplicá veis à  
+impressora a laser e atendem à s 
+especificaç õ es de peso deste produto.  
+Usa-se papel cujo peso excede a 
+especificaç ã o da mí dia 
+recomendada deste produto, a 
+menos que seja o papel aprovado 
+para ser aplicá vel a este produto.
+
+Página 18
+
+7 
+2.3. Alimentar o papel  
+2.3.1. Colocar na bandeja de alimentaç ã o automá tica  
+a) Abra a bandeja de entrada de papel.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+b) Deslize a placa de guia de entrada automá tica de papel para coincidir com os dois lados do 
+papel.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+c) Levante a bandeja de saí da de papel, para evitar o deslizamento do papel.  
+Sé rie P2200/P2500/S2000  Sé rie P2600
+
+Página 19
+
+8 
+d) Faç a a face de impressã o do papel ficar para cima e coloque na bandeja de entrada automá tica 
+de papel.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+e) Ajuste a placa de parada de papel para fazê-la corresponder ao tamanho do papel.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+ 
+Nota：  • Se exceder 150 folhas colocadas na bandeja de entrada de papel automática por uma 
+só  vez irá  resultar no bloqueio de papel ou falha de entrada de papel.  
+• Ao usar papel impresso, por favor ponha a face a ser impresso (a face em branco) para 
+cima.  
+• Ao imprimir em papel A5, é recomendada a alimentação transversal, o que pode ajudar 
+a prolongar a vida ú til do cartucho de toner para laser.
+
+Página 20
+
+9 
+2.3.2. Colocar na bandeja de alimentaç ã o manual  
+ 
+Nota：  • Somente os produtos da série P2600 série suportam a alimentação manual. 
+ 
+  
+ 
+a) Abra a bandeja de entrada de papel.  
+ 
+ 
+ 
+b) Deslize a placa-guia de de alimentaç ã o manual para combinar ambos os lados do papel.  
+ 
+ 
+ 
+c) Levante a bandeja de saí da de papel, para evitar o deslizamento do papel.  
+ 
+ 
+ 
+d) Coloque atravé s de ambas as mã os um envelope ou um filme transparente, entre outras mí dias 
+de impressã o na bandeja de alimentaç ã o manual até  que a extremidade frontal do envelope ou 
+filme transparente toque na faca de correç ã o.
+
+Página 21
+
+10 
+ 
+Nota：  • Ao colocar papel na bandeja de alimentação manual, a impressora irá activar 
+automaticamente o o modo de alimentaç ã o manual.  
+• Ao colocar para cima face de impressão do papel na bandeja de alimentação manual, 
+quando é  colocado o topo do papel entra primeiro na bandeja de alimentaç ã o manual.  
+• Certifique-se de que papel, envelope ou filme transparente entram lisa e direitamente e 
+ficam na localizaç ã o correta da bandeja de alimentaç ã o manual. Caso contrá rio, a 
+inclinaç ã o de cará teres imprimidos e produzidos ou a parada do papel serã o causadas. 
+ 
+e) Depois de saí da das pá ginas imprimidas a partir da impressora, coloque a segunda folha de 
+papel para continuar imprimindo de acordo com os passos acima.  
+ 
+Aviso  
+ 
+Remova imediatamente os papé is, envelopes, filmes transparentes. Os papé is ou 
+envelopes acumulados irã o resultar o bloqueio de papel ou o enrolamento de papel. 
+ 
+2.4. Área nã o de impressã o  
+As partes sombreadas indicam a á rea de nã o-impressã o. 
+ 
+ 
+ 
+Finalidade Tamanho 
+do papel Margens superior e inferior (A) Margens esquerda e direita (B) 
+Impressã o 
+A4 5 mm (0.197 inch)  5 mm (0.197 inch)  
+Letter 5 mm (0.197 inch)  5 mm (0.197 inch)  
+ 
+2.5. Princí pios de utilizaç ã o do papel  
+• O resultado de impressão dos papéis ou documentos originais com áspera textura, superfície 
+desigual, mancha de ó leo, muito liso é  pobre.  
+• Por favor garanta que não o papel está livre de poeira, vilo e assim por diante.  
+• Coloque o papel sobre uma superfície plana, armazenado em um ambiente fresco e seco.
+
+Página 22
+
+11 
+3. Instalaç ã o e desinstalaç ã o do driver  
+3.1. Configuraç ã o do Driver  
+Este dispositivo fornece aplicativos de configuraç ã o do driver para Windows e macOS. 
+Recomendamos a Configuraç ã o com Um Clique, que auxilia na instalaç ã o automá tica do driver de 
+modo mais fá cil e rá pido. Caso encontre problemas durante o uso da Configuraç ã o com Um Clique, 
+você  pode tentar outros mé todos de configuraç ã o. 
+ 
+ 
+Nota:  • As interfaces de instalação do driver podem ser diferentes dependendo dos modelos e 
+funç õ es, os diagramas esquemá ticos apenas se servem para fins de referê ncia. 
+ 
+3.1.1. Instalaç ã o com um clique(Para Windows e macOS) 
+A Configuraç ã o com Um Clique oferece opç õ es de instalaç ã o por “Wi-Fi”, “USB” e “Rede a Cabo”. 
+Você  pode selecionar aquela que estiver mais de acordo com os mé todos de conexã o suportados 
+por sua impressora. 
+3.1.1.1. Conectar a impressora via Wi-Fi 
+Antes de instalar o driver da impressora, verifique se ela está  conectada corretamente ao Wi-Fi. Se 
+nã o estiver, consulte Seç ã o 3.1.1.1.1 quanto à  instalaç ã o e, se estiver, consulte Seç ã o 3.1.1.1.2 
+quanto à  instalaç ã o. 
+ 
+ 
+Nota:  • Você pode imprimir a "Página de configuração de rede" para confirmar o status da 
+conexã o de rede da impressora (consulte o Seç ã o 9.1.1.3 para saber como imprimir). 
+ 
+3.1.1.1.1. Impressora nã o conectada ao Wi-Fi 
+3.1.1.1.1.1. Configurar o Wi-Fi e instalar o driver pelo cabo USB 
+Nesta seção, a configuração será apresentada em “PC conectado ao roteador pelo Wi-Fi” e “PC 
+conectado ao roteador por cabo”. 
+ 
+ 
+Nota:  • A configuraç ã o por Wi-Fi da impressora suporta somente redes de 2,4 GHz. 
+ 
+I．Conecte o Computador ao router via Wi-Fi  
+1. O Computador já  está  conectado ao router via Wi-Fi.  
+2. Conecte a impressora ao Computador via cabo USB e ligue a impressora. 
+3. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+Para Windows: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalação. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalaç ã o.
+
+Página 23
+
+12 
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalaç ã o.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+Para macOS: 
+• Clique duas vezes em “Pantum XXX Series_Mac_Driver”–“Pantum Install Tool”. (O XXX em 
+Pantum XXX Series se refere ao modelo do produto.) 
+4. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+5. Para Windows, siga o Passo 6. Para macOS, digite a senha do PC antes de prosseguir para o 
+Passo 6. 
+6. Clique no botão da “Instalação em Um Clique”  em Wi -Fi para instalar o driver. 
+ 
+ 
+ 
+ 
+Nota:  • Antes de clicar no botão, você pode colocar o cursor do rato no botão "Instalação em Um 
+Clique" para verificar as informaç õ es de pop-up, a fim de confirmar atravé s do endereç o 
+de IP se a impressora atual é  aquela que você  precisa instalar. 
+• Você pode verificar o endereço IP da impressora através de "Página de configuração de 
+rede"(consulte o Seç ã o 9.1.1.3 para saber como imprimir).
+
+Página 24
+
+13 
+• Se a Ferramenta de Instalação encontrar somente uma impressora, ela prosseguirá para a 
+configuraç ã o de rede e à  instalaç ã o automá tica do driver quando clicar na "Instalaç ã o em Um 
+Clique"  em  Wi-Fi. (Para MacOS, é  necessá ria autorizaç ã o antes da impressora Wi-Fi poder ser 
+configurada.) 
+ 
+ 
+ 
+• Se a Ferramenta de Instalação encontrar mais de uma impressora, uma lista de impressora será 
+apresentada quando clicar na "Instalaç ã o em Um Clique"  em Wi-Fi. Você  precisa selecionar 
+“Configurar impressora Wi-Fi e instalar pelo cabo USB”, verifique a impressora USB e clique em 
+“OK”, assim a Ferramenta poderá prosseguir com a configuração de rede e a instalação automática 
+do driver. (Para MacOS, é  necessá ria autorizaç ã o antes da impressora Wi-Fi poder ser 
+configurada.)
+
+Página 25
+
+14 
+ 
+Nota:  • Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host".  
+ 
+7. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+II．Conecte o Computador ao router via cabo de rede 
+1. Conecte o Computador ao router via cabo de rede.  
+2. Conecte a impressora ao Computador via cabo USB e ligue a impressora. 
+3. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+Para Windows: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalação. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalaç ã o.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalaç ã o.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+Para macOS: 
+• Clique duas vezes em “Pantum XXX Series_Mac_Driver”–“Pantum Install Tool”. (O XXX em 
+Pantum XXX Series se refere ao modelo do produto.) 
+4. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+5. Para Windows, siga o Passo 6. Para macOS, digite a senha do PC antes de prosseguir para o 
+Passo 6.
+
+Página 26
+
+15 
+6. Clique no botão da “Instalação em Um Clique”  em Wi -Fi para instalar o driver. 
+ 
+ 
+ 
+ 
+Nota:  • Antes de clicar no botão, você pode colocar o cursor do rato no botão "Instalação em Um 
+Clique" para verificar as informaç õ es de pop-up, a fim de confirmar atravé s do endereç o 
+de IP se a impressora atual é  aquela que você  precisa instalar. 
+• Você pode verificar o endereço IP da impressora através de "Página de configuração de 
+rede"(consulte o Seç ã o 9.1.1.3 para saber como imprimir). 
+ 
+• Se a Ferramenta de Instalação encontrar somente uma impressora, será apresentado um diálogo 
+de configuraç ã o de rede sem fio quando clicar na "Instalaç ã o em Um Clique"  em Wi-Fi. Digite o 
+SSID e a senha para a rede que deseja, clique em “OK” e a configuração será iniciada. A 
+configuraç ã o pode demorar um pouco, dependendo da configuraç ã o do seu PC. Aguarde.
+
+Página 27
+
+16 
+• Se o software tiver encontrado mais de uma impressora, a interface da lista de impressoras será  
+exibida em uma mensagem pop-up. É necessá rio configurar a impressora atual conectada via cabo 
+USB à  rede sem fio e instalar o driver. Selecione a interface da lista de impressoras "Configure e 
+instale Wi-Fi via USB" e marque a opç ã o de impressora USB. Ela irá  aparecer na interface de 
+configuraç ã o da rede sem fio apó s clicar no botã o "Confirmar". Insira o SSID e a palavra-passe da 
+rede sem fio que você  deseja e, em seguida, clique no botã o "Confirmar" para entrar no processo 
+de instalaç ã o. O processo pode demorar algum tempo e a duraç ã o está  relacionada à  configuraç ã o 
+do seu Computador. Por favor, aguarde pacientemente.  
+ 
+ 
+ 
+ 
+ 
+ 
+Nota:  • Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host".
+
+Página 28
+
+17 
+7. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.1.1.1.2. Conecte o PC à  impressora diretamente via Wi-Fi e instale o driver. 
+Conecte o PC à  impressora atravé s de uma conexã o Wi-Fi direta. Essa opç ã o é  aplicá vel à  rede 
+sem fio sem o modo de infraestrutura, mas ainda precisa do cená rio de uso temporá rio da 
+impressora via rede sem fio. Você  pode conectar diretamente o PC que está  equipado com a 
+funç ã o sem fio à  impressora para realizar a funç ã o de impressã o. 
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Conecte o computador à  rede Wi-Fi Direct da impressora (consulte a Seç ã o 5.2.2 sobre o 
+mé todo de configuraç ã o).  
+3. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+Para Windows: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalação. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalaç ã o.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalaç ã o.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+Para macOS: 
+• Clique duas vezes em “Pantum XXX Series_Mac_Driver”–“Pantum Install Tool”. (O XXX em 
+Pantum XXX Series se refere ao modelo do produto.) 
+4. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+5. Para Windows, siga o Passo 6. Para macOS, digite a senha do PC antes de prosseguir para o 
+Passo 6.
+
+Página 29
+
+18 
+6. A configuraç ã o iniciará  quando clicar na "Instalaç ã o em Um Clique"  em Wi-Fi. A configuraç ã o 
+pode demorar um pouco, dependendo da configuraç ã o do seu PC. Aguarde. 
+ 
+ 
+ 
+ 
+ 
+7. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.1.1.2. A impressora já  está  conectada à  rede sem fio  
+1. A impressora já  está  conectada à  rede sem fio, você  pode imprimir a "Pá gina de configuraç ã o de 
+rede" para verificar(consulte o Seç ã o 9.1.1.3 para ver como imprimir). 
+2. Conecte o Computador à  rede da impressora.  
+3. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+Para Windows: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalação. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o.
+
+Página 30
+
+19 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à  
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+Para macOS: 
+• Clique duas vezes em “Pantum XXX Series_Mac_Driver”–“Pantum Install Tool”. (O XXX em 
+Pantum XXX Series se refere ao modelo do produto.) 
+4. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+5. Para Windows, siga o Passo 6. Para macOS, digite a senha do PC antes de prosseguir para o 
+Passo 6. 
+6. Clique no botão da “Instalação em Um Clique”  em Wi -Fi para instalar o driver. 
+ 
+ 
+ 
+ 
+Nota:  • Antes de clicar no botão, você pode colocar o cursor do rato no botão "Instalação em Um 
+Clique" para verificar as informaç õ es de pop-up, a fim de confirmar atravé s do endereç o 
+de IP se a impressora atual é  aquela que você  precisa instalar. 
+• Você pode verificar o endereço IP da impressora através de "Página de configuração de 
+rede"(consulte o Seç ã o 9.1.1.3 para saber como imprimir).
+
+Página 31
+
+20 
+• Se a Ferramenta de Instalação encontrar somente uma impressora, a configuração iniciará 
+quando clicar na "Instalaç ã o em Um Clique"  em Wi-Fi. A configuraç ã o pode demorar um pouco, 
+dependendo da configuraç ã o do seu PC. Aguarde. 
+ 
+ 
+ 
+• Se a Ferramenta de Instalaç ã o encontrar mais de uma impressora, será  apresentada uma lista de 
+impressoras. Selecione a impressora que deseja com base no Endereç o de IP da rede sem fio da 
+sua impressora ou no Nome do Host.
+
+Página 32
+
+21 
+ 
+Nota:  • Se a impressora que você precisa não for mostrada na lista, clique no botã o "Atualizar" 
+para pesquisar novamente. Se ela nã o for encontrada, verifique se a impressora e o 
+Computador estã o na mesma rede(Por favor, veja o Seç ã o 5.3 para saber como verificar).  
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+ 
+7. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.1.2. Conectar impressora pelo cabo USB 
+1. Conecte a impressora ao Computador via cabo USB, ligue a impressora e o Computador .  
+2. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+Para Windows: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalaç ã o. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+Para macOS: 
+• Clique duas vezes em “Pantum XXX Series_Mac_Driver”–“Pantum Install Tool”. (O XXX em 
+Pantum XXX Series se refere ao modelo do produto.) 
+3. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+4. Para Windows, siga o Passo 5. Para macOS, digite a senha do PC antes de prosseguir para o 
+Passo 5.
+
+Página 33
+
+22 
+5. A configuraç ã o começ ará  quando clicar na "Instalaç ã o em Um Clique"  em USB. A 
+configuraç ã o pode demorar um pouco, dependendo da configuraç ã o do seu PC. Aguarde. 
+ 
+ 
+ 
+ 
+ 
+6. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.1.3. Conectar a impressora pela rede a cabo 
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Ligue o computador a uma rede com fio.  
+3. Conecte o cabo de rede para a interface de rede da impressora, verifique que a impressora está  
+conectada à  rede do seu computador (para as informaç õ es sobre como configurar a rede, por favor 
+consulte o Seç ã o 4). 
+4. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+Para Windows: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalação.
+
+Página 34
+
+23 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à  
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+Para macOS: 
+• Clique duas vezes em “Pantum XXX Series_Mac_Driver” – “Pantum Install Tool”. (O XXX em 
+Pantum XXX Series se refere ao modelo do produto.) 
+5. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+6. Para Windows, siga o Passo 7. Para macOS, digite a senha do PC antes de prosseguir para o 
+Passo 7. 
+7. Clique no botã o da "Instalaç ã o em Um Clique"  em Rede a Cabo para instalar o driver.  
+ 
+ 
+ 
+ 
+Nota:  • Antes de clicar no botão, você pode colocar o cursor do rato no botão "Instalação em Um 
+Clique" para verificar as informaç õ es de pop-up, a fim de confirmar atravé s do endereç o 
+de IP se a impressora atual é  aquela que você  precisa instalar. 
+• Você pode verificar o endereço IP da impressora através de "Página de configuração de 
+rede"(consulte o Seç ã o 9.1.1.3 para saber como imprimir).
+
+Página 35
+
+24 
+• Se a Ferramenta de Instalação encontrar somente uma impressora, a configuração iniciará 
+quando clicar na "Instalaç ã o em Um Clique"  em Rede a Cabo. A configuraç ã o pode demorar um 
+pouco, dependendo da configuraç ã o do seu PC. Aguarde. 
+ 
+ 
+ 
+• Se a Ferramenta de Instalaç ã o encontrar mais de uma impressora, uma lista de impressora será  
+apresentada quando clicar na "Instalaç ã o em Um Clique"  em Rede a Cabo. Selecione a 
+impressora que deseja com base no Endereç o de IP da rede a cabo da sua impressora ou no 
+Nome do Host.
+
+Página 36
+
+25 
+ 
+Nota:  • Se a impressora que você precisa não for mostrada na lista, clique no botão "Atualizar" 
+para pesquisar novamente. Se ela nã o for encontrada, verifique se a impressora e o 
+Computador estã o na mesma rede(Por favor, veja o Seç ã o 5.3 para saber como verificar).  
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+ 
+8. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+ 
+3.1.2. Outros mé todos de configuraç ã o 
+3.1.2.1. Outros mé todos de configuraç ã o para Windows 
+• Antes da instalação do driver, você precisa saber o modelo da impressora, por favor imprima a 
+"Pá gina de informaç õ es" da impressora e consulte o "Nome do produto" para saber o modelo da 
+impressora (sobre as informaç õ es de como imprimir, por favor consulte o Seç ã o 9.1.1.3).  
+3.1.2.1.1. Instalaç ã o do modo de conexã o com USB  
+1. Conecte a impressora ao Computador via cabo USB, ligue a impressora e o Computador.  
+2. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalação. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execuç ã o Automá tica", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+3. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+4. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+5. Por favor, selecione o idioma de instalaç ã o e o modelo da impressora.
+
+Página 37
+
+26 
+6. Selecione "Impressora USB" e clique em "Instalar".  
+ 
+ 
+ 
+7. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+8. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.2.1.2. Instalaç ã o do modo de conexã o da rede com fio  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Ligue o computador a uma rede com fio.  
+3. Conecte o cabo de rede para a interface de rede da impressora, verifique que a impressora está  
+conectada à  rede do seu computador (para as informaçõ es sobre como configurar a rede, por favor 
+consulte o Seç ã o 4). 
+4. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalaç ã o. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o.
+
+Página 38
+
+27 
+5. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+6. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+7. Por favor, selecione o idioma de instalaç ã o e o modelo da impressora.  
+8. Selecione "Impressora já  conectada à  rede" e clique em "Instalar". 
+ 
+ 
+ 
+9. O software de instalaç ã o buscará  a impressora automaticamente; esse processo poderá  levar 
+algum tempo. 
+10. Quando a pesquisa estiver concluí da, selecione a impressora que deseja conectar, clique em 
+"Pró ximo passo".
+
+Página 39
+
+28 
+ 
+Nota:  • Se na lista de impressoras já pesquisadas, não houver a impressora que você deseja 
+conectar, por favor clique em "Atualizar" para pesquisar novamente. 
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+• Se adicionar manualmente o endereço IP ou o nome do host, você precisa de saber o 
+endereç o IP da impressora conectada ou o nome do host. Se nã o for bem claro, por favor 
+imprima a "página de configuraç ã o da rede" e consulte o "endereç o IP" e o "nome do host" 
+(veja o Seç ã o 9.1.1.3).  
+ 
+11. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+12. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.2.1.3. O acesso Wi-Fi está  instalado  
+O tipo de conexã o de rede sem fio é  dividido no modo de estrutura bá sica e no modo Wi-Fi Direct 
+(consulte a Seç ã o 5 para detalhes).  
+3.1.2.1.3.1. Instalar o modo de infra-estrutura  
+1. Conecte o computador ao ponto de acesso (router sem fios).  
+2. Conecte a impressora ao Computador via cabo USB e ligue a impressora. 
+3. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador: 
+• Sistema Windows XP: executa automaticamente o procedimento de instalaç ã o. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execução Automática", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o. 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+4. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver.
+
+Página 40
+
+29 
+5. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+6. Por favor, selecione o idioma de instalaç ã o e o modelo da impressora.  
+7. Selecione "Impressora conectada à  nova rede" e clique em "Instalar".  
+ 
+ 
+ 
+8. Na janela de configuraç ã o sem fio pop-up, selecione "Sim, vou configurar a rede sem fio na 
+impressora" .De acordo com o prompt, configure a impressora na rede sem fio(Como configurar, 
+consulte o Seç ã o 5.1.1 ).
+
+Página 41
+
+30 
+9. O software de instalaç ã o buscará  a impressora automaticamente apó s a configuraç ã o da rede 
+sem fio. O processo de busca pode demorar algum tempo. 
+10. Selecione a impressora que deseja conectar, clique em "Avanç ar".  
+ 
+ 
+ 
+ 
+Nota:  • Se na lista de impressoras já pesquisadas, não houver a impressora que você deseja 
+conectar, por favor clique em "Atualizar" para pesquisar novamente. 
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+• Se adicionar manualmente o endereço IP ou o nome do host, você precisa de saber o 
+endereç o IP da impressora conectada ou o nome do host. Se nã o for bem claro, por favor 
+imprima a "pá gina de configuraç ã o da rede" e consulte o "endereç o IP" e o "nome do host" 
+(veja o Seç ã o 9.1.1.3).  
+ 
+11. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+12. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.2.1.3.2. Instalaç ã o no modo Wi-Fi Direct  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Conecte o computador à  rede Wi-Fi Direct da impressora (consulte a Seç ã o 5.2.2 sobre o 
+mé todo de configuraç ã o).  
+3. Coloque o CD de instalaç ã o incluso no drive CD-ROM do Computador:  
+• Sistema Windows XP: executa automaticamente o procedimento de instalação. 
+• Sistema Windows 7/Vista/Server 2008: Na interface "Execuç ã o Automá tica", clique em 
+"Setup.exe" para executar o procedimento de instalaç ã o.
+
+Página 42
+
+31 
+• Sistema Windows 8: Quando aparecer a janela pop-up “Driver DVD RW” do lado superior direito 
+da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois clique em 
+“Setup.exe” para executar o programa de instalação.  
+• Sistema Windows 10/11: Quando aparecer a janela pop-up “Driver DVD RW” do lado inferior 
+direito da á rea de trabalho do Computador, clique em qualquer lugar da janela pop-up, depois 
+clique em “Setup.exe” para executar o programa de instalação.  
+ 
+ 
+Nota:  • Alguns Computadors podem não conseguir reproduzir automaticamente o CD devido à 
+alguma configuraç ã o do sistema. Nesse caso, clique duas vezes no í cone "Computador", 
+localize "DVD RW driver", depois clique duas vezes em "DVD RW driver" para executar o 
+procedimento de instalaç ã o. 
+ 
+4. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+5. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+6. Por favor, selecione o idioma de instalaç ã o e o modelo da impressora.  
+7. Selecione "Impressora conectada à  nova rede" e clique em "Instalar".
+
+Página 43
+
+32 
+8. Na janela de configuraç ã o sem fio pop-up, selecione "Nã o, a impressora tem acesso à  rede sem 
+fio", clique em "Avanç ar". 
+ 
+ 
+ 
+9. O software de instalaç ã o buscará  a impressora automaticamente; esse processo poderá  levar 
+algum tempo. 
+10. Selecione a impressora que deseja conectar, clique em "Avanç ar".
+
+Página 44
+
+33 
+ 
+Nota:  • Se na lista de impressoras já pesquisadas, não houver a impressora que você  deseja 
+conectar, por favor clique em "Atualizar" para pesquisar novamente. 
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+• Se adicionar manualmente o endereço IP ou o nome do host, você precisa de saber o 
+endereç o IP da impressora conectada ou o nome do host. Se nã o for bem claro, por favor 
+imprima a "pá gina de configuraç ã o da rede" e consulte o "endereç o IP" e o "nome do host" 
+(veja o Seç ã o 9.1.1.3).  
+ 
+11. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+12. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.2.2. Outros mé todos de configuraç ã o para macOS 
+3.1.2.2.1. Instalar pelo Cabo USB 
+As seguintes operaç õ es tomam macOS 10.14 como exemplo, as informaç õ es de tela do seu 
+computador podem variar-se de acordo com os diferentes sistemas operacionais.  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Insira o CD de configuraç ã o fornecido no CD-ROM do PC e clique duas vezes em “Pantum XXX 
+Series_Mac_Driver” – “Pantum Install Tool”. (O XXX em Pantum XXX Series se refere ao modelo 
+do produto.) 
+3. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+4. Digite a senha do PC e clique em “OK”. 
+ 
+ 
+ 
+5. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o.
+
+Página 45
+
+34 
+6. Selecione uma impressora USB dentre os resultados da busca. 
+ 
+ 
+ 
+7. Clique em “Instalar” do lado direito, em baixo. 
+8. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+9. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+ 
+3.1.2.2.2. Instalar como uma impressora de rede 
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Conectar o PC na rede. 
+3. Certifique-se de que a impressora esteja conectada na mesma rede do PC (Veja a Seç ã o 4 ou 5 
+para saber mais sobre como configurar a rede). 
+4. Insira o CD de configuraç ã o fornecido no CD-ROM do PC e clique duas vezes em “Pantum XXX 
+Series_Mac_Driver” – “Pantum Install Tool”. (O XXX em Pantum XXX Series se refere ao modelo 
+do produto.) 
+5. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+6. Digite a senha do PC e clique em “OK”.
+
+Página 46
+
+35 
+7. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+8. Selecione uma impressora de rede dentre os resultados da busca. 
+9. Clique em “Instalar” do lado direito, em baixo. 
+ 
+ 
+ 
+ 
+Nota:  • Se na lista de impressoras já pesquisadas, não houver a impressora que você deseja 
+conectar, por favor clique em "Atualizar" para pesquisar novamente. 
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+• Se adicionar manualmente o endereç o IP ou o nome do host, você  precisa de saber o 
+endereç o IP da impressora conectada ou o nome do host. Se nã o for bem claro, por favor 
+imprima a "pá gina de configuraç ã o da rede" e consulte o "endereç o IP" e o "nome do host" 
+(veja o Seç ã o 9.1.1.3).  
+ 
+10. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+11. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+ 
+3.1.2.2.3. Instalar pelo Nome do Host ou Endereç o de IP 
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Conectar o PC na rede. 
+3. Certifique-se de que a impressora esteja conectada na mesma rede do PC (Veja a Seç ã o 4 ou 5 
+para saber mais sobre como configurar a rede). 
+4. Insira o CD de configuraç ã o fornecido no CD-ROM do PC e clique duas vezes em “Pantum XXX 
+Series_Mac_Driver” – “Pantum Install Tool”. (O XXX em Pantum XXX Series se refere ao modelo 
+do produto.)
+
+Página 47
+
+36 
+5. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+6. Digite a senha do PC e clique em “OK”. 
+ 
+ 
+ 
+7. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+8. Selecione o Nome do Host ou Endereç o de IP e digite o Nome do Host ou Endereç o de IP da 
+impressora que deseja adicionar. 
+9. Clique em “Instalar” do lado direito, em baixo. 
+ 
+ 
+ 
+ 
+Nota:  • Se na lista de impressoras já pesquisadas, não houver a impressora que você deseja 
+conectar, por favor clique em "Atualizar" para pesquisar novamente. 
+• Quando o endereço IP da impressora é alterado no driver da impressora instalado com a 
+ID do host, você  també m pode imprimir diretamente sem reinstalar o driver. Se você  
+precisar instalar o driver da impressora com o ID do host, marque a opç ã o "Instalar a 
+impressora da lista com o ID do host". 
+• Se adicionar manualmente o endereço IP ou o nome do host, você  precisa de saber o 
+endereç o IP da impressora conectada ou o nome do host. Se nã o for bem claro, por favor 
+imprima a "pá gina de configuraç ã o da rede" e consulte o "endereç o IP" e o "nome do host" 
+(veja o Seç ã o 9.1.1.3).
+
+Página 48
+
+37 
+10. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+11. Apó s a instalaç ã o, clique no botã o "Imprimir Pá gina de Teste". Se a impressora imprimir a 
+pá gina de teste com ê xito, significa que você  instalou o driver corretamente. 
+3.1.2.2.4. Instalaç ã o Offline 
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Insira o CD de configuraç ã o fornecido no CD-ROM do PC e clique duas vezes em “Pantum XXX 
+Series_Mac_Driver” – “Pantum Install Tool”. (O XXX em Pantum XXX Series se refere ao modelo 
+do produto.) 
+3. Leia e concorde com os termos contidos no Acordo de Licenç a do Usuá rio Final e na Polí tica de 
+Privacidade, clique no botão “Próximo” no canto inferior direito da interface para entrar na interface 
+de instalaç ã o do driver. 
+4. Digite a senha do PC e clique em “OK”. 
+ 
+ 
+ 
+5. Para acessar, clique em “Outros métodos de configuração” na parte de baixo da interface de 
+configuraç ã o. 
+6. Clique em “Instalação Offline” do lado esquerdo, em baixo.
+
+Página 49
+
+38 
+7. O software instala o driver automaticamente e o processo de instalaç ã o pode demorar algum 
+tempo. A duraç ã o está  relacionada com a configuraç ã o do seu Computador, entã o aguarde 
+pacientemente.  
+8. Instalaç ã o concluí da. Termine de adicionar a impressora como orientado ou consultado na 
+Seç ã o 3.1.2.2.4.1. 
+3.1.2.2.4.1. Adicionar impressora ao sistema macOS  
+I. Adicione a impressora via USB  
+1. Use o cabo USB para conectar a impressora e o computador, ligue a energia.  
+2. Entre em "Configuraç õ es de preferê ncia do sistema" do computador - "Impressora e 
+digitalizador".  
+3. Clique o botã o "  " selecione "Adicionar impressora ou digitalizador." 
+4. Selecione a impressora e, em seguida, selecione o modelo de impressora correspondente a 
+partir do menu pop-up de "Utilizaç ã o". 
+5. Clique em "Adicionar". 
+II. Adicione a impressora via conexã o com fio  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Ligue o computador a uma rede com fio.  
+3. Conecte o cabo de rede para a interface da rede da impressora, garantindo que a impressora 
+está  conectada à  rede do seu computador (para as informaç õ es sobre como configurar a rede, 
+consulte o Seç ã o 4).  
+4. Entre em "Configuraç õ es de preferê ncia do sistema" do computador - "Impressora e 
+digitalizador". 
+5. Clique o botã o "  " selecione "Adicionar impressora ou digitalizador." 
+6. Selecione a impressora e, em seguida, selecione o modelo de impressora correspondente a 
+partir do menu pop-up de "Utilizaç ã o". 
+7. Clique em "Adicionar". 
+III. Adicione a impressora via conexã o sem fio  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Certifique-se de que o computador e a impressora já  se estabelecem uma conexã o de rede sem 
+fio.  
+ 
+ 
+Nota:  • No caso do modo de estrutura básica, conecte a impressora de rede sem fio no ponto 
+de acesso (roteador sem fio). Consulte a Seç ã o 5.1 sobre o mé todo de conexã o.  
+• No caso do modo Wi-Fi Direct, conecte o cliente sem fio diretamente à  impressora de 
+rede sem fio. Consulte a Seç ã o 5.2 sobre os mé todos de conexã o.  
+ 
+3. Entre em "Configuraç õ es de preferê ncia do sistema" do computador - "Impressora e 
+digitalizador". 
+4. Clique o botã o "  " selecione "Adicionar impressora ou digitalizador." 
+5. Selecione a impressora e, em seguida, selecione o modelo de impressora correspondente a 
+partir do menu pop-up de "Utilizaç ã o". 
+6. Clique em "Adicionar".
+
+Página 50
+
+39 
+IV. Adicionar a impressora AirPrint  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Certifique-se de que o computador e a impressora já  se estabelecem uma conexã o (conexã o 
+com USB ou conexã o com rede).  
+3. Entre em "Configuraç õ es de preferê ncia do sistema" do computador - "Impressora e 
+digitalizador". 
+4. Clique o botã o "  " selecione "Adicionar impressora ou digitalizador." 
+5. Selecione a impressora e, em seguida, a partir da caixa de opção "Usar", selecione “Secure 
+AirPrint” (encriptação de dados) ou "AirPrint" (não criptografados).  
+6. Clique em "Adicionar". 
+ 
+ 
+Nota:  • Usa-se o cabo de conexã o USB para ligar a impressora e o computador, o sistema 
+identifica automaticamente e adiciona a impressora AirPrint. 
+• Se adicionar uma impressora AirPrint com o modo de conexão de rede, precisa de 
+primeiro desligar o cabo de conexã o USB e depois adicionar a impressora. 
+• A impressora AirPrint é designada com o término "AirPrint". 
+ 
+3.2. Desinstalar Driver  
+3.2.1. Mé todo para desinstalar o driver no Windows 
+As seguintes operaç õ es tomam Windows 7 como exemplo, as informaç õ es de tela do seu 
+computador podem variar-se de acordo com os diferentes sistemas operacionais. 
+1. Clique no "Menu Iniciar" do computador, a seguir clique em "Todos os Programas".  
+2. Clique em "Pantum", depois clique em "Pantum XXX Series". ("XXX" em Pantum Sé rie XXX 
+representa o modelo do produto).  
+"XXX" em Pantum Sé rie XXX representa o modelo do produto。 
+3. Clique em "desinstalar", siga as instruç õ es da janela de desinstalaç ã o para remover o driver.  
+4. Apó s a desinstalaç ã o estiver concluí da, reinicie o computador.  
+3.2.2. Mé todo para desinstalar o driver no macOS 
+As seguintes operaç õ es tomam macOS 10.14 como exemplo, as informaç õ es de tela do seu 
+computador podem variar-se de acordo com os diferentes sistemas operacionais.  
+1. Clique na barra de menu Finder do computador "Ir para" - "Aplicaç õ es" - "Pantum" - "Utilities" - 
+"Pantum Un-install Tool". 
+2. Exclua o driver conforme instruí do na janela de Desinstalaç ã o. 
+3. Desinstalaç ã o concluí da.
+
+Página 51
+
+40 
+4. Configuraç ões da rede com fio (aplicá vel para o 
+modelo de rede com fio)  
+Suporta a impressora de impressã o de rede com fio, pode conectar a impressora para a rede, de 
+modo a atravé s do modo de rede com fio controlar a impressora para a impressã o.  
+4.1. Definiç ã o do endereç o IP  
+O endereç o IP da impressora pode ser obtido automaticamente atravé s da funç ã o DHCP, també m 
+pode ser configurado manualmente.  
+4.1.1. Configuraç ã o automá tica  
+A impressora pré-define a ativaç ã o da funç ã o de configuraç ã o automá tica de DHCP.  
+1. Conecte a impressora à  rede atravé s de um cabo de rede e concluí da a preparaç ã o de iniciar.  
+2. A impressora receberá  automaticamente o endereç o IP atribuí do pelo servidor. Influenciado pelo 
+ambiente de rede, pode levar alguns minutos antes de obter o endereç o IP.  
+Você  pode pressionar por longo tempo o botã o de "Cancelar/continuar" no painel de controle para 
+imprimir a pá gina de informaç õ es DEMO, vendo as informaç õ es de endereç o IP da impressora. Se 
+o endereç o IP nã o estiver listado, por favor verifique o ambiente de rede, ou esperar alguns 
+minutos e tente novamente.  
+ 
+ 
+Nota：  • Se o servidor DHCP atribuir automaticamente o endereço IP não for bem sucedido, a 
+impressora receberá  automaticamente o endereç o local de uma ligaç ã o atribuí da pelo 
+sistema: 169.254.xxx.xxx. 
+ 
+4.1.2. Configuraç ã o manual  
+Por meio do servidor da Web incorporado para definir o endereç o IP para a impressora 
+manualmente, consulte os detalhes no capí tulo 6.2.1.
+
+Página 52
+
+41 
+5. Configuraç ões da rede sem fio (aplicá vel para o 
+modelo Wi -Fi)  
+Dependendo do modelo, as impressoras com funç ã o de impressã o de Wi-Fi suportam o modo de 
+conexã o de infra-estrutura e Soft-AP, dois tipos de conexã o de rede sem fio, geralmente cada vez 
+só  pode haver uma conexã o entre computador e impressora.Se você  tiver problemas durante o 
+processo de configuraç ã o da rede sem fio, por favor consulte os problemas frequentemente 
+encontrados de configuraç ã o da rede sem fio descritos no Capí tulo 5.3 .  
+ 
+ 
+Modo de infra-estrutura: Conexã o atravé s de um roteador com 
+um dispositivo sem fio  
+1. Ponto de acesso (roteador sem fio).  
+2. Impressora de rede sem fio.  
+3. Computador conectado ao ponto de acesso atravé s da rede 
+sem fio.  
+4. Computador conectado ao ponto de acesso atravé s do cabo 
+de rede.  
+ 
+Soft-AP 
+Conexã o direta do computador sem fio com o dispositivo sem 
+fio. 
+ 
+5.1. Modo de Infra -estrutura  
+Você  pode atravé s do ponto de acesso (roteador sem fio) como um meio, conectar o computador à  
+impressora. A conexã o do ponto de acesso (roteador sem fio) divide-se em dois modos, ferramenta 
+de configuraç ã o da rede sem fio e configuraç ã o de Protected Setup (WPS).  
+N.B.: antes de prosseguir a instalaç ã o de rede sem fio, deve conhecer o nome da rede (SSID) do 
+seu ponto de acesso (roteador sem fio) e a senha, que precisam de ser usados na configuraç ã o da 
+rede sem fio. Caso nã o seja capaz de confirmar, por favor consulte o seu administrador de rede ou 
+fabricante do ponto de acesso (roteador sem fio).  
+5.1.1. Ferramentas de configuraç ã o da rede sem fio 
+Se o seu computador já  instalar o driver e tiver sido conectado à  rede sem fio, mas a rede sem fil 
+for alterada, pode atravé s da ferramenta de configuraç ã o da rede sem fio para a reconfiguraç ã o. 
+5.1.1.1. Assuntos preparató rios 
+1. Ponto de acesso (roteador sem fio). 
+2. Computador que já  está  ligado à  rede. 
+3. Impressora com funç ã o de rede sem fio.
+
+Página 53
+
+42 
+5.1.1.2. Mé todo de configuraç ã o com ferramenta de configuraç ã o da rede sem fio 
+1. No computador chama-se a ferramenta de configuraç ã o da rede sem fio. 
+1) Sistema Windows: Clique no menu do Computador "Iniciar" - "Todos os Programas" - "Pantum" 
+- "Nome do produto" - "Ferramenta de configuraç ã o da rede sem fio." 
+2) Sistema macOS: Clique na barra de menu Finder do computador "Ir para" - "Aplicaç õ es" - 
+"Pantum" - "Utilities" - “Wireless Network Configuration Tool”. 
+2. Use o cabo do conector USB para conectar a configuraç ã o. 
+Na pró xima interface, selecione "Sim, tenho um cabo USB a ser usado para a instalaç ã o". Clique 
+em "Avanç ar". 
+ 
+ 
+ 
+2.1 O computador foi conectado à rede sem fio. 
+1) A ferramenta de configuraç ã o de rede sem fio seleciona o computador atual padrã o conectado à 
+rede sem fio. Conclua a configuraç ã o de acordo com o prompt da interface.
+
+Página 54
+
+43 
+ 
+Nota：  • O nome de rede que você seleciona (SSID) deve ser consistente com o nome de rede 
+(SSID) do ponto de acesso conectado do computador (roteador sem fio). 
+ 
+  
+ 
+2) É necessá rio conectar-se a outra rede sem fio, por favor, marque "Nã o" para configurar outra 
+rede sem fio. Conclua a configuraç ã o de acordo com o prompt da interface. 
+ 
+ 
+ 
+ 
+Nota：  • Método de criptografia: 
+1) Nenhum: nã o se usa nenhum modo de criptografia. 
+2) WPA/WPA2: é  a chave pré-compartilhada de acesso de proteç ã o de Wi-Fi, ele pode 
+atravé s de usar a criptografia TKIP ou AES (WPS-Personal) fazer a conexã o do 
+dispositivo sem fio com o ponto de acesso. É a chave pré-compartilhada cuja extensã o 
+de uso de WPA/WPA2 fica entre 8-63 caracteres (PSK). 
+• A "exibição de senha" é pré-definida de nã o ser selecionada, se for selecionada, a 
+senha digitada será  exibida. 
+• Alguns modelos podem corresponder automaticamente ao método de criptografia, 
+sem a necessidade de seleç ã o manual.
+
+Página 55
+
+44 
+2.2 O computador nã o foi conectado à  rede sem fio. 
+Na seguinte interface, digite o nome da rede SSID (SSID sensí vel a maiú sculas e minú sculas) e a 
+senha do ponto de acesso (roteador sem fio), conclua a configuraç ã o de acordo com o prompt da 
+interface. 
+ 
+ 
+ 
+ 
+Nota：  • Se você não souber o nome de rede (SSID) do ponto de acesso (roteador sem fio), 
+clicar em "Imprimir a pá gina de informaç õ es da rede sem fio" pode ver o nome de 
+rede (SSID) do ponto de acesso (roteador sem fio) de que você  precisa. 
+• Após a conclusão da configuração estiver concluída, se a impressora não puder ser 
+usada normalmente, por favor instale o driver de novo. 
+ 
+3. Use o WPS para conexã o. 
+Na seguinte interface, selecione "Nã o, eu nã o tenho um cabo conector USB." Clique em "Pró ximo".
+
+Página 56
+
+45 
+1) Utilize o modo WPS para executar os seguintes passos e iniciar a rede sem fio na impressora. 
+Para a configuraç ã o especí fica WPS, por favor, consulte o Capí tulo 5.1.2 ) 
+ 
+ 
+ 
+2) Analise se uma impressora se conecta com ê xito de acordo com o status do indicador Wi-Fi na 
+impressora. Se a configuraç ã o falhar, clique em "Voltar" e configure novamente; Se a configuraç ã o 
+for bem-sucedida, clique no botã o "Concluir" e conclua a configuraç ã o. 
+ 
+ 
+ 
+ 
+Nota：  • Após a conclusão da configuração estiver concluída, se a impressora não puder ser 
+usada normalmente, por favor instale o driver de novo. 
+ 
+  
+ 
+5.1.2. Configuraç ã o do Wi-Fi Protected Setup (WPS)  
+Se o ponto de acesso (roteador sem fio) suportar Wi-Fi Protected Setup (WPS), pode pressionar 
+respetivamente a tecla Wi-Fi no painel de controle da impressora e a tecla WPS no ponto de 
+acesso (roteador sem fio), de modo a conectar a impressora à  rede sem fio.
+
+Página 57
+
+46 
+5.1.2.1. Assuntos preparató rios  
+1. O ponto de acesso (roteador sem fio) suporta o Wi-Fi Protected Setup (WPS).  
+2. Impressora com funç ã o de rede sem fio.  
+5.1.2.2. Modo de configuraç ã o do Wi-Fi Protected Setup (WPS)  
+1. Ligue as fontes de alimentaç ã o da impressora e do ponto de acesso (roteador sem fio).  
+2. Certifique-se de que a impressora está  pronta.  
+ 
+ 
+Nota：  • Se a impressora entrar no estado de dormir, pressione qualquer tecla do painel de 
+controle da impressora, entã o a impressora irá-se acordar. 
+ 
+  
+ 
+3. Pressione a "Tecla Wi-Fi" no painel de controle da impressora por mais de 2 segundos, até  a luz 
+azul de Wi-Fi da impressora piscar-se, em seguida liberte-a.  
+4. Dentro de 2 minutos, pressione a "Tecla WPS" no ponto de acesso (roteador sem fio) , em 
+seguida liberte-a.  
+5. O ponto de acesso (roteador sem fio) e a impressora começ am a executar a conexã o sem fio, a 
+luz azul de Wi-Fi pisca-se. Apó s a conexã o bem-sucedida, a luz azul de Wi-Fi ilumina-se 
+normalmente.  
+Se por mais de 2 minutos a conexã o nã o estiver bem estabelecida, a impressora retornará  ao 
+estado pronto, a luz Wi-Fi apaga-se, a conexã o de Wi-Fi Protected Setup (WPS) falha-se. Se for 
+preciso se reconectar, por favor repita os passos 3-4.  
+ 
+ 
+Nota：  • Após a conexão do Wi-Fi Protected Setup (WPS) bem sucedida, se você  quiser 
+imprimir atravé s do modo de rede sem fio, por favor instale o driver. 
+ 
+  
+ 
+5.1.3. Como desligar a rede Wi-Fi conectada  
+Siga os passos acima para concluir a conexã o à  rede sem fio do modo de infra-estrutura, a luz 
+Wi-Fi no painel de controle no estado ligado irá-se iluminar normalmente, neste momento 
+pressionar o botã o por mais de 2 segundos pode desligar a conexã o Wi-Fi (a luz Wi-Fi irá-se 
+apagar).  
+5.2. Modelo de hotspots Wi -Fi 
+Você  pode estabelecer a conexã o de um computador sem fio a uma rede sem fio da impressora 
+Wi-Fi sem a necessidade de um ponto de acesso (roteador Wi-Fi). 
+5.2.1. Assuntos preparató rios 
+1. Impressora com as funç õ es de hotspots Wi-Fi. 
+2. Computadores com funç ã o de rede sem fio.
+
+Página 58
+
+47 
+5.2.2. Conexã o Wi-Fi Bá sica 
+A funç ã o de hotspot do Wi-Fi da impressora primeiro precisa ser aberta antes de realizar a conexã o. 
+O caminho para abri-la é  a tecla "Wi-Fi" no painel da impressora. Apó s apertá-lo, a funç ã o terá  sido 
+aberta. 
+ 
+ 
+Nota：  • Aperte a tecla "Wi-Fi" no painel da impressora, e ela imprimirá  automaticamente a 
+"Pá gina do Assistente de Conexã o Wi-Fi para Dispositivos Mó veis" para que você  
+possa conectar ao Wi-Fi do dispositivo mó vel. 
+ 
+ 
+ 
+ 
+5.2.3. Mé todo de configuraç ã o de hotspots Wi-Fi 
+Quando os hotspots sem fio da impressora estiveriem no estado de ativaç ã o, os usuá rios podem 
+construir a conexã o diretamente com eles pesquisando os hotspots sem fio de uma impressora. Os 
+hotspots sem fios estã o em estado aberto por predefiniç ã o e a palavra passe predefinida é  
+"12345678". O SSID e a senha especí ficos da impressora podem ser obtidos atravé s da impressã o 
+da "pá gina de informaç õ es de configuraç ã o Wi-Fi". Apó s a conexã o, consulte o mé todo de 
+configuraç ã o Web e a configuraç ã o poderá  ser concluí da.  
+5.3. Problemas frequentemente encontrados na 
+configuraç ã o da rede sem fio  
+1. Impressora nã o encontrada 
+• Se o computador, o ponto de acesso (roteador sem fio) ou a impressora está ligada.  
+• Se entre o computador e a impressora o cabo de conexão USB já está ligado.  
+• Se a impressora suporta a conexão de rede sem fio.  
+2. Na conexã o de rede, nã o se encontra o nome de rede (SSID)  
+• Verifique se o interruptor da fonte de alimentação do ponto de acesso (roteador sem fio) já está 
+aberto.  
+• Não é possível encontrar o nome de rede (SSID) do ponto de acesso (roteador sem fio) que você 
+precisa de conectar, por favor verifique o nome de rede (SSID) do ponto de acesso e tente 
+reconectar.  
+• Sempre que a configuração do ponto de acesso (roteador sem fio) aconteça alterações, você 
+deve redefinir a rede sem fio da impressora.  
+3. Falha de conexã o 
+• Por favor verifique se o modo de seguranç a, a senha do ponto de acesso (roteador sem fio) e da 
+impressora estã o corretos.  
+• Verifique a recepção sem fio à volta da impressora. Caso o roteador fique longe da impressora ou 
+haja obstá culo no meio, é  possí vel afectar a recepç ã o do sinal.  
+• Desligue as fontes de alimentação do ponto de acesso (roteador sem fio) e da impressora, em 
+seguida, faç a a configuraç ã o apó s o reiní cio.
+
+Página 59
+
+48 
+4. Se você  tiver problemas ao usar a impressora na rede, por favor verifique os seguintes 
+aspetos: 
+• Verifique se o software de firewall está bloqueando a comunicação. Se o computador e a 
+impressora estiverem conectados na mesma rede, mas nã o for possí vel se encontrar, pode ser o 
+bloqueio de comunicaç ã o pelo software de firewall. Por favor consulte o guia do usuá rio do 
+software de firewall, irá  desativar o firewall, e em seguida, tente pesquisar a impressora 
+novamente.  
+• Verifique se a atribuição de endereço IP da impressora está correta. Você pode imprimir a página 
+de configuraç ã o da rede da impressora para verificar o endereç o IP.  
+• Por favor, consulte os seguintes passos para verificar se a impressora e o Computador estão na 
+mesma rede.  
+1) Selecione “Command prompt" como mostrado abaixo  
+a. Sistema Windows 8/10 : Selecione o botã o "Pesquisar" no menu Iniciar e digite " “Command 
+prompt ” na barra de pesquisa, em seguida , pressione a tecla "Enter".  
+b. Sistema Windows 7/Vista/XP : clique no menu "Iniciar" - "Todos os procedimentos" - "Anexo" - " 
+Command prompt ".  
+2) Digite ping e o endereç o IP da sua impressora na janela pop-up e pressione "Enter".  
+Por exemplo: ping XXX.XXX.XXX.XXX (“XXX.XXX.XXX.XXX” é o endereço IP da impressora)  
+3) Se aparecer RTT na janela, isto significa que a sua impressora e o seu Computador estã o na 
+mesma rede.Se nã o aparecer RTT na janela, consulte o Capí tulo 5 para reconfigurar a rede sem fio 
+da impressora.  
+ 
+ 
+Nota：  • Para mais informações sobre o ponto de acesso (roteador sem fio), por favor consulte 
+na respetiva guia do usuá rio ou ao respetivo fabricante.
+
+Página 60
+
+49 
+6. Servidor da Web  
+Você  pode atravé s do servidor da Web incorporado, administrar as configuraç õ es da impressora.  
+6.1. Acesso ao Servidor da Web incorporado  
+1. Ligue as fontes de alimentaç ã o da impressora e do computador.  
+2. Ligue a impressora à  rede, verifique que a impressora está  conectada à  rede do seu computador 
+(para as informaç õ es sobre como configurar a rede, por favor consulte o Capí tulo 4 ou o Capí tulo 
+5).  
+3. Digite o endereç o IP da impressora na barra de endereç o do navegador da Web, para acessar 
+ao servidor da Web incorporado da impressora.  
+Você  pode pressionar por longo tempo o botã o de "Cancelar/continuar" no painel de controle para 
+imprimir a pá gina de informaç õ es DEMO, vendo as informaç õ es de endereç o IP da impressora.  
+ 
+ 
+Nota：  • É recomendado que o usuário utilize Microsoft Internet Explorer 8.0 (ou versã o 
+superior) ou Firefox 1.0 (ou versã o superior), os usuá rios de Mac usam o Safari 4.0 (ou 
+versã o superior). Nã o importa que tipo de navegador que você  use, certifique-se 
+sempre de ativaç ã o de JavaScript e cookies. Se usar outro navegador de rede, por 
+favor certifique-se de que é  compatí vel com HTTP 1.0 e HTTP 1.1.  
+• Se o computador não puder acessar ao servidor Web incorporado da impressora, é 
+possí vel que o computador e a impressora nã o fiquem na mesma rede, por favor 
+verifique o seu ambiente de rede ou consulte ao seu administrador de rede. 
+ 
+ 
+ 
+ 
+4. Clique na opç ã o "Login", digite o nome de usuá rio e a senha (o nome de usuá rio pré-definido é  
+admin, a senha inicial é  000000), clique em "Login".  
+ 
+ 
+Nota：  • Por razões de segurança, recomendamos que você altere a senha pré-definida, 
+você  pode entrar na tela de "Administraç ã o do usuá rio" para as mudanç as. 
+ 
+  
+ 
+6.2. Utilizar o Servidor da Web para administrar a 
+impressora  
+Você  pode usar o Servidor da Web incorporado, para administrar a impressora.  
+1. Pode ver as informaç õ es bá sicas sobre a impressora, incluindo o nome do produto, o estado da 
+impressora e o estado do cartucho de toner para laser.  
+2. Pode configurar os parâ metros de protocolo de rede suportados pela impressora.
+
+Página 61
+
+50 
+3. Pode configurar a conexã o de rede sem fio da impressora, para ligar/desligar a rede sem fio.  
+ 
+ 
+ 
+6.2.1. Configuraç õ es do endereç o IP  
+Antes das configuraç õ es do endereç o IP, você  precisa de conectar a impressora à  rede.  
+1. Se for modelo de rede com fio, usa-se um cabo de rede para conectar à  interface de rede da 
+impressora, a impressora está  conectada à  rede com fio.  
+2. Se for o modelo de rede sem fio, pode atravé s da ferramenta de rede sem fio ou do modo de 
+configuraç ã o de Wi-Fi Protected Setup (WPS), irá  ligar a impressora à  rede sem fio (consulte o 
+Capí tulo 5.1).  
+6.2.1.1. Configuraç õ es de IPv4  
+As configuraç õ es do endereç o IPv4 da impressora dividem-se em atribuiçã o automá tica de DHCP 
+e configuraç ã o manual, a impressora pré-define a ativaç ã o da funç ã o de distribuiç ã o automá tica de 
+DHCP. Se for preciso configurar o endereç o IPv4 fixo para a impressora, você  pode configurar 
+manualmente o endereç o IPv4 da impressora.  
+1. Ligue a energia da impressora, conectando a impressora à  rede.  
+2. Faç a login ao servidor da Web incorporado (para as informaç õ es sobre como fazer login, por 
+favor consulte o Capí tulo 6.1).  
+3. Clique em "Definiç õ es" - "Definiç õ es da Internet" - "Definiç õ es da protocolo" - "IPv4".  
+4. O modo de atribuiç ã o do endereç o IPv4 está  definido em "Manual".  
+5. Digite o "endereç o IPv4", a "má scara de sub-rede" e o "endereç o da porta de entrada", clique em 
+"Aplicar".  
+6.2.1.2. Configuraç õ es de IPv6  
+1. Ligue a energia da impressora, conectando a impressora à  rede.  
+2. Faç a login ao servidor da Web incorporado (para as informaç õ es sobre como fazer login, por 
+favor consulte o Capí tulo 6.1).  
+3. Clique em "Definiç õ es" - "Definiç õ es da Internet" - "Definiç õ es da protocolo" - "IPv6".
+
+Página 62
+
+51 
+4. Selecione a "Ativar o protocolo IPv6" e "Ativar DHCPv6" (selecionado pela pré-definiç ã o), clique 
+em "Aplicar".  
+Você  pode atualizar o navegador, na tela "IPv6", veja o "endereç o da ligaç ã o local de IPv6" e o 
+"endereç o com estado."  
+ 
+ 
+Nota：  A impressora suporta os seguintes endereç os de IPv6 para executar a impressã o e a 
+administraç ã o de rede.  
+• Endereço da ligação local de IPv6: endereço IPv6 local propriamente configurado 
+(endereç o começ ado por FE80).  
+• Endereço com estado: endereço de IPv6 configurado pelo servidor DHCPv6 (se não 
+houver o servidor DHCPv6 na rede", o "endereç o com estado" nã o pode ser 
+atribuí do). 
+ 
+ 
+ 
+ 
+6.2.2. Configuraç ã o do protocolo SNMP 
+Você  pode definir o protocolo SNMP pela interface SNMP para melhorar a seguranç a de 
+informaç õ es de rede da impressora. 
+1. Ligar a alimentaç ã o da impressora para conectar a impressora na rede. 
+2. Faç a login ao servidor da Web incorporado (para as informaç õ es sobre como fazer login, por 
+favor consulte o Seç ã o 6.1). 
+3. Clique em “Configurar” – “Configuração de Rede” – “SNMP”. 
+4. Verifique os protocolos SNMP relevantes conforme necessá rio, clique em “Aplicar”. 
+ 
+ 
+Nota:  O protocolo SNMP pode melhorar a eficiê ncia do gerenciamento de rede, receber 
+mensagens de notificaç ã o e relató rios de eventos de avisos dos nó s de rede, alé m de 
+auxiliá-lo a descobrir e resolver problemas de rede de forma rá pida. 
+• Ativar protocolo SNMP v1/v2: 
+①A sua impressora pode estar em risco de ambiente de rede inseguro, use-a com 
+cuidado! 
+• Desativar protocolo SNMP v1/v2: 
+①A impressora pode nã o funcionar corretamente devido à  falha de instalaç ã o do driver. 
+Baixe o driver mais recente desta impressora no site oficial. 
+②Software de terceiros pode nã o conseguir obter as informaç õ es de status SNMP da 
+impressora, use-o com cuidado! 
+ 
+6.2.3. Configuraç õ es sem fio  
+Você  pode atravé s da pá gina de configuraç õ es sem fio, configurar a rede sem fio e o hot spot sem 
+fio da impressora. Antes da configuraç ã o, por favor primeiro faç a login ao servidor da Web 
+incorporado (para as informaç õ es sobre como fazer login, consulte o Capí tulo 6.1).  
+6.2.3.1. Rede sem fio  
+1. Clique em "Definiç õ es" - "Definiç õ es da Internet" - "Definiç õ es de WLAN" - "WLAN".  
+1) Se você  quiser configurar a rede sem fio, clique no nome de rede (SSID) do ponto de acesso 
+(roteador sem fio) que precisa de ser conectado na lista de pesquisa, digite a senha, clique em 
+"Aplicar".
+
+Página 63
+
+52 
+6.2.3.2. Hot spot sem fio  
+1. Clique em "Definiç õ es" - "Definiç õ es da Internet" - "Definiç õ es de WLAN" - "Hotspot WLAN".  
+6.2.4. Configuraç õ es da má quina  
+Você  pode atravé s da pá gina de configuraç õ es da má quina, adicionar o livro de contatos dos 
+endereç os de E-mail, configurar a notificaç ã o por E-mail, configurar o tempo de dormir, recuperar 
+as configuraç õ es de fá brica.  
+6.2.4.1. Configuraç ã o do tempo de suspender  
+1. Faç a login ao servidor da Web incorporado (para as informaç õ es sobre como fazer login, por 
+favor consulte o Capí tulo 6.1).  
+2. Clique em "Definiç õ es" - "Definiç õ es de má quina" - "Sistema".  
+3. De acordo com suas necessidades selecione o tempo de suspender, clique em "Aplicar".  
+6.2.5. Restaurar configuraç õ es de fá brica atravé s do servidor da Web  
+1. Faç a login ao servidor da Web incorporado (para as informaç õ es sobre como fazer login, por 
+favor consulte o Capí tulo 6.1).  
+2. Clique na opç ã o "Definiç õ es de administrador", digite os corretos "Nome de conta" e 
+"Palavra-passe", em seguida clique em "Restaurar definiç õ es de fá brica", depois de ser concluí da a 
+restauraç ã o de fá brica, a impressora irá-se reiniciar automaticamente.  
+ 
+ 
+Nota：  • Após a restauração das configurações de fábrica da impressora, o nome de usuário do 
+administrador é  recuperado para admin, a senha de login é  restaurado para 000000.
+
+Página 64
+
+53 
+7. Imprimir  
+7.1. Funç ã o de impressã o  
+Você  pode atravé s "Iniciar" - "Dispositivos e Impressoras" - Selecione a impressora adequada - 
+Clique com o botã o direito do rato - Configure a funç ã o de impressã o em "Preferê ncias de 
+impressã o", algumas funç õ es seguem-se em baixo:  
+ 
+Funç ã o  Í cone  
+Impressã o frente e verso manual  
+ 
+Impressã o coligida  
+ 
+Impressã o inversa  
+ 
+Integraç ã o de multi-pá gina  
+ 
+Impressã o de pô ster (apenas aplicá vel para o 
+sistema Windows)  
+ 
+Impressã o aproximada  
+ 
+Tamanhos personalizados
+
+Página 65
+
+54 
+ 
+Nota：  • As instruç õ es acima tomam o sistema Windows 7 como exemplo.  
+• Você pode selecionar a impressão de pôster 2x2 impresso em multi-pá gina, para 
+executar a impressã o de pô ster.  
+• Você pode abrir as Preferências de impressão, clique no botão Ajuda, consulte a 
+explicaç ã o funcional especí fica. Para as informaç õ es sobre como abrir o documento 
+de ajuda, consulte o Capí tulo 7.5. 
+ 
+ 
+ 
+ 
+7.2. Configuraç ões de impressã o  
+Antes de enviar o trabalho de impressã o, pode atravé s dos seguintes dois modos configurar os 
+parâ metros de impressã o (como tipo de papel, tamanho do papel e origem do papel).  
+ 
+Sistema 
+operacional 
+Configuraç õ es de alteraç õ es 
+temporá rias para o trabalho de 
+impressã o 
+Alteraç õ es permanentes das 
+configuraç õ es padrã o 
+Windows 7 
+1. Clique no menu Arquivo - Imprimir - 
+Selecione impressora - Propriedades da 
+impressora (os passos especí ficos 
+variam-se de acordo com as diferenç as 
+do sistema operacional).  
+1. Clique no menu Iniciar - Painel de 
+Controle - Dispositivos e Impressoras.  
+2. Clique com o botã o direito do rato no 
+í cone da impressora e selecione as 
+Preferê ncias de impressã o, altere as 
+configuraç õ es e salve-as.  
+macOS 
+1. Clique no menu Arquivo - Imprimir.  
+2. Na janela pop-up altere as 
+configuraç õ es.  
+1. Clique no menu Arquivo - Imprimir.  
+2. Na janela pop-up altere as 
+configuraç õ es, clique em Salvar as 
+pré-configuraç õ es. (A cada vez de imprimir, 
+deve selecionar as pré-configuraç õ es, caso 
+contrá rio, irá-se imprimir de acordo com as 
+configuraç õ es padrã o.)  
+ 
+ 
+Nota：  • A prioridade das configurações do aplicativo é mais elevada do que a das 
+configuraç õ es da impressora. 
+ 
+  
+ 
+7.3. Cancelar a impressã o  
+Durante o processo de impressã o, se for necessá rio cancelar o trabalho, pressione a tecla 
+"Cancelar" no painel de controle da impressora para cancelar o trabalho atual.
+
+Página 66
+
+55 
+7.4. Impressã o frente e verso manual  
+1. O programa do driver suporta a impressã o frente e verso manual.  
+ 
+ 
+Nota：  • Se o papel for fino, pode ficar amachucado.  
+• Se o papel estiver enrolado, endireite-o e, em seguida, restaure-lo de volta para a 
+bandeja de entrada de papé is automá tica.  
+• Se causar um atolamento de papel ao usar a função de impressão frente e verso 
+manual, consulte o Capí tulo 11.1. 
+2. Antes de imprimir, certifique-se de que já  sã o alimentados os papé is de uma quantidade 
+apropriada para a bandeja de entrada de papé is automá tica.  
+ 
+ 
+Nota：  • Para a alimentação de papéis, por favor consulte o Capí tulo 2 .  
+• Para os tipos de mídia de impressão suportados, por favor consulte o Capí tulo 2.1.  
+• Algumas mídias de papel não são aplicáveis para a impressão frente e verso, ao 
+imprimir pode danificar a impressora, quando o "Tipo de papel" for "papel grosso" ou 
+"pelí cula transparente", por favor nã o tente a "Impressã o frente e verso". Quando você  
+selecionar a impressã o "inversa", a impressã o "2x2 pô ster" na caixa de diá logo de 
+Preferê ncias de impressã o, nã o suporta a impressã o frente e verso manual.  
+• Se o papel no ADF bandeja mais de 150, ele pode causar um atolamento de papel ou 
+a impressora nã o puxa o papel. 
+ 
+7.4.1. Como executar a impressã o frente e verso manual  
+1. Abra o trabalho de impressã o que deseja imprimir a partir de um aplicativo (como a agenda).  
+2. Selecione "Imprimir" no menu "Arquivo".
+
+Página 67
+
+56 
+3. Selecione o modelo de impressora apropriado.  
+ 
+ 
+ 
+4. Clique em "Preferê ncias", para executar a configuraç ã o de impressã o.  
+5. Selecione a "Impressã o frente e verso" no cartã o de opç ã o "Bá sica", selecione a opç ã o "Margem 
+comprida" ou "Margem curta".
+
+Página 68
+
+57 
+6. Clique em "Confirmar", para concluir as configuraç õ es de impressã o. Clique em "Imprimir", 
+assim pode ser realizada a impressã o frente e verso automá tica.  
+ 
+ 
+ 
+7.5. Abrir o arquivo de ajuda  
+Você  pode abrir as "Preferê ncias de impressã o", clique no botã o "Ajuda" (apenas aplicá vel para o 
+sistema Windows). No arquivo de ajuda há  uma guia de uso da impressora, pode atravé s da gua 
+de uso compreender as informaç õ es de configuraç õ es de impressã o relevantes.
+
+Página 69
+
+58
+
+Página 70
+
+59 
+8. Impressã o móvel(somente para modelos com 
+funç ã o Wi-Fi)  
+8.1. Software aplicativo de "Impressã o de Pantum"  
+O software aplicativo de "Impressã o de Pantum" é  um aplicativo grá tis, que inclui as funç õ es de 
+impressã o mó vel, digitalizaç ã o, fax, você  pode imprimir diretamente ou transmitir por fax a partir do 
+terminal mó vel fotos, documentos, pá ginas web, digitalizar fotos, documentos. A sua impressora 
+pode nã o suportar totalmente todas as funç õ es acima, por favor de acordo com o seu modelo 
+selecione as funç õ es relevantes do software aplicativo de utilizaç ã o de "Impressã o de Pantum". 
+Por favor cerifique-se de que antes do uso o aplicativo já  está  instalado, e conectado corretamente 
+à  rede sem fio. 
+8.1.1. Sistemas operacionais compatí veis 
+O “Pantum App” é adequado para as versões do sistema Android 5.1-10.0 e iOS 9.0-14.0. 
+8.1.2. Como fazer download do aplicativo "Impressã o de Pantum" 
+O modo de download dos dispositivos mó veis de Android: 
+1. Pode clicar na “APP” no canto superior direito na página http://www.pantum.com para visualizar 
+os detalhes e verificar, descarregue e instale a APP. 
+2. Você  pode baixar e instalar a partir do Google Play Store > Apps > Pesquisar Pantum Mobile 
+Printing > Baixar e instalar. 
+Modo de download dos dispositivos mó veis de iOS: 
+Clique no í cone App Store na tela de dispositivos mó veis de iOS > Tela de pesquisa> Na barra de 
+pesquisa digitar "PANTUM" ou "Impressã o de Pantum" > Baixar e instalar. 
+8.1.3. Como usar o software aplicativo de "Impressã o de Pantum" 
+8.1.3.1. Para dispositivos de Android 
+8.1.3.1.1. Assuntos preparató rios 
+1. Impressora com funç ã o de rede sem fio. 
+2. Dispositivo mó vel de Android. 
+8.1.3.1.2. Passos de operaç ã o 
+1. Ligue a fonte de alimentaç ã o da impressora. 
+2. Para um aparelho móvel Android, toque no ícone “PANTUM” no ecrã principal para entrar na 
+primeira interface do “PANTUM”. 
+3. Selecione o mé todo de conexã o como de costume para conectar a impressora. 
+4. Selecione as funç õ es de que você  precisa, executando as configuraç õ es correspondentes, 
+fazendo-o atender à s suas necessidades funcionais.
+
+Página 71
+
+60 
+ 
+Nota：  • Se a operação falhar-se, por favor verifique se o dispositivo mó vel de Android está  
+conectado à  rede sem fio da sua impressora. 
+• Se o dispositivo móvel de Android não detectar qualquer impressora, por favor verifique 
+se a fonte de alimentaç ã o da impressora já  está  ligada, bem como se a impressora está  
+ligada. 
+• Para maiores detalhes, consulte o guia de usuário para impressão de celular em anexo. 
+ 
+8.1.3.2. Para dispositivo de iOS 
+8.1.3.2.1. Assuntos preparató rios 
+1. Impressora com funç ã o de rede sem fio. 
+2. Dispositivo mó vel de iOS. 
+8.1.3.2.2. Passos de operaç ã o 
+1. Ligue a fonte de alimentaç ã o da impressora. 
+2. Para um aparelho móvel iOS, toque no ícone “PANTUM” no ecrã principal para entrar na 
+primeira interface do “PANTUM”. 
+3. Selecione o mé todo de conexã o como de costume para conectar a impressora. 
+4. Selecione as funç õ es de que você  precisa, executando as configuraç õ es correspondentes, 
+fazendo-o atender à s suas necessidades funcionais. 
+ 
+ 
+Nota：  • Se a impressão falhar, inspecione se o dispositivo iOS está conectado à rede sem fio 
+em que a impressora está  conectada. 
+• Se o dispositivo móvel de iOS não detectar qualquer impressora, por favor verifique se 
+a fonte de alimentaç ã o da impressora já  está  ligada, bem como se a impressora está  
+ligada. 
+• Para maiores detalhes, consulte o guia de usuário para impressã o de celular em anexo. 
+ 
+8.2. Impressã o móvel de Mopria  
+A impressã o mó vel de Mopria precisa de instalar Mopria Print Service no dispositivo mó vel de 
+Android. Você  pode imprimir fotos, Email, pá ginas de web e documentos. 
+8.2.1 Sistema operacional e software aplicativo suportados pela 
+impressã o mó vel de Mopria 
+1. A impressã o mó vel de Mopria é  aplicá vel para Android 4.4 ou versã o mais recente. 
+2. Os softwares aplicativos suportados pela impressã o mó vel de Mopria tê m Microsoft Office 1.01 
+(10.4201.1006) ou versã o mais recente, Adobe Reader (V78.7.1) ou versã o mais recente, etc. 
+Para mais softwares que suportam a impressã o de Mopria, por favor consulte  
+http: //mopria.org/spotlight-wall 
+8.2.2. Como baixar Mopria Print Service 
+1. Baixe e instale Mopria Print Service ao dispositivo mó vel de Android a partir de Google Play. 
+2. Para os utilizadores chineses por favor visitem <http://cn.mopria.org> para baixar os serviç os de 
+impressã o de Mopria, para baixar e instalar.
+
+Página 72
+
+61 
+8.2.3. Assuntos preparató rios 
+1. Impressora com funç ã o de rede sem fio. 
+2. Dispositivo mó vel de Android. 
+8.2.4. Printing Como Mopria Mó vel 
+Antes de imprimir, o primeiro serviç o de impressã o Mopria está  configurado para abrir. 
+1. Clique em Configuraç õ es na tela inicial do dispositivo mó vel Android, escolha Imprimir. 
+2. O serviç o de impressã o Mopria está  configurado para abrir. 
+Para usar Mopria capacidades de impressã o mó vel, você  precisa imprimir plug-ins adicionais 
+desligado. 
+Imprimindo passo pode variar dependendo das aplicaç õ es, o Adobe Reader com o seguinte 
+exemplo. 
+1. Ligue a fonte de alimentaç ã o da impressora. 
+2. Certifique-se de que o dispositivo mó vel Android e a conexã o da impressora de rede sem fio foi 
+estabelecida (como ligar, consulte o Capí tulo 5). 
+3. Nos dispositivos mó veis Android, usar o Adobe Reader para abrir o documento que você  precisa 
+para imprimir. 
+4. Clique em . 
+5. Clique em "Imprimir". 
+6. Certifique-se a impressora está  selecionada Pantum. 
+Se você  selecionar outra impressora (ou impressora nã o está  selecionada), clique no menu pop-up 
+Impressora, selecione a impressora Pantum. 
+7. Defina os parâ metros de impressã o, como o nú mero de pá ginas impressas. 
+8. Clique em "Imprimir". 
+ 
+ 
+Nota：  • Se a impressão falhar, verifique se o seu dispositivo móvel Android está ligado à onde 
+a rede sem fio da impressora. 
+• Se o dispositivo móvel Android não é detectado qualquer impressora, verifique a 
+impressora está  ligada e se a impressora está  ligada. 
+ 
+8.3. AirPrint impressã o móvel  
+Apenas suporte para impressora AirPrint AirPrint habilitado a ser impresso. Verifique se a 
+impressora tem o logotipo AirPrint na caixa usado para distinguir se a impressora suporta a funç ã o 
+AirPrint. 
+8.3.1. AirPrint impressã o mó vel Sistemas operacionais suportados 
+Adequado para iOS 7.0 ou posterior. 
+8.3.2. Assuntos preparató rios 
+1. Impressora com funç ã o de rede sem fio. 
+2. Dispositivo mó vel de iOS. 
+8.3.3. Como usar AirPrint para a impressã o mó vel 
+Os passos de impressã o podem variar-se dependendo dos aplicativos diferentes, a seguir vai 
+descrever com o exemplo de PDF.
+
+Página 73
+
+62 
+1. Ligue a fonte de alimentaç ã o da impressora. 
+2. Certifique-se de que o dispositivo mó vel de iOS já  se estabelece a conexã o à  impressora de 
+rede sem fio (para as informaç õ es sobre como configurar, por favor consulte o Capí tulo 5). 
+3. No dispositivo de iOS, utilize PDF para abrir os documentos que você  precisa de imprimir. 
+4. Clique em . 
+5. Clique em "Imprimir". 
+6. Certifique-se a impressora está  selecionada Pantum. 
+Se você  selecionar outra impressora (ou nenhuma impressora estiver selecionada), clique na 
+opç ã o "Impressora", e em seguida selecione a sua impressora Pantum. 
+7. Configure os parâ metros de impressã o, como o nú mero de có pias. 
+8. Clique em "Imprimir". 
+ 
+ 
+Nota：  • Se a impressão falhar-se, por favor verifique se o dispositivo mó vel de iOS já  está  
+conectado à  rede sem fio da sua impressora. 
+• Se o dispositivo mó vel de iOS nã o detectar qualquer impressora, por favor verifique se 
+a fonte de alimentaç ã o da impressora já  está  ligada, bem como se a impressora está  
+ligada.
+
+Página 74
+
+63 
+9. Painel de controle  
+9.1. Visã o geral do painel de controle  
+A disposiç ã o do painel de controle da impressora inclui 2 teclas e 2 lâ mpadas LED de duas cores 
+como o que mostrado na figura abaixo, a figura esquerda indica o painel de controle da impressora 
+com interface USB+Wi-Fi, a figura direita indica o painel de controle da impressora com interface 
+USB ou USB+NET:  
+ 
+ 
+ 
+Nú mero serial  Nome de sé rie  
+1 Lâ mpada LED de duas cores 1  
+2 Lâ mpada LED de duas cores 2  
+3 Tecla de procura Wi-Fi  
+4 Tecla de cancelar/continuar  
+5 Tecla da pá gina de informaç õ es  
+ 
+9.1.1. Funç õ es de teclas do painel de controle  
+9.1.1.1. Funç ã o de operaç ã o da tecla de procura Wi-Fi  
+Quando nã o há  nenhuma conexã o Wi-Fi, a imprensa curta pode ativar a conexã o Wi-Fi e procurar 
+Wi-Fi ponto ativo AP, caso o ponto de acesso AP nã o pode ser procurado dentro de 2 minutos, a 
+procura pá ra.  
+Quando nã o há  nenhuma conexã o Wi-Fi, a imprensa longa pode ativar a conexã o WPS, ao mesmo 
+tempo pressione o botã o WPS no dispositivo de rota sem fio dentro de 2 minutos, se a conexã o 
+Wi-Fi nã o for estabelecida mais de 2 minutos, a conexã o WPS pá ra.  
+Quando há  conexã o Wi-Fi e a impressã o é  executada sem Wi-Fi, pressione por longo tempo para 
+desligar a conexã o Wi-Fi.  
+Quando há  conexã o Wi-Fi e a impressã o é  executada com Wi-Fi, pressione por longo tempo e 
+espere por terminaç ã o da impressã o, depois desligue a conexã o Wi-Fi.
+
+Página 75
+
+64 
+Durante a conexã o Wi-Fi e processo de procura WPS, a imprensa longa pode cancelar a conexã o 
+Wi-Fi e a procura WPS.  
+9.1.1.2. Funç ã o de operaç ã o da tecla "cancelar/continuar"  
+No estado de descanso, a imprensa curta ou a imprensa longa para acordar, saí ndo de descanso.  
+Durante a impressã o, a imprensa longa pode cancelar a atual impressã o.  
+No estado pronto, a imprensa longa pode imprimir a pá gina de teste.  
+9.1.1.3. Funç ã o de operaç ã o da tecla "Pá gina de informaç õ es" 
+No estado pronto, a imprensa longa pode imprimir a pá gina de teste.  
+9.1.2. Funç ã o de lâ mpada de indicaç ã o LED do painel de controle  
+9.1.2.1. Exibiç ã o de estado da lâ mpada de indicaç ã o LED 
+O estado da lâ mpada de indicaç ã o LED1 exibe os seguintes significados:  
+ 
+Nú mero 
+serial 
+Papel/Wi-Fi Duas 
+cores Exibiç ã o de 
+estado LED1  
+Descriç ã o do estado 
+ (Para impressora com 
+interface USB+Wi-Fi) 
+Descriç ã o do estado 
+ (Para impressora com 
+interface USB) 
+1  
+ 
+Sem conexã o Wi-Fi , sem erro de 
+papel e estado de descanso  
+LED1 desligada  
+Sem conexã o Wi-Fi , sem erro de 
+papel e estado de descanso  
+LED1 desligada  
+2  
+ 
+Procurar Wi-Fi, sem exibir erros 
+sobre papel  
+LED1 lâ mpada verde pisca 
+lentamente  
+Nã o  
+3  
+ 
+Em conexã o WPS, sem exibir 
+erros sobre papel  
+LED1 lâ mpada verde pisca 
+rapidamente  
+Nã o  
+4  
+ 
+Conexã o Wi-Fi bem sucedida, 
+sem erro de papel  
+LED1 lâ mpada verde acesa por 
+longo tempo  
+Nã o  
+5  
+ 
+Erro de parada de papel  
+LED1 lâ mpada vermelha acesa 
+por longo tempo  
+Erro de parada de papel  
+LED1 lâ mpada vermelha acesa 
+por longo tempo  
+6  
+ 
+Imprimir sem papel ou 
+alimentaç ã o de papel falhou  
+LED1 lâ mpada vermelha pisca 
+rapidamente  
+Imprimir sem papel ou 
+alimentaç ã o de papel falhou  
+LED1 lâ mpada vermelha pisca 
+rapidamente
+
+Página 76
+
+65 
+9.1.2.2. Exibiç ã o do estado da lâ mpada de indicaç ã o LED2 
+O estado da lâ mpada de indicaç ã o LED2 exibe os seguintes significados:  
+ 
+Nú mero 
+serial 
+Papel/Wi-Fi Duas cores 
+Exibiç ã o de estado LED2 
+Descriç ã o do estado 
+(Para impressora com interface USB+Wi-Fi e impressora 
+com interface USB) 
+1  
+ 
+Aquecer motor ao ligar, aquecer motor por despertar do 
+descanso, aquecer motor por tampa  
+LED2 lâ mpada verde pisca lentamente  
+2  
+ 
+Impressora pronta  
+LED2 lâ mpada verde acesa por longo tempo  
+3  
+ 
+Descanso  
+LED2 lâ mpada verde acesa e pisca lentamente  
+4  
+ 
+imprimindo  
+Duas cores LED2 lâ mpada verde pisca rapidamente  
+5  
+ 
+Alarme por baixa quantidade de tenor  
+LED2 mostra toda laranja e pisca rapidamente  
+6  
+ 
+Erro do cartucho (cartucho nã o instalado, o toner nã o 
+corresponde, invá lido)  
+Lâ mpada LED2 mostra laranja por longo tempo  
+7  
+ 
+A impressora tem um erro muito grave (rolo de aquecimento 
+anormal, motor laser anormal, erros de comunicaç ã o, tampa 
+aberta, etc.)  
+LED2 lâ mpada vermelha acesa por longo tempo  
+8  
+ 
+Painel cancela operaç ã o  
+Lâ mpada LED2 pisca rapidamente
+
+Página 77
+
+66 
+9.1.2.3. Exibiç ã o combinada de estados das lâ mpadas de indicaç ã o LED1 e LED2 
+O usuá rio pode obter as informaç õ es sobre estado de funcionamento da impressora conforme a 
+lista de estados combinados de lâ mpadas de indicaç ã o. A parte de funç õ es de estados 
+combinados de LED1 e LED2 é  como se segue:  
+ 
+Nú mero 
+serial 
+Estado 
+Descriç ã o do estado Papel/Wi-Fi 
+(Duas cores 
+LED1) 
+Dados/cartucho 
+(Duas cores 
+LED2) 
+1  
+  
+Parada de papel, impressã o pronta  
+LED1 lâ mpada vermelha acesa por longo tempo, LED2 
+desligada  
+2  
+  
+Parada de papel durante impressã o  
+LED1 lâ mpada vermelha acesa por longo tempo, Duas 
+cores LED2 desligada  
+3  
+  
+Parada de papel, alarme por baixa quantidade de tenor  
+LED1 lâ mpada vermelha acesa por longo tempo, LED2 
+desligada  
+4  
+  
+Parada de papel, erro do cartucho (cartucho nã o 
+instalado, o toner nã o corresponde, invá lido)  
+LED1 lâ mpada vermelha acesa por longo tempo, LED2 
+desligada  
+5  
+  
+Parada de papel, impressora tem um erro muito grave 
+(rolo de aquecimento anormal, motor laser anormal, 
+erros de comunicaç ã o, tampa aberta, etc.)  
+LED1 desligada, LED2 lâ mpada vermelha acesa por 
+longo tempo  
+6  
+ 
+ 
+Parada de papel, painel cancela operaç ã o  
+LED1 desligada, LED2 lâ mpada verde pisca 
+rapidamente  
+7  
+ 
+ 
+Imprimir sem papel ou alimentaç ã o de papel falhou, 
+apenas erros sobre papel sã o exibidos  
+LED1 lâ mpada vermelha pisca rapidamente, LED2 
+desligada  
+8  
+ 
+ 
+Imprimir sem papel ou alimentaç ã o de papel falhou, 
+alarme por baixa quantidade de tenor  
+LED1 lâ mpada vermelha pisca rapidamente, LED2 
+desligada
+
+Página 78
+
+67 
+9  
+  
+Imprimir sem papel ou alimentaç ã o de papel falhou, 
+erros do cartucho (cartucho nã o instalado, o toner nã o 
+corresponde, invá lido)  
+LED1 desligada, Lâ mpada LED2 mostra laranja por 
+longo tempo  
+10  
+  
+Imprimir sem papel ou alimentaç ã o de papel falhou, 
+ao mesmo tempo a impressora tem um erro muito 
+grave (rolo de aquecimento anormal, motor laser 
+anormal, erros de comunicaç ã o, tampa aberta, etc.)  
+LED1 desligada, LED2 lâ mpada vermelha acesa por 
+longo tempo  
+11  
+ 
+ 
+Imprimir sem papel ou alimentaç ã o de papel falhou, 
+painel está  cancelando operaç õ es  
+LED1 lâ mpara verde desligada, LED2 lâ mpada verde 
+pisca rapidamente
+
+Página 79
+
+68 
+10. Manutenç ã o de rotina  
+ 
+Nota：  • As aparências da impressora podem ser diferentes dependendo dos modelos e 
+funç õ es diferentes, os diagramas esquemá ticos apenas se servem para fins de 
+referê ncia. 
+ 
+10.1. Limpeza da impressora  
+ 
+Nota：  • Por favor utilize um detergente neutro.  
+• Depois de usar a impressora, durante um curto período de tempo as peças da 
+impressora ainda ficam no estado de alta temperatura. Quando abrir a concha da 
+má quina e contactar as peç as internas, por favor nã o toque nas posiç õ es com etiqueta 
+de aviso de alta temperatura, para se proteger contra queimaduras. 
+ 
+Por favor proceda os seguintes passos para limpar a má quina: 
+1. Feche o interruptor principal de energia, retire o cabo de energia e o cabo de conexã o USB.  
+Sé rie de P2200/P2500/S2000  Sé rie de P2600  
+  
+ 
+2. Use um pano macio para limpar o exterior do dispositivo, para remover a poeira.  
+Sé rie de P2200/P2500/S2000  Sé rie de P2600
+
+Página 80
+
+69 
+3. Abra a tampa superior e remova o cartucho de toner laser. 
+Sé rie de P2200/P2500/S2000  Sé rie de P2600  
+  
+ 
+ 
+Nota：  • Ao remover o cartucho de toner para laser, por favor carregue o cartucho de toner 
+para laser no saco protetor ou use papel grosso para embrulhar, de modo a evitar a 
+exposiç ã o à  luz e danifica ao tambor sensí vel à  luz. 
+ 
+4. Limpe o interior da impressora, como mostrado abaixo, com um pano macio que nã o solte fiapos 
+seco para limpar cuidadosamente o lugar sombreado abaixo.  
+ 
+10.2. Manutenç ã o do cartucho de toner a laser  
+10.2.1. Sobre o cartucho de toner para laser  
+1. Uso e manutenç ã o do cartucho de toner para laser.  
+Para obter uma melhor qualidade de impressã o, por favor utilize o cartucho de toner para laser 
+orginal.  
+Ao usar o cartucho de toner para laser, por favor tenha cuidado nos seguintes assuntos:  
+• Por favor mantenha o cartucho de toner para laser armazenado em um local seco e escuro.  
+• Por favor não volte a encher o cartucho de toner para laser sem permissão. Caso contrário, o 
+dano resultante nã o é  coberto dentro do escopo de garantia da impressora.  
+• Por favor mantenha o cartucho de toner para laser armazenado em um ambiente fresco e seco.  
+• Por favor não coloque o cartucho de toner para laser aproximar-se à  fonte de fogo, o toner no 
+cartucho de toner para laser é  uma substâ ncia inflamá vel, evitando a ocorrê ncia de incê ndio.  
+• Ao remover ou desmontar o cartucho de toner para laser, por favor tenha cuidado no problema de 
+vazamento do toner, se acontecer o vazamento do toner e resultar o contacto do toner com a pele 
+ou salpicos para os olhos e a boca, por favor lave imediatamente com á gua, se nã o ficar 
+confortá vel, por favor vá  ao mé dico imediatamente.  
+Sé rie de P2200/P2500/S2000  Sé rie de P2600
+
+Página 81
+
+70 
+• Ao colocar o cartucho de toner para laser, por favor fique longe das áreas onde as crianças 
+podem tocar facilmente.  
+2. Vida ú til do cartucho de toner para laser.  
+• A vida útil do cartucho de toner para laser depende da quantidade do toner que o trabalho de 
+impressã o exige.  
+• A tela de exibição de LCD mostra "a vida útil do cartucho de toner para laser está esgotada", que 
+significa o cartucho de toner para laser já  chega ao prazo de vida ú til, por favor substitua o cartucho 
+de toner para laser.  
+ 
+10.2.2. Substituir o cartucho de toner para laser 
+ 
+ 
+Nota：  • Antes de substituir o cartucho de toner laser, observe o seguinte:  
+• Como a superfí cie do cartucho de toner para laser pode conter toner, ao remover 
+deve ter cuidado, para evitar derramamentos.  
+• Faça favor de colocar o cartucho de toner para laser no papel, a fim de evitar o 
+derramamento do toner em grande escala.  
+• Ao remover a tampa de proteç ã o, deve carregar o cartucho de toner para laser 
+imediatamente na impressora, de modo a evitar a exposiç ã o direta à  luz solar ou luz 
+no interior, o que danifica o tambor sensí vel à  luz do cartucho de toner para laser.  
+• Ao instalar, por favor nã o toque a superfí cie do tambor sensí vel à  luz, para evitar 
+riscar o tambor sensí vel à  luz. 
+ 
+ 
+ 
+ 
+Passos de substituiç ã o: 
+1. Abra a tampa superior e retire o cartucho de toner lase invá lido ao longo de trilhos. 
+Sé rie de P2200/P2500/S2000  Sé rie de P2600
+
+Página 82
+
+71 
+2. Abra a nova embalagem do cartucho de toner para laser, pegando na alç a do cartucho de toner 
+para laser, mexendo ligeiramente à  esquerda e à  direita 5 e -6 vezes para que o toner no cartucho 
+de toner para laser esteja uniformemente disperso.  
+Sé rie de P2200/P2500/S2000  Sé rie de P2600
+
+Página 83
+
+72 
+3. Retire a tampa protetora do cartucho de toner para laser (cobertura de absorç ã o de plá stico), 
+colocando o cartucho de toner para laser na impressora ao longo dos trilhos de guia, pressione ao 
+longo da direç ã o de seta até  que ouç a um "clique", concluí da a instalaç ã o.  
+Sé rie de P2200/P2500/S2000  Sé rie de P2600  
+  
+ 
+ 
+Nota: • Antes de colocar o cartucho de toner para laser na impressora por favor verifique se 
+existem selos, se houver, por favor rasgue-os antes de instalar.  
+ 
+Sé rie de P2200/P2500/S2000  Sé rie de P2600  
+  
+ 
+4. Apertar a tampa superior.  
+Sé rie de P2200/P2500/S2000  Sé rie de P2600
+
+Página 84
+
+73 
+11. Resoluç ã o de falhas  
+Por favor leia atentamente este capí tulo, o que pode ajudar-lhe a resolver falhas comuns durante o 
+processo de impressã o. Se os problemas encontrados ainda nã o puderem ser resolvidos, por favor 
+entre em contato oportunamente com o centro de serviç os de pó s-venda de Pantum.  
+Antes de lidar com falhas comuns, por favor primeiro verifique as seguintes situaç õ es:  
+• Se o cabo da fonte de alimentação está devidamente ligado e o interruptor da fonte de 
+alimentaç ã o da impressora está  aberto.  
+• Se todas as peças de protecção já estão removidas.  
+• Se o cartucho de toner para laser está instalado corretamente.  
+• Se a ranhura de papel está completamente fechada.  
+• Se o papel já está colocado corretamente na bandeja de papel.  
+• Se o cabo de interface está devidamente conectado à impressora e ao computador.  
+• Se já está selecionado e instalado o programa de driver da impressora correto.  
+• Se a porta do computador já está instalado e conectado à  porta de impressora correta.  
+ 
+11.1. Eliminar atolamento  
+ 
+Nota：  • Siga os seguintes passos para remover todos os papéis atolados, feche a tampa 
+superior, arrume bem os papé is na bandeja, a impressora restaurará  
+automaticamente a impressã o. Se a impressora nã o puder começ ar a imprimir 
+automaticamente, pressione o botã o do painel de controle. 
+• Se a impressora ainda não começar a imprimir, por favor verifique se os 
+atolamentos de papel na impressora estã o totalmente eliminados.  
+• Se não puder eliminar os atolamentos de papel propriamente, por favor contacte o 
+centro de reparaç ã o autorizada de Pantum em local ou enviados para ser reparado 
+pelo centro de reparaç ã o autorizada de Pantum mais pró ximo. 
+ 
+11.1.1. Parada de papel na entrada de alimentaç ã o 
+Se a bandeja de saí da está  aberta, primeiro feche-a.  
+Puxe o papel parado suave e directamente para fora.  
+ 
+Sé rie P2200/P2500/S2000  Sé rie P2600 (bandeja de alimentaç ã o automá tica e bandeja de 
+alimentaç ã o manual)
+
+Página 85
+
+74 
+Se o papel nã o se mover ao ser puxado, ou nenhum papel estiver nesta á rea, verifique o interior da 
+má quina.  
+11.1.2. Parada de papel no interior da impressora 
+1. Abra a tampa superior.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+2. Abra guia na fixaç ã o, de modo a reduzir a pressã o da mola de fixaç ã o.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+3. Retire o papel da unidade de fixaç ã o.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+Se você  nã o ver o papel parado, vá  para o seguinte passo.
+
+Página 86
+
+75 
+4. Remova o cartucho de toner laser ao longo dos trilhos .  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+5. Retire lentamente o papel parado ao longo da direç ã o de saí da de papel.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+6. Depois de retirar o papel parado, coloque o cartucho de toner laser ao longo dos trilhos para a 
+impressora, a instalaç ã o termina quando um som de "Ka" é  ouvido.  
+Sé rie P2200/P2500/S2000  Sé rie P2600
+
+Página 87
+
+76 
+7. Os papé is na bandeja devem ser bem organizados, quando a lâ mpada de indicaç ã o se restaurar 
+para o estado pronto de impressã o, a impressã o pode ser executada de novo.  
+Sé rie P2200/P2500/S2000  Sé rie P2600  
+  
+ 
+11.2.  Soluç ã o de falhas comuns  
+11.2.1. Falhas comuns  
+Tipos de 
+falha  
+Fenô menos de 
+falha  Razã o  Soluç õ es  
+Problemas de 
+impressã o  
+Qualidade de 
+impressã o pobre  
+Veja detalhadamente no 11.2.2 
+Defeitos na imagem.  
+Veja detalhadamente no 11.2.2 
+Defeitos na imagem.  
+Problemas da 
+impressora  
+  
+A impressora 
+nã o imprime  
+• A fonte de alimentação do 
+dispositivo nã o está  conectada 
+corretamente.  
+• O cabo de conexão entre o 
+computador e a impressora 
+nã o está  conectado 
+corretamente.  
+• A porta de impressão está 
+especificada erradamente.  
+• A impressora está no estado 
+offline, marque a opç ã o "Usar 
+a impressora em off-line."  
+• O erro interno da impressora 
+nã o é  restaurado, como 
+atolamentos de papel, falta de 
+papel, etc..  
+• A instalação do programa do 
+driver da impressora nã o está  
+correta.  
+• LCD exibe uma mensagem 
+de erro.  
+• Certifique-se de que o cabo da 
+fonte de alimentaç ã o está  
+conectado corretamente.  
+• Desligue a conexão do cabo da 
+impressora e volte a conectar de 
+novo.  
+• Verifique as configurações de 
+impressora de Windows, para 
+garantir que o trabalho de 
+impressã o é  enviado para a porta 
+correta. Se o computador tiver 
+mais de uma porta, por favor 
+certifique-se de que o produto 
+está  conectado à  porta correta.  
+• Por favor certifique-se de que a 
+impressora está  no estado on-line 
+normal.  
+• Por favor elimine erro para fazer 
+a impressora voltar ao estado 
+normal.  
+• Desinstale e depois reinstale o 
+programa do driver da 
+impressora.
+
+Página 88
+
+77 
+A impressã o 
+on-line nã o 
+resposta  
+• O cabo de conexão entre o 
+computador e a impressora 
+nã o está  conectado 
+corretamente.  
+• A instalação do programa do 
+driver da impressora nã o está  
+correta.  
+• Falha interna da impressora.  
+• Desligue a conexão do cabo da 
+impressora e volte a conectar de 
+novo.  
+• Desinstale e depois reinstale o 
+programa do driver da 
+impressora.  
+Problemas de 
+manuseio do 
+papel  
+A impressã o nã o 
+alimenta o papel  
+• Não está colocado 
+corretamente o papel 
+impresso.  
+• A mídia de impressã o está  
+fora da faixa de especificaç ã o.  
+• O rolo de recolhimento de 
+papel está  sujo.  
+• Excesso de papéis no 
+compartimento de papé is.  
+• Por favor instale corretamente a 
+mí dia de impressã o.  
+• Por favor use a mídia de 
+impressã o dentro da faixa de 
+especificaç ã o.  
+• Limpe o rolo de recolhimento de 
+papé is.  
+• Retire o excesso de papel a 
+partir da bandeja.  
+Atolamento  
+• Excesso de papéis no 
+compartimento de papé is.  
+• A mídia de impressão está 
+fora da faixa de especificaç ã o.  
+• Existem objetos estranhos na 
+passagem de entrada de 
+papé is.  
+• O rolo de recolhimento de 
+papel está  sujo.  
+• Falha das peças internas.  
+• Retire o excesso de papel a 
+partir da bandeja.  
+• Certifique-se de utilizar o papel 
+que atenda à s especificaç õ es.  
+• Limpe a passagem de 
+alimentaç ã o de papé is.  
+• Limpe o rolo de recolhimento de 
+papé is.  
+Impressã o com 
+alimentaç ã o de 
+vá rias pá ginas  
+• A mídia de impressão contém 
+a eletricidade está tica 
+excessiva.  
+• A mídia de impressão está 
+hú mida ou adesiva em 
+conjunto.  
+• Falha das peç as internas.  
+• Separe de novo a mída de 
+impressã o, pode eliminar alguma 
+eletricidade está tica. É 
+recomendado o uso da mí dia de 
+impressã o recomendada.  
+• Por favor separe de novo a 
+mí dia de impressã o ou use uma 
+melhor mí dia de impressã o seca.  
+ 
+ 
+Nota：  • Se o problema persistir, entre em contato com a central de atendimento ao cliente. 
+Consulte o certificado Três Garantias para obter detalhes de contato.
+
+Página 89
+
+78 
+11.2.2. Defeitos na imagem  
+Fenô menos de 
+falha Razã o Soluç õ es 
+ 
+Impressã o 
+enbranquiç ado ou 
+pouco clara  
+• A mídia de impressão não atende às 
+especificaç õ es de uso, como a mí dia está  
+hú mida ou muito á spera.  
+• Nos procedimentos de impressão a 
+resoluç ã o configurada é  muito baixa, a 
+concentraç ã o configurada é  muito baixa, ou 
+marque o modo de poupanç a de toner.  
+• Toner insuficiente.  
+• O cartucho de toner para laser está 
+danificado.  
+• Por favor use corretamente a 
+mí dia dentro da faixa de 
+especificaç ã o.  
+• Configure a resolução de 
+impressã o, a concentraç ã o no 
+programa, ou cancele marcar o 
+modo de poupanç a do toner.  
+• É recomendado substituir por um 
+novo cartucho de toner para laser 
+original.  
+ 
+Manchas de toner  
+• O cartucho de toner para laser fica sujo ou 
+acontece vazamento de toner.  
+• O cartucho de toner para laser está  
+danificado.  
+• Usou a mídia de impressão que não 
+atende à s especificaç õ es de uso, como a 
+mí dia está  hú mida ou muito á spera.  
+• A passagem de alimentação de papéis 
+está  suja.  
+• No caso de aparecer manchas de toner 
+ao copiar e digitalizar, é  possí vel que a 
+plataforma de documentos de vidro esteja 
+suja.  
+• O digitalizador está sujo ou danificado.  
+• É recomendado substituir por um 
+cartucho de toner para laser 
+original.  
+• Por favor use a mídia de 
+impressã o dentro da faixa de 
+especificaç ã o.  
+• Limpe a passagem de 
+alimentaç ã o de papé is.  
+• Limpe a plataforma de 
+documentos de vidro.  
+ 
+Pontos brancos  
+• Usou a mídia de impressão que não 
+atende à s especificaç õ es de uso, como a 
+mí dia está  hú mida ou muito á spera.  
+• A passagem de alimentaçã o de papé is 
+está  suja.  
+• O interior do cartucho de toner para laser 
+está  danificado.  
+• A lente de LSU existente no interior da 
+má quina está  suja.  
+• Por favor use a mídia de 
+impressã o dentro da faixa de 
+especificaç ã o.  
+• Limpe a passagem de 
+alimentaç ã o de papé is.  
+• É recomendado substituir por um 
+cartucho de toner para laser 
+original.  
+• Limpe as lentes de LSU.
+
+Página 90
+
+79 
+ 
+Caí da do toner  
+• Usou a mídia de impressão que não 
+atende à s especificaç õ es de uso, como 
+a mí dia está  hú mida ou muito á spera.  
+• A mídia de impressão de papéis 
+configurada nã o é  consistente com a 
+mí dia de colocaç ã o de papé is.  
+• O interior da máquina está sujo.  
+• O cartucho de toner para laser está 
+danificado.  
+• As peças internas da máquina estão 
+danificadas.  
+• Por favor use a mí dia de impressã o 
+dentro da faixa de especificaç ã o.  
+• Por favor use a mídia de papel 
+correspondente para imprimir.  
+• Limpe o interior da máquina.  
+ 
+• É recomendado substituir por um 
+cartucho de toner para laser original.  
+ 
+Barras verticais de 
+cor preta  
+• O cartucho de toner para laser está 
+sujo.  
+• As peças internas do cartucho de toner 
+para laser estã o danificadas.  
+• O vidro reflexivo do laser interno da 
+má quina está  sujo.  
+• A passagem de alimentaç ã o de papé is 
+está  suja.  
+• Caso surjam barras pretas na cópia ou 
+digitalizaç ã o, é  possí vel que o 
+digitalizador ou a plataforma de 
+documentos de vidro esteja suja.  
+• A luz de emissora de luz do 
+digitalizador tem sujidade.  
+• O digitalizador está  danificado.  
+• Limpe ou substitua por um novo 
+cartucho de toner para laser.  
+• Limpe o vidro reflexivo do laser 
+traseiro da má quina.  
+• Limpe a passagem de alimentação 
+de papé is da impressora.  
+• Limpe o digitalizador ou a plataforma 
+de documentos de vidro.  
+ 
+Fundo preto 
+(cinzento no fundo)  
+• Usou a mídia de impressão que não 
+atende à s especificaç õ es de uso, como 
+a mí dia está  hú mida ou muito á spera.  
+• O cartucho de toner para laser está 
+sujo.  
+• As peças internas do cartucho de toner 
+para laser estã o danificadas.  
+• A passagem de alimentação de papéis 
+está  suja.  
+• A tensão de transferência de 
+impressã o interna da impressora está  
+anormal.  
+• A digitalização está exposta à luz.  
+• No caso de surgir o fundo de cor preta 
+ou o fundo cinzento na có pia ou 
+digitalizaç ã o, é  possí vel que a 
+plataforma de documentos de vidro 
+esteja suja.  
+• Por favor use a mídia de impressão 
+dentro da faixa de especificaç ã o.  
+• Limpe ou substitua por um novo 
+cartucho de toner para laser.  
+• Limpe a passagem de alimentaç ã o 
+de papé is no interior da má quina.  
+• Por favor coberta a tampa de 
+documento original e, em seguida, 
+execute a có pia e a digitalizaç ã o.  
+• Limpe a plataforma de documentos 
+de vidro.
+
+Página 91
+
+80 
+ 
+Ocorrê ncia de 
+traç o cí clico  
+• O cartucho de toner para laser está  
+sujo.  
+• As peças internas do cartucho de toner 
+para laser estã o danificadas.  
+• Os componentes de fixação de 
+imagem estã o danificados.  
+• Limpe ou substitua por um novo 
+cartucho de toner para laser.  
+• Por favor entre em contato com o 
+centro de atendimento ao cliente para 
+repara e substituir por novos 
+componentes de fixaç ã o de imagem.  
+ 
+Desalinhamento 
+de pá gina  
+• Por favor instale corretamente a mídia 
+de impressã o.  
+• A passagem de alimentação de papéis 
+da má quina está  suja.  
+• Por favor instale corretamente a 
+mí dia de impressã o.  
+• Limpe a passagem de alimentação 
+de papé is no interior da má quina.  
+ 
+Papel amassado  
+• Não está colocado corretamente o 
+papel impresso.  
+• A mídia de impressão usada não 
+atende à s especificaç õ es.  
+• A passagem de alimentação de papéis 
+está  suja.  
+• Os componentes de fixação de 
+imagem estã o danificados.  
+• Certifique-se de que os papé is de 
+impressã o estã o colocados 
+corretamente.  
+• Por favor use a mídia de impressão 
+dentro da faixa especificada para 
+executar a impressã o.  
+• Limpe a passagem de alimentação 
+de papé is no interior da má quina.  
+• Por favor entre em contato com o 
+centro de atendimento ao cliente para 
+repara e substituir por novos 
+componentes de fixaç ã o de imagem.  
+ 
+Sujidade na parte 
+de trá s  
+• O cartucho de toner para laser está 
+sujo.  
+• O rolo de transferência de impressão 
+interna da má quina está  anormal.  
+• A tensão de transferência de 
+impressã o interna da má quina está  
+anormal.  
+• Limpe ou substitua por um novo 
+cartucho de toner para laser.  
+• Limpe as peças de transferência de 
+impressã o dentro da má quina.
+
+Página 92
+
+81 
+ 
+Impressã o da 
+ediç ã o toda a 
+preto  
+• O cartucho de toner para laser não está 
+instalado corretamente.  
+• O interior do cartucho de toner para laser está 
+danificado.  
+• A carga do interior da máquina está anormal, 
+nã o carregue ao cartucho de toner para laser.  
+• No caso de surgir imagem toda preta na cópia 
+e digitalizaç ã o, é  possí vel que a digitalizaç ã o 
+esteja exposta à  luz, a tampa do documento 
+original nã o esteja coberta.  
+• O digitalizador está danificado.  
+• Certifique-se de que o cartucho 
+de toner para laser está  
+corretamente instalado.  
+• É recomendado substituir por 
+um cartucho de toner para laser 
+original.  
+• Por favor coberta a tampa de 
+documento original e, em 
+seguida, execute a có pia e a 
+digitalizaç ã o.  
+ 
+Toner borrado  
+• Usou a mídia de impressão que não atende às 
+especificaç õ es de uso, como a mí dia está  
+hú mida ou muito á spera.  
+• O interior da máquina está sujo.  
+• O cartucho de toner para laser está  danificado.  
+• As peças internas da máquina estão 
+danificadas.  
+• Por favor use a mídia de 
+impressã o dentro da faixa de 
+especificaç ã o.  
+• Limpe o interior da máquina.  
+• É recomendado substituir por 
+um cartucho de toner para laser 
+original.  
+ 
+Listras 
+horizontais  
+• O cartucho de toner para laser não está 
+instalado corretamente.  
+• O cartucho de toner para laser pode estar 
+danificado.  
+• As peças internas da máquina estão 
+danificadas.  
+• Certifique-se de que o cartucho 
+de toner para laser está  
+corretamente instalado.  
+• É recomendado substituir por 
+um cartucho de toner para laser 
+original.  
+ 
+ 
+Nota：  • As falhas acima podem ser atenuadas limpando ou substituindo o cartucho. Se o 
+problema persistir, entre em contato com a central de atendimento ao cliente. 
+Consulte o certificado Três Garantias para obter detalhes de contato.
+
+Página 93
+
+82 
+12. Especificaç ões do produto  
+12.1. Especificaç ões da sé rie P2200/P2500/S2000  
+ 
+Nota：  • Para as impressoras com diferentes modelos e diferentes funç õ es, os valores das suas 
+especificaç õ es sã o um pouco diferentes. Os valores sã o baseados em dados 
+preliminares, para conhecer mais informaç õ es das ú ltimas especificaç õ es, consulte: 
+www.pantum.com. 
+ 
+12.1.1. Visã o geral das especificaç õ es  
+Processador 600MHz 
+Memó ria 64MB/ 128MB/ 256MB 
+Energia 
+220V Model: AC 220-240V, 50/60Hz, 3.0A 
+100V Model: AC 100-127V, 50/60Hz, 6.0A 
+(Atenç ã o: Para a potê ncia e a tensã o aplicá veis a este 
+produto, consulte a placa de identificaç ã o na parte de 
+trá s da 
+impressora. O produto deve ser usado em estrita 
+conformidade com o tipo de energia e as 
+especificaç õ es.) 
+Tempo para encerramento automá tico padrã o 10 horas 
+Interface de comunicaç ã o Hi-Speed USB 2.0; 
+Wi-Fi 802.11b/g/n 
+Ambiente de 
+operaç ã o 
+Ótima qualidade de impressã o 10-32 ℃ 
+Faixa de umidade operacional 20%-80% RH 
+Dimensã o do produto（W*D*H) Cerca de 337mm*220mm*178mm 
+Peso (excluindo o cartucho de toner laser) Cerca de 4,0 kg (excluindo o cartucho de toner laser 
+equipado) 
+Painel de controle LED
+
+Página 94
+
+83 
+12.1.2. Especificaç õ es de impressã o  
+Velocidade de 
+impressã o  
+A4  20/22ppm  
+Letter  21/23ppm  
+A5  33ppm  
+Hora de impressã o da pá gina inicial  <7.8s  
+Idioma de impressã o  GDI  
+Má xima á rea efetiva de impressã o  Legal (216mm*355.6mm)  
+Capacidade de 
+entrada de papel  
+Bandeja de alimentaç ã o 
+normativa  150 folhas (80 g/m² )  
+Capacidade de saí da 
+de papel  Face para abaixo  100 folhas (80 g/m² )  
+Mí dia de impressã o  
+Tipo de mí dia  
+Papel normal, papel fino, papel grosso, filme 
+transparente, cartolina, papel de etiqueta, 
+envelope  
+Tamanho da mí dia  
+A4, A5, JIS B5, IS0 B5 , A6, Letter, 
+Legal,Executive, Folio, Oficio, Statement, 
+Japanese Postcard, Monarch Env, DL Env, C5 
+Env, C6 Env, No.10 Env, ZL, Big 16K, Big 32K, 
+16K, 32K, 
+B6,Yougata4,Postcard,Younaga3,Nagagata3, 
+Yougata2  
+Peso da mí dia em grama  60～163g/m²
+
+Página 95
+
+84 
+12.2. Especificaç ões da sé rie P2600  
+ 
+Nota：  • Para as impressoras com diferentes modelos e diferentes funções, os valores das suas 
+especificaç õ es sã o um pouco diferentes. Os valores sã o baseados em dados 
+preliminares, para conhecer mais informaç õ es das ú ltimas especificaç õ es, consulte: 
+www.pantum.com. 
+ 
+12.2.1. Visã o geral das especificaç õ es  
+ 
+Processador 600MHz 
+Memó ria 64MB/ 128MB/ 256MB 
+Energia 
+220V Model: AC 220-240V, 50/60Hz, 3.0A 
+100V Model: AC 100-127V, 50/60Hz, 6.0A 
+(Atenç ã o: Para a potê ncia e a tensã o aplicá veis a este 
+produto, consulte a placa de identificaç ã o na parte de 
+trá s da 
+impressora. O produto deve ser usado em estrita 
+conformidade com o tipo de energia e as 
+especificaç õ es.) 
+Tempo para encerramento automá tico padrão 10 horas 
+Interface de comunicaç ã o Hi-Speed USB 2.0; 
+Wi-Fi 802.11b/g/n 
+Ambiente de 
+operaç ã o 
+Ótima qualidade de impressã o 10-32 ℃ 
+Faixa de umidade operacional 20%-80% RH 
+Dimensã o do produto（W*D*H) Cerca de 337mm*220mm*178mm 
+Peso (excluindo o cartucho de toner laser) Cerca de 4,0 kg (excluindo o cartucho de toner laser 
+equipado) 
+Painel de controle LED
+
+Página 96
+
+85 
+12.2.2. Especificaç õ es de impressã o  
+ 
+Velocidade de 
+impressã o  
+A4  24ppm  
+Letter  25ppm  
+Hora de impressã o da pá gina inicial   
+Idioma de impressã o  GDI  
+Má xima á rea efetiva de impressã o  Legal (216mm*355.6mm)  
+Capacidade de 
+entrada de 
+papel  
+Bandeja de alimentaç ã o 
+normativa  150 folhas (80 g/m² )  
+Bandeja de 
+multifunç õ es  1 folhas (60~163g/m²）  
+Capacidade de 
+saí da de papel  Face para abaixo  100 folhas (80 g/m² )  
+Mí dia de 
+impressã o  
+Tipo de mí dia  Papel normal, papel fino, papel grosso, filme 
+transparente, cartolina, papel de etiqueta, envelope  
+Tamanho da mí dia  
+A4, A5, JIS B5, IS0 B5 , A6, Letter, Legal,Executive, Folio, 
+Oficio, Statement, Japanese Postcard, Monarch Env, DL 
+Env, C5 Env, C6 Env, No.10 Env, ZL, Big 16K, Big 32K, 
+16K, 32K, 
+B6,Yougata4,Postcard,Younaga3,Nagagata3,Yougata2  
+Peso da mí dia em 
+grama  60～163g/m²
+
+Página 97
+
+86

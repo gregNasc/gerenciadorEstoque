@@ -1,0 +1,359 @@
+Página 1
+
+100
+Mbps
+1
+1
+2
+2
+2
+3
+6
+11
+5
+8
+1
+2
+3
+7
+9
+10
+12
+7
+3
+4
+3
+1
+2
+3
+4
+3
+2
+5 1
+2
+3
+4 3
+5
+7
+2
+68
+8 6
+10
+910 9
+19
+18
+14
+20
+15
+16
+22
+17
+21
+23
+24
+13
+1 Botão de leitura/ação
+2 Botões para cima/para baixo
+3 Microfone
+4 Botões de alimentação
+5 Conector E/S 
+6 Teclado
+7 Botão de leitura/ação
+8 Tela sensível ao toque
+    (com protetor de tela)
+9 LED de leitura/decodificação
+10 Carregamento/bateria
+      LED de status
+11 LED de status do rádio WAN
+12 Alto-falante
+13 Sensor de luz
+14 Alça de mão
+15 Bateria
+16 Trava da bateria
+17 Flash da câmera (opcional)
+18 Câmera (opcional)
+19 Janela de saída 
+(veja as opções de captura de dados)
+20 Correia
+21 Botão de leitura/ação
+22 Botão de ação
+23 Stylus 
+24 Alto-falante
+1 Falar
+2 Navegação
+3 Tecla de atalho
+4 Botão de leitura/ação
+5 Terminar
+Observação 1: para redefinir o MC65, pressione ao mesmo tempo as teclas 1, 9 e o botão de alimentação.
+CARACTERÍSTICAS
+Teclado numérico Teclado alfanumérico 
+CARREGAMENTO
+MC65
+Guia de Inicialização Rápida
+Tecla azul 
+Use esta tecla para acessar as teclas de função exibidas no 
+teclado em azul.
+>
+Tecla laranja
+Use esta tecla para acessar a segunda camada de caracteres 
+e ações.
+>
+>
+>
+>
+>
+Pressione a tecla Azul uma vez para ativar este estado 
+temporariamente e, em seguida, pressione outra tecla. 
+Pressione a tecla Azul duas vezes para bloquear este 
+estado. 
+Pressione a tecla Azul uma terceira vez para desbloquear.
+Pressione a tecla Laranja uma vez para ativar este estado 
+e, em seguida, pressione outra tecla. 
+Pressione a tecla Laranja duas vezes para bloquear este 
+estado. 
+Pressione a tecla Laranja uma terceira vez para 
+desbloquear.
+Notificações
+LED de carregamento/status da bateria:
+LED de captura de dados:
+Âmbar piscando lentamente: bateria 
+carregando
+Âmbar estável: bateria totalmente carregada
+Âmbar piscando rapidamente: erro no 
+carregamento
+Vermelho: leitura ativa
+Verde: decodificação correta
+Notificação de mensagem
+Data Capture
+Carregamento/status da bateria
+Status do rádio WAN
+LED de Status do rádio WAN:
+Verde: RF ativa
+Carregar o MC65
+Carregar a bateria
+Âmbar piscando lentamente = carregando
+LED de carregamento/status da bateria
+Âmbar estável = totalmente carregada
+Âmbar piscando rapidamente = erro no 
+carregamento
+Antes de usar o MC65, certifique-se de que a 
+bateria está totalmente carregada.
+Use o berço USB de slot único ou o berço de 
+quatro slots (carga apenas ou Ethernet) para 
+carregar a bateria do MC65.
+Você pode também usar cabos de 
+carregamento/USB e carga apenas para 
+carregar o MC65.
+Carregue uma bateria sobressalente 
+usando o berço de slot único.
+Observação: a bateria de 3600 mAh é carregada em menos de seis horas.
+Use o berço de quatro slots para 
+carregar as baterias 
+separadamente.
+Observação:   antes de usar, remova o filme plástico protetor que recobre a tela sensível ao toque, 
+a janela de saída e a janela da câmera.
+Pressione a tecla Laranja uma vez para travar o teclado no 
+estado Alfa. 
+Pressione a tecla Laranja novamente para retornar ao 
+estado normal.
+Pressione a tecla Azul uma vez para ativar este estado e, em 
+seguida, pressione outra tecla.
+Tecla azul 
+Use esta tecla para acessar as teclas de função exibidas no 
+teclado em azul.
+>
+Tecla laranja
+Use esta tecla para acessar a segunda camada de caracteres.
+>
+>
+4 (Observação 1)
+6 Tecla laranja
+7 Iluminação de fundo
+8 Tecla azul
+9 OK
+10 Menu Iniciar
+ATIVAÇÃO/CONFIGURAÇÃO DO TELEFONE
+Ativação do sistema GSM/UMTS
+Pressione o botão de alimentação para ligar o MC65.
+Se houver um cartão SIM de uma operadora compatível instalado, o MC65 
+detectará o cartão SIM ativado e instalado para ativá-lo na rede GSM/UMTS e 
+configurará as conexões de dados. 
+Se houver um cartão SIM de uma operadora incompatível instalado, o MC65 
+detectará o cartão SIM ativado e instalado para ativá-lo na rede GSM/UMTS, 
+mas a conexão de dados e as informações de conexão MMS terão de ser 
+configuradas manualmente.
+Consulte o Guia do Integrador do MC65 para obter mais informações.
+Ativação do sistema CDMA
+Para ativar o MC65 em uma rede CDMA:
+1. Pressione o botão de alimentação para ligar o MC65.
+2. Toque em Iniciar > Configurações > Conexões > Configuração de rede do 
+telefone.
+3. Na guia CDMA, selecione uma operadora na opção de rede preferida.
+4. Toque no botão Iniciar ativação.
+5. Toque em Sim para ativar.
+6. Entre em contato com a operadora usando outro telefone para solicitar a 
+ativação "over-the-air" (pelo ar).
+7. Quando instruído pelo operador, pressione o botão Ativar agora.
+Para obter informações detalhadas sobre a ativação do MC65, consulte o Guia do 
+Integrador do MC65.
+Instalação do cartão microSD (opcional)
+1. Remova a alça de mão.
+2. Levante a tampa de borracha.
+3. Deslize o compartimento do cartão 
+SIM para cima a fim de destravar.
+4. Levante o compartimento do cartão SIM.
+5. Levante o compartimento do cartão 
+microSD com cuidado.
+6. Insira o cartão microSD no 
+compartimento do cartão.
+NOTA:
+O cartão microSD, o conector do cartão (os 
+contatos dourados), deve ficar virado para 
+fora conforme mostrado.
+7. Abaixe o compartimento do cartão 
+microSD com cuidado até que ele 
+encaixe no local adequado.
+Compartimento do 
+cartão SIM
+Compartimento do cartão microSD
+Tampa de borracha
+PRIMEIROS PASSOS
+Instalar a bateria
+Remover a bateria
+1. Insira a bateria no compartimento de bateria, começando pela 
+parte de baixo.
+2. Pressione a bateria 
+para baixo até que a 
+trava encaixe no 
+lugar.
+3. Substitua a alça 
+de mão.
+1. Mantenha o botão de alimentação 
+pressionado por cerca de dez segundos.
+2. Solte o botão de alimentação. As luzes 
+de LED de captura de dados ficarão 
+vermelhas.
+3. Quando o LED for desligado, remova a 
+alça de mão.
+4. Deslize a trava da bateria para a direita. 
+A bateria será levemente ejetada.
+5. Segure a bateria e levante-a do MC65.
+INSTALAÇÃO DA BATERIA
+Instalação do cartão SIM (opcional)
+8. Insira o cartão SIM no compartimento do SIM.
+NOTA:
+A posição adequada do cartão SIM — o conector do 
+cartão (por exemplo: área dourada) deve estar voltado 
+para fora, com o canto chanfrado também voltado para 
+fora.
+9. Abaixe o compartimento do cartão SIM.
+10. Deslize o compartimento do cartão SIM para 
+travá-lo no lugar.
+11. Feche a tampa de acesso de borracha.
+12. Instale a bateria.
+
+Página 2
+
+AVOID EXTREME WRIST ANGLESAVOID EXTREME WRIST ANGLESAVOID EXTREME WRIST ANGLES
+EVITE TORÇÕES
+EXTREMAS DO PULSO
+Cabo somente 
+para carga
+MC65 Guia de Inicialização Rápida
+Zebra e a imagem da cabeça da Zebra são marcas comerciais registradas da ZIH Corp. O logotipo 
+da Symbol é uma marca comercial registrada da Symbol Technologies, Inc., uma empresa da 
+Zebra Technologies. 
+© 2015 Symbol Technologies, Inc.
+72-134041-02BP Rev. A — Fevereiro de 2015
+EVITE TORÇÕES EXTREMAS DO PULSO
+http://www.zebra.com/MC65
+ACESSÓRIOS
+Cabo de carregamento 
+para automóveis
+Cabo de 
+carregamento USB
+Carregador de 
+bateria com 4 slots
+Berço USB com 1 slot
+Compartimento para 
+veículos
+Berço apenas para carga com 4 slots
+Berço Ethernet com quatro posições
+Imagem Decodificador da câmera
+Câmera fotográfica
+1. Inicialize um aplicativo de leitura de código de 
+barras no MC65.
+2. Posicione o MC65 em direção ao código de barras.
+3. Pressione o botão de leitura.
+4. Na janela de imagem, alinhe o alvo vermelho sobre 
+o código de barras. Quando o MC65 decodifica o 
+código de barras, o LED verde de leitura/
+decodificação acende e é emitido um bipe.
+5. Solte a tecla de leitura.
+Mais informações sobre o MC65
+Visite o site da Zebra na Web em http://www.zebra.com/MC65
+Configuração, uso e solução de problemas do MC65
+Guia do usuário e Guia do integrador do MC65
+Atualizações de software
+Disponíveis em: http://www.zebra.com/support
+Software adicional
+Consulte os aplicativos aprovados no web site da Zebra na Web.
+http://www.zebra.com/MC65
+Conexão e sincronização com o computador host
+Ajuda do ActiveSync® no computador host. Para exibir a ajuda, inicie o ActiveSync®, 
+clique em Help (Ajuda) e em Microsoft ActiveSync Help (Ajuda do Microsoft 
+ActiveSync).
+O software ActiveSync está disponível em http://www.microsoft.com/windowsmobile
+Informações sobre o uso de programas no MC65
+Toque em Start (Iniciar) – Help (Ajuda) no programa específico.
+Serviço e garantia
+Guia de Regulamentações do MC65
+Disponível com o MC65 e em http://www.zebra.com/support
+1. Toque em Iniciar > Programas > Fotos e 
+Vídeos > Câmera.
+2. Aponte o MC65 para um objeto.
+3. Pressione o botão Enter.
+4. Segure o MC65 firmemente até que o “Som do 
+disparador” seja ouvido.Zebra Technologies Corporation
+Lincolnshire, IL U.S.A
+OPÇÕES DE CAPTURA DE DADOS
+Informações do GPS
+  A captação de sinais de satélite pode levar alguns minutos. O melhor desempen-
+ho é obtido ao ar livre com uma clara visão do céu.
+  Sem uma clara visão, a captação de sinais pode levar muito mais tempo e 
+resultar em atraso na computação da posição inicial pelo MC65.
+  Aguarde a conclusão da fixação de satélites antes de começar a mover-se.
+  Feche o aplicativo de GPS quando não o estiver usando.
+Ao usar o recurso de GPS do MC65:
+Berço para veículo
+Crie uma parceria
+Instalar o ActiveSync®
+Estabeleça comunicação com o host
+COMUNICAÇÃO
+Faça o download do ActiveSync® 4.5 ou superior no site 
+http://www.microsoft.com e siga as instruções para instalá-lo no 
+computador host.
+Siga as instruções do ActiveSync na tela para estabelecer 
+uma conexão entre o MC65 e o computador host.
+Protetor de tela
+A Zebra recomenda o uso contínuo de um protetor de tela para 
+minimizar o uso e desgaste. Protetores de tela aumentam a 
+visibilidade e a durabilidade de telas sensíveis ao toque. 
+Algumas vantagens são:
+ Proteção contra arranhões e manchas
+ Superfície de escrita e toque durável e com 
+   sensibilidade tátil
+ Resistência à abrasão e a substâncias químicas
+ Redução de reflexos
+ A tela do dispositivo permanece sempre nova
+ Instalação rápida e fácil.
+A não utilização de um protetor de tela pode afetar a 
+cobertura da garantia.
+Um protetor de tela inicial já vem aplicado ao MC65.
+Entre em contato com o gerente de contas local ou com a 
+Zebra para obter mais informações e detalhes de aquisição. 
+Número da peça: KT-67525-01R Protetor de 
+tela 3/pk.
+Punho de acionamentoPunho de acionamento
+Leitor de tarja 
+magnética

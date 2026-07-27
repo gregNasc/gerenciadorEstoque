@@ -4,7 +4,7 @@
 {% block title %}{% trans "Pesquisa e decisão de compra" %}{% endblock %}
 
 {% block extra_css %}<style>
-.purchase-kpi { border: 1px solid #d8e0e8; border-left: 4px solid #0d6efd; border-radius: 6px; padding: 14px; height: 100%; background: #fff; }
+.purchase-kpi { border: 1px solid #dee2e6; border-left: 4px solid #1e3c72; border-radius: 6px; padding: 14px; height: 100%; background: #fff; }
 .purchase-kpi strong { display: block; font-size: 1.4rem; }
 .purchase-chart { border: 1px solid #d8e0e8; border-radius: 6px; padding: 16px; height: 340px; }
 .purchase-chart canvas { max-height: 280px; }
@@ -49,7 +49,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     function readChart(id) { return JSON.parse(document.getElementById(id).textContent); }
-    function renderChart(id, data, type) { new Chart(document.getElementById(id), {type: type, data: {labels: data.labels, datasets: [{data: data.values, backgroundColor: '#0d6efd', borderColor: '#0a58ca', borderWidth: 2}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}}); }
+    function renderChart(id, data, type) { new Chart(document.getElementById(id), {type: type, data: {labels: data.labels, datasets: [{data: data.values, backgroundColor: '#3d5a80', borderColor: '#1e3c72', borderWidth: 2}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}}); }
     renderChart('chartOfertas', readChart('chart-ofertas-data'), 'bar');
     renderChart('chartHistorico', readChart('chart-historico-data'), 'line');
     </script>

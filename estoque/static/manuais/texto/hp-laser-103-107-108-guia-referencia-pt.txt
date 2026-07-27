@@ -1,0 +1,726 @@
+Página 1
+
+HP Laser 100 series
+Read this guide to get to know the printer control panel, learn how to interpret control panel light 
+patterns, solve wireless connection problems, and find more information. 
+Printer control panel
+Reference Guide
+1 Toner  light
+2 Wireless button/light*
+3 Resume/Cancel button
+4 Power button/Ready 
+light
+5 Attention light
+* Wireless models only
+Control panel light patterns
+Set up a wireless connection (wireless models only)
+As directed in the setup guide, download and install the HP printer software, and follow the instructions in the 
+software to connect the printer to your wireless network.
+When the printer has successfully connected to your wirless network, the Wireless light  on the printer 
+control panel stops blinking and glows steady blue. If the light does not turn steady blue, try the following 
+solutions.
+Problem Cause/Solution
+The Wireless 
+light  is off. 
+Wireless connection mode is turned off. Try the following:
+1. Press the Wireless button  on the printer control panel. 
+2. If the Wireless light  turns steady blue, wireless connection mode is on and the 
+wireless connection is established. You can now print wirelessly.
+3. If the Wireless light  blinks blue, the printer is in wireless setup mode. Continue 
+software installation and follow the instructions in the software to set up a wireless 
+connection. Also, see the instructions below under “The Wireless light  is blinking 
+blue.”
+Solve wireless problems
+Ready Processing
+!
+Initializing or 
+canceling
+Cartridge not installed 
+or wrong cartridge
+10  sec
+!
+Cartridge very low Paper jam or 
+out of paper
+1
+English
+1
+2
+3
+4
+5
+
+Página 2
+
+Problem Cause/Solution
+The Wireless 
+light  is 
+blinking blue.
+Wireless connection mode is on but the wireless network connection is not set up yet. Try 
+the following solutions in order until the problem is resolved:
+1. Verify that the printer is within range (30 m or 100 ft) of the wireless network.
+2. If you are using a USB cable to temporarily connect the printer and computer during 
+set up, do not connect the USB cable until the software prompts you to do so. If you 
+connected the cable before being prompted, unplug the cable and then restore the 
+wireless network settings as directed in the next step.
+3. Restore the wireless network settings:
+a. Remove the USB cable from the printer.
+b. Press and hold the Wireless button  on the printer control panel for 20 seconds.
+c. When the Attention light and the Power light  start blinking together , release the 
+Wireless button .
+d. After the Wireless light  starts blinking blue, continue to install the software.
+4. Restart the printer and the router.
+5. Manually connect the printer to your wireless network. Use Wi-Fi Protected Setup (WPS) 
+if your router supports it. See the WPS instructions in the next section.
+6. Uninstall and reinstall the HP printer software.
+The Wireless 
+light  is 
+on, but you 
+cannot print 
+wirelessly.
+The printer driver might not be installed. Try installing or reinstalling the printer driver , and 
+then try printing again.
+If you still cannot print wirelessly, the printer and your computer or device might be 
+connected to different networks. Try the following:
+1. Check the network that the computer is connected to.
+2. Check the printer’s network name (SSID) info on the Configuration Report/Network 
+Summary. To print the report, press and hold the Resume/Cancel button  on the 
+printer control panel for 10 seconds.
+3. Resolve any connection issues, and then continue to install the software.
+Set up a Wi-Fi Direct connection
+Use Wi-Fi Direct to connect to a printer wirelessly—without connecting to an existing wireless network. To use 
+Wi-Fi Direct:
+ • Make sure Wi-Fi Direct is enabled on the printer.
+ • To check the Wi-Fi Direct name and password (Network Key), press and hold the Resume/Cancel button  on 
+the printer control panel for 10 seconds. A report prints with information on your machine’s network connection 
+and configuration.
+To learn more, visit www.hp.com/go/wifidirectprinting.
+Set up a wireless connection using Wi-Fi Protected Setup (WPS)
+1. Press the WPS button  on your router.
+2. Within two minutes, press and hold the Wireless button  on the printer control panel for at least 3 seconds, 
+and then release the button. 
+3. Wait while the printer automatically establishes the network connection. It takes up to two minutes.  When the 
+network connection is established, the Wireless light  stops blinking and remains on.
+4. Continue to install the software.
+2
+English
+
+Página 3
+
+HP wireless printing
+www.hp.com/go/wirelessprinting
+Product support
+www.hp.com/support/laser100
+Learn more
+Printer operating environment guidelines
+Keep printer out 
+of direct sunlight
+Recommended 
+temperature range:
+17.5° – 25° C
+(63.5° – 77° F)
+Recommended 
+humidity range:
+30% – 70%
+Keep printer in 
+well-ventilated area
+Do not exceed 
+voltage limits
+The information contained herein is subject to change without notice.
+3
+English
+
+Página 4
+
+Imprimante HP Laser série 100
+4
+Lisez ce guide pour savoir comment utiliser le panneau de commande de l'imprimante, comment interpréter les 
+voyants lumineux du panneau de commande, comment résoudre les problèmes liés à la connexion sans fil, et pour 
+trouver des informations complémentaires. 
+Panneau de commande de 
+l'imprimante
+Manuel de référence
+1 Voyant Toner 
+2 Voyant/bouton Sans fil *
+3 Bouton Reprendre/
+Annuler
+4 Bouton Marche/arrêt /
+Voyant Prêt
+5 Voyant Avertissement
+* Modèles sans fil 
+uniquement
+Voyants lumineux du 
+panneau de commande
+Configurer une connexion sans fil (modèles sans fil uniquement)
+Comme indiqué dans le guide de configuration, téléchargez et installez le logiciel de l'imprimante HP , et suivez les instructions 
+du logiciel pour connecter l'imprimante à votre réseau sans fil.
+Une fois que l'imprimante est parvenue à se connecter à votre réseau sans fil, le voyant Sans fil  sur le panneau de 
+commande de l'imprimante s'arrête de clignoter et s'allume en bleu fixe. Si le voyant ne s'allume pas en bleu fixe, essayez les 
+solutions suivantes.
+Problème Cause/Solution
+Le voyant Sans 
+fil  est 
+éteint. 
+Le mode de connexion sans fil est désactivé. Procédez comme suit :
+1. Appuyez sur le bouton Sans fil  sur le panneau de commande de l'imprimante. 
+2. Si le voyant Sans fil  s'allume en bleu fixe, cela signifie que le mode de connexion sans fil est 
+activé et que la connexion sans fil est établie. Vous pouvez désormais imprimer en mode sans fil.
+3. Si le voyant Sans fil  clignote en bleu, cela signifie que l'imprimante est en mode de configuration 
+sans fil. Poursuivez l'installation du logiciel et suivez les instructions dans le logiciel pour configurer 
+une connexion sans fil. Observez également les instructions ci-dessous dans la section « Le voyant 
+Sans fil  clignote en bleu ».
+Résoudre les problèmes liés aux réseaux sans fil
+Prêt Traitement en cours
+!
+Initialisation ou 
+annulation en cours
+Cartouche non installée 
+ou mauvaise cartouche
+10  sec
+!
+Niveau d'encre  
+très bas 
+Bourrage papier ou 
+papier épuisé
+Français 1
+2
+3
+4
+5
+
+Página 5
+
+5
+Problème Cause/Solution
+Le voyant Sans 
+fil  clignote 
+en bleu.
+Le mode de connexion sans fil est activé mais la connexion réseau sans fil n'est pas encore configurée. 
+Essayez les différentes solutions présentées dans ce document jusqu'à résolution du problème :
+1. Vérifiez que l'imprimante se trouve à portée (30 m ou 100 pi) du réseau sans fil.
+2. Si vous utilisez un câble USB pour raccorder provisoirement l'imprimante et l'ordinateur pendant la 
+configuration, ne branchez pas le câble avant que le logiciel ne vous ait invité à le faire. Si vous avez 
+branché le câble avant d'y être invité, débranchez-le et restaurez les paramètres du réseau sans fil 
+comme indiqué dans l'étape suivante.
+3. Restaurez les paramètres du réseau sans fil :
+a. Débranchez le câble USB de l'imprimante.
+b. Appuyez sur le bouton Sans fil  sur le panneau de commande de l'imprimante et maintenez-le 
+enfoncé pendant 20 secondes.
+c. Lorsque le voyant Avertissement  et le voyant Alimentation  commencent à clignoter ensemble, 
+relâchez le bouton Sans fil .
+d. Une fois que le voyant Sans fil  commence à clignoter en bleu, poursuivez l'installation du 
+logiciel.
+4. Redémarrez l'imprimante et le routeur.
+5. Connectez manuellement l'imprimante à votre réseau sans fil. Utilisez la fonction WPS (Wi-Fi 
+Protected Setup) si votre routeur la prend en charge. Consultez les instructions WPS dans la section.
+6. Désinstallez et réinstallez le logiciel de l'imprimante HP.
+Le voyant Sans 
+fil  est 
+allumé, mais 
+vous ne pouvez 
+pas imprimer 
+sans fil.
+Le pilote d'imprimante n'est peut-être pas installé. Essayez d'installer ou de réinstaller le pilote de 
+l'imprimante, et essayez à nouveau d'imprimer.
+Si vous ne parvenez toujours pas à imprimer sans fil, l'imprimante et votre ordinateur ou périphérique 
+sont peut-être connectés à des réseaux différents. Procédez comme suit :
+1. Vérifiez le réseau auquel l'ordinateur est connecté.
+2. Vérifiez les informations du nom réseau/SSID de l'imprimante sur le Rapport de configuration/
+Récapitulatif réseau. Pour imprimer le rapport, appuyez sur le bouton Reprendre/Annuler  sur 
+le panneau de commande de l'imprimante et maintenez-le enfoncé pendant 10 secondes.
+3. Corrigez les éventuels problèmes de connexion, puis poursuivez l'installation du logiciel.
+Configurer une connexion Wi-Fi Direct
+Utilisez la fonction Wi-Fi Direct pour connecter une imprimante sans fil, sans vous connecter à un réseau sans fil existant. Pour 
+utiliser la fonction Wi-Fi Direct :
+ • Assurez-vous que la fonction Wi-Fi Direct est activée sur l'imprimante.
+ • Pour vérifier le nom et le mot de passe de Wi-Fi Direct (clé réseau), appuyez sur le bouton Reprendre/Annuler  sur le 
+panneau de commande de l'imprimante et maintenez-le enfoncé pendant 10 secondes. Un rapport s'imprime et il contient 
+toutes les informations sur la configuration et la connexion réseau de votre machine.
+Pour en savoir plus, rendez-vous sur le site www.hp.com/go/wifidirectprinting.
+Configurer une connexion sans fil à l'aide de la fonction WPS (Wi-Fi Protected Setup)
+1. Appuyez sur le bouton WPS  sur votre routeur.
+2. Dans les deux minutes, appuyez sur le bouton Sans fil  sur le panneau de commande de l'imprimante et maintenez-le 
+enfoncé pendant au moins 3 secondes, puis relâchez-le. 
+3. Attendez que l'imprimante établisse automatiquement la connexion avec le réseau. Cela peut durer jusqu'à deux minutes.  
+Une fois que la connexion réseau est établie, le voyant Sans fil  s'arrête de clignoter et reste allumé.
+4. Poursuivez l'installation du logiciel.
+Français
+
+Página 6
+
+6
+Impression sans fil HP
+www.hp.com/go/wirelessprinting
+Assistance produit
+www.hp.com/support/laser100
+En savoir plus
+Directives relatives à l'environnement de fonctionnement de 
+l'imprimante
+Conservez 
+l'imprimante à 
+l'abri de toute 
+exposition directe 
+au soleil.
+Plage de  
+températures 
+recommandée :
+17,5° – 25° C
+(63,5° – 77° F)
+Plage d'humidité 
+recommandée :
+30 % – 70 %
+Conservez 
+l'imprimante dans 
+une zone bien aérée
+Ne dépassez 
+pas les limites 
+de tension
+Français
+Les informations contenues dans ce document sont susceptibles de changer sans préavis.
+
+Página 7
+
+HP Laser 100 series
+7
+Lea esta guía para conocer el panel de control de la impresora, aprender a interpretar los patrones de los 
+indicadores luminosos del panel de control, resolver los problemas de conexión inalámbrica y encontrar 
+información adicional. 
+Panel de control de la impresora
+Guía de referencia
+1 Indicador luminoso de 
+Tóner
+2 Botón/indicador 
+luminoso de 
+Inalámbrico*
+3 Botón Reanudar/
+Cancelar
+4 Botón de Encendido/
+indicador luminoso de 
+Listo
+5 Luz de atención 
+* Solo para modelos 
+inalámbricos
+Patrones de indicadores 
+luminosos del panel de control
+Configurar una conexión inalámbrica (solo para modelos inalámbricos)
+Tal y como indica la guía de instalación, descargue e instale el software de la impresora HP. A continuación, siga las 
+instrucciones del software para conectar la impresora a su red inalámbrica.
+Cuando la impresora se haya conectado correctamente a la red inalámbrica, el indicador luminoso de Inalámbrico  
+del panel de control de la impresora dejará de parpadear y permanecerá iluminado en azul. Si el indicador luminoso no 
+se ilumina en azul constante, pruebe las siguientes soluciones:
+Problema Causa y solución
+El indicador 
+luminoso de 
+Inalámbrico  
+está apagado.
+El modo de conexión inalámbrica está desactivado. Intente lo siguiente:
+1. Pulse el botón Inalámbrico  en el panel de control de la impresora. 
+2. Si el indicador luminoso de Inalámbrico  se ilumina en azul constante, el modo de 
+conexión inalámbrica está activado y la conexión inalámbrica se ha establecido. Ya puede 
+imprimir de forma inalámbrica.
+3. Si el indicador luminoso de Inalámbrico  parpadea en azul, la impresora se encuentra en 
+modo de instalación inalámbrica. Prosiga con la instalación del software y siga las instrucciones 
+para configurar una conexión inalámbrica. Asimismo, consulte las instrucciones que encontrará 
+más adelante, bajo "El indicador luminoso de Inalámbrico  parpadea en azul."
+Solución de problemas de comunicación inalámbrica
+Listo Procesando
+!
+Iniciando  
+o cancelando
+Cartucho no instalado  
+o incorrecto
+10  sec
+!
+Cartucho con nivel 
+muy bajo 
+Atasco de papel  
+o falta papel
+Español
+1
+2
+3
+4
+5
+
+Página 8
+
+8
+Problema Causa y solución
+El indicador 
+luminoso de 
+Inalámbrico  
+parpadea en azul.
+El modo de conexión inalámbrica está activado, pero la conexión de red inalámbrica todavía no 
+se ha configurado. Pruebe las siguientes soluciones hasta que se resuelva el problema:
+1. Compruebe que la impresora se encuentre en el rango (30 m o 100 pies) de la red inalámbrica.
+2. Si va a utilizar un cable USB para conectar temporalmente la impresora con el PC durante 
+la configuración, no lo conecte hasta que el software se lo indique. Si ha conectado el cable 
+antes de que lo solicite el software, desconéctelo y restablezca la configuración de la red 
+inalámbrica tal y como se explica en el siguiente paso.
+3. Restablecer la configuración de la red inalámbrica:
+a. Retire el cable USB de la impresora.
+b. Pulse y mantenga pulsado el botón Inalámbrico  en el panel de control de la 
+impresora durante 20 segundos.
+c. Cuando los indicadores luminosos de Atención  y Encendido  empiecen a parpadear 
+juntos, suelte el botón de Inalámbrico .
+d. Cuando el indicador luminoso de Inalámbrico  empiece a parpadear en azul, prosiga  
+a instalar el software.
+4. Reinicie la impresora y el enrutador.
+5. Conecte la impresora manualmente a la red inalámbrica. Utilice Config Wi-Fi protegida (WPS) 
+si el enrutador es compatible. Consulte las instrucciones de WPS en la siguiente sección.
+6. Desinstale y vuelva a instalar el software de la impresora HP.
+El indicador 
+luminoso de 
+Inalámbrico  
+está activado, 
+pero no puede 
+imprimir de forma 
+inalámbrica.
+Puede que no se haya instalado el controlador de la impresora. Pruebe a instalar o reinstalar el 
+controlador de la impresora y reintente la impresión.
+Si todavía no puede imprimir de forma inalámbrica, la impresora y su PC o dispositivo pueden 
+estar conectados a redes diferentes. Intente lo siguiente:
+1. Compruebe la red a la que está conectado el equipo.
+2. Compruebe la información de nombre de red de la impresora (SSID) en el Informe de 
+configuración/Resumen de red. Para imprimir el informe, pulse y mantenga pulsado el 
+botón Reanudar/Cancelar  en el panel de control de la impresora durante 10 segundos.
+3. Resuelva cualquier problema de conexión que pueda existir y a continuación, siga 
+instalando el software.
+Configurar una conexión Wi-Fi Direct
+Utilice Wi-Fi Direct para establecer una conexión inalámbrica con una impresora, pero sin conectarse a una red inalámbrica 
+existente. Para utilizar Wi-Fi Direct:
+ • Asegúrese de que Wi-Fi Direct esté activado en la impresora.
+ • Para comprobar el nombre y contraseña de Wi-Fi Direct (Clave de red), pulse y mantenga pulsado el botón de 
+Reanudar/Cancelar  en el panel de control de la impresora durante 10 segundos. Se imprimirá un informe  
+con los datos sobre la conexión y configuración de red de su máquina.
+Para más información, visite www.hp.com/go/wifidirectprinting.
+Configurar una conexión inalámbrica utilizando Config. Wi-Fi protegida (WPS)
+1. Pulse el botón WPS  del enrutador.
+2. Antes de que transcurran dos minutos, pulse y mantenga pulsado el botón Inalámbrico  en el panel de control de la 
+impresora durante al menos 3 segundos, y a continuación, suéltelo. 
+3. Espere mientras la impresora establece automáticamente la conexión de red. Puede demorarse hasta dos minutos. 
+Cuando se haya establecido la conexión de red, el indicador luminoso Inalámbrico  dejará de parpadear  
+y permanecerá iluminado.
+4. Continúe para instalar el software.
+Español
+
+Página 9
+
+9
+Impresión inalámbrica de HP
+www.hp.com/go/wirelessprinting
+Soporte para productos
+www.hp.com/support/laser100
+Más información
+Directrices para el entorno de funcionamiento de la impresora
+Mantenga la 
+impresora 
+protegida de la luz 
+directa del sol
+Rango de temperatura  
+recomendada:
+de 17,5° a 25° C
+(de 63,5° a 77° F)
+Rango de 
+humedad 
+recomendada:
+de 30 % a 70 %
+Mantenga la 
+impresora en una 
+zona adecuadamente 
+ventilada
+No supere 
+los límites de 
+voltaje
+Español
+La información que contiene este documento está sujeta a cambios sin previo aviso.
+
+Página 10
+
+HP Laser 100 series
+Leia este guia para conhecer o painel de controle da impressora, saber como interpretar os padrões de 
+iluminação do painel de controle, solucionar problemas de conexão sem fio e encontrar outras informações. 
+Painel de controle da impressora
+Guia de Referência
+1 Luz de Toner
+2 Luz/botão de  
+Conexão sem fio *
+3 Botão Retomar/
+Cancelar
+4 Botão Liga/Desl./ 
+Luz de Prontidão
+5 Luz de Atenção
+* Somente modelos  
+sem fio
+Padrões de iluminação do 
+painel de controle
+Configurar uma conexão sem fio (apenas nos modelos sem fio)
+Conforme orientado no guia de configuração, baixe e instale o software da impressora HP e siga as instruções 
+no software para conectar a impressora à sua rede sem fio.
+Quando a impressora estiver conectada à sua rede sem fio, a luz de Conexão sem fio  no painel de controle 
+da impressora para de piscar e fica continuamente acesa na cor azul. Se a luz não ficar acesa na cor azul, tente 
+as seguintes soluções:
+Problema Causa/solução
+A luz de 
+Conexão sem 
+fio  está 
+apagada. 
+O modo de conexão sem fio está desativado. Tente o seguinte:
+1. Pressione o botão Conexão sem fio  no painel de controle da impressora. 
+2. Quando a luz de Conexão sem fio  acende na cor azul, o modo de conexão sem fio 
+está ativo e a conexão sem fio está estabelecida. Você já pode imprimir sem fio.
+3. Quando a luz de Conexão sem fio  acende na cor azul, mas fica piscando, a impressora 
+está no modo de configuração sem fio. Continue com a instalação do software e siga as 
+instruções nele para configurar uma conexão sem fio. Veja também as instruções abaixo 
+em “A luz de Conexão sem fio  está piscando na cor azul”.
+Solucionar problemas de conexão sem fio
+Pronto Processando
+!
+Inicializando ou 
+cancelando
+Cartucho não instalado 
+ou cartucho errado
+10  sec
+!
+Cartucho com muito 
+pouca tinta 
+Congestionamento de 
+papel ou sem papel
+10
+1
+2
+3
+4
+5
+Português
+
+Página 11
+
+Problema Causa/solução
+A luz de 
+Conexão sem 
+fio  está 
+piscando na 
+cor azul.
+O modo de conexão sem fio está ativo, mas a conexão da rede sem fio ainda não está 
+configurada. Siga as etapas abaixo na ordem correta até que o problema seja resolvido:
+1. Verifique se a impressora está dentro do alcance da rede sem fio (30 metros ou 100 pés).
+2. Se você está usando um cabo USB para conectar temporariamente a impressora e o 
+computador durante a configuração, não conecte o cabo USB até que o software indique 
+que você deve fazê-lo. Se você conectou o cabo antes do momento correto, desconecte-o 
+e restaure as configurações da rede sem fio, conforme orientado na próxima etapa.
+3. Restaure as configurações da rede sem fio:
+a. Remova o cabo USB da impressora.
+b. Mantenha o botão Conexão sem fio  no painel de controle da impressora 
+pressionado por 20 segundos.
+c. Quando a luz de Atenção e a luz Liga/Desl.  começarem a piscar juntas, solte  
+o botão Conexão sem fio  .
+d. Quando a luz de Conexão sem fio  começar a piscar na cor azul, continue com  
+a instalação do software.
+4. Reinicie a impressora e o roteador.
+5. Conecte a impressora à rede sem fio manualmente. Use a Wi-Fi Protected Setup (WPS) se 
+seu roteador for compatível com ela. Veja as instruções da WPS na próxima seção.
+6. Desinstale e reinstale o software da impressora HP.
+A luz de 
+Conexão sem 
+fio  está 
+acesa, mas 
+não é possível 
+imprimir sem 
+fio.
+É possível que o driver da impressora não esteja instalado. Instale ou reinstale o driver da 
+impressora e, em seguida, tente imprimir novamente.
+Se ainda não conseguir imprimir sem fio, é possível que a impressora e seu computador ou 
+dispositivo estejam conectados a redes diferentes. Tente o seguinte:
+1. Verifique a qual rede o computador está conectado.
+2. Verifique as informações do nome da rede (SSID) da impressora no Relatório de 
+configuração/Resumo de rede. Para imprimir o relatório, mantenha o botão Retomar/
+Cancelar  no painel de controle da impressora pressionado por 10 segundos.
+3. Resolva todos os problemas de conexão e continue com a instalação do software.
+Configurar uma conexão Wi-Fi Direct
+Use o Wi-Fi Direct para estabelecer uma conexão sem fio com a impressora — sem conectar a uma rede sem fio 
+existente. Para usar o Wi-Fi Direct:
+ • É preciso ativar o Wi-Fi Direct na impressora.
+ • Para verificar o nome e a senha do Wi-Fi Direct (chave de rede), mantenha o botão Retomar/Cancelar  no 
+painel de controle da impressora pressionado por 10 segundos. Um relatório é impresso com as informações 
+sobre a conexão de rede e a configuração da sua máquina.
+Para mais informações, acesse www.hp.com/go/wifidirectprinting.
+Configurar uma conexão sem fio usando a Wi-Fi Protected Setup (WPS)
+1. Pressione o botão WPS  no roteador.
+2. Depois de dois minutos, mantenha o botão Conexão sem fio  no painel de controle da impressora pressionado 
+por pelo menos três segundos, depois solte o botão. 
+3. Espere até que a impressora estabeleça automaticamente a conexão de rede. Isso leva até dois minutos. 
+Quando a conexão de rede é estabelecida, a luz de Conexão sem fio  para de piscar e permanece acesa.
+4. Continue com a instalação do software.
+11
+Português
+
+Página 12
+
+Impressão sem fio HP
+www.hp.com/go/wirelessprinting
+Suporte do produto
+www.hp.com/support/laser100
+Mais informações
+Diretrizes ambientais de operação da impressora
+Mantenha a 
+impressora fora 
+do alcance da luz 
+solar direta
+Faixa de temperatura 
+recomendada:
+17,5° – 25° C
+(63,5° – 77° F)
+Faixa de umidade 
+recomendada:
+30% – 70%
+Mantenha a 
+impressora em 
+um local com boa 
+ventilação
+Não exceda 
+os limites de 
+tensão
+12
+Português
+As informações aqui contidas estão sujeitas a alterações sem prévio aviso.
+
+Página 13
+
+HP Laser 100 series
+ בלוח הנוריות של התאורה דפוסי את לפרש כיצד ללמוד, המדפסת של הבקרה לוח את להכיר כדי המדריך את קרא
+. נוסף מידע ולחפש אלחוטי בחיבור בעיות לפתור, הבקרה
+המדפסת של הבקרה לוח
+עזר מדריך
+1טונר נורית
+2* האלחוט נורית/לחצן
+3/פעולה חידוש לחצן
+ביטול
+4 נורית/הפעלה לחצן
+מוכן
+5 התראה נורית
+בלבד אלחוטיים דגמים *
+ בלוח הנוריות של התאורה דפוסי
+הבקרה
+(בלבד אלחוטיים דגמים )אלחוטי חיבור הגדרת
+ את לחבר כדי בתוכנה להנחיות בהתאם ופעל, HP של המדפסת תוכנת את והתקן הורד, ההתקנה במדריך שהונחית כפי
+.שלך האלחוטית לרשת המדפסת
+ להבהב מפסיקה המדפסת של הבקרה בלוח אלחוט  נורית, שלך האלחוטית לרשת בהצלחה התחברה שהמדפסת לאחר
+.הבאים הפתרונות את נסה, קבוע בכחול מאירה אינה הנורית אם. קבוע בכחול ומאירה
+בעיהפתרון/סיבה
+ נורית 
+ ט אלחו
+. כבויה
+:הבאות הפעולות את לבצע נסה. מושבת האלחוטי החיבור מצב
+. המדפסת של הבקרה בלוח לחוט א הלחצן על לחץ.  1
+ .נוצר האלחוטי והחיבור מופעל האלחוטי החיבור מצב, קבוע בכחול מאירה חוט אל הנורית אם.  2
+.אלחוטי באופן להדפיס באפשרותך כעת
+ בהתקנת המשך. אלחוט הגדרת במצב נמצאת המדפסת, בכחול מהבהבת אלחוט  הנורית אם.  3
+ הנושא תחת בהנחיות עיין, בנוסף. אלחוטי חיבור להגדיר כדי בתוכנה להנחיות בהתאם ופעל התוכנה 
+."בכחול מהבהבת האלחוט  נורית"
+האלחוטית ברשת בעיות פתרון
+מוכןמעבד
+!
+ביטול או אתחול תמותקנ אינה המחסנית
+שגויה מחסנית או
+10  sec
+!
+ מאוד נמוך דיו מפלס
+ במחסנית
+או נייר חסימת 
+הנייר שאזל
+13
+עברית
+1
+2
+3
+4
+5
+
+Página 14
+
+בעיהפתרון/סיבה
+ נורית 
+ האלחוט 
+.בכחול מהבהבת
+ עד הבאים הפתרונות את נסה. מוגדר לא עדיין האלחוטי הרשת חיבור אבל, מופעל אלחוטי חיבור מצב
+:תיפתר שהבעיה
+.האלחוטית הרשת של( רגל 100 או' מ 30) הקליטה בטווח נמצאת שהמדפסת ודא.  1
+ תחבר אל, ההגדרה במהלך המחשב ואת המדפסת את זמנית לחבר כדי USB בכבל משתמש אתה אם.  2
+ לעשות שהונחית לפני הכבל את חיברת אם. זאת לעשות אותך תנחה שהתוכנה עד USB-ה כבל את
+.הבא בשלב להנחיות בהתאם האלחוטית הרשת הגדרות את שחזר מכן ולאחר הכבל את נתק, זאת
+:האלחוטית הרשת הגדרות את שחזר.  3
+.מהמדפסת USB-ה כבל את נתק.  א
+.שניות 20 למשך המדפסת של הבקרה בלוח  האלחוט לחצן על ממושכת לחיצה לחץ.  ב
+ לחצן את שחרר, ביחד להבהב מתחילות כיבוי /ההפעלה  ונוריתההתראה   נורית כאשר.  ג
+.האלחוט  
+.התוכנה בהתקנת המשך, בכחול להבהב מתחילה האלחוט  שנורית לאחר.  ד
+.הנתב ואת המדפסת את מחדש הפעל.  4
+ הנתב אם( WPS)  Wi-Fi Protected Setup-ב השתמש. שלך האלחוטית לרשת המדפסת את ידנית חבר.  5
+.הבא בסעיף WPS-ה בהנחיות עיין. זו באפשרות תומך שלך
+.מחדש אותה והתקן HP של המדפסת תוכנת של ההתקנה את הסר.  6
+ נורית 
+ חוט אלה
+ אבל, מופעלת
+ באפשרותך אין
+ באופן להדפיס
+.אלחוטי
+, המדפסת התקן מנהל את מחדש להתקין או להתקין נסה. מותקן לא המדפסת התקן שמנהל ייתכן 
+.להדפיס שוב נסה מכן ולאחר
+ מחוברים שלך ההתקן או והמחשב שהמדפסת ייתכן, אלחוטי באופן להדפיס באפשרותך אין עדיין אם
+:הבאות הפעולות את לבצע נסה. שונות לרשתות
+.אליה מחובר שהמחשב הרשת את בדוק.  1
+ ,הדוח את להדפיס כדי. הרשת סיכום/התצורה בדוח( SSID) המדפסת של הרשת שם פרטי את בדוק.  2 
+.שניות 10 למשך המדפסת של הבקרה בלוח  יטולב/פעולה חידוש הלחצן את והחזק לחץ
+.התוכנה בהתקנת המשך מכן ולאחר, החיבור בעיות כל את פתור.  3
+Wi-Fi Direct חיבור הגדרת
+ להשתמש כדי. קיימת אלחוטית לרשת להתחבר מבלי - אלחוטי באופן למדפסת להתחבר כדי Wi-Fi Direct-ב השתמש 
+:Wi‑Fi Direct-ב
+• .במדפסת מופעל Wi-Fi Direct כי ודא
+•  הבקרה בלוח ביטול /פעולה חידוש הלחצן את והחזק לחץ(, רשת מפתח )Wi-Fi Direct של והסיסמה השם את לבדוק כדי
+.שלך המכשיר של והתצורה הרשת חיבור על מידע עם דוח מודפס. שניות 10 למשך המדפסת של
+.www.hp.com/go/wifidirectprinting בכתובת בקר, נוסף מידע לקבלת
+(WPS)  Wi-Fi Protected Setup באמצעות אלחוטי חיבור הגדרת
+.שלך בנתב  WPS לחצן על לחץ.  1
+ שחרר מכן ולאחר, לפחות שניות 3 למשך המדפסת של הבקרה בלוח האלחוט  לחצן על ממושכת לחיצה לחץ, דקות שתי תוך.  2
+ .הלחצן את
+ נורית, נוצר הרשת שחיבור לאחר.  דקות שתי עד נמשך התהליך. הרשת חיבור את אוטומטי באופן יוצרת שהמדפסת בזמן המתן.  3
+.דלוקה ונשארת להבהב מפסיקה האלחוט 
+.התוכנה בהתקנת המשך.  4
+14
+עברית
+
+Página 15
+
+HP של אלחוטית הדפסה
+www.hp.com/go/wirelessprinting
+במוצר תמיכה
+www.hp.com/support/laser100
+נוסף מידע
+המדפסת של ההפעלה לסביבת מנחים קווים
+ המדפסת את הרחק
+ישיר שמש מאור
+:מומלץ טמפרטורות טווח
+17.5 ° – 25° C
+( 63.5° – 77° F)
+:מומלץ לחות טווח
+30%  – 70%
+ המדפסת על שמור
+היטב מאוורר באזור
+ לחרוג אין
+המתח ממגבלות
+15
+.מוקדמת הודעה ללא לשינויים כפוף כאן המובא המידע
+עברית
+
+Página 16
+
+*JC68-04043A00*
+*JC68-04043A00*
+JC68-04043A00
+*4ZB77-90902*
+*4ZB77-90902*
+4ZB77-90902
+Printed in English
+© Copyright 2019 HP Development Company, L.P. 
+Printed in Spanish Printed in Portuguese EN FR ES PT HE
+16

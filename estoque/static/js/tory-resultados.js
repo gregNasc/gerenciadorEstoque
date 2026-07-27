@@ -139,7 +139,7 @@
             const tbody = document.createElement("tbody");
             const pageCount = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
             if (this.page > pageCount) this.page = pageCount;
-            const visible = primary ? records.slice((this.page - 1) * PAGE_SIZE, this.page * PAGE_SIZE) : records.slice(0, PAGE_SIZE);
+            const visible = primary ? records.slice((this.page - 1) * PAGE_SIZE, this.page * PAGE_SIZE) : records;
             visible.forEach(function (record) {
                 const row = document.createElement("tr");
                 columns.forEach(function (column) {
@@ -162,7 +162,11 @@
             });
             if (!visible.length) {
                 const row = document.createElement("tr");
-                const cell = window.ToryRenderer.element("td", "text-center text-muted py-4", "Nenhum registro foi encontrado para os filtros informados.");
+                const cell = window.ToryRenderer.element(
+                    "td",
+                    "text-center text-muted py-4",
+                    component.mensagem_vazia || "Nenhum item foi encontrado para os filtros informados."
+                );
                 cell.colSpan = Math.max(columns.length, 1);
                 row.appendChild(cell);
                 tbody.appendChild(row);
@@ -170,23 +174,58 @@
             table.appendChild(tbody);
             tableWrap.appendChild(table);
             wrapper.appendChild(tableWrap);
-            if (primary) this.renderPagination(pageCount, records.length);
+            if (primary) this.renderPagination(pageCount, records.length, component);
             return wrapper;
         }
 
-        renderPagination(pageCount, recordsCount) {
+        renderPagination(pageCount, recordsCount, component) {
             this.pagination.replaceChildren();
             if (pageCount <= 1) return;
             const previous = window.ToryRenderer.element("button", "btn btn-sm btn-outline-secondary", "Anterior");
             previous.type = "button";
             previous.dataset.toryPage = String(this.page - 1);
             previous.disabled = this.page <= 1;
-            const label = window.ToryRenderer.element("span", "", "Página " + this.page + " de " + pageCount + " · " + recordsCount + " registros");
             const next = window.ToryRenderer.element("button", "btn btn-sm btn-outline-secondary", "Próxima");
             next.type = "button";
             next.dataset.toryPage = String(this.page + 1);
             next.disabled = this.page >= pageCount;
-            this.pagination.append(previous, label, next);
+            this.pagination.appendChild(previous);
+
+            const pages = [];
+            for (let page = 1; page <= pageCount; page += 1) {
+                if (
+                    page === 1 || page === pageCount ||
+                    Math.abs(page - this.page) <= 2
+                ) pages.push(page);
+            }
+            let lastPage = 0;
+            pages.forEach((page) => {
+                if (lastPage && page - lastPage > 1) {
+                    this.pagination.appendChild(window.ToryRenderer.element("span", "tory-page-ellipsis", "…"));
+                }
+                const pageButton = window.ToryRenderer.element(
+                    "button",
+                    "btn btn-sm " + (page === this.page ? "btn-secondary" : "btn-outline-secondary"),
+                    page
+                );
+                pageButton.type = "button";
+                pageButton.dataset.toryPage = String(page);
+                pageButton.setAttribute("aria-label", "Ir para a página " + page);
+                if (page === this.page) pageButton.setAttribute("aria-current", "page");
+                this.pagination.appendChild(pageButton);
+                lastPage = page;
+            });
+
+            this.pagination.appendChild(next);
+            this.pagination.appendChild(window.ToryRenderer.element(
+                "span",
+                "tory-page-summary",
+                recordsCount + " " + (
+                    recordsCount === 1 ?
+                        (component.rotulo_total_singular || "item exibido") :
+                        (component.rotulo_total || "itens exibidos")
+                )
+            ));
         }
 
         render() {
@@ -201,15 +240,20 @@
             this.pagination.replaceChildren();
 
             const message = this.response.mensagem || this.response.resposta || "";
-            this.title.textContent = this.response.titulo || "Resultados da consulta";
-            this.summary.textContent = message.split("\n")[0];
             const tableComponents = this.tables();
+            const primaryTable = tableComponents[0] || {};
+            this.title.textContent = this.response.titulo || primaryTable.titulo || "Detalhes da consulta";
+            this.summary.textContent = message.split("\n")[0];
             const total = tableComponents.reduce(function (sum, table) {
                 return sum + window.ToryRenderer.recordsOf(table).length;
             }, 0);
             const metadataTotal = Number(this.response.metadados && this.response.metadados.total);
             const displayTotal = metadataTotal > total ? metadataTotal : total;
-            this.total.textContent = displayTotal + (displayTotal === 1 ? " registro" : " registros");
+            const metadata = this.response.metadados || {};
+            const totalLabel = displayTotal === 1 ?
+                (metadata.rotulo_total_singular || primaryTable.rotulo_total_singular || "item exibido") :
+                (metadata.rotulo_total || primaryTable.rotulo_total || "itens exibidos");
+            this.total.textContent = displayTotal + " " + totalLabel;
             this.count.textContent = String(displayTotal);
             this.count.classList.remove("d-none");
 

@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -122,6 +123,61 @@ class FinalidadeEquipamentoTests(EquipamentosSickBaseTests):
         historico = Historico.objects.filter(equipamento=self.equipamento, tipo_acao='EDICAO').latest('data')
         self.assertEqual(historico.detalhes['alteracoes']['finalidade']['antes'], 'OPERACIONAL')
 
+    def test_gestor_pode_escolher_finalidade_na_edicao(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.post(
+            reverse('estoque:editar_equipamento', args=[self.equipamento.pk]),
+            {
+                'numero_serie': self.equipamento.numero_serie,
+                'patrimonio': self.equipamento.patrimonio,
+                'finalidade': 'ADMINISTRATIVO',
+                'observacao_edicao': 'Alteração de uso do equipamento',
+                'senha_confirmacao': 'senha-forte',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.equipamento.refresh_from_db()
+        self.assertEqual(self.equipamento.finalidade, 'ADMINISTRATIVO')
+        historico = Historico.objects.filter(
+            equipamento=self.equipamento,
+            tipo_acao='EDICAO',
+        ).latest('data')
+        self.assertEqual(
+            historico.detalhes['alteracoes']['finalidade'],
+            {'antes': 'OPERACIONAL', 'depois': 'ADMINISTRATIVO'},
+        )
+
+    def test_edicao_exibe_as_duas_finalidades(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(
+            reverse('estoque:editar_equipamento', args=[self.equipamento.pk])
+        )
+
+        self.assertContains(response, 'name="finalidade"', count=2)
+        self.assertContains(response, 'value="OPERACIONAL"')
+        self.assertContains(response, 'value="ADMINISTRATIVO"')
+
+    def test_modal_de_historico_exibe_as_duas_finalidades(self):
+        self.client.force_login(self.gestor)
+        Historico.objects.create(
+            equipamento=self.equipamento,
+            usuario=self.gestor,
+            tipo_acao='EDICAO',
+            detalhes={'motivo': 'Teste do modal'},
+        )
+
+        response = self.client.get(
+            reverse('estoque:historico_modal', args=[self.equipamento.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="finalidade"', count=2)
+        self.assertContains(response, 'value="OPERACIONAL"')
+        self.assertContains(response, 'value="ADMINISTRATIVO"')
+
     def test_kpi_da_tela_separa_ativo_operacional_de_administrativo(self):
         self.equipamento.finalidade = Equipamento.Finalidade.ADMINISTRATIVO
         self.equipamento.save(update_fields=['finalidade'])
@@ -159,6 +215,60 @@ class ContextoBaseTests(EquipamentosSickBaseTests):
 
 
 class FluxoSickTests(EquipamentosSickBaseTests):
+    def _marcar_sick_ajax(self, senha=None):
+        payload = {
+            'categoria': 'HARDWARE',
+            'motivo': 'Não liga',
+            'observacao': 'Falha ao iniciar',
+        }
+        if senha is not None:
+            payload['senha'] = senha
+        return self.client.post(
+            reverse('estoque:marcar_sick', args=[self.equipamento.pk]),
+            data=json.dumps(payload),
+            content_type='application/json',
+        )
+
+    def test_marcar_sick_ajax_exige_senha(self):
+        self.client.force_login(self.gestor)
+
+        response = self._marcar_sick_ajax()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Sick.objects.filter(equipamento=self.equipamento).exists())
+        self.equipamento.refresh_from_db()
+        self.assertEqual(self.equipamento.status, 'ATIVO')
+
+    def test_marcar_sick_ajax_rejeita_senha_incorreta(self):
+        self.client.force_login(self.gestor)
+
+        response = self._marcar_sick_ajax('senha-incorreta')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, 'Senha incorreta', status_code=403)
+        self.assertFalse(Sick.objects.filter(equipamento=self.equipamento).exists())
+        self.equipamento.refresh_from_db()
+        self.assertEqual(self.equipamento.status, 'ATIVO')
+
+    def test_marcar_sick_ajax_aceita_senha_do_usuario(self):
+        self.client.force_login(self.gestor)
+
+        response = self._marcar_sick_ajax('senha-forte')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['sucesso'])
+        self.assertTrue(Sick.objects.filter(equipamento=self.equipamento).exists())
+        self.equipamento.refresh_from_db()
+        self.assertEqual(self.equipamento.status, 'SICK')
+
+    def test_tela_de_estoque_exibe_confirmacao_de_senha_para_sick(self):
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(reverse('estoque:estoque'))
+
+        self.assertContains(response, 'id="sickSenha"')
+        self.assertContains(response, 'autocomplete="current-password"')
+
     def test_usuario_da_base_enxerga_menu_e_somente_sicks_da_sua_base(self):
         sick_base = self._abrir(usuario=self.operador)
         equipamento_outra_base = Equipamento.objects.create(

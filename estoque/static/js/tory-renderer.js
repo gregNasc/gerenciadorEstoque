@@ -134,12 +134,23 @@
 
     function renderTablePreview(component) {
         const card = element("div", "tory-component tory-list-card");
-        card.appendChild(element("h4", "", component.titulo || "Resultado detalhado"));
+        card.appendChild(element("h4", "", component.titulo || "Detalhes da consulta"));
         const list = element("ul");
         const row = element("li");
         const count = recordsOf(component).length;
-        row.appendChild(element("span", "", "Registros encontrados"));
-        row.appendChild(element("span", "", count));
+        if (!count) {
+            row.appendChild(element(
+                "span",
+                "",
+                component.mensagem_vazia || "Nenhum item foi encontrado para os filtros informados."
+            ));
+        } else {
+            const countLabel = count === 1 ?
+                (component.rotulo_total_singular || "item exibido") :
+                (component.rotulo_total || "itens exibidos");
+            row.appendChild(element("span", "", countLabel));
+            row.appendChild(element("span", "", count));
+        }
         list.appendChild(row);
         card.appendChild(list);
         return card;

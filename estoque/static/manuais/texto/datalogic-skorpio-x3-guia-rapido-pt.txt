@@ -1,0 +1,375 @@
+Página 1
+
+Computador Móvel Skorpio™X3          
+Guia de Inicialização Rápida  
+ 
+O PACOTE 
+ 
+O pacote do  Skorpio X3 contém: 
+ Computador Móvel Skorpio X3 
+ Bateria padrão recarregável 
+ Película de teclado para emulação de terminal 
+ Clipe para cinto (somente nos modelos handheld) 
+ Pivô do clipe para cinto (somente nos modelos handheld) 
+ Alça de mão(somente nos modelos em formato de pistola) 
+ Guia de Inicialização Rápida 
+ Wavelink Avalanche 
+ Wavelink Telnet ( somente nos modelos em formato de pistola) 
+ Contrato de Licença para usuário final 
+ 
+ 
+O EQUIPAMENTO 
+ 
+ 
+              
+  
+A) Display Colorido * 
+B) Botão Liga/Desliga 
+C) LEDs 
+D) Alto-falante frontal 
+E) Tecla frontal de Escanear 
+F) Teclado 
+G) Etiqueta de segurança do 
+laser
+ 
+H) Alto-falante traseiro 
+I) Porta Micro USB  para recarga 
+de bateria (somente  recarga)  
+J) Etiqueta do produto 
+K) Botão reset (sob a bateria) 
+L) Entrada para cartão MicroSD 
+(sob  a bateria) 
+M) Botão de escanear (usado 
+com a empunhadura opcional) 
+ 
+ 
+ 
+  
+ 
+N) Janela do leitor de código de 
+barras 
+O) Conector HandyLink™ 
+(servidor/cliente)  
+ 
+822001790 (Rev. A) 
+                                                                          
+* Remova o filme protetor de tela antes de usar 
+TECLADOS 
+ 
+ 
+Teclado Alfanumérico completo (50 teclas) 
+ 
+ 
+ 
+ 
+ 
+ 
+1. Teclas de navegação (Setas) 
+2. Tecla de Escanear 
+3. Tecla modificadora de estado amarela 
+4. Tecla modificadora de estado azul  
+ 
+ 
+Teclado Alfanumérico (38 teclas) 
+ 
+ 
+ 
+ 
+ 
+ 
+1. Teclas de Funções (F1 – F11) 
+2. Tecla de Escanear 
+3. Tecla modificadora de estado amarela 
+4. Tecla modificadora de estado azul  
+ 
+Teclado Numérico (28 teclas) 
+ 
+ 
+ 
+ 
+ 
+ 
+1. Teclas de Funções (F1 – F5) 
+2. Tecla de Escanear 
+3. Tecla modificadora de estado amarela 
+4. Tecla modificadora de estado azul  
+ 
+ 
+Teclado Funcional (28 teclas) 
+ 
+ 
+ 
+ 
+1. Teclas de Funções (F1 – F11) 
+2. Tecla de Escanear 
+3. Tecla modificadora de estado amarela 
+4. Tecla modificadora de estado azul  
+ 
+ 
+Função Multi-tecla 
+ 
+Num teclado numérico as teclas com números  (excluída a tecla 0) e a 
+tecla ESC compartilham o seguinte comportamento: 
+ 
+ 
+ 
+ 
+ 
+ 
+A. Função da tecla propriamente dita quando 
+pressionada diretamente. 
+B. Modificada pela tecla amarela, a tecla quando 
+pressionada de forma repetida, serão 
+apresentadas as letras mostradas na legenda 
+de cada tecla do teclado. A letra é aceita se 
+você esperar alguns instantes. 
+ 
+Ícones de Função especiais 
+ 
+ÍCONE FUNÇÃO 
+ 
+Depois de ter pressionado a te cla azul modificadora de 
+estado, a tecla do menu Iniciar abre o menu Inciar. 
+ 
+Depois de ter pressionado a tecla azul modificadora de 
+estado, a tecla de Gerenciador de Arquivos abre o 
+gerenciador de arquivos. 
+ 
+Depois de ter pressionado a te cla azul modificadora de 
+estado, a tecla de luz de fundo, liga ou desliga a luz de fundo. 
+ 
+ 
+COMEÇANDO A USAR O SKORPIO X3 
+ 
+ 
+Insira a Bateria 
+ 
+Coloque a bateria no compartimento de bateria, então pressione-a 
+firmemente até que a trava faça dois cliques: 
+ 
+ 
+  
+ 
+ 
+Carregando a bateria 
+ 
+ 
+ 
+ 
+ 
+ 
+Como o carregador rápido de parede Micro-USB 
+ 
+ 
+ 
+Com o berço de 1 posição 
+ 
+ 
+Não coloque o carregador de parede na porta micro-
+USB quando o Skorpio X3 esiver no berço. 
+PERIGO 
+ 
+ 
+A 
+E 
+F 
+D B C 
+G 
+H 
+I 
+J 
+L 
+K 
+M 
+N 
+O 
+A
+B
+1 
+4 3 
+2 
+1 
+4 5
+2
+3
+2 
+3 
+1 
+54 
+1 
+1 
+2
+3 4
+1 
+1 
+1
+
+Página 2
+
+SINCRONIZE SEU DISPOSITOVO COM O SEU PC 
+ 
+Windows Mobile® Device Center pode ser baixado do website 
+da Microsoft www.microsoft.com. Ele só é compatível com 
+Windows Vista e Windows 7; se estiver usando  Windows XP ou 
+anterior, é preciso baixar o Microsoft ActiveSync. 
+ 
+Você pode estabelecer uma conexão com o seu Skorpio X3 
+através das seguintes interfaces: 
+ 
+ USB, diretamente ou através do berço de uma posição 
+ RS232, diretamente ou através do berço de uma posição 
+ Bluetooth®  
+ 
+Para estabelecer uma parceria entre o Skorpio X3 e o PC, inicie 
+o  Windows Mobile® Device Center e siga os passos abaixo: 
+ 
+1. Conecte o Skoprio X3 ao PC. O Windows Mobile® Device 
+Center reconhece o dispositivo e se incia automaticamente 
+2. Na tela de licenciamento, clique Aceitar. 
+3. Na tela do Windows Mobile Device Center, clique Configure 
+o seu dispositivo. 
+4. Selecione o tipo de informação que deseja sincronizar e 
+depois clique em Próximo. 
+5. Entre com um nome para o Equipamento e clique em 
+Configurar. 
+ 
+Quando terminar a configuração inicial, o Windows Mobile Device Center 
+fará o sincronismo com o computador móvel automaticamente. Os 
+emails do Microsoft® Office Outl ook® e outras informações aparecerão 
+no seu dispositivo depois do sincronismo. 
+ 
+Comunicando com o computador 
+ 
+ 
+ 
+INSTALANDO O CARTÃO MICROSD 
+ 
+ 
+1. Desligue o Skorpio X3. 
+ 
+2. Pressione a trava da bacteria e remova-a: 
+ 
+ 
+ 
+ 
+3. Deslize a tampa do protetor de cartão para cima e então puxe-o: 
+ 
+  
+  
+ 
+4. Insira o cartão microSD com a parte escrita para cima: 
+ 
+ 
+ 
+5. Trave o cartão no local, pres sionando a trava. Depois deslize-a para 
+baixo: 
+ 
+  
+  
+ 
+6. Coloque a bateria no compartimento de bateria, então pressione-a 
+firmemente até que a trava faça dois cliques: 
+. 
+ 
+ 
+ 
+ 
+ 
+LENDO OS CÓDIGOS DE BARRAS 1D/2D 
+ 
+ 
+Captura de dados com leitor de código de barras a 
+laser 
+ 
+ 
+ 
+ 
+Captura de dados com leitor de código de barras  2D 
+Imager 
+ 
+ 
+ 
+Código de barras linear Código 2D DataMatrix  
+ÌBX3ÉÎ
+ 
+ 
+ 
+ 
+DOCUMENTAÇÃO DE REFERÊNCIA 
+ 
+Para informações adicionais sobre o Skorpio X3 vá a ajuda on-line do SDK e 
+no manual do usuário do Skorpio X3. 
+ 
+Para informações relativas a regulamentação e segurança vá até a 
+seção dedicada deste assunto no manual do usuário do Skorpio X3. 
+ 
+ 
+PATENTES 
+ 
+Patente. Veja www.patents.datalogic.com para a lista de patentes. 
+2D Imager: 
+Este produto esta sob uma ou mais das seguintes patentes: 
+Patentes: EP001942723, USD676850, USD677663, USD697067, 
+USD704711, ZL201230127985.6, ZL201230128017.7 
+Patentes de utilidade: EP0681257B1, EP0789315B1, EP1128315B1, 
+EP1396811B1, EP1413971B1, IT1396943, US5686716, US5992740, 
+US6412698, US6415978, US6808114, US6997385, US7387246 
+Laser: 
+Este produto esta sob uma ou mais das seguintes patentes: 
+Patentes de design: EP001942723, USD676850, USD677663, USD697067, 
+USD704711, ZL201230127985.6, ZL201230128017.7 
+Patentes de utilidades: EP0681257B1, EP0789315B1, EP1128315B1, 
+EP1396811B1, EP1413971B1, IT1396943, US5686716, US5992740, 
+US6412698, US6415978, US6454168, US6478224, US6513714, 
+US6561427, US6585157, US6808114, US6997385, US7108170, 
+US7299975, US7387246. 
+ 
+ 
+SUPORTE E SERVIÇOS 
+ 
+Datalogic fornece uma série de serv iços bem como o suporte técnico 
+através do website. 
+Por favor verifique nosso website www.datalogic.com em “Support & 
+Services”, então clique em “Automatic  Data Capture”, depois vá até os 
+links indicados para obter mais informações: 
+- Downloads 
+-  Manuais  para as versões de manuais e 
+guias de produtos.  
+-  Software & Utilities  para últimas versões de firmware 
+do seu produto.Você também pode clicar no seguinte link para 
+acessar diretamente esta seção:  
+www.datalogic.com/products_updates. 
+- Service Program para extensões de garantia e contratos de 
+manutenção. 
+- Repair Centers para a lista de centro de reparos autorizados. 
+- Technical Support Automatic Data Capture  formulário via email 
+para entrar em contato com o nosso suporte técnico. 
+ 
+ 
+TERMOS DE GARANTIA E CONDIÇOES 
+ 
+O período de garantia é de 1 ano para o Equipamento e 90 dias para os 
+acessórios  (ex: bateria, fonte, cabo, etc.) a partir da data de compra pela 
+sua empresa. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+©2012-2014 Datalogic ADC S.r.l. • ALL RIGHTS RESERVED. • 
+Protected to the fullest extent under U.S. and international laws. • 
+Copying, or altering of this document is prohibited without express written 
+consent from Datalogic ADC S.r.l. 
+ 
+Datalogic and the Datalogic logo are registered trademarks of Datalogic 
+S.p.A. in many countries, including the U.S.A. and the E.U. 
+ 
+Skorpio and the Skorpio logo are trademarks of Datalogic ADC S.r.l. 
+ 
+All other brand and product names may be trademarks of their respective 
+owners.

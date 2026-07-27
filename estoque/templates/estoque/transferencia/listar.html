@@ -1,535 +1,661 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
 
+{% block title %}{% trans "Transferências" %}{% endblock %}
+
 {% block content %}
 
 <div class="container-fluid px-4">
+    <div class="card border-0 shadow-sm">
 
-    <!-- HEADER -->
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <!-- HEADER -->
+        <div class="card-header bg-white border-0 pt-4 pb-0">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h4 fw-semibold mb-0">
+                        {% trans "Transferências" %}
+                    </h2>
 
-        <div>
-            <h2 class="fw-bold mb-1">
-                {% trans "Transferências" %}
-            </h2>
-
-            <p class="text-muted mb-0">
-                {% trans "Acompanhe movimentações entre bases e regionais." %}
-            </p>
+                    <p class="text-secondary small mt-1 mb-0">
+                        {% trans "Acompanhe movimentações de equipamentos entre bases e regionais." %}
+                    </p>
+                </div>
+            </div>
         </div>
 
-        <!-- CARDS -->
-        <div class="d-flex flex-wrap gap-3">
+        <div class="card-body">
 
-            <div class="card border-0 shadow-sm stat-card">
-                <div class="card-body py-3 px-4">
-                    <small class="text-muted text-uppercase fw-semibold d-block mb-1">
-                        {% trans "Total" %}
-                    </small>
+            <!-- INDICADORES -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card transfer-kpi-card h-100 border shadow-sm">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3">
+                                <div>
+                                    <small class="text-secondary fw-semibold d-block mb-1">
+                                        {% trans "Total de transferências" %}
+                                    </small>
 
-                    <div class="fs-3 fw-bold">
-                        {{ transferencias|length }}
+                                    <div class="h3 fw-semibold mb-0">
+                                        {{ transferencias|length }}
+                                    </div>
+                                </div>
+
+                                <span class="transfer-kpi-icon">
+                                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card transfer-kpi-card h-100 border shadow-sm">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3">
+                                <div>
+                                    <small class="text-secondary fw-semibold d-block mb-1">
+                                        {% trans "Pendentes" %}
+                                    </small>
+
+                                    <div class="h3 fw-semibold text-warning mb-0">
+                                        {{ total_pendentes }}
+                                    </div>
+                                </div>
+
+                                <span class="transfer-kpi-icon transfer-kpi-icon-warning">
+                                    <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card border-0 shadow-sm stat-card">
-                <div class="card-body py-3 px-4">
-                    <small class="text-muted text-uppercase fw-semibold d-block mb-1">
-                        {% trans "Pendentes" %}
-                    </small>
+            <!-- FILTROS -->
+            <div class="bg-light p-3 rounded mb-4 border">
+                <form method="get" class="row g-3 align-items-end">
 
-                    <div class="fs-3 fw-bold text-warning">
-                        {{ total_pendentes }}
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- CARD PRINCIPAL -->
-    <div class="card border-0 shadow-sm overflow-hidden">
-
-        <!-- FILTROS -->
-        <div class="card-header bg-white border-0 p-4">
-
-            <form method="get" class="row g-3">
-
-                <div class="col-lg-6">
-
-                    <div class="position-relative">
-
-                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-
-                        <input
-                            type="text"
-                            class="form-control ps-5 filtro-input"
-                            id="filtroTransferencia"
-                            name="q"
-                            value="{{ filtros.q }}"
-                            placeholder="{% trans 'Pesquisar protocolo, regional, usuario ou equipamento...' %}"
+                    <div class="col-lg-6">
+                        <label
+                            for="filtroTransferencia"
+                            class="form-label small text-secondary fw-semibold mb-1"
                         >
+                            {% trans "Busca rápida" %}
+                        </label>
 
+                        <div class="position-relative">
+                            <i
+                                class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"
+                                aria-hidden="true"
+                            ></i>
+
+                            <input
+                                type="search"
+                                class="form-control form-control-sm bg-white ps-5"
+                                id="filtroTransferencia"
+                                name="q"
+                                value="{{ filtros.q }}"
+                                placeholder="{% trans 'Protocolo, regional, usuário ou equipamento...' %}"
+                            >
+                        </div>
                     </div>
 
+                    <div class="col-lg-4">
+                        <label
+                            for="filtroStatus"
+                            class="form-label small text-secondary fw-semibold mb-1"
+                        >
+                            {% trans "Status" %}
+                        </label>
+
+                        <select
+                            class="form-select form-select-sm bg-white"
+                            id="filtroStatus"
+                            name="status"
+                        >
+                            <option value="" {% if not filtros.status %}selected{% endif %}>
+                                {% trans "Todos os status" %}
+                            </option>
+
+                            <option
+                                value="PENDENTE"
+                                {% if filtros.status == 'PENDENTE' %}selected{% endif %}
+                            >
+                                {% trans "Pendente" %}
+                            </option>
+
+                            <option
+                                value="EM_TRANSITO"
+                                {% if filtros.status == 'EM_TRANSITO' %}selected{% endif %}
+                            >
+                                {% trans "Em trânsito" %}
+                            </option>
+
+                            <option
+                                value="CONCLUIDA"
+                                {% if filtros.status == 'CONCLUIDA' %}selected{% endif %}
+                            >
+                                {% trans "Concluída" %}
+                            </option>
+
+                            <option
+                                value="CANCELADO"
+                                {% if filtros.status == 'CANCELADO' %}selected{% endif %}
+                            >
+                                {% trans "Cancelada" %}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-2">
+                        <div class="d-flex gap-2">
+                            <button
+                                type="submit"
+                                class="btn btn-secondary btn-sm flex-fill"
+                            >
+                                {% trans "Aplicar" %}
+                            </button>
+
+                            <a
+                                href="{% url 'estoque:lista_transferencias' %}"
+                                class="btn btn-outline-secondary btn-sm"
+                                aria-label="{% trans 'Limpar filtros' %}"
+                                title="{% trans 'Limpar filtros' %}"
+                            >
+                                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- CABEÇALHO DA LISTA -->
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+                <div>
+                    <h6 class="fw-semibold mb-1">
+                        {% trans "Movimentações encontradas" %}
+                    </h6>
+
+                    <small class="text-secondary">
+                        {% trans "Consulte origem, destino, itens, prazos e ações disponíveis." %}
+                    </small>
                 </div>
 
-                <div class="col-lg-4">
+                <span class="badge bg-secondary px-3 py-2">
+                    {{ transferencias|length }} {% trans "registro(s)" %}
+                </span>
+            </div>
 
-                    <select class="form-select filtro-input" id="filtroStatus" name="status">
+            <!-- TABELA -->
+            <div class="table-responsive transfer-table-shell">
+                <table
+                    class="table table-hover align-middle mb-0"
+                    id="tabelaTransferencias"
+                >
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">{% trans "Transferência" %}</th>
+                            <th>{% trans "Origem" %}</th>
+                            <th>{% trans "Destino" %}</th>
+                            <th>{% trans "Itens" %}</th>
+                            <th>{% trans "Status" %}</th>
+                            <th>{% trans "Prazo" %}</th>
+                            <th class="text-end pe-3">{% trans "Ações" %}</th>
+                        </tr>
+                    </thead>
 
-                        <option value="" {% if not filtros.status %}selected{% endif %}>
-                            {% trans "Todos os status" %}
-                        </option>
+                    <tbody>
+                        {% for t in transferencias %}
+                            <tr
+                                class="linha-transferencia"
+                                data-status="{{ t.status }}"
+                            >
 
-                        <option value="PENDENTE" {% if filtros.status == 'PENDENTE' %}selected{% endif %}>
-                            {% trans "Pendente" %}
-                        </option>
+                                <!-- TRANSFERÊNCIA -->
+                                <td class="ps-3 transfer-main-cell">
+                                    <div class="d-flex flex-column">
+                                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                            <span class="fw-semibold text-dark">
+                                                #{{ t.protocolo|default:t.id }}
+                                            </span>
 
-                        <option value="EM_TRANSITO" {% if filtros.status == 'EM_TRANSITO' %}selected{% endif %}>
-                            {% trans "Em trânsito" %}
-                        </option>
+                                            <span class="badge rounded-pill bg-light text-dark border">
+                                                {{ t.itens.count }}
+                                                item{{ t.itens.count|pluralize }}
+                                            </span>
+                                        </div>
 
-                        <option value="CONCLUIDA" {% if filtros.status == 'CONCLUIDA' %}selected{% endif %}>
-                            {% trans "Concluída" %}
-                        </option>
+                                        <small class="text-secondary">
+                                            {{ t.created_at|date:"d/m/Y H:i" }}
+                                        </small>
 
-                        <option value="CANCELADO" {% if filtros.status == 'CANCELADO' %}selected{% endif %}>
-                            {% trans "Cancelada" %}
-                        </option>
+                                        <small class="text-secondary">
+                                            {{ t.solicitado_por }}
+                                        </small>
+                                    </div>
+                                </td>
 
-                    </select>
+                                <!-- ORIGEM -->
+                                <td>
+                                    <div class="regional-card">
+                                        <div class="regional-icon bg-light text-secondary">
+                                            <i
+                                                class="bi bi-box-arrow-up-right"
+                                                aria-hidden="true"
+                                            ></i>
+                                        </div>
 
+                                        <div class="min-w-0">
+                                            <div class="fw-semibold text-wrap">
+                                                {{ t.regional_origem.nome }}
+                                            </div>
+
+                                            <small class="text-secondary">
+                                                {% trans "Origem" %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- DESTINO -->
+                                <td>
+                                    <div class="regional-card">
+                                        <div class="regional-icon bg-primary-subtle text-primary">
+                                            <i
+                                                class="bi bi-geo-alt"
+                                                aria-hidden="true"
+                                            ></i>
+                                        </div>
+
+                                        <div class="min-w-0">
+                                            <div class="fw-semibold text-wrap">
+                                                {{ t.regional_destino.nome }}
+                                            </div>
+
+                                            <small class="text-secondary">
+                                                {% trans "Destino" %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- ITENS -->
+                                <td class="transfer-items-cell">
+                                    <div class="d-flex flex-column gap-2">
+                                        {% for item in t.itens.all|slice:":2" %}
+                                            <div class="item-transferencia">
+                                                <div class="fw-semibold small">
+                                                    {{ item.equipamento.produto.descricao }}
+                                                </div>
+
+                                                <div class="small text-secondary">
+                                                    {{ item.equipamento.numero_serie|default:"—" }}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+
+                                        {% if t.itens.count > 2 %}
+                                            <div class="small text-secondary fw-semibold">
+                                                + {{ t.itens.count|add:"-2" }}
+                                                {% trans "outros itens" %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <!-- STATUS -->
+                                <td>
+                                    {% if t.status == 'PENDENTE' %}
+                                        <span class="status-badge status-warning">
+                                            <i
+                                                class="bi bi-hourglass-split"
+                                                aria-hidden="true"
+                                            ></i>
+                                            {% trans "Pendente" %}
+                                        </span>
+
+                                    {% elif t.status == 'EM_TRANSITO' %}
+                                        <span class="status-badge status-info">
+                                            <i
+                                                class="bi bi-truck"
+                                                aria-hidden="true"
+                                            ></i>
+                                            {% trans "Em trânsito" %}
+                                        </span>
+
+                                    {% elif t.status == 'RECEBIDO' %}
+                                        <span class="status-badge status-success">
+                                            <i
+                                                class="bi bi-check-circle"
+                                                aria-hidden="true"
+                                            ></i>
+                                            {% trans "Concluída" %}
+                                        </span>
+
+                                    {% elif t.status == 'CANCELADO' %}
+                                        <span class="status-badge status-danger">
+                                            <i
+                                                class="bi bi-x-circle"
+                                                aria-hidden="true"
+                                            ></i>
+                                            {% trans "Cancelada" %}
+                                        </span>
+
+                                    {% else %}
+                                        <span class="status-badge status-secondary">
+                                            {{ t.status }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- PRAZO -->
+                                <td>
+                                    {% if t.status == 'CONCLUIDA' %}
+                                        <div class="fw-semibold text-success">
+                                            {{ t.dias }} {% trans "dias" %}
+                                        </div>
+                                    {% else %}
+                                        <div class="fw-semibold text-warning">
+                                            {{ t.dias }} {% trans "dias" %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+
+                                <!-- AÇÕES -->
+                                <td class="text-end pe-3">
+                                    <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                        <a
+                                            href="{% url 'estoque:transferencia_selecionados' t.id %}"
+                                            class="btn btn-outline-secondary btn-sm"
+                                            aria-label="{% trans 'Visualizar transferência' %} #{{ t.protocolo|default:t.id }}"
+                                            title="{% trans 'Visualizar transferência' %}"
+                                        >
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
+                                        </a>
+
+                                        {% if t.pode_receber %}
+                                            <a
+                                                href="{% url 'estoque:receber_transferencia' t.id %}"
+                                                class="btn btn-success btn-sm"
+                                            >
+                                                <i
+                                                    class="bi bi-box-arrow-in-down me-1"
+                                                    aria-hidden="true"
+                                                ></i>
+
+                                                {% trans "Receber" %}
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="py-5">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bi bi-truck" aria-hidden="true"></i>
+                                        </div>
+
+                                        <h5 class="fw-semibold mt-3 mb-1">
+                                            {% trans "Nenhuma transferência encontrada" %}
+                                        </h5>
+
+                                        <p class="text-secondary mb-0 text-center">
+                                            {% trans "As transferências aparecerão aqui quando forem criadas." %}
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ESTADO VAZIO DO FILTRO LOCAL -->
+            <div
+                id="semResultadosFiltro"
+                class="d-none py-5 text-center"
+                role="status"
+            >
+                <div class="empty-icon mx-auto">
+                    <i class="bi bi-search" aria-hidden="true"></i>
                 </div>
 
-                <div class="col-lg-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-fill">
-                        <i class="bi bi-search"></i>
-                    </button>
-                    <a href="{% url 'estoque:lista_transferencias' %}" class="btn btn-light border">
-                        <i class="bi bi-x-lg"></i>
-                    </a>
-                </div>
+                <h5 class="fw-semibold mt-3 mb-1">
+                    {% trans "Nenhum resultado para o filtro atual" %}
+                </h5>
 
-            </form>
+                <p class="text-secondary mb-0">
+                    {% trans "Revise o texto pesquisado ou selecione outro status." %}
+                </p>
+            </div>
 
         </div>
-
-        <!-- TABELA -->
-        <div class="table-responsive">
-
-            <table class="table align-middle mb-0" id="tabelaTransferencias">
-
-                <thead class="table-light">
-
-                    <tr>
-                        <th class="ps-4">{% trans "Transferência" %}</th>
-                        <th>{% trans "Origem" %}</th>
-                        <th>{% trans "Destino" %}</th>
-                        <th>{% trans "Itens" %}</th>
-                        <th>{% trans "Status" %}</th>
-                        <th>{% trans "Prazo" %}</th>
-                        <th class="text-end pe-4">{% trans "Ações" %}</th>
-                    </tr>
-
-                </thead>
-
-                <tbody>
-
-                    {% for t in transferencias %}
-
-                    <tr class="linha-transferencia" data-status="{{ t.status }}">
-
-                        <!-- INFO -->
-                        <td class="ps-4" style="min-width: 260px;">
-
-                            <div class="d-flex flex-column">
-
-                                <div class="d-flex align-items-center gap-2 mb-1">
-
-                                    <span class="fw-bold text-dark">
-                                        #{{ t.protocolo|default:t.id }}
-                                    </span>
-
-                                    <span class="badge rounded-pill bg-light text-dark border">
-                                        {{ t.itens.count }} item{{ t.itens.count|pluralize }}
-                                    </span>
-
-                                </div>
-
-                                <small class="text-muted">
-                                    {{ t.created_at|date:"d/m/Y H:i" }}
-                                </small>
-
-                                <small class="text-muted">
-                                    {{ t.solicitado_por }}
-                                </small>
-
-                            </div>
-
-                        </td>
-
-                        <!-- ORIGEM -->
-                        <td>
-
-                            <div class="regional-card">
-
-                                <div class="regional-icon bg-light">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </div>
-
-                                <div>
-                                    <div class="fw-semibold">
-                                        {{ t.regional_origem.nome }}
-                                    </div>
-
-                                    <small class="text-muted">
-                                        {% trans "Origem" %}
-                                    </small>
-                                </div>
-
-                            </div>
-
-                        </td>
-
-                        <!-- DESTINO -->
-                        <td>
-
-                            <div class="regional-card">
-
-                                <div class="regional-icon bg-primary-subtle text-primary">
-                                    <i class="bi bi-geo-alt"></i>
-                                </div>
-
-                                <div>
-                                    <div class="fw-semibold">
-                                        {{ t.regional_destino.nome }}
-                                    </div>
-
-                                    <small class="text-muted">
-                                        {% trans "Destino" %}
-                                    </small>
-                                </div>
-
-                            </div>
-
-                        </td>
-
-                        <!-- ITENS -->
-                        <td style="min-width: 300px;">
-
-                            <div class="d-flex flex-column gap-2">
-
-                                {% for item in t.itens.all|slice:":2" %}
-
-                                <div class="item-transferencia">
-
-                                    <div class="fw-semibold small">
-                                        {{ item.equipamento.produto.descricao }}
-                                    </div>
-
-                                    <div class="small text-muted">
-                                        {{ item.equipamento.numero_serie }}
-                                    </div>
-
-                                </div>
-
-                                {% endfor %}
-
-                                {% if t.itens.count > 2 %}
-
-                                <div class="small text-muted fw-semibold">
-                                    + {{ t.itens.count|add:"-2" }} {% trans "outros itens" %}
-                                </div>
-
-                                {% endif %}
-
-                            </div>
-
-                        </td>
-
-                        <!-- STATUS -->
-                        <td>
-
-                            {% if t.status == 'PENDENTE' %}
-
-                                <span class="status-badge status-warning">
-                                    <i class="bi bi-hourglass-split"></i>
-                                    {% trans "Pendente" %}
-                                </span>
-
-                            {% elif t.status == 'EM_TRANSITO' %}
-
-                                <span class="status-badge status-info">
-                                    <i class="bi bi-truck"></i>
-                                    {% trans "Em trânsito" %}
-                                </span>
-
-                            {% elif t.status == 'RECEBIDO' %}
-
-                                <span class="status-badge status-success">
-                                    <i class="bi bi-check-circle"></i>
-                                    {% trans "Concluída" %}
-                                </span>
-
-                            {% elif t.status == 'CANCELADO' %}
-
-                                <span class="status-badge status-danger">
-                                    <i class="bi bi-x-circle"></i>
-                                    {% trans "Cancelada" %}
-                                </span>
-
-                            {% else %}
-
-                                <span class="status-badge status-secondary">
-                                    {{ t.status }}
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-                        <!-- PRAZO -->
-                        <td>
-
-                            {% if t.status == 'CONCLUIDA' %}
-
-                                <div class="fw-semibold text-success">
-                                    {{ t.dias }} {% trans "dias" %}
-                                </div>
-
-                            {% else %}
-
-                                <div class="fw-semibold text-warning">
-                                    {{ t.dias }} {% trans "dias" %}
-                                </div>
-
-                            {% endif %}
-
-                        </td>
-
-                        <!-- AÇÕES -->
-                        <td class="text-end pe-4">
-
-                            <div class="d-flex justify-content-end gap-2 flex-wrap">
-
-                                <a href="{% url 'estoque:transferencia_selecionados' t.id %}"
-                                   class="btn btn-light btn-sm border">
-
-                                    <i class="bi bi-eye"></i>
-
-                                </a>
-
-                                {% if t.pode_receber %}
-
-                                <a href="{% url 'estoque:receber_transferencia' t.id %}"
-                                   class="btn btn-success btn-sm">
-
-                                    <i class="bi bi-box-arrow-in-down me-1"></i>
-
-                                    {% trans "Receber" %}
-
-                                </a>
-
-                                {% endif %}
-
-                            </div>
-
-                        </td>
-
-                    </tr>
-
-                    {% empty %}
-
-                    <tr>
-
-                        <td colspan="7" class="py-5">
-
-                            <div class="empty-state">
-
-                                <div class="empty-icon">
-                                    <i class="bi bi-truck"></i>
-                                </div>
-
-                                <h5 class="fw-bold mt-3">
-                                    {% trans "Nenhuma transferência encontrada" %}
-                                </h5>
-
-                                <p class="text-muted mb-0">
-                                    {% trans "As transferências aparecerão aqui quando forem criadas." %}
-                                </p>
-
-                            </div>
-
-                        </td>
-
-                    </tr>
-
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
-
-        </div>
-
     </div>
-
 </div>
 
 <style>
+    .transfer-kpi-card {
+        border-color: #e9ecef !important;
+        border-radius: 14px;
+        transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
+    }
 
-.stat-card {
-    min-width: 150px;
-    border-radius: 16px;
-}
+    .transfer-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08) !important;
+    }
 
-.filtro-input {
-    border-radius: 12px;
-    height: 48px;
-}
+    .transfer-kpi-icon {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        color: #495057;
+        background: #eef2f7;
+        font-size: 1.1rem;
+    }
 
-.table > :not(caption) > * > * {
-    padding-top: 18px;
-    padding-bottom: 18px;
-    vertical-align: middle;
-}
+    .transfer-kpi-icon-warning {
+        color: #8a6500;
+        background: #fff3cd;
+    }
 
-.table tbody tr {
-    transition: all .15s ease;
-}
+    .transfer-table-shell {
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+    }
 
-.table tbody tr:hover {
-    background: #fafafa;
-}
+    #tabelaTransferencias {
+        min-width: 1120px;
+    }
 
-.item-transferencia {
-    border: 1px solid #ececec;
-    border-radius: 12px;
-    padding: 10px 12px;
-    background: #fafafa;
-}
+    #tabelaTransferencias th {
+        padding-top: 0.85rem;
+        padding-bottom: 0.85rem;
+        color: #52606d;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.025em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
 
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    padding: 8px 14px;
-    font-size: .8rem;
-    font-weight: 600;
-}
+    #tabelaTransferencias td {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-color: #edf0f2;
+        vertical-align: middle;
+    }
 
-.status-warning {
-    background: #fff3cd;
-    color: #856404;
-}
+    #tabelaTransferencias tbody tr {
+        transition: background 0.15s ease;
+    }
 
-.status-info {
-    background: #d1ecf1;
-    color: #0c5460;
-}
+    #tabelaTransferencias tbody tr:hover {
+        background: #fbfcfd;
+    }
 
-.status-success {
-    background: #d4edda;
-    color: #155724;
-}
+    .transfer-main-cell {
+        min-width: 240px;
+    }
 
-.status-danger {
-    background: #f8d7da;
-    color: #721c24;
-}
+    .transfer-items-cell {
+        min-width: 280px;
+    }
 
-.status-secondary {
-    background: #e2e3e5;
-    color: #41464b;
-}
+    .item-transferencia {
+        padding: 0.7rem 0.8rem;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
 
-.regional-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
 
-.regional-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+    .status-warning {
+        color: #856404;
+        background: #fff3cd;
+    }
 
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
+    .status-info {
+        color: #0c5460;
+        background: #d1ecf1;
+    }
 
-.empty-icon {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: #f5f5f5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: #6c757d;
-}
+    .status-success {
+        color: #155724;
+        background: #d4edda;
+    }
 
-.card {
-    border-radius: 18px;
-}
+    .status-danger {
+        color: #721c24;
+        background: #f8d7da;
+    }
 
-.btn {
-    border-radius: 10px;
-}
+    .status-secondary {
+        color: #41464b;
+        background: #e2e3e5;
+    }
 
-#tabelaTransferencias td:nth-child(2),
-#tabelaTransferencias td:nth-child(3) {
-    width: 160px;
-    max-width: 160px;
-}
+    .regional-card {
+        min-width: 170px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
 
+    .regional-icon {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+    }
+
+    .min-w-0 {
+        min-width: 0;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-icon {
+        width: 72px;
+        height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: #6c757d;
+        background: #f1f3f5;
+        font-size: 1.6rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .transfer-kpi-card .card-body {
+            padding: 0.9rem !important;
+        }
+
+        .transfer-table-shell {
+            border-radius: 10px;
+        }
+    }
 </style>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const busca = document.getElementById('filtroTransferencia');
+        const status = document.getElementById('filtroStatus');
+        const tabela = document.getElementById('tabelaTransferencias');
+        const semResultados = document.getElementById('semResultadosFiltro');
 
-document.addEventListener('DOMContentLoaded', function () {
+        if (!busca || !status || !tabela) {
+            return;
+        }
 
-    const busca = document.getElementById('filtroTransferencia');
-    const status = document.getElementById('filtroStatus');
+        const linhas = Array.from(
+            tabela.querySelectorAll('tbody .linha-transferencia')
+        );
 
-    function aplicarFiltro() {
+        function aplicarFiltroLocal() {
+            const termo = busca.value.trim().toLowerCase();
+            const statusSelecionado = status.value.trim().toLowerCase();
+            let totalVisivel = 0;
 
-        const termo = busca.value.toLowerCase();
-        const statusSelecionado = status.value.toLowerCase();
+            linhas.forEach(function (linha) {
+                const texto = linha.innerText.toLowerCase();
+                const statusLinha = (linha.dataset.status || '').toLowerCase();
 
-        document.querySelectorAll('.linha-transferencia').forEach(function (linha) {
+                const bateTexto = !termo || texto.includes(termo);
+                const bateStatus =
+                    !statusSelecionado ||
+                    statusLinha === statusSelecionado;
 
-            const texto = linha.innerText.toLowerCase();
+                const visivel = bateTexto && bateStatus;
 
-            const bateTexto = texto.includes(termo);
+                linha.classList.toggle('d-none', !visivel);
 
-            const bateStatus = !statusSelecionado || (linha.dataset.status || '').toLowerCase() === statusSelecionado;
+                if (visivel) {
+                    totalVisivel += 1;
+                }
+            });
 
-            linha.style.display = (bateTexto && bateStatus)
-                ? ''
-                : 'none';
+            const possuiLinhas = linhas.length > 0;
+            const semCorrespondencia = possuiLinhas && totalVisivel === 0;
 
-        });
+            tabela.classList.toggle('d-none', semCorrespondencia);
+            semResultados.classList.toggle('d-none', !semCorrespondencia);
+        }
 
-    }
-
-    busca.addEventListener('keyup', aplicarFiltro);
-    status.addEventListener('change', aplicarFiltro);
-
-});
-
+        busca.addEventListener('input', aplicarFiltroLocal);
+        status.addEventListener('change', aplicarFiltroLocal);
+    });
 </script>
 
 {% endblock %}

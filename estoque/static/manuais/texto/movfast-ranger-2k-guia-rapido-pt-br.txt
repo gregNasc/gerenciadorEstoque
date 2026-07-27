@@ -1,0 +1,313 @@
+Página 1
+
+Informações Técnicas 
+Processador 
+MT8786V/CU – 8 núcleos (2*A75 
+2.0GHz + 6*A55 1.8GHz) 
+Sistema Operacional AndroidTM 
+Memória Interna 4GB RAM / 64 GB Flash 
+Cartão de Memória Externa TF MicroSD até 256GB 
+Tela 4.0” WVGA 800*480, Multi-touch 
+Bateria 
+5100mAh | 3,85V | Li-Ion 
+(Removível) 
+Carregador 5V, 2A | Conexão USB Tipo-C 
+Hot Swap Sim (Bateria interna de 60mAh) 
+Dimensões C x L x A (mm) 159.5 x 66.4 x 23.4 
+Peso ~265g 
+Slots de Cartão SIM 2 Nano SIM 
+Áudio Alto-falante e Microfone 
+Câmera Traseira 13MP Autofoco, 1A Flash 
+Câmera Frontal 2MP Foco Fixo 
+Sensores 
+Acelerômetro, Giroscópio,  
+Sensor de Luminosidade,  
+Sensor de Proximidade,  
+E-Compass, Sensor Hall 
+WWAN 4G / 3G / 2G 
+WiFi 
+2.4GHz / 5GHz  |  IEEE 802.11 
+a/b/g/n/ac/d/e/h/i/k/r/v/w   
+Roaming: 802.11r /OKC/ PMKID 
+Bluetooth 5.0 
+Localização 
+GPS, Beidou, Glonass, Galileo, A-
+GPS 
+Scanner XC E5 (Códigos 1D e 2D) 
+NFC 
+ISO 14443A&B | ISO 15693 | 
+MIFARE | FeliCa 
+Grau de Proteção IP65 
+Resistência a queda 1.5 m 
+Temperatura de Operação 
+-20ºC ~ +55ºC | Umidade: 5% ~ 
+95% (sem condensação) 
+Temperatura de 
+Armazenamento 
+-40ºC ~ +70ºC | Umidade: 5% ~ 
+95% (sem condensação) 
+Incluso na caixa 
+1 Coletor, 1 Bateria, 1 Guia Rápido 
+e 1 Película (já aplicada na tela) 
+ 
+*Android é uma marca registrada da Google LLC.  
+ 
+ 
+ 
+Atenção 
+Avisos de Segurança do Produto 
+ 
+Leia todas as instruções e informações de segurança antes de usar 
+para evitar ferimentos. O limite de temperatura ambiente operacional do 
+equipamento declarado pelo fabricante é -20°C ~ 55°C. 
+ 
+Segurança no uso da Bateria 
+ 
+(1) CUIDADO: Perigo de explosão se a bateria for substituída 
+incorretamente. Substitua apenas pelo mesmo tipo de bateria ou 
+equivalente recomendado pelo fabricante. Descarte as baterias 
+usadas de acordo com as instruções do fabricante da bateria.  
+(2) CUIDADO: O limite máximo da temperatura de carregamento da 
+bateria é 40°C. 
+ 
+Substituição da Bateria 
+ 
+O dispositivo possibilita a substituição da bateria pelo usuário, 
+seguindo as instruções abaixo: 
+1. Mova a trava da tampa traseira (item 16 mostrado nas informações 
+do produto ) para a posição destravada (símbolo de cadeado 
+aberto); 
+2. Remova a tampa traseira para expor a bateria; 
+3. Retire a bateria começando pela parte inferior. Após sua remoção, 
+os slots de chip e cartão de memória (ite ns 17, 18 e 19 mostrados 
+nas informações do produto ) estarão acessíveis; 
+4. Coloque a bateria nova e encaixe a tampa traseira;  
+5. Mova a trava da tampa traseira para a posição travada.  
+ 
+ATENÇÃO: O equipamento possui uma bateria interna adicional 
+que possibilita a troca da bateria principal com o aparelho ligado (função 
+hot swap). No entanto, essa bateria interna não pode ser substituída.  
+Segurança no uso do Carregador 
+ 
+Durante o carregamento, coloque o dispositivo em um ambiente 
+com temperatura ambiente normal e boa ventilação. Recomenda -se 
+carregar o dispositivo em um ambiente com temperatura que varia de 0°C 
+~ 40°C. 
+ 
+Segurança no uso do Wi-Fi 
+ 
+Desligue o Wi -Fi em áreas onde o uso do Wi -Fi é proibido ou 
+quando pode causar interferência ou perigo, como em aviões durante o 
+voo. 
+ 
+Aviso de Responsabilidade 
+ 
+A MovFast não assume responsabilidade pelas seguintes ações:  
+• Danos causados pelo uso e manutenção sem o cumprimento das 
+condições especificadas nesse guia; 
+• Danos ou problemas causados pelo uso de acessórios ou produtos 
+não aprovados pela MovFast. O consumidor/usuário não possui o 
+direito de alterar ou modificar o produto sem nosso consentimento; 
+• O sistema operacional do produto suporta atualizações de sistema 
+oficiais, mas caso o usuário faça o uso de versões de sistema não-
+oficiais ou altere arquivos do sistema operacional, poderá causar 
+instabilidade do sistema e torná-lo vulnerável a ameaças externas. 
+ 
+Aviso 
+ 
+A MovFast reserva o direito de interpretação desse documento, 
+que pode ser atualizado a qualquer momento sem necessidade de aviso 
+prévio. 
+Este equipamento não tem direito à proteção contra interferência 
+prejudicial e não pode causar interferência em sistemas devidamente 
+autorizados. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Ranger 2K(N) 
+Guia Rápido
+
+Página 2
+
+Informações do Produto  
+ 
+             
+ 
+ 
+ 
+ 
+Descrição 
+① Scanner 
+Atenção: Luz intensa, não mire ou alinhe o scanner com os olhos.  
+② Câmera Frontal 
+③ Botão de Função 
+④ ⑥ Botão Laterais do Scanner 
+Pressione o botão para acionar o Scanner e realizar a leitura de 
+códigos de barra 1D e 2D. 
+⑤ Tela 
+⑦ Botão Central do Scanner 
+Pressione o botão para acionar o Scanner e realizar a leitura de 
+códigos de barra 1D e 2D. 
+⑧ Teclado Físico 
+⑨ Botão Power 
+- Clique curto: Ligar a tela / Bloquear o coletor 
+- Clique longo (Coletor Desligado): Pressione e segure por 2-3 
+segundos para ligar o coletor 
+- Clique longo (Coletor Ligado): Pressione e segure por 2-3 
+segundos para abrir a tela de seleção e escolher entre as opções 
+Reiniciar ou Desligar 
+- Forçar a Reinicialização: Pressione e segure por 9 segundos para 
+forçar a reinicialização do coletor, caso o sistema trave.  
+ 
+⑩ Conector USB Tipo-C  
+⑪ Pinos de Conexão 
+Usados para conexão de acessórios da MovFast  
+⑫ Alto-falante  
+⑬ NFC 
+⑭ Câmera Traseira  
+⑮ Tampa Traseira 
+⑯ Trava da Tampa Traseira 
+⑰ ⑱ Slots dos Chips SIM (Suportam 2 Chips do tipo Nano SIM) 
+⑲ Slot do Cartão de Memória 
+ 
+Funcionamento do Teclado 
+Modo 
+Ícone na 
+Barra de 
+Notificações 
+Função 
+Normal 
+ 
+Teclas Direcionais: 
+Esquerda/Direita/Cima/Baixo 
+Teclas Numéricas:  1/2/3/4/5/6/7/8/9/0 
+Função 
+ 
+Teclas Direcionais: Aumentar/diminuir 
+o Brilho da Tela ou o Volume 
+Teclas Numéricas:  
+F1/F2/F3/F4/F5/F6/F7/F8/F9/#/* 
+Alfabético 
+ 
+Teclas Direcionais: 
+Esquerda/Direita/Cima/Baixo 
+Teclas Numéricas: 
+Acentos/ABC/DEF/GHI/JKL/MNO/ 
+PQRS/TUV/WXYZ/Espaço/Acentos  
+ 
+Teclas Direcionais: 
+Esquerda/Direita/Cima/Baixo 
+Teclas Numéricas:  
+Acentos/abc/def/ghi/jkl/mno/pqrs/tuv/ 
+wxyz/Espaço/Acentos 
+ 
+ 
+    
+ 
+ 
+ 
+ 
+ 
+Aplicativos da MovFast  
+ 
+Barcode Utility 
+ 
+Aplicação usada para todas as 
+configurações relativas ao scanner e 
+decodificação das informações lidas  
+Possibilita a realização de testes de leitura 
+para verificação das configurações 
+aplicadas 
+ 
+ 
+ 
+MovStage 
+O MovStage auxilia na configuração em 
+massa de múltiplos coletores, 
+possibilitando a instalação de aplicações, 
+ajustes das configurações e do modo 
+Kiosk, entre outras funções. Essa 
+ferramenta aumenta a eficiência, reduz o 
+trabalho repetitivo e evita erros nas 
+operações manuais. 
+ 
+Kiosk 
+ 
+Essa aplicação é usada para habilitar o 
+modo de trabalho do coletor, limitando o 
+acesso do usuário apenas às aplicações 
+desejadas através de uma senha. Evita que 
+o usuário acesse funções não desejadas e 
+altere as configurações do coletor.  
+ 
+MovProfile 
+ 
+O MovProfile permite que os usuários 
+configurem perfis personalizados para o 
+scanner de forma simples, sem 
+necessidade de desenvolvimento ou 
+integração via SDK. 
+ 
+Homologações  
+ 
+O equipamento atende aos requisitos das 
+regulamentações e padrões relevantes 
+da Área Econômica Europeia. A marca 
+CE é um sistema de certificação 
+harmonizado estabelecido pela União 
+Europeia para garantir que os produtos 
+atendam aos requisitos básicos de 
+segurança, saúde e meio ambiente 
+durante sua livre circulação e venda no 
+mercado europeu. 
+ 
+O dispositivo foi testado e avaliado pela 
+Federal Communications Commission 
+(FCC) e está em conformidade com os 
+requisitos relevantes de espectro de rádio 
+e compatibilidade eletromagnética nos 
+Estados Unidos. A certificação da FCC 
+assegura que o dispositiv o é legal para 
+venda e uso nos EUA. 
+ 
+Este produto está homologado pela 
+Anatel de acordo com os procedimentos 
+regulamentados para avaliação da 
+conformidade de produtos para 
+telecomunicações e atende aos 
+requisitos técnicos aplicados, incluindo os 
+limites de exposição da Taxa de 
+Absorção Específica referente a campos 
+elétricos, magnéticos e eletromagnéticos 
+de radiofrequência. 
+O valor médio de SAR é de 1,700 W/kg. 
+Para informações do produto 
+homologado acesse o site:   
+https://sistemas.anatel.gov.br/sch 
+ 
+   04658-25-14711

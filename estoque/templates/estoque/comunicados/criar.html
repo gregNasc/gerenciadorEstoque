@@ -3,19 +3,19 @@
 
 {% block content %}
 <div class="container-fluid px-4 py-3 comunicado-page">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom pb-3 mb-4">
+    <header class="app-page-header d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-megaphone fs-3 text-secondary"></i>
             <div>
                 <h1 class="h3 fw-semibold mb-0">{% trans "Novo Comunicado" %}</h1>
-                <p class="text-secondary small mb-0">{% trans "Envio rapido para empresas, bases ou todos os usuarios." %}</p>
+                <p class="text-secondary small mb-0">{% trans "Envio rápido para empresas, bases ou todos os usuários." %}</p>
             </div>
         </div>
         <a href="{% url 'estoque:caixa_comunicados' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
             <i class="bi bi-arrow-left"></i>
             {% trans "Voltar" %}
         </a>
-    </div>
+    </header>
 
     <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
@@ -24,12 +24,12 @@
                 <div class="panel">
                     <div class="panel-title">
                         <i class="bi bi-file-text"></i>
-                        <span>{% trans "Conteudo" %}</span>
+                        <span>{% trans "Conteúdo" %}</span>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">{% trans "Titulo" %}</label>
-                        <input type="text" name="titulo" class="form-control" placeholder="{% trans 'Ex.: Atualizacao de sistema' %}" required>
+                        <label class="form-label">{% trans "Título" %}</label>
+                        <input type="text" name="titulo" class="form-control" placeholder="{% trans 'Ex.: Atualização de sistema' %}" required>
                     </div>
 
                     <div class="mb-3">
@@ -48,7 +48,7 @@
             </div>
 
             <div class="col-xl-4">
-                <div class="panel sticky-lg-top" style="top: 1rem;">
+                <div class="panel sticky-lg-top top-0">
                     <div class="panel-title">
                         <i class="bi bi-send"></i>
                         <span>{% trans "Destino e envio" %}</span>
@@ -81,21 +81,40 @@
 
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
-                                <label class="form-label mb-0">{% trans "Bases" %}</label>
+                                <label class="form-label mb-0" id="basesLabel">{% trans "Bases" %}</label>
                                 <button type="button" class="btn btn-light btn-sm" id="limparRegionais" title="{% trans 'Limpar bases' %}">
                                     <i class="bi bi-eraser"></i>
+                                    <span class="d-none d-sm-inline">{% trans "Limpar" %}</span>
                                 </button>
                             </div>
                             <div class="input-group input-group-sm mb-2">
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="search" id="buscarRegional" class="form-control" placeholder="{% trans 'Buscar base' %}">
+                                <input type="search" id="buscarRegional" class="form-control" placeholder="{% trans 'Buscar base' %}" aria-label="{% trans 'Buscar base' %}">
                             </div>
-                            <select name="regionais" id="selectRegionais" multiple class="form-select regionais-select">
-                                {% for r in regionais %}
-                                    <option value="{{ r.id }}" data-empresa="{{ r.empresa_id }}" data-nome="{{ r.nome|lower }}">{{ r.nome }}</option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text" id="regionaisResumo">{% trans "Sem base selecionada: envia para usuarios da empresa escolhida." %}</div>
+                            <div class="base-picker" aria-labelledby="basesLabel">
+                                <div class="base-picker-toolbar">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" id="selecionarRegionaisVisiveis">
+                                        <label class="form-check-label fw-semibold" for="selecionarRegionaisVisiveis">
+                                            {% trans "Selecionar bases visíveis" %}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="base-picker-list" id="listaRegionais" role="group" aria-labelledby="basesLabel">
+                                    {% for r in regionais %}
+                                        <label class="base-picker-item" data-base-item data-empresa="{{ r.empresa_id }}" data-nome="{{ r.nome|lower }}">
+                                            <input class="form-check-input mt-0" type="checkbox" name="regionais" value="{{ r.id }}">
+                                            <span>{{ r.nome }}</span>
+                                        </label>
+                                    {% empty %}
+                                        <div class="base-picker-empty">{% trans "Nenhuma base cadastrada." %}</div>
+                                    {% endfor %}
+                                    <div class="base-picker-empty d-none" id="semRegionaisEncontradas">
+                                        {% trans "Nenhuma base corresponde à busca." %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-text" id="regionaisResumo" aria-live="polite">{% trans "Nenhuma base selecionada: o envio considera a empresa escolhida." %}</div>
                         </div>
                     </div>
 
@@ -110,7 +129,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-dark w-100 d-flex align-items-center justify-content-center gap-2">
+                    <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
                         <i class="bi bi-send"></i>
                         {% trans "Enviar comunicado" %}
                     </button>
@@ -123,128 +142,90 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const empresa = document.getElementById('selectEmpresa');
-    const regionais = document.getElementById('selectRegionais');
+    const baseItems = Array.from(document.querySelectorAll('[data-base-item]'));
+    const baseCheckboxes = baseItems.map(item => item.querySelector('input[name="regionais"]'));
     const todos = document.getElementById('todos');
     const destinos = document.getElementById('destinosSegmento');
     const busca = document.getElementById('buscarRegional');
     const resumo = document.getElementById('regionaisResumo');
+    const selecionarVisiveis = document.getElementById('selecionarRegionaisVisiveis');
+    const semResultados = document.getElementById('semRegionaisEncontradas');
+
+    function basesVisiveis() {
+        return baseItems.filter(item => !item.hidden);
+    }
+
+    function normalizar(texto) {
+        return (texto || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
 
     function atualizarRegionais() {
         const empresaId = empresa.value;
-        const termo = (busca.value || '').toLowerCase().trim();
-        Array.from(regionais.options).forEach(option => {
-            const showEmpresa = !empresaId || option.dataset.empresa === empresaId;
-            const showBusca = !termo || option.dataset.nome.includes(termo);
-            option.hidden = !(showEmpresa && showBusca);
-            if (option.hidden) option.selected = false;
+        const termo = normalizar(busca.value);
+
+        baseItems.forEach(item => {
+            const showEmpresa = !empresaId || item.dataset.empresa === empresaId;
+            const showBusca = !termo || normalizar(item.dataset.nome).includes(termo);
+            item.hidden = !(showEmpresa && showBusca);
         });
+
+        semResultados?.classList.toggle('d-none', basesVisiveis().length > 0 || baseItems.length === 0);
         atualizarResumo();
     }
 
     function atualizarResumo() {
-        const total = Array.from(regionais.selectedOptions).length;
-        resumo.textContent = total
-            ? `${total} base(s) selecionada(s).`
-            : 'Sem base selecionada: envia para usuarios da empresa escolhida.';
+        const selecionadas = baseCheckboxes.filter(input => input.checked).length;
+        const visiveis = basesVisiveis();
+        const visiveisSelecionadas = visiveis.filter(item => item.querySelector('input').checked).length;
+
+        resumo.textContent = selecionadas
+            ? selecionadas === 1
+                ? '1 base selecionada.'
+                : `${selecionadas} bases selecionadas.`
+            : 'Nenhuma base selecionada: o envio considera a empresa escolhida.';
+
+        selecionarVisiveis.checked = visiveis.length > 0 && visiveisSelecionadas === visiveis.length;
+        selecionarVisiveis.indeterminate = visiveisSelecionadas > 0 && visiveisSelecionadas < visiveis.length;
     }
 
     todos.addEventListener('change', function () {
         destinos.classList.toggle('is-disabled', this.checked);
         empresa.disabled = this.checked;
         busca.disabled = this.checked;
-        regionais.disabled = this.checked;
+        selecionarVisiveis.disabled = this.checked;
+        baseCheckboxes.forEach(input => { input.disabled = this.checked; });
     });
 
-    empresa.addEventListener('change', atualizarRegionais);
+    empresa.addEventListener('change', function () {
+        if (empresa.value) {
+            baseItems.forEach(item => {
+                if (item.dataset.empresa !== empresa.value) {
+                    item.querySelector('input').checked = false;
+                }
+            });
+        }
+        atualizarRegionais();
+    });
     busca.addEventListener('input', atualizarRegionais);
-    regionais.addEventListener('change', atualizarResumo);
-    document.getElementById('limparRegionais').addEventListener('click', () => {
-        Array.from(regionais.options).forEach(option => option.selected = false);
+    baseCheckboxes.forEach(input => input.addEventListener('change', atualizarResumo));
+
+    selecionarVisiveis.addEventListener('change', function () {
+        basesVisiveis().forEach(item => {
+            item.querySelector('input').checked = this.checked;
+        });
         atualizarResumo();
     });
+
+    document.getElementById('limparRegionais').addEventListener('click', () => {
+        baseCheckboxes.forEach(input => { input.checked = false; });
+        atualizarResumo();
+    });
+
+    atualizarRegionais();
 });
 </script>
-
-<style>
-    .comunicado-page .form-label {
-        color: #5f6b76;
-        font-size: .76rem;
-        font-weight: 700;
-        margin-bottom: .25rem;
-        text-transform: uppercase;
-    }
-
-    .panel {
-        background: #fff;
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        box-shadow: 0 .125rem .35rem rgba(0, 0, 0, .04);
-        padding: 1rem;
-    }
-
-    .panel-title {
-        align-items: center;
-        color: #495057;
-        display: flex;
-        font-size: .84rem;
-        font-weight: 800;
-        gap: .5rem;
-        margin-bottom: 1rem;
-        text-transform: uppercase;
-    }
-
-    .file-box {
-        align-items: center;
-        background: #f8f9fa;
-        border: 1px dashed #cfd6dd;
-        border-radius: 8px;
-        display: flex;
-        gap: .75rem;
-        padding: .85rem;
-    }
-
-    .file-box i {
-        color: #6c757d;
-        font-size: 1.5rem;
-    }
-
-    .send-all,
-    .options-box {
-        background: #f8f9fa;
-        border: 1px solid #eef1f3;
-        border-radius: 8px;
-        padding: .85rem;
-    }
-
-    .send-all {
-        margin-bottom: 1rem;
-    }
-
-    .regionais-select {
-        min-height: 220px;
-    }
-
-    .is-disabled {
-        opacity: .55;
-    }
-
-    @media (max-width: 767.98px) {
-        .container-fluid.comunicado-page {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-
-        .panel {
-            padding: .85rem;
-        }
-
-        textarea[name="mensagem"] {
-            min-height: 220px;
-        }
-
-        .regionais-select {
-            min-height: 180px;
-        }
-    }
-</style>
 {% endblock %}

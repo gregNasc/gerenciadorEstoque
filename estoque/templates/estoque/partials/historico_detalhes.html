@@ -127,6 +127,17 @@
 
                             <tr>
                                 <th>
+                                    {% trans "Finalidade" %}
+                                </th>
+                                <td>
+                                    <span class="badge bg-light text-dark border">
+                                        {{ equipamento.get_finalidade_display }}
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>
                                     {% trans "Responsável" %}
                                 </th>
                                 <td>
@@ -253,6 +264,40 @@
                                        class="form-control"
                                        value="{{ equipamento.numero_serie }}"
                                        required>
+                            </div>
+
+                            <div class="col-12">
+                                <fieldset>
+                                    <legend class="form-label fw-semibold mb-2">
+                                        {% trans "Finalidade do equipamento" %}
+                                    </legend>
+                                    <div class="row g-2">
+                                        {% for valor, descricao in finalidade_choices %}
+                                        <div class="col-md-6">
+                                            <label class="purpose-option d-flex align-items-start gap-3 h-100">
+                                                <input
+                                                    class="form-check-input mt-1"
+                                                    type="radio"
+                                                    name="finalidade"
+                                                    value="{{ valor }}"
+                                                    {% if equipamento.finalidade == valor %}checked{% endif %}
+                                                    required
+                                                >
+                                                <span>
+                                                    <strong class="d-block">{{ descricao }}</strong>
+                                                    <small class="text-muted">
+                                                        {% if valor == 'OPERACIONAL' %}
+                                                            {% trans "Utilizado diretamente nas operações e no cálculo de disponibilidade." %}
+                                                        {% else %}
+                                                            {% trans "Destinado ao trabalho administrativo e separado da disponibilidade operacional." %}
+                                                        {% endif %}
+                                                    </small>
+                                                </span>
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </fieldset>
                             </div>
 
                             <div class="col-12">

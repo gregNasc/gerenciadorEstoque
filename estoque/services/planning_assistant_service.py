@@ -96,7 +96,7 @@ class PlanningAssistantService:
         total_people = sum(event.planned_headcount or 0 for event in events)
         total_pieces = sum(event.planned_pieces or 0 for event in events)
         operation_count = len({event.client_id for event in events if event.client_id})
-        rows = events[:12]
+        rows = events
         lines = [
             f"Encontrei {len(events)} inventário(s) planejado(s){cls._scope_label(interpretacao)}.",
             "",
@@ -114,7 +114,7 @@ class PlanningAssistantService:
                 "Há mais de uma operação nesse local. Se você informar o cliente, eu separo a operação correta sem presumir a base."
             )
         lines.extend([
-            "Quer que eu mostre o evento de maior volume, detalhe as atividades FILHO ou compare com a execução local?",
+            "Quer que eu mostre o evento de maior volume, detalhe a estrutura das atividades ou compare com a execução local?",
             cls._source_line(health),
         ])
         return cls._response(
@@ -122,7 +122,7 @@ class PlanningAssistantService:
             lines,
             actions=[
                 {"label": "Maior previsão", "pergunta": "Qual tem maior previsão de peças?"},
-                {"label": "PAI e FILHO", "pergunta": "Mostre os eventos PAI e FILHO"},
+                {"label": "Estrutura das atividades", "pergunta": "Mostre a estrutura das atividades vinculadas"},
                 {"label": "Planejado × realizado", "pergunta": "Compare planejado e realizado"},
             ],
         )
@@ -137,19 +137,19 @@ class PlanningAssistantService:
             f"- Data/hora operacional: {cls._datetime(event.planned_at)}",
             f"- Cliente/loja: {cls._client(event)} — {cls._store(event)}",
             f"- Regional: {cls._region(event)}",
-            f"- Tipo: {cls._type(event)} ({cls._kind(event)})",
+            f"- Tipo: {cls._type(event)}",
             f"- Pessoas previstas: {cls._value(event.planned_headcount)}",
             f"- Peças previstas: {cls._value(event.planned_pieces)}",
             f"- Status: {cls._status(event.status)}",
             "",
-            "Posso detalhar seus eventos FILHO ou comparar esse planejamento com a execução registrada.",
+            "Posso detalhar as atividades vinculadas ou comparar esse planejamento com a execução registrada.",
             cls._source_line(health),
         ]
         return cls._response(
             "planejamento",
             lines,
             actions=[
-                {"label": "Ver PAI/FILHO", "pergunta": "Quais são os eventos PAI e FILHO?"},
+                {"label": "Ver atividades", "pergunta": "Mostre a estrutura das atividades vinculadas"},
                 {"label": "Comparar execução", "pergunta": "E o planejado versus realizado?"},
                 {"label": "Equipe prevista", "pergunta": "Qual é a equipe prevista?"},
             ],
@@ -183,7 +183,7 @@ class PlanningAssistantService:
 
     @classmethod
     def _team_response(cls, interpretacao, events, health):
-        rows = events[:12]
+        rows = events
         lines = [
             "Estas são as quantidades de pessoas previstas no planejamento:",
             "",
@@ -212,30 +212,30 @@ class PlanningAssistantService:
 
     @classmethod
     def _hierarchy_response(cls, interpretacao, events, health):
-        rows = events[:20]
+        rows = events
         lines = [
-            "Eventos PAI e FILHO encontrados no período:",
+            "Estrutura das atividades encontradas no período:",
             "",
-            "NÍVEL | DATA/HORA | EVENTO | EVENTO PAI | CLIENTE/LOJA | TIPO | STATUS",
+            "VÍNCULO | DATA/HORA | EVENTO | EVENTO PRINCIPAL | CLIENTE/LOJA | TIPO | STATUS",
         ]
         for event in rows:
             parent_id = event.parent_external_id or "-"
             lines.append(
-                f"{cls._kind(event)} | {cls._datetime(event.planned_at)} | {event.external_id} | "
+                f"{cls._kind_label(event)} | {cls._datetime(event.planned_at)} | {event.external_id} | "
                 f"{parent_id} | {cls._client(event)}/{cls._store(event)} | "
                 f"{cls._type(event)} | {cls._status(event.status)}"
             )
         lines.extend([
             "",
-            "Eventos FILHO são atividades vinculadas; não presumo que tenham checklist ou execução própria sem vínculo local explícito.",
-            "Quer que eu filtre apenas os eventos PAI ou detalhe um evento específico?",
+            "Atividades vinculadas não recebem checklist ou execução própria sem vínculo local explícito.",
+            "Quer que eu filtre apenas os eventos principais ou detalhe um evento específico?",
             cls._source_line(health),
         ])
         return cls._response(
             "planejamento",
             lines,
             actions=[
-                {"label": "Somente PAI", "pergunta": "Mostre somente os eventos PAI"},
+                {"label": "Somente principais", "pergunta": "Mostre somente os eventos principais"},
                 {"label": "Maior previsão", "pergunta": "Qual tem maior previsão de peças?"},
             ],
         )
@@ -243,7 +243,7 @@ class PlanningAssistantService:
     @classmethod
     def _comparison_response(cls, user, interpretacao, events, health):
         rows = []
-        for event in events[:12]:
+        for event in events:
             inventory = PlanningService.local_execution_for_event(user, event)
             if inventory is None:
                 rows.append((event, None))
@@ -408,7 +408,7 @@ class PlanningAssistantService:
     def _event_row(cls, event):
         return (
             f"{cls._datetime(event.planned_at)} | {cls._client(event)} | {cls._store(event)} | "
-            f"{cls._region(event)} | {cls._type(event)} ({cls._kind(event)}) | "
+            f"{cls._region(event)} | {cls._type(event)} | "
             f"{cls._value(event.planned_headcount)} | {cls._value(event.planned_pieces)} | "
             f"{cls._status(event.status)}"
         )
@@ -436,6 +436,13 @@ class PlanningAssistantService:
     @staticmethod
     def _kind(event):
         return event.inventory_type.kind if event.inventory_type else "-"
+
+    @classmethod
+    def _kind_label(cls, event):
+        return {
+            "PAI": "Principal",
+            "FILHO": "Atividade vinculada",
+        }.get(cls._kind(event), "-")
 
     @classmethod
     def _status(cls, status):

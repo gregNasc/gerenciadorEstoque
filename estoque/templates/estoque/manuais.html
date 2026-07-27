@@ -1,0 +1,136 @@
+{% extends 'estoque/base.html' %}
+{% load static %}
+
+{% block title %}Manuais de equipamentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5 manual-library">
+  <section class="manual-hero card border-0 shadow-sm mb-4">
+    <div class="card-body p-4 p-lg-5 d-flex flex-wrap justify-content-between align-items-center gap-4">
+      <div>
+        <span class="manual-eyebrow"><i class="bi bi-journal-bookmark-fill me-2"></i>Biblioteca interna</span>
+        <h1 class="h3 fw-bold mb-2 mt-2">Manuais de equipamentos</h1>
+        <p class="text-secondary mb-0">Pesquise manuais, drivers e firmware por fabricante, modelo ou assunto. Documentos em português aparecem primeiro sempre que disponíveis.</p>
+      </div>
+      <!--
+      <a class="btn btn-outline-dark" href="{% url 'estoque:assistente_operacional' %}">
+        <i class="bi bi-chat-dots me-2"></i>Perguntar à Tory
+      </a>
+      -->
+    </div>
+  </section>
+
+  <form method="get" class="card border shadow-sm mb-4" role="search">
+    <div class="card-header manual-section-header bg-dark text-white border-0 px-4 py-3">
+      <h2 class="h6 fw-bold mb-0"><i class="bi bi-search me-2"></i>Pesquisar manuais e drivers</h2>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-6">
+          <label for="manual-query" class="form-label fw-semibold">Equipamento, modelo ou assunto</label>
+          <input id="manual-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Ex.: TL-WR829N, Skorpio X3, driver, Wi-Fi, bateria">
+        </div>
+        <div class="col-12 col-md-5 col-lg-2">
+          <label for="manual-category" class="form-label fw-semibold">Categoria</label>
+          <select id="manual-category" class="form-select" name="categoria">
+            <option value="">Todas</option>
+            {% for categoria in categorias %}<option value="{{ categoria }}" {% if filtros.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-5 col-lg-2">
+          <label for="manual-language" class="form-label fw-semibold">Idioma</label>
+          <select id="manual-language" class="form-select" name="idioma">
+            <option value="">Todos</option>
+            <option value="portugues" {% if filtros.idioma == 'portugues' %}selected{% endif %}>Português</option>
+            <option value="ingles" {% if filtros.idioma == 'ingles' %}selected{% endif %}>Inglês</option>
+            <option value="espanhol" {% if filtros.idioma == 'espanhol' %}selected{% endif %}>Espanhol</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2 col-lg-2 d-grid">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-2"></i>Pesquisar</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3 mb-4" aria-label="Resumo do catálogo">
+    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>Modelos no catálogo</span><strong>{{ estatisticas.total }}</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>Em português</span><strong>{{ estatisticas.pt_br }}</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>Arquivos locais</span><strong>{{ estatisticas.locais }}</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="manual-kpi manual-kpi-warning"><span>Revisão necessária</span><strong>{{ estatisticas.pendentes }}</strong></div></div>
+  </div>
+
+  {% if manuais %}
+  <div class="row g-4">
+    {% for manual in manuais %}
+      {% if not manual.pendente %}
+    <div class="col-12 col-xl-6">
+      <article class="card manual-card h-100 shadow-sm {% if manual.pendente %}manual-card-pending{% endif %}">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <span class="badge manual-category-badge mb-2">{{ manual.categoria }}</span>
+              <h2 class="h5 fw-bold mb-1">{{ manual.modelo }}</h2>
+              <p class="small text-secondary mb-0">{{ manual.fabricante }} · {{ manual.produto }}</p>
+            </div>
+            {% if manual.pendente %}
+              <span class="badge text-bg-warning"><i class="bi bi-exclamation-triangle me-1"></i>Revisar cadastro</span>
+            {% elif manual.arquivo_disponivel %}
+              <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Disponível localmente</span>
+            {% else %}
+              <span class="badge text-bg-info"><i class="bi bi-link-45deg me-1"></i>Fonte oficial</span>
+            {% endif %}
+          </div>
+          <h3 class="h6 fw-bold">{{ manual.titulo }}</h3>
+          <p class="text-secondary mb-3">{{ manual.resumo }}</p>
+          <dl class="manual-meta row small mb-4">
+            <dt class="col-4">Tipo</dt><dd class="col-8">{{ manual.tipo }}</dd>
+            <dt class="col-4">Idioma</dt><dd class="col-8">{{ manual.idioma }}</dd>
+          </dl>
+          <div class="d-flex flex-wrap gap-2 mt-auto">
+            {% if manual.arquivo_disponivel %}
+            <a href="{{ manual.arquivo_url }}" class="btn btn-primary" target="_blank" rel="noopener">
+              <i class="bi bi-file-earmark-pdf me-2"></i>Abrir manual
+            </a>
+            {% endif %}
+            {% if manual.driver_url %}
+            <a href="{{ manual.driver_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-download me-2"></i>{{ manual.driver_label|default:"Drivers oficiais" }}
+            </a>
+            {% endif %}
+            <a href="{{ manual.fonte_url }}" class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-box-arrow-up-right me-2"></i>{% if manual.pendente %}Abrir suporte oficial{% else %}Ver fonte oficial{% endif %}
+            </a>
+          </div>
+        </div>
+      </article>
+    </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card border shadow-sm"><div class="card-body p-5 text-center">
+    <i class="bi bi-search fs-1 text-secondary"></i>
+    <h2 class="h5 mt-3">Nenhum manual encontrado</h2>
+    <p class="text-secondary mb-3">Tente pesquisar somente pelo modelo ou remova um dos filtros.</p>
+    <a class="btn btn-outline-dark" href="{% url 'estoque:manuais' %}">Limpar filtros</a>
+  </div></div>
+  {% endif %}
+</div>
+
+<style>
+.manual-library { color: #212529; }
+.manual-hero { background: #fff; border-left: 5px solid #343a40 !important; }
+.manual-eyebrow { color: #495057; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.manual-section-header { background: #343a40 !important; color: #fff !important; }
+.manual-kpi { min-height: 108px; padding: 1.2rem; border: 1px solid #dee2e6; border-radius: .75rem; background: #fff; display: flex; flex-direction: column; justify-content: space-between; }
+.manual-kpi span { color: #6c757d; font-size: .82rem; font-weight: 700; }
+.manual-kpi strong { color: #343a40; font-size: 1.8rem; }
+.manual-kpi-warning { border-left: 4px solid #9a6b1f; background: #fffaf1; }
+.manual-card { border: 1px solid #d9dee3; border-top: 4px solid #343a40; }
+.manual-card-pending { border-top-color: #9a6b1f; background: #fffdf8; }
+.manual-category-badge { color: #343a40; background: #e9ecef; }
+.manual-meta dt { color: #6c757d; font-weight: 700; }
+.manual-meta dd { margin-bottom: .35rem; }
+</style>
+{% endblock %}

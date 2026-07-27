@@ -1,0 +1,73 @@
+Página 1
+
+1
+hAP ac lite
+The hAP ac lite is a Dual-concurrent Access Point, that provides Wifi coverage for 2.4 GHz 
+and 5 GHz frequencies at the same time.
+The device is very small and will look good in any home or office, wall mounting anchor holes 
+are provided.
+The hAP ac lite can be powered from the power jack or with passive PoE from a PoE injector. 
+The power adapter is included. Unit provides PoE output function for port 5 - it can power 
+other PoE capable devices with the same voltage as applied to the unit. Maximum load on 
+the port is 500 mA.
+The hAP ac lite is preconfigured, so all you need to do, is plug in the internet cable, the 
+power, and start using the internet by connecting to the MikroTik network. 
+• Dual chain wireless 2.4 GHz
+• Single chain wireless 5 GHz
+• 650 MHz CPU
+• 64 MB of RAM
+• Five x 10/100 Mbps Ethernet ports
+• Passive PoE output on port 5
+• USB port for 3G/4G modem
+hAP ac lite
+hAP ac lite
+24 V 1.2 A power 
+adapter
+
+Página 2
+
+2
+hAP ac lite
+hAP ac lite
+Product code RB952Ui-5ac2nD (International) 
+RB952Ui-5ac2nD-US (USA)
+CPU QCA9531 650 MHz
+Size of RAM 64 MB
+Storage type Flash
+Storage size 16 MB
+10/100 Ethernet ports 5
+Wireless bands 5 GHz radio 2.4 GHz radio
+Wireless regulations Specific frequency range may be limited by country regulations
+Operating frequency
+International 5150 - 5875 MHz International 2412 - 2484 MHz
+USA 5170 - 5250 MHz 
+5725 - 5835 MHz USA 2412 - 2462 MHz
+Protocols 802.11a/n/ac 802.11b/g/n
+Chains Single-chain Dual-chain
+Antenna gain 2 dBi 1.5 dBi
+Wireless chip model QCA9887 QCA9531
+Antenna beam width 360°
+PoE in Ye s
+PoE out Y es (Ether5), 0,5 A
+Supported input voltage PoE-in: 10 - 28 V, DC jack: 10 - 28 V
+Operating temperature  -30°C .. +70°C
+Extras USB 2.0 Type A full size port, 1 A
+Dimensions 113 x 89 x 28mm
+License level 4
+Operating System RouterOS
+Max Power consumption 7 W
+Specifications
+Wireless specifications
+RATE (2.4 GHz) Tx (dBm) Rx (dBm)
+1MBit/s 22 -96
+11MBit/s 22 -89
+6MBit/s 20 -93
+54MBit/s 18 -74
+MCS0 20 -93
+MCS7 16 -71
+RATE (5 GHz) Tx (dBm) Rx (dBm)
+6MBit/s 23 -93
+54MBit/s 20 -75
+MCS0 23 -93
+MCS7 19 -71
+MCS9 16 -63

@@ -11,7 +11,35 @@
       <div class="row g-3">
         <div class="col-md-6"><label class="form-label">{% trans "Número de série" %}</label><input name="numero_serie" value="{{ equipamento.numero_serie }}" required class="form-control"></div>
         <div class="col-md-6"><label class="form-label">{% trans "Patrimônio" %}</label><input name="patrimonio" value="{{ equipamento.patrimonio }}" required class="form-control"></div>
-        <div class="col-md-6"><label class="form-label">{% trans "Finalidade" %}</label><select name="finalidade" class="form-select">{% for valor, nome in finalidade_choices %}<option value="{{ valor }}" {% if equipamento.finalidade == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+        <fieldset class="col-12">
+          <legend class="form-label mb-2">{% trans "Finalidade do equipamento" %}</legend>
+          <div class="row g-2">
+            {% for valor, nome in finalidade_choices %}
+            <div class="col-md-6">
+              <label class="purpose-option d-flex align-items-start gap-3 h-100">
+                <input
+                  class="form-check-input mt-1"
+                  type="radio"
+                  name="finalidade"
+                  value="{{ valor }}"
+                  {% if equipamento.finalidade == valor %}checked{% endif %}
+                  required
+                >
+                <span>
+                  <strong class="d-block">{{ nome }}</strong>
+                  <small class="text-secondary">
+                    {% if valor == 'OPERACIONAL' %}
+                      {% trans "Utilizado diretamente nas operações e contabilizado na disponibilidade operacional." %}
+                    {% else %}
+                      {% trans "Destinado a atividades administrativas e separado dos equipamentos operacionais." %}
+                    {% endif %}
+                  </small>
+                </span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+        </fieldset>
         {% if is_admin %}
         <div class="col-md-6"><label class="form-label">{% trans "Produto" %}</label><select name="produto" class="form-select">{% for produto in produtos %}<option value="{{ produto.id }}" {% if equipamento.produto_id == produto.id %}selected{% endif %}>{{ produto.descricao }}</option>{% endfor %}</select></div>
         <div class="col-md-6"><label class="form-label">{% trans "Base" %}</label><select name="regional" class="form-select">{% for base in bases %}<option value="{{ base.id }}" {% if equipamento.regional_id == base.id %}selected{% endif %}>{{ base.nome }} — {{ base.empresa.nome }}</option>{% endfor %}</select></div>

@@ -3,7 +3,7 @@
     --tory-muted: #68727d;
     --tory-soft: #f5f7f9;
     --tory-ink: #20252a;
-    --tory-primary: #0d6efd;
+    --tory-primary: #1e3c72;
 }
 
 .tory-widget {
@@ -25,7 +25,7 @@
     justify-content: center;
     border: 1px solid #adb5bd;
     border-radius: 50%;
-    background: linear-gradient(180deg, #fff, #dfe3e8);
+    background: #fff;
     box-shadow: 0 .45rem 1rem rgba(0, 0, 0, .18);
     color: #495057;
     cursor: pointer;
@@ -42,7 +42,7 @@
 .tory-toggle:focus-visible,
 .tory-minimized-open:focus-visible,
 .tory-tab:focus-visible {
-    outline: 3px solid rgba(13, 110, 253, .3);
+    outline: 3px solid rgba(30, 60, 114, .22);
     outline-offset: 2px;
 }
 
@@ -50,30 +50,20 @@
     display: block;
     width: 100%;
     height: 100%;
-    background-position: center;
+    border-radius: 50%;
+    background-color: #fff;
+    background-position: 70% 60%;
     background-repeat: no-repeat;
-    background-size: contain;
+    background-size: 175%;
     transition: filter .2s ease, transform .2s ease;
 }
 
-.tory-character-neutral {
-    background-image: url("../images/tory/tory-neutral.png");
-}
-
-.tory-character-thinking {
-    background-image: url("../images/tory/tory-thinking.png");
-}
-
-.tory-character-responding {
-    background-image: url("../images/tory/tory-responding.png");
-}
-
-.tory-character-attention {
-    background-image: url("../images/tory/tory-attention.png");
-}
-
+.tory-character-neutral,
+.tory-character-thinking,
+.tory-character-responding,
+.tory-character-attention,
 .tory-character-success {
-    background-image: url("../images/tory/tory-success.png");
+    background-image: url("../images/tory/tory-avatar.png");
 }
 
 .tory-toggle .tory-character {
@@ -86,8 +76,8 @@
 }
 
 @keyframes tory-thinking-pulse {
-    0%, 100% { filter: drop-shadow(0 0 0 rgba(13, 110, 253, 0)); }
-    50% { filter: drop-shadow(0 0 .32rem rgba(13, 110, 253, .34)); }
+    0%, 100% { opacity: .72; }
+    50% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -125,7 +115,7 @@
     width: .55rem;
     height: .55rem;
     border-radius: 50%;
-    background: #198754;
+    background: #2f6f44;
     box-shadow: 0 0 0 3px rgba(25, 135, 84, .13);
 }
 
@@ -175,7 +165,7 @@
     justify-content: center;
     border: 1px solid #cfd4da;
     border-radius: .7rem;
-    background: linear-gradient(180deg, #f8f9fa, #e4e7ea);
+    background: #f8f9fa;
     color: #4f5963;
 }
 
@@ -671,16 +661,26 @@
 
 .tory-pagination {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     align-items: center;
     gap: .4rem;
     margin-top: .8rem;
 }
 
-.tory-pagination span {
+.tory-pagination .tory-page-summary {
     margin: 0 .35rem;
     color: var(--tory-muted);
     font-size: .8rem;
+}
+
+.tory-pagination [data-tory-page] {
+    min-width: 2.25rem;
+}
+
+.tory-pagination .tory-page-ellipsis {
+    padding: 0 .15rem;
+    color: var(--tory-muted);
 }
 
 .tory-record-list {

@@ -40,7 +40,10 @@ def construir_resposta(resultado):
     mensagem = str(resultado.get("mensagem") or resultado.get("resposta") or "").strip()
     componentes = _componentes_fornecidos(resultado.get("componentes"))
     if not componentes:
-        componentes = _componentes_do_texto(mensagem)
+        componentes = _componentes_do_texto(
+            mensagem,
+            categoria=str(resultado.get("categoria") or ""),
+        )
     _adicionar_drill_down(componentes, resultado.get("acoes"))
 
     tipo = resultado.get("tipo")
@@ -51,6 +54,15 @@ def construir_resposta(resultado):
     metadados.setdefault("total", _total_resultados(componentes))
     metadados.setdefault("pagina", 1)
     metadados.setdefault("total_paginas", 1)
+    tabela_principal = next(
+        (item for item in componentes if item.get("tipo") == RESPOSTA_TABELA),
+        {},
+    )
+    metadados.setdefault("rotulo_total", tabela_principal.get("rotulo_total", "registros"))
+    metadados.setdefault(
+        "rotulo_total_singular",
+        tabela_principal.get("rotulo_total_singular", "registro"),
+    )
 
     envelope = resultado
     envelope.update({
@@ -99,7 +111,7 @@ def _componentes_fornecidos(componentes):
     return validos
 
 
-def _componentes_do_texto(texto):
+def _componentes_do_texto(texto, categoria=""):
     if not texto:
         return []
 
@@ -130,9 +142,10 @@ def _componentes_do_texto(texto):
                 if len(valores) == len(colunas):
                     registros.append(dict(zip(colunas, valores)))
                 indice += 1
+            apresentacao = _apresentacao_tabela(colunas, categoria=categoria)
             componentes.append({
                 "tipo": RESPOSTA_TABELA,
-                "titulo": "Resultados",
+                **apresentacao,
                 "colunas": [{"chave": coluna, "label": coluna} for coluna in colunas],
                 "registros": registros,
             })
@@ -172,6 +185,73 @@ def _eh_cabecalho_tabela(linha):
 
 def _celulas(linha):
     return [celula.strip() for celula in linha.strip().strip("|").split("|")]
+
+
+def _apresentacao_tabela(colunas, categoria=""):
+    nomes = {_normalizar_coluna(coluna) for coluna in colunas}
+
+    if {"SITUACAO", "DIFERENCA"}.issubset(nomes):
+        return {
+            "titulo": "Resultado da capacidade de coletores",
+            "rotulo_total": "avaliações",
+            "rotulo_total_singular": "avaliação",
+            "mensagem_vazia": "A capacidade de coletores não pôde ser avaliada.",
+        }
+    if {"CATEGORIA", "PRODUTO", "ATIVOS", "TOTAL"}.issubset(nomes):
+        return {
+            "titulo": "Equipamentos contabilizados por produto",
+            "rotulo_total": "produtos",
+            "rotulo_total_singular": "produto",
+            "mensagem_vazia": "Nenhum equipamento cadastrado foi encontrado para esta base.",
+        }
+    if "INVENTARIO" in nomes and {"TIPOS", "PESSOAS", "STATUS"}.issubset(nomes):
+        if categoria == "capacidade" and "BASE" not in nomes:
+            return {
+                "titulo": "Inventários considerados na análise",
+                "rotulo_total": "inventários analisados",
+                "rotulo_total_singular": "inventário analisado",
+                "mensagem_vazia": "Nenhum inventário foi considerado nesta análise.",
+            }
+        return {
+            "titulo": "Inventários encontrados",
+            "rotulo_total": "inventários exibidos",
+            "rotulo_total_singular": "inventário exibido",
+            "mensagem_vazia": "Nenhum inventário foi encontrado para os filtros informados.",
+        }
+    if "INVENTARIOS" in nomes and "PESSOAS PREVISTAS" in nomes:
+        return {
+            "titulo": "Resumo da demanda e da capacidade",
+            "rotulo_total": "resumos",
+            "rotulo_total_singular": "resumo",
+            "mensagem_vazia": "Não há demanda de inventários para resumir.",
+        }
+    if "BASE" in nomes and "INVENTARIOS" in nomes:
+        return {
+            "titulo": "Capacidade analisada por base" if categoria == "capacidade" else "Inventários por base",
+            "rotulo_total": "bases analisadas",
+            "rotulo_total_singular": "base analisada",
+            "mensagem_vazia": "Nenhuma base apresentou dados para os filtros informados.",
+        }
+    if "PATRIMONIO" in nomes or {"CODIGO", "SERIE"} & nomes:
+        return {
+            "titulo": "Equipamentos encontrados",
+            "rotulo_total": "equipamentos exibidos",
+            "rotulo_total_singular": "equipamento exibido",
+            "mensagem_vazia": "Nenhum equipamento foi encontrado para os filtros informados.",
+        }
+    if {"CLIENTE", "LOJA"}.issubset(nomes):
+        return {
+            "titulo": "Inventários encontrados",
+            "rotulo_total": "inventários exibidos",
+            "rotulo_total_singular": "inventário exibido",
+            "mensagem_vazia": "Nenhum inventário foi encontrado para os filtros informados.",
+        }
+    return {
+        "titulo": "Detalhes da consulta",
+        "rotulo_total": "itens exibidos",
+        "rotulo_total_singular": "item exibido",
+        "mensagem_vazia": "Nenhum item foi encontrado para os filtros informados.",
+    }
 
 
 def _tipo_principal(componentes):

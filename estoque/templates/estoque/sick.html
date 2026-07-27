@@ -1,70 +1,355 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
+
 {% block title %}{% trans "Fluxo SICK" %}{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-    <div>
-      <h1 class="h3 mb-1">{% trans "Equipamentos em SICK" %}</h1>
-      <p class="text-secondary mb-0">{% trans "Gestão de equipamentos com problemas" %}</p>
-    </div>
-    <span class="badge text-bg-danger fs-6">{{ total_sick }} {% trans "em aberto" %}</span>
-  </div>
 
-  {% if usuario_manutencao %}
-    <!--
-  <div class="alert alert-primary border-0 shadow-sm d-flex gap-2 align-items-start" role="status">
-    <i class="bi bi-tools fs-5"></i>
-    <div><strong>{% trans "Fila da manutenção" %}</strong><br><span class="small">{% trans "Aguardando recebimento pela manutenção" %}</span></div>
-  </div>-->
-  {% else %}
-  <div class="alert alert-info border-0 shadow-sm d-flex gap-2 align-items-start" role="status">
-    <i class="bi bi-building-check fs-5"></i>
-    <div><strong>{% trans "SICKs das suas bases" %}</strong><br><span class="small">{% trans "" %}</span></div>
-  </div>
-  {% endif %}
-  <!--
-  <div class="row g-2 g-md-3 mb-4 sick-kpis">
-    <div class="col-6 col-lg-3"><a href="?etapa=IDENTIFICADO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}" class="card h-100 border-0 shadow-sm text-decoration-none text-body"><div class="card-body"><small class="text-secondary">{% trans "Aguardando envio da base" %}</small><div class="h4 mb-0">{{ total_identificados }}</div></div></a></div>
-    <div class="col-6 col-lg-3"><a href="?etapa=EM_MANUTENCAO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}" class="card h-100 border-0 shadow-sm text-decoration-none text-body"><div class="card-body"><small class="text-secondary">{% trans "Em manutenção" %}</small><div class="h4 mb-0">{{ total_manutencao }}</div></div></a></div>
-    <div class="col-6 col-lg-3"><a href="?etapa=FINALIZADO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}" class="card h-100 border-0 shadow-sm text-decoration-none text-body"><div class="card-body"><small class="text-secondary">{% trans "Finalizados" %}</small><div class="h4 mb-0">{{ total_resolvidos }}</div></div></a></div>
-    <div class="col-6 col-lg-3"><a href="?etapa=INATIVOS{% if filtros_abas %}&{{ filtros_abas }}{% endif %}" class="card h-100 border-0 shadow-sm text-decoration-none text-body"><div class="card-body"><small class="text-secondary">{% trans "Inativos / sucata" %}</small><div class="h4 mb-0">{{ total_inativos }}</div></div></a></div>
-  </div>
-  -->
-  <nav class="sick-stage-tabs mb-4" aria-label="{% trans 'Etapas do SICK' %}">
-    <a class="stage-tab {% if etapa_filter == 'IDENTIFICADO' %}active{% endif %}" href="?etapa=IDENTIFICADO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "1. Aguardando envio" %}</span><strong>{{ total_identificados }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'EM_TRANSITO' %}active{% endif %}" href="?etapa=EM_TRANSITO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "2. Aguardando recebimento" %}</span><strong>{{ total_em_transito }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'RECEBIDO' %}active{% endif %}" href="?etapa=RECEBIDO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "Recebidos" %}</span><strong>{{ total_recebidos }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'EM_AVALIACAO' %}active{% endif %}" href="?etapa=EM_AVALIACAO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "Avaliação" %}</span><strong>{{ total_em_avaliacao }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'EM_MANUTENCAO' %}active{% endif %}" href="?etapa=EM_MANUTENCAO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "Manutenção" %}</span><strong>{{ total_manutencao }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'AGUARDANDO_RETORNO' %}active{% endif %}" href="?etapa=AGUARDANDO_RETORNO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "Retorno" %}</span><strong>{{ total_aguardando_retorno }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'FINALIZADO' %}active{% endif %}" href="?etapa=FINALIZADO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "Finalizados" %}</span><strong>{{ total_resolvidos }}</strong></a>
-    <a class="stage-tab {% if etapa_filter == 'INATIVOS' %}active{% endif %}" href="?etapa=INATIVOS{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"><span>{% trans "Inativos" %}</span><strong>{{ total_inativos }}</strong></a>
-  </nav>
+<div class="container-fluid px-4">
+    <div class="card border-0 shadow-sm">
 
-  <form method="get" class="card border-0 shadow-sm mb-4 sick-filter-form" aria-label="{% trans 'Filtros de equipamentos SICK' %}">
-    <div class="card-body">
-      <div class="d-flex align-items-center gap-2 mb-3"><i class="bi bi-funnel text-primary"></i><strong class="small">{% trans "Filtros" %}</strong></div>
-      <div class="row g-3 align-items-end">
-        <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Regional" %}</label><select name="regional" class="form-select"><option value="">{% trans "Todas" %}</option>{% for base in regionais %}<option value="{{ base.id }}" {% if regional_filter == base.id|stringformat:'s' %}selected{% endif %}>{{ base.nome }} — {{ base.empresa.nome }}</option>{% endfor %}</select></div>
-        <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Categoria" %}</label><select name="categoria" class="form-select"><option value="">{% trans "Todas" %}</option>{% for categoria in categorias %}<option value="{{ categoria }}" {% if categoria_filter == categoria %}selected{% endif %}>{{ categoria }}</option>{% endfor %}</select></div>
-        <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Equipamento" %}</label><select name="produto" class="form-select"><option value="">{% trans "Todos" %}</option>{% for produto in produtos_lista %}<option value="{{ produto.id }}" {% if produto_filter == produto.id|stringformat:'s' %}selected{% endif %}>{{ produto.descricao }}</option>{% endfor %}</select></div>
-        <div class="col-xl-2 col-md-4"><label class="form-label">{% trans "Situação" %}</label><select name="situacao" class="form-select"><option value="todos" {% if situacao_filter == 'todos' %}selected{% endif %}>{% trans "Todos" %}</option><option value="abertos" {% if situacao_filter == 'abertos' %}selected{% endif %}>{% trans "Em aberto" %}</option><option value="pendentes" {% if situacao_filter == 'pendentes' %}selected{% endif %}>{% trans "Pendentes" %}</option><option value="manutencao" {% if situacao_filter == 'manutencao' %}selected{% endif %}>{% trans "Em manutenção" %}</option><option value="resolvidos" {% if situacao_filter == 'resolvidos' %}selected{% endif %}>{% trans "Resolvidos" %}</option><option value="inativos" {% if situacao_filter == 'inativos' %}selected{% endif %}>{% trans "Inativos" %}</option></select></div>
-        <div class="col-xl-4 col-md-8"><label class="form-label">{% trans "Busca rápida" %}</label><input type="search" name="q" value="{{ busca }}" class="form-control" placeholder="{% trans 'Filtrar por equipamento, série, patrimônio ou regional...' %}"></div>
-        <div class="col-12 d-flex flex-column flex-sm-row justify-content-end gap-2"><button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>{% trans "Filtrar" %}</button><a href="{% url 'estoque:sick' %}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>{% trans "Limpar" %}</a></div>
-      </div>
-    </div>
-  </form>
+        <!-- HEADER -->
+        <div class="card-header bg-white border-0 pt-4 pb-0">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h4 fw-semibold mb-0">
+                        {% trans "🛠️ Equipamentos em SICK" %}
+                    </h2>
 
-  <div class="alert alert-primary border-0 shadow-sm d-flex gap-2 align-items-start" role="status">
-    <i class="bi bi-tools fs-5"></i>
-    <div><strong>{% trans "Fila da manutenção" %}</strong><br><span class="small">{% trans "Aguardando recebimento pela manutenção" %}</span></div>
-  </div>
+                    <p class="text-secondary small mt-1 mb-0">
+                        {% trans "Gestão de equipamentos com problemas, manutenção e retorno às bases" %}
+                    </p>
+                </div>
+
+                <span class="badge bg-danger px-3 py-2">
+                    {{ total_sick }} {% trans "em aberto" %}
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body">
+
+            <!-- CONTEXTO DO USUÁRIO -->
+            {% if usuario_manutencao %}
+                <div class="alert alert-light border mb-4" role="status">
+                    <div class="d-flex gap-2 align-items-start">
+                        <i class="bi bi-tools text-secondary fs-5" aria-hidden="true"></i>
+
+                        <div>
+                            <strong>{% trans "Fila da manutenção" %}</strong>
+                            <div class="small text-secondary mt-1">
+                                {% trans "Equipamentos destinados ao fluxo de recebimento, avaliação e manutenção." %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-light border mb-4" role="status">
+                    <div class="d-flex gap-2 align-items-start">
+                        <i class="bi bi-building-check text-secondary fs-5" aria-hidden="true"></i>
+
+                        <div>
+                            <strong>{% trans "SICKs das suas bases" %}</strong>
+                            <div class="small text-secondary mt-1">
+                                {% trans "Acompanhe os equipamentos vinculados às bases permitidas para o seu usuário." %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- ETAPAS DO FLUXO -->
+            <div class="mb-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+                    <div>
+                        <h6 class="fw-semibold mb-1">
+                            {% trans "Etapas do fluxo" %}
+                        </h6>
+
+                        <small class="text-secondary">
+                            {% trans "Selecione uma etapa para visualizar os equipamentos correspondentes." %}
+                        </small>
+                    </div>
+                </div>
+
+                <nav
+                    class="sick-stage-tabs"
+                    aria-label="{% trans 'Etapas do SICK' %}"
+                >
+                    <a
+                        class="stage-tab {% if etapa_filter == 'IDENTIFICADO' %}active{% endif %}"
+                        href="?etapa=IDENTIFICADO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "1. Aguardando envio" %}</span>
+                        <strong>{{ total_identificados }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'EM_TRANSITO' %}active{% endif %}"
+                        href="?etapa=EM_TRANSITO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "2. Aguardando recebimento" %}</span>
+                        <strong>{{ total_em_transito }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'RECEBIDO' %}active{% endif %}"
+                        href="?etapa=RECEBIDO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "Recebidos" %}</span>
+                        <strong>{{ total_recebidos }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'EM_AVALIACAO' %}active{% endif %}"
+                        href="?etapa=EM_AVALIACAO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "Avaliação" %}</span>
+                        <strong>{{ total_em_avaliacao }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'EM_MANUTENCAO' %}active{% endif %}"
+                        href="?etapa=EM_MANUTENCAO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "Manutenção" %}</span>
+                        <strong>{{ total_manutencao }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'AGUARDANDO_RETORNO' %}active{% endif %}"
+                        href="?etapa=AGUARDANDO_RETORNO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "Retorno" %}</span>
+                        <strong>{{ total_aguardando_retorno }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'FINALIZADO' %}active{% endif %}"
+                        href="?etapa=FINALIZADO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "Finalizados" %}</span>
+                        <strong>{{ total_resolvidos }}</strong>
+                    </a>
+
+                    <a
+                        class="stage-tab {% if etapa_filter == 'INATIVOS' %}active{% endif %}"
+                        href="?etapa=INATIVOS{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
+                    >
+                        <span>{% trans "Inativos" %}</span>
+                        <strong>{{ total_inativos }}</strong>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="bg-light p-3 rounded mb-4 border">
+                <form
+                    method="get"
+                    class="sick-filter-form"
+                    aria-label="{% trans 'Filtros de equipamentos SICK' %}"
+                >
+                    <input type="hidden" name="etapa" value="{{ etapa_filter }}">
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-xl-2 col-md-4">
+                            <label
+                                for="filtroRegional"
+                                class="form-label small text-secondary fw-semibold mb-1"
+                            >
+                                {% trans "Regional" %}
+                            </label>
+
+                            <select
+                                name="regional"
+                                id="filtroRegional"
+                                class="form-select form-select-sm bg-white"
+                            >
+                                <option value="">{% trans "Todas" %}</option>
+
+                                {% for base in regionais %}
+                                    <option
+                                        value="{{ base.id }}"
+                                        {% if regional_filter == base.id|stringformat:'s' %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ base.nome }} — {{ base.empresa.nome }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-xl-2 col-md-4">
+                            <label
+                                for="filtroCategoria"
+                                class="form-label small text-secondary fw-semibold mb-1"
+                            >
+                                {% trans "Categoria" %}
+                            </label>
+
+                            <select
+                                name="categoria"
+                                id="filtroCategoria"
+                                class="form-select form-select-sm bg-white"
+                            >
+                                <option value="">{% trans "Todas" %}</option>
+
+                                {% for categoria in categorias %}
+                                    <option
+                                        value="{{ categoria }}"
+                                        {% if categoria_filter == categoria %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ categoria }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-xl-2 col-md-4">
+                            <label
+                                for="filtroProduto"
+                                class="form-label small text-secondary fw-semibold mb-1"
+                            >
+                                {% trans "Equipamento" %}
+                            </label>
+
+                            <select
+                                name="produto"
+                                id="filtroProduto"
+                                class="form-select form-select-sm bg-white"
+                            >
+                                <option value="">{% trans "Todos" %}</option>
+
+                                {% for produto in produtos_lista %}
+                                    <option
+                                        value="{{ produto.id }}"
+                                        {% if produto_filter == produto.id|stringformat:'s' %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ produto.descricao }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-xl-2 col-md-4">
+                            <label
+                                for="filtroSituacao"
+                                class="form-label small text-secondary fw-semibold mb-1"
+                            >
+                                {% trans "Situação" %}
+                            </label>
+
+                            <select
+                                name="situacao"
+                                id="filtroSituacao"
+                                class="form-select form-select-sm bg-white"
+                            >
+                                <option
+                                    value="todos"
+                                    {% if situacao_filter == 'todos' %}selected{% endif %}
+                                >
+                                    {% trans "Todos" %}
+                                </option>
+
+                                <option
+                                    value="abertos"
+                                    {% if situacao_filter == 'abertos' %}selected{% endif %}
+                                >
+                                    {% trans "Em aberto" %}
+                                </option>
+
+                                <option
+                                    value="pendentes"
+                                    {% if situacao_filter == 'pendentes' %}selected{% endif %}
+                                >
+                                    {% trans "Pendentes" %}
+                                </option>
+
+                                <option
+                                    value="manutencao"
+                                    {% if situacao_filter == 'manutencao' %}selected{% endif %}
+                                >
+                                    {% trans "Em manutenção" %}
+                                </option>
+
+                                <option
+                                    value="resolvidos"
+                                    {% if situacao_filter == 'resolvidos' %}selected{% endif %}
+                                >
+                                    {% trans "Resolvidos" %}
+                                </option>
+
+                                <option
+                                    value="inativos"
+                                    {% if situacao_filter == 'inativos' %}selected{% endif %}
+                                >
+                                    {% trans "Inativos" %}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-xl-4 col-md-8">
+                            <label
+                                for="filtroBusca"
+                                class="form-label small text-secondary fw-semibold mb-1"
+                            >
+                                {% trans "Busca rápida" %}
+                            </label>
+
+                            <input
+                                type="search"
+                                name="q"
+                                id="filtroBusca"
+                                value="{{ busca }}"
+                                class="form-control form-control-sm bg-white"
+                                placeholder="{% trans 'Equipamento, série, patrimônio ou regional...' %}"
+                            >
+                        </div>
+
+                        <div class="col-12 d-flex flex-wrap justify-content-end gap-2">
+                            <button
+                                class="btn btn-secondary btn-sm px-4"
+                                type="submit"
+                            >
+                                {% trans "Aplicar" %}
+                            </button>
+
+                            <a
+                                href="{% url 'estoque:sick' %}"
+                                class="btn btn-outline-secondary btn-sm px-4"
+                            >
+                                {% trans "Limpar" %}
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- IDENTIFICAÇÃO DA LISTA -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                    <h6 class="fw-semibold mb-1">
+                        {% trans "Equipamentos encontrados" %}
+                    </h6>
+
+                    <small class="text-secondary">
+                        {% trans "Visualize o histórico e execute as ações disponíveis para cada etapa." %}
+                    </small>
+                </div>
+
+                <span class="badge bg-secondary px-3 py-2">
+                    {{ sicks|length }} {% trans "registro(s)" %}
+                </span>
+            </div>
 
   {% for sick in sicks %}
-  <article class="card border-0 shadow-sm mb-4" id="sick-{{ sick.id }}">
-    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between gap-2">
+  <article class="card sick-record-card border shadow-sm mb-4" id="sick-{{ sick.id }}">
+    <div class="card-header sick-record-header bg-gray border-0 px-4 py-3 d-flex flex-wrap justify-content-between align-items-start gap-3">
       <div>
         <strong>{{ sick.equipamento.produto.descricao|default:sick.equipamento.codigo }}</strong>
         <div class="small text-secondary">{{ sick.equipamento.produto.fabricante }} {{ sick.equipamento.produto.modelo }}</div>
@@ -75,8 +360,8 @@
         <span class="badge text-bg-warning">{{ sick.get_etapa_display }}</span>
       </div>
     </div>
-    <div class="card-body">
-      <div class="row g-3 small mb-4">
+    <div class="card-body px-4 pb-4">
+      <div class="row g-3 small mb-4 sick-info-grid">
         <div class="col-6 col-md-3"><strong>{% trans "Empresa" %}</strong><br>{{ sick.equipamento.regional.empresa.nome }}</div>
         <div class="col-6 col-md-3"><strong>{% trans "Base" %}</strong><br>{{ sick.equipamento.regional.nome }}</div>
         <div class="col-6 col-md-3"><strong>{% trans "Série" %}</strong><br>{{ sick.equipamento.numero_serie|default:"—" }}</div>
@@ -125,7 +410,7 @@
         </div>
       </details>
 
-      <div class="d-flex flex-wrap gap-2">
+      <div class="d-flex flex-wrap gap-2 sick-actions">
         {% if sick.etapa != 'FINALIZADO' and sick.pode_acao_base %}
         <details class="action-box"><summary class="btn btn-outline-secondary">{% trans "Editar informações" %}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="atualizar_informacoes"><input type="hidden" name="sick_id" value="{{ sick.id }}"><input name="categoria" value="{{ sick.categoria }}" required class="form-control mb-2" placeholder="{% trans 'Categoria' %}"><textarea name="motivo" required class="form-control mb-2" placeholder="{% trans 'Motivo' %}">{{ sick.motivo }}</textarea><textarea name="observacao" required class="form-control mb-2" placeholder="{% trans 'Observação' %}">{{ sick.descricao }}</textarea><button class="btn btn-secondary">{% trans "Salvar informações" %}</button></form></details>
         {% endif %}
@@ -133,7 +418,7 @@
         <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-building me-1"></i>{% trans "Etapa 1 — responsabilidade da base onde o equipamento está parado" %}</div>
         <details class="action-box"><summary class="btn btn-primary">{% trans "Enviar para manutenção — etapa 2" %}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="enviar_para_manutencao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><label class="form-label">{% trans "Destino" %} *</label><input name="destino_manutencao" required class="form-control mb-2"><label class="form-label">{% trans "Transportadora ou portador" %}</label><input name="transportadora_ou_portador" class="form-control mb-2"><label class="form-label">{% trans "Protocolo/rastreio" %}</label><input name="protocolo_envio" class="form-control mb-2"><textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observação' %}"></textarea><button class="btn btn-primary">{% trans "Confirmar envio para manutenção" %}</button></form></details>
         {% elif sick.etapa == 'IDENTIFICADO' %}
-        <div class="alert alert-light border w-100 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>{% trans "Aguardando a base responsável registrar o envio para a manutenção." %}</div>
+        <div class="alert alert-dark border w-100 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>{% trans "Aguardando a base responsável registrar o envio para a manutenção." %}</div>
         {% elif sick.etapa == 'EM_TRANSITO' and sick.pode_confirmar_recebimento %}
         <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-person-check me-1"></i>{% trans "Etapa 2 — confirmação exclusiva Manutenção" %}</div>
         <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="confirmar_recebimento"><input type="hidden" name="sick_id" value="{{ sick.id }}"><button class="btn btn-primary">{% trans "Confirmar recebimento" %}</button></form>
@@ -154,13 +439,513 @@
       </div>
     </div>
   </article>
-  {% empty %}<div class="alert alert-info">{% if etapa_filter == 'IDENTIFICADO' %}{% trans "Nenhum equipamento em SICK." %}{% else %}{% trans "Nenhum registro SICK encontrado para os filtros informados." %}{% endif %}</div>{% endfor %}
+  {% empty %}<div class="alert alert-light border text-center py-4">{% if etapa_filter == 'IDENTIFICADO' %}{% trans "Nenhum equipamento em SICK." %}{% else %}{% trans "Nenhum registro SICK encontrado para os filtros informados." %}{% endif %}</div>{% endfor %}
+</div>
+
+        </div>
+    </div>
 </div>
 
 <style>
-.sick-filter-form .form-label{color:#52606d;font-size:.78rem;font-weight:700;margin-bottom:.35rem}.history-occurrence{background:#fff;border:1px solid #e2e8ee;border-radius:.7rem;margin-top:.7rem;overflow:hidden}.history-occurrence .history-row{margin:0;border:0;border-radius:0;border-bottom:1px solid #e9ecef}.history-stage-shell{background:#fff}.history-stage-tabs{display:flex;gap:.4rem;padding:.6rem;overflow-x:auto;background:#f8fafb;border-bottom:1px solid #e2e8ee}.history-stage-tabs .nav-link{display:inline-flex;align-items:center;gap:.4rem;min-height:42px;padding:.55rem .7rem;color:#5d6975;background:#fff;border:1px solid #dfe5ea;border-radius:.55rem;white-space:nowrap;font-size:.78rem;font-weight:650}.history-stage-tabs .nav-link>span{display:inline-flex;width:1.35rem;height:1.35rem;align-items:center;justify-content:center;border-radius:50%;background:#edf0f3;font-size:.7rem}.history-stage-tabs .nav-link.completed{color:#176b55;border-color:#b8dacd}.history-stage-tabs .nav-link.completed>span{color:#fff;background:#198754}.history-stage-tabs .nav-link.active{color:#fff;background:#0d6efd;border-color:#0d6efd}.history-stage-tabs .nav-link.active>span{color:#0d6efd;background:#fff}.history-stage-content{padding:.85rem}.stage-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}.stage-detail-grid>div{display:flex;flex-direction:column;min-width:0;padding:.7rem;border-radius:.5rem;background:#f8fafb;border:1px solid #edf0f2}.stage-detail-grid small{color:#6c757d;font-size:.7rem;text-transform:uppercase;letter-spacing:.025em;margin-bottom:.2rem}.stage-detail-grid strong,.stage-detail-grid span{overflow-wrap:anywhere}.stage-detail-grid .detail-wide{grid-column:1/-1}.stage-empty{display:flex;align-items:center;justify-content:center;gap:.5rem;min-height:90px;color:#6c757d;text-align:center}.stage-empty i{font-size:1.15rem}.history-content>.history-occurrence:first-child{margin-top:.55rem}
-.sick-stage-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}.stage-tab{min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.7rem .85rem;border:1px solid #dee2e6;border-radius:.65rem;background:#fff;color:#495057;text-decoration:none}.stage-tab:hover,.stage-tab:focus{border-color:#86b7fe;color:#0d6efd}.stage-tab.active{background:#0d6efd;border-color:#0d6efd;color:#fff}.stage-tab strong{display:inline-flex;min-width:1.7rem;height:1.7rem;align-items:center;justify-content:center;border-radius:99px;background:rgba(108,117,125,.14)}.stage-tab.active strong{background:rgba(255,255,255,.22)}.sick-timeline{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:.75rem;overflow-x:auto}.timeline-item{min-width:120px;color:#6c757d;border-top:3px solid #dee2e6;padding-top:.75rem}.timeline-item.done{color:#212529;border-color:#198754}.timeline-dot{display:inline-flex;width:1.5rem;height:1.5rem;border-radius:50%;align-items:center;justify-content:center;background:#e9ecef;margin-bottom:.4rem}.done .timeline-dot{background:#198754;color:#fff}.equipment-history{border:1px solid #dee2e6;border-radius:.7rem;background:#f8f9fa}.history-summary{list-style:none;min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem 1rem;cursor:pointer;font-weight:600}.history-summary::-webkit-details-marker{display:none}.history-content{padding:0 .75rem .75rem}.history-row{position:relative;display:grid;grid-template-columns:1fr 2fr 1.25fr 1.25fr;gap:.8rem;padding:.8rem;background:#fff;border:1px solid #e9ecef;border-radius:.55rem;margin-top:.55rem}.history-row.current{border-color:#86b7fe;background:#f5f9ff}.history-row div{min-width:0;display:flex;flex-direction:column}.history-row small{color:#6c757d}.history-row strong,.history-row span{overflow-wrap:anywhere}.current-label{position:absolute;right:.45rem;top:.35rem;font-size:.68rem;color:#0d6efd;text-transform:uppercase;font-weight:700}.action-box{width:min(100%,520px)}.action-box summary{list-style:none;min-height:44px;display:inline-flex;align-items:center}.action-box summary::-webkit-details-marker{display:none}
-@media(max-width:767.98px){.container-fluid.py-4{padding:.8rem!important}.sick-kpis .card-body{padding:.85rem}.sick-stage-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.stage-tab{min-height:50px;padding:.55rem .65rem;font-size:.86rem}.card-header{align-items:flex-start}.card-header .badge{white-space:normal;text-align:left}.card-body{padding:1rem}.sick-timeline{display:block;overflow:visible;margin-left:.75rem}.timeline-item{min-width:0;border-top:0;border-left:3px solid #dee2e6;padding:0 0 1rem 1rem;position:relative}.timeline-item.done{border-left-color:#198754}.timeline-dot{position:absolute;left:-.82rem;top:-.15rem}.timeline-item>div{padding-left:.25rem}.history-summary{align-items:flex-start;flex-direction:column;padding:.8rem}.history-summary>span:last-child{justify-content:flex-start!important}.history-content{padding:0 .55rem .55rem}.history-row{grid-template-columns:1fr 1fr;gap:.65rem;padding:.75rem}.history-row>div:nth-child(2){grid-column:1/-1;grid-row:2}.action-box,.action-box form,.action-box summary,.card-body>.d-flex>form,.card-body>.d-flex>form .btn{width:100%}.action-box summary{justify-content:center}.action-box form{padding:.9rem}.form-control,.form-select,.btn{min-height:44px}.card-body>.d-flex{width:100%}}
-@media(max-width:767.98px){.sick-filter-form .card-body{padding:.9rem}.history-stage-tabs{padding:.5rem}.history-stage-tabs .nav-link{min-height:44px}.history-stage-content{padding:.65rem}.stage-detail-grid{grid-template-columns:1fr 1fr;gap:.5rem}.stage-detail-grid .detail-wide{grid-column:1/-1}.stage-detail-grid>div{padding:.6rem}.history-occurrence .history-row{padding:.7rem}.history-row>div:nth-child(2){grid-column:1/-1;grid-row:auto}}
+    .sick-stage-tabs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .stage-tab {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid #e9ecef;
+        border-radius: 14px;
+        background: #fff;
+        color: #495057;
+        text-decoration: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease,
+            border-color 0.18s ease,
+            background 0.18s ease;
+    }
+
+    .stage-tab:hover {
+        color: #1e3c72;
+        border-color: #cbd5e1;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .stage-tab:focus-visible {
+        outline: 3px solid rgba(30, 60, 114, 0.22);
+        outline-offset: 2px;
+    }
+
+    .stage-tab.active {
+        color: #fff;
+        background: #1e3c72;
+        border-color: #1e3c72;
+    }
+
+    .stage-tab span {
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .stage-tab strong {
+        flex: 0 0 auto;
+        min-width: 2rem;
+        height: 2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        color: #1e3c72;
+        background: #eef2f7;
+        font-size: 0.85rem;
+    }
+
+    .stage-tab.active strong {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .sick-record-card {
+        overflow: hidden;
+        border-color: #ced4da !important;
+        border-left: 3px solid #c5d2e3 !important;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 3px 10px rgba(33, 37, 41, 0.09) !important;
+    }
+
+    .sick-record-header {
+        border-bottom: 1px solid #dee2e6 !important;
+        background: #f1f3f5 !important;
+    }
+
+    .sick-record-header > div:first-child > strong {
+        display: block;
+        color: #212529;
+        font-size: 1rem;
+    }
+
+    .sick-record-header .badge {
+        padding: 0.45rem 0.65rem;
+        font-weight: 600;
+    }
+
+    .sick-info-grid > div {
+        min-width: 0;
+        padding: 0.8rem;
+        border: 1px solid #edf0f2;
+        border-radius: 10px;
+        background: #f8fafc;
+        overflow-wrap: anywhere;
+    }
+
+    .sick-info-grid > div strong {
+        display: block;
+        margin-bottom: 0.3rem;
+        color: #6c757d;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .sick-timeline {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(130px, 1fr));
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding: 0.25rem 0 0.5rem;
+    }
+
+    .timeline-item {
+        min-width: 130px;
+        padding-top: 0.8rem;
+        color: #6c757d;
+        border-top: 3px solid #dee2e6;
+    }
+
+    .timeline-item.done {
+        color: #212529;
+        border-color: #2f6f44;
+    }
+
+    .timeline-dot {
+        width: 1.6rem;
+        height: 1.6rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.45rem;
+        border-radius: 50%;
+        background: #e9ecef;
+    }
+
+    .timeline-item.done .timeline-dot {
+        color: #fff;
+        background: #2f6f44;
+    }
+
+    .equipment-history {
+        overflow: hidden;
+        border: 1px solid #e2e8ee;
+        border-radius: 12px;
+        background: #dee2e6;
+    }
+
+    .history-summary {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.85rem 1rem;
+        list-style: none;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .history-summary::-webkit-details-marker,
+    .action-box summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .history-summary::after {
+        content: "＋";
+        flex: 0 0 auto;
+        color: #6c757d;
+        font-size: 1rem;
+    }
+
+    .equipment-history[open] > .history-summary::after {
+        content: "−";
+    }
+
+    .history-content {
+        padding: 0 0.75rem 0.75rem;
+    }
+
+    .history-occurrence {
+        overflow: hidden;
+        margin-top: 0.7rem;
+        border: 1px solid #e2e8ee;
+        border-radius: 10px;
+        background: #fff;
+    }
+
+    .history-content > .history-occurrence:first-child {
+        margin-top: 0.2rem;
+    }
+
+    .history-row {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 2fr 1.25fr 1.25fr;
+        gap: 0.8rem;
+        padding: 0.9rem;
+        border-bottom: 1px solid #e69138;
+        background: #fff;
+    }
+
+    .history-row.current {
+        background: #f5f9ff;
+        box-shadow: inset 3px 0 0 #e69138;
+    }
+
+    .history-row > div {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+ 0   }
+
+    .history-row small {
+        margin-bottom: 0.2rem;
+        color: #6c757d;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .history-row strong,
+    .history-row span {
+        overflow-wrap: anywhere;
+    }
+
+    .current-label {
+        position: absolute;
+        top: 0.35rem;
+        right: 0.5rem;
+        color: #1e3c72;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .history-stage-shell {
+        background: #fff;
+    }
+
+    .history-stage-tabs {
+        display: flex;
+        gap: 0.4rem;
+        padding: 0.6rem;
+        overflow-x: auto;
+        border-bottom: 1px solid #e2e8ee;
+        background: #f8fafb;
+    }
+
+    .history-stage-tabs .nav-link {
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid #dfe5ea;
+        border-radius: 8px;
+        color: #5d6975;
+        background: #fff;
+        white-space: nowrap;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .history-stage-tabs .nav-link > span {
+        width: 1.35rem;
+        height: 1.35rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #edf0f3;
+        font-size: 0.7rem;
+    }
+
+    .history-stage-tabs .nav-link.completed {
+        color: #176b55;
+        border-color: #b8dacd;
+    }
+
+    .history-stage-tabs .nav-link.completed > span {
+        color: #fff;
+        background: #2f6f44;
+    }
+
+    .history-stage-tabs .nav-link.active {
+        color: #fff;
+        border-color: #1e3c72;
+        background: #1e3c72;
+    }
+
+    .history-stage-tabs .nav-link.active > span {
+        color: #1e3c72;
+        background: #fff;
+    }
+
+    .history-stage-content {
+        padding: 0.85rem;
+    }
+
+    .stage-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.7rem;
+    }
+
+    .stage-detail-grid > div {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0.7rem;
+        border: 1px solid #edf0f2;
+        border-radius: 8px;
+        background: #f8fafb;
+    }
+
+    .stage-detail-grid small {
+        margin-bottom: 0.2rem;
+        color: #6c757d;
+        font-size: 0.7rem;
+        letter-spacing: 0.025em;
+        text-transform: uppercase;
+    }
+
+    .stage-detail-grid strong,
+    .stage-detail-grid span {
+        overflow-wrap: anywhere;
+    }
+
+    .stage-detail-grid .detail-wide {
+        grid-column: 1 / -1;
+    }
+
+    .stage-empty {
+        min-height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: #6c757d;
+        text-align: center;
+    }
+
+    .action-box {
+        width: min(100%, 560px);
+    }
+
+    .action-box > summary {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        list-style: none;
+    }
+
+    .action-box > form {
+        border: 1px solid #e9ecef !important;
+        border-radius: 12px;
+        box-shadow: none;
+        background: #f8fafc;
+    }
+
+    .action-box .form-label,
+    .action-box .form-control,
+    .action-box .form-select {
+        font-size: 0.875rem;
+    }
+
+    .sick-actions > form {
+        display: inline-flex;
+    }
+
+    @media (max-width: 991.98px) {
+        .sick-stage-tabs {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .history-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .history-row > div:nth-child(2) {
+            grid-column: 1 / -1;
+            grid-row: 2;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .sick-record-card > .card-body {
+            padding: 1rem !important;
+        }
+
+        .sick-record-header {
+            padding: 1rem !important;
+        }
+
+        .sick-record-header .badge {
+            white-space: normal;
+            text-align: left;
+        }
+
+        .sick-timeline {
+            display: block;
+            overflow: visible;
+            margin-left: 0.75rem;
+        }
+
+        .timeline-item {
+            position: relative;
+            min-width: 0;
+            padding: 0 0 1rem 1rem;
+            border-top: 0;
+            border-left: 3px solid #dee2e6;
+        }
+
+        .timeline-item.done {
+            border-left-color: #2f6f44;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            top: -0.15rem;
+            left: -0.82rem;
+        }
+
+        .timeline-item > div {
+            padding-left: 0.25rem;
+        }
+
+        .history-summary {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 0.85rem;
+        }
+
+        .history-summary::after {
+            position: absolute;
+            right: 0.85rem;
+        }
+
+        .history-summary > span:last-child {
+            justify-content: flex-start !important;
+        }
+
+        .history-content {
+            padding: 0 0.55rem 0.55rem;
+        }
+
+        .history-row {
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+            padding: 0.75rem;
+        }
+
+        .history-row > div:nth-child(2) {
+            grid-column: auto;
+            grid-row: auto;
+        }
+
+        .stage-detail-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stage-detail-grid .detail-wide {
+            grid-column: auto;
+        }
+
+        .action-box,
+        .action-box > form,
+        .action-box > summary,
+        .sick-actions > form,
+        .sick-actions > form .btn {
+            width: 100%;
+        }
+
+        .action-box > summary {
+            justify-content: center;
+        }
+
+        .sick-actions {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .sick-stage-tabs {
+            grid-template-columns: 1fr;
+        }
+
+        .stage-tab {
+            min-height: 58px;
+        }
+    }
 </style>
+
 {% endblock %}

@@ -14,6 +14,7 @@ from django.utils.dateparse import parse_date
 
 from estoque.models import Base, Equipamento, GrupoRegional, Historico, Produto, Transferencia
 from estoque.security import secure_queryset
+from estoque.services.manual_service import ManualService
 
 
 @dataclass
@@ -141,10 +142,24 @@ class AssistenteOperacionalService:
 
     @classmethod
     def responder(cls, user, pergunta, contexto=None):
+        resposta_manual = ManualService.tentar_responder(pergunta)
+        if resposta_manual:
+            resposta_manual = cls._ocultar_terminologia_hierarquia(resposta_manual)
+            resposta_manual['resposta'] = cls._personalizar_resposta(
+                user,
+                resposta_manual['resposta'],
+                pergunta=pergunta,
+                intencao='manuais',
+            )
+            return resposta_manual
+
         interpretacao = cls.interpretar(user, pergunta, contexto=contexto)
 
         roteadores = {
             'planejamento': cls._planejamento,
+            'esclarecer_inventarios': cls._esclarecer_inventarios,
+            'esclarecer_ranking': cls._esclarecer_ranking,
+            'ranking_base': cls._ranking_por_base,
             'capacidade_coletores': cls._capacidade_coletores,
             'capacidade_equipamentos': cls._capacidade_equipamentos,
             'inventarios_data_base': cls._inventarios_data_base,
@@ -171,6 +186,7 @@ class AssistenteOperacionalService:
         }
 
         resposta = roteadores.get(interpretacao.intencao, cls._orientacao)(user, interpretacao)
+        resposta = cls._ocultar_terminologia_hierarquia(resposta)
         acoes_contextuais = resposta.pop('acoes', [])
         resposta['resposta'] = cls._personalizar_resposta(
             user,
@@ -191,6 +207,7 @@ class AssistenteOperacionalService:
         texto = cls._remover_vocativo_tory(texto)
         texto = cls._interpretar_linguagem_cotidiana(texto)
         continuacao = cls._eh_continuacao(texto)
+        nova_consulta_inventarios = cls._nova_consulta_inventarios(texto, continuacao)
         consulta_equipamento_explicita = bool(
             re.search(
                 r'\b(equipamento|equipamentos|patrimonio|patrimonios|serie|serial)\b',
@@ -218,21 +235,24 @@ class AssistenteOperacionalService:
         )
         simulacao_equipe_contextual = cls._pergunta_simulacao_equipe(texto)
         cliente_explicito = cls._extrair_cliente(texto)
+        cliente_contexto = None if nova_consulta_inventarios else cls._cliente_do_contexto(contexto)
         cliente = None if cls._quer_todos_clientes(texto) else (
-            cliente_explicito or cls._cliente_do_contexto(contexto)
+            cliente_explicito or cliente_contexto
         )
         insumo = cls._extrair_insumo(texto)
         if not insumo and (continuacao or contexto.get('intencao') == 'comparacao_precos'):
             insumo = cls._insumo_do_contexto(contexto)
         loja = cls._extrair_loja(texto, cliente)
         pessoas_filtro = cls._extrair_pessoas_filtro(texto)
-        tipo_inventario = cls._extrair_tipo_inventario(texto) or contexto.get('tipo_inventario', '')
+        tipo_inventario = cls._extrair_tipo_inventario(texto) or (
+            '' if nova_consulta_inventarios else contexto.get('tipo_inventario', '')
+        )
         if not loja and (
             simulacao_equipe_contextual or
             (pessoas_filtro is None and (continuacao or consulta_detalhe))
         ):
             loja = contexto.get('loja', '')
-        if pessoas_filtro is None and (continuacao or consulta_relatorio):
+        if pessoas_filtro is None and (continuacao or (consulta_relatorio and not nova_consulta_inventarios)):
             pessoas_filtro = contexto.get('pessoas_filtro')
         periodo_inicio_atual, periodo_fim_atual = cls._extrair_periodo(texto)
         periodo_inicio, periodo_fim = periodo_inicio_atual, periodo_fim_atual
@@ -277,11 +297,11 @@ class AssistenteOperacionalService:
             base_visivel = cls._extrair_base(user, texto)
         grupo_visivel = cls._validar_grupo_visivel(user, grupo_solicitado) if grupo_solicitado else None
         sem_novo_escopo = not (base_solicitada or uf_solicitada or grupo_solicitado or todas_bases)
-        if not base_visivel and not base_bloqueada and sem_novo_escopo:
+        if not base_visivel and not base_bloqueada and sem_novo_escopo and not nova_consulta_inventarios:
             base_visivel = cls._base_do_contexto(user, contexto)
-        if not grupo_visivel and sem_novo_escopo:
+        if not grupo_visivel and sem_novo_escopo and not nova_consulta_inventarios:
             grupo_visivel = cls._grupo_do_contexto(user, contexto)
-        uf_contexto = contexto.get('uf', '') if sem_novo_escopo else ''
+        uf_contexto = contexto.get('uf', '') if sem_novo_escopo and not nova_consulta_inventarios else ''
         uf = uf_solicitada or uf_contexto
         bases_uf = cls._bases_da_uf_visiveis(user, uf) if uf else []
         uf_bloqueada = uf if uf and not bases_uf else ''
@@ -297,6 +317,14 @@ class AssistenteOperacionalService:
             if len(bases_visiveis) == 1:
                 base_visivel = bases_visiveis[0]
         categoria = cls._extrair_categoria(texto)
+        pergunta_ranking_base = cls._pergunta_ranking_por_base(texto)
+        consulta_ranking_base = pergunta_ranking_base and bool(
+            categoria or insumo or re.search(
+                r'\b(inventarios?|equipamentos?|tags?|etiquetas?|pessoas?|equipe|demanda|'
+                r'sick|manutencao|administrativos?|operacionais?|ativos?)\b',
+                texto,
+            )
+        )
         if contexto.get('intencao') == 'capacidade_coletores' and (todas_bases or grupo_visivel) and not categoria:
             categoria = 'Coletores'
         if todas_bases and not categoria:
@@ -406,6 +434,40 @@ class AssistenteOperacionalService:
 
         if cls._pergunta_de_ajuda(texto):
             interpretacao.intencao = 'ajuda_sistema'
+            return interpretacao
+
+        if consulta_ranking_base:
+            interpretacao.intencao = 'ranking_base'
+            interpretacao.base = None
+            if not interpretacao.grupo and not interpretacao.uf:
+                interpretacao.todas_bases = True
+            cls._aplicar_escopo_de_base(user, interpretacao)
+            return interpretacao
+
+        if pergunta_ranking_base:
+            interpretacao.intencao = 'esclarecer_ranking'
+            interpretacao.base = None
+            interpretacao.grupo = None
+            interpretacao.uf = ''
+            interpretacao.todas_bases = False
+            return interpretacao
+
+        if cls._pergunta_inventarios_hoje_ambigua(
+            texto,
+            contexto=contexto,
+            possui_escopo_explicito=bool(
+                base_solicitada or grupo_solicitado or uf_solicitada or todas_bases or
+                cliente_explicito or loja
+            ),
+        ):
+            interpretacao.intencao = 'esclarecer_inventarios'
+            interpretacao.base = None
+            interpretacao.grupo = None
+            interpretacao.uf = ''
+            interpretacao.cliente = None
+            interpretacao.loja = ''
+            interpretacao.pessoas_filtro = None
+            interpretacao.tipo_inventario = ''
             return interpretacao
 
         if cls._pergunta_planejamento(texto, contexto):
@@ -885,7 +947,7 @@ class AssistenteOperacionalService:
         registros = list(qs.order_by('data_inicio', 'cliente__sigla', 'loja', 'base__nome', 'pk'))
         grupos = cls._agrupar_inventarios_logicos(registros)
         total = len(grupos)
-        itens = grupos[:10]
+        itens = grupos
         if not grupos:
             partes = []
             if interpretacao.base:
@@ -924,6 +986,43 @@ class AssistenteOperacionalService:
                 f'{cls._formatar_periodo_grupo(grupo)}'
             )
         return cls._resposta('inventarios', '\n'.join(linhas))
+
+    @classmethod
+    def _esclarecer_inventarios(cls, user, interpretacao):
+        resposta = cls._resposta(
+            'esclarecimento',
+            (
+                'Quando você diz “inventários de hoje”, quer consultar a agenda planejada '
+                'ou os inventários já registrados na execução local? Escolha uma opção para '
+                'eu usar a fonte correta.'
+            ),
+        )
+        resposta['acoes'] = [
+            {
+                'codigo': 'inventarios_planejados_hoje',
+                'tipo': 'consulta',
+                'label': 'Planejamento de hoje',
+                'pergunta': 'Quais inventários estão planejados para hoje?',
+            },
+            {
+                'codigo': 'inventarios_locais_hoje',
+                'tipo': 'consulta',
+                'label': 'Execução local de hoje',
+                'pergunta': 'Mostre os inventários locais de hoje',
+            },
+        ]
+        return resposta
+
+    @classmethod
+    def _esclarecer_ranking(cls, user, interpretacao):
+        return cls._resposta(
+            'esclarecimento',
+            (
+                'Entendi que você quer comparar as bases, mas não identifiquei com segurança '
+                'qual item ou indicador deve ser contado. Informe o nome cadastrado, por exemplo '
+                '“durex”, “tags”, “coletores”, “inventários” ou “pessoas previstas”.'
+            ),
+        )
 
     @classmethod
     def _inventarios_relatorio(cls, user, interpretacao):
@@ -1011,7 +1110,7 @@ class AssistenteOperacionalService:
             if equipe_contagem_total and (previsoes_oficiais or previsoes_estimadas)
             else None
         )
-        itens = grupos[:10]
+        itens = grupos
 
         if cls._pergunta_data_inventario(interpretacao.texto):
             linhas = [
@@ -1154,7 +1253,7 @@ class AssistenteOperacionalService:
     def _detalhar_ciclos_inventario(cls, grupos, escopo):
         linhas = [f'Detalhamento operacional ({escopo})']
         ordem_tipos = ('PRE', 'CA', 'CP', 'T', 'APOIO', 'D', 'R', 'RC')
-        for indice, grupo in enumerate(grupos[:10], start=1):
+        for indice, grupo in enumerate(grupos, start=1):
             inv = grupo['representante']
             status_cliente = (
                 getattr(inv.cliente, 'status_relatorio', '') or
@@ -1206,8 +1305,6 @@ class AssistenteOperacionalService:
                     'Observação: há etapas com início noturno. O relatório não possui horário de término; '
                     'por isso Tory não presume automaticamente o encerramento na manhã seguinte.',
                 ])
-        if len(grupos) > 10:
-            linhas.extend(['', f'Exibindo 10 de {len(grupos)} ciclos. Informe um período para refinar.'])
         linhas.extend([
             '',
             '“Alocações pessoa-etapa” soma as pessoas de cada etapa e dia; não representa pessoas únicas.',
@@ -1241,7 +1338,7 @@ class AssistenteOperacionalService:
                 '',
                 'CLIENTE | LOJA | BASE | INÍCIO REAL | FIM REAL | DURAÇÃO',
             ]
-            for inventario in encerrados_depois[:20]:
+            for inventario in encerrados_depois:
                 linhas.append(
                     f'{inventario.cliente.sigla} | {inventario.loja} | {inventario.base.nome} | '
                     f'{cls._formatar_datetime(inventario.inicio_real)} | '
@@ -1864,7 +1961,7 @@ class AssistenteOperacionalService:
             qs = qs.filter(solicitante=user)
         if interpretacao.protocolo:
             qs = qs.filter(protocolo__iexact=interpretacao.protocolo)
-        solicitacoes = list(qs.order_by('-criado_em')[:10])
+        solicitacoes = list(qs.order_by('-criado_em'))
         if not solicitacoes:
             detalhe = f' com o protocolo {interpretacao.protocolo}' if interpretacao.protocolo else ''
             return cls._resposta(
@@ -1938,14 +2035,12 @@ class AssistenteOperacionalService:
             '',
             'CLIENTE | LOJA | DATA | BASE | TIPO | PESSOAS | MARCAÇÃO',
         ]
-        for inventario, marcacao in testes[:20]:
+        for inventario, marcacao in testes:
             linhas.append(
                 f'{inventario.cliente.sigla} | {inventario.loja} | {inventario.data_inicio:%d/%m/%Y} | '
                 f'{inventario.base.nome} | {inventario.tipo or "-"} | '
                 f'{cls._pessoas_inventario(inventario)} | {marcacao}'
             )
-        if len(testes) > 20:
-            linhas.extend(['', f'Exibindo 20 de {len(testes)} testes. Informe uma base ou período para refinar.'])
         return cls._resposta('inventarios', '\n'.join(linhas))
 
     @classmethod
@@ -1992,8 +2087,8 @@ class AssistenteOperacionalService:
                 f'{pessoas_por_base.get(base.pk, 0)}'
             )
 
-        linhas.extend(['', 'PRIMEIROS INVENTÁRIOS | PESSOAS | STATUS | DATA'])
-        for inv in inventarios[:10]:
+        linhas.extend(['', 'INVENTÁRIOS ENCONTRADOS | PESSOAS | STATUS | DATA'])
+        for inv in inventarios:
             linhas.append(
                 f'{inv.base.nome} - {inv.cliente.sigla} loja {inv.loja} | '
                 f'{cls._pessoas_inventario(inv)} | {inv.status} | {inv.data_inicio:%d/%m/%Y}'
@@ -2124,6 +2219,383 @@ class AssistenteOperacionalService:
                 )
         linhas.extend(cls._linhas_detalhes_equipamentos(user, qs, total=total))
         return cls._resposta('estoque', '\n'.join(linhas))
+
+    @classmethod
+    def _ranking_por_base(cls, user, interpretacao):
+        if re.search(r'\b(tags?|etiquetas?)\b', interpretacao.texto):
+            return cls._ranking_tags_por_base(user, interpretacao)
+        if re.search(r'\b(inventarios?|pessoas?|equipe|demanda)\b', interpretacao.texto):
+            return cls._ranking_inventarios_por_base(user, interpretacao)
+        if interpretacao.insumo:
+            return cls._ranking_insumo_por_base(user, interpretacao)
+        return cls._ranking_equipamentos_por_base(user, interpretacao)
+
+    @classmethod
+    def _ranking_equipamentos_por_base(cls, user, interpretacao):
+        qs = cls._equipamentos_visiveis(user)
+        if interpretacao.categoria:
+            qs = qs.filter(produto__categoria__iexact=interpretacao.categoria)
+        if interpretacao.grupo:
+            bases = cls._bases_do_grupo_visiveis(user, interpretacao.grupo)
+            qs = qs.filter(regional__in=bases)
+        elif interpretacao.uf:
+            bases = cls._bases_da_uf_visiveis(user, interpretacao.uf)
+            qs = qs.filter(regional__in=bases)
+        else:
+            bases = cls._bases_visiveis(user)
+            qs = qs.filter(regional__in=bases)
+
+        qs = cls._aplicar_filtros_equipamentos(qs, interpretacao)
+        agregados = {
+            item['regional_id']: item
+            for item in qs.values('regional_id').annotate(
+                total=Count('id'),
+                operacionais=Count(
+                    'id',
+                    filter=Q(finalidade=Equipamento.Finalidade.OPERACIONAL),
+                ),
+                ativos_operacionais=Count(
+                    'id',
+                    filter=Q(
+                        finalidade=Equipamento.Finalidade.OPERACIONAL,
+                        status='ATIVO',
+                    ),
+                ),
+                administrativos=Count(
+                    'id',
+                    filter=Q(finalidade=Equipamento.Finalidade.ADMINISTRATIVO),
+                ),
+            )
+        }
+        total_geral = sum(item['total'] for item in agregados.values())
+        conceito_partes = [interpretacao.categoria or 'Equipamentos']
+        if interpretacao.status:
+            conceito_partes.append(dict(Equipamento.STATUS_CHOICES).get(
+                interpretacao.status,
+                interpretacao.status,
+            ))
+        if interpretacao.finalidade:
+            conceito_partes.append(dict(Equipamento.Finalidade.choices).get(
+                interpretacao.finalidade,
+                interpretacao.finalidade,
+            ))
+        conceito = ' '.join(conceito_partes).lower()
+        if not total_geral:
+            return cls._resposta(
+                'estoque',
+                f'Não encontrei {conceito} nas bases permitidas ao seu usuário.',
+            )
+
+        crescente = bool(re.search(r'\b(menos|menor)\b', interpretacao.texto))
+        linhas_base = []
+        for base in bases:
+            dados = agregados.get(base.pk, {})
+            total = dados.get('total', 0)
+            operacionais = dados.get('operacionais', 0)
+            ativos_operacionais = dados.get('ativos_operacionais', 0)
+            participacao = Decimal(total * 100) / total_geral
+            disponibilidade = (
+                Decimal(ativos_operacionais * 100) / operacionais
+                if operacionais else Decimal('0')
+            )
+            linhas_base.append({
+                'base': base,
+                'total': total,
+                'participacao': participacao,
+                'operacionais': operacionais,
+                'ativos_operacionais': ativos_operacionais,
+                'administrativos': dados.get('administrativos', 0),
+                'disponibilidade': disponibilidade,
+            })
+
+        linhas_base.sort(key=lambda item: (
+            item['total'] if crescente else -item['total'],
+            item['base'].nome,
+        ))
+        destaque = linhas_base[0]
+        criterio = 'no filtro solicitado' if interpretacao.status or interpretacao.finalidade else 'cadastrados'
+        direcao = 'menos' if crescente else 'mais'
+        conclusao = (
+            f'{destaque["base"].nome} é a base com {direcao} '
+            f'{conceito} {criterio}: {destaque["total"]} de {total_geral} '
+            f'({cls._formatar_decimal(destaque["participacao"])}% do total consultado). '
+            f'Desses, {destaque["ativos_operacionais"]} estão ativos e operacionais; '
+            f'a disponibilidade operacional é {cls._formatar_decimal(destaque["disponibilidade"])}%.'
+        )
+
+        registros = []
+        for posicao, item in enumerate(linhas_base, start=1):
+            registros.append({
+                'POSIÇÃO': posicao,
+                'BASE': item['base'].nome,
+                'TOTAL': item['total'],
+                'PARTICIPAÇÃO': f'{cls._formatar_decimal(item["participacao"])}%',
+                'OPERACIONAIS': item['operacionais'],
+                'ATIVOS DISPONÍVEIS': item['ativos_operacionais'],
+                'ADMINISTRATIVOS': item['administrativos'],
+                'DISPONIBILIDADE': f'{cls._formatar_decimal(item["disponibilidade"])}%',
+            })
+
+        resposta = cls._resposta('estoque', conclusao)
+        resposta['titulo'] = f'Comparativo de {conceito} por base'
+        resposta['componentes'] = [
+            {'tipo': 'texto', 'texto': conclusao},
+            {
+                'tipo': 'indicador',
+                'titulo': f'Base com {direcao} {conceito}',
+                'valor': f'{destaque["base"].nome} · {destaque["total"]}',
+            },
+            {
+                'tipo': 'indicador',
+                'titulo': 'Participação no total consultado',
+                'valor': f'{cls._formatar_decimal(destaque["participacao"])}%',
+            },
+            {
+                'tipo': 'tabela',
+                'titulo': f'Distribuição de {conceito} por base',
+                'rotulo_total': 'bases comparadas',
+                'rotulo_total_singular': 'base comparada',
+                'mensagem_vazia': f'Nenhuma base possui {conceito} no filtro informado.',
+                'colunas': [
+                    {'chave': chave, 'label': chave}
+                    for chave in registros[0]
+                ],
+                'registros': registros,
+            },
+        ]
+        resposta['metadados'] = {
+            'total': len(registros),
+            'rotulo_total': 'bases comparadas',
+            'rotulo_total_singular': 'base comparada',
+        }
+        return resposta
+
+    @classmethod
+    def _ranking_inventarios_por_base(cls, user, interpretacao):
+        from insumos.models import Inventario
+        from insumos.utils import secure_queryset_insumos
+
+        bases = cls._bases_do_escopo(user, interpretacao)
+        qs = secure_queryset_insumos(
+            Inventario.objects.select_related('base', 'cliente'),
+            user,
+            campo_base='base',
+        ).filter(base__in=bases)
+        if interpretacao.periodo_inicio:
+            qs = qs.filter(data_inicio__gte=interpretacao.periodo_inicio)
+        if interpretacao.periodo_fim:
+            qs = qs.filter(data_inicio__lte=interpretacao.periodo_fim)
+        elif interpretacao.data:
+            qs = qs.filter(data_inicio=interpretacao.data)
+
+        grupos = cls._agrupar_inventarios_logicos(list(qs.order_by('data_inicio', 'pk')))
+        quantidades = defaultdict(int)
+        pessoas = defaultdict(int)
+        for grupo in grupos:
+            base_id = grupo['representante'].base_id
+            quantidades[base_id] += 1
+            pessoas[base_id] += grupo['pessoas']
+
+        criterio = 'registros dentro do período consultado'
+        if interpretacao.data:
+            criterio = f'inventários em {interpretacao.data:%d/%m/%Y}'
+        elif interpretacao.periodo_inicio and interpretacao.periodo_fim:
+            criterio = (
+                f'inventários de {interpretacao.periodo_inicio:%d/%m/%Y} '
+                f'a {interpretacao.periodo_fim:%d/%m/%Y}'
+            )
+        por_pessoas = bool(re.search(r'\b(pessoas?|equipe|demanda)\b', interpretacao.texto))
+        linhas = [
+            {
+                'base': base,
+                'quantidade': pessoas[base.pk] if por_pessoas else quantidades[base.pk],
+                'extras': (
+                    {'INVENTÁRIOS': quantidades[base.pk]}
+                    if por_pessoas else {'PESSOAS PREVISTAS': pessoas[base.pk]}
+                ),
+            }
+            for base in bases
+        ]
+        return cls._montar_ranking_quantidade_por_base(
+            interpretacao,
+            linhas,
+            conceito='pessoas previstas' if por_pessoas else 'inventários',
+            criterio=(
+                f'demanda de pessoas nos {criterio}'
+                if por_pessoas else criterio
+            ),
+            coluna_quantidade='PESSOAS PREVISTAS' if por_pessoas else 'INVENTÁRIOS',
+        )
+
+    @classmethod
+    def _ranking_insumo_por_base(cls, user, interpretacao):
+        from insumos.models import MovimentacaoInsumo
+        from insumos.utils import secure_queryset_insumos
+
+        bases = cls._bases_do_escopo(user, interpretacao)
+        qs = secure_queryset_insumos(
+            MovimentacaoInsumo.objects.filter(
+                base__in=bases,
+                insumo=interpretacao.insumo,
+            ),
+            user,
+            campo_base='base',
+        )
+        agregados = {
+            item['base_id']: item
+            for item in qs.values('base_id').annotate(
+                entradas=Sum(Case(
+                    When(tipo__in=cls.ENTRADAS_INSUMO, then='quantidade'),
+                    default=Value(Decimal('0')),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )),
+                saidas=Sum(Case(
+                    When(tipo__in=cls.SAIDAS_INSUMO, then='quantidade'),
+                    default=Value(Decimal('0')),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )),
+            )
+        }
+        linhas = []
+        for base in bases:
+            dados = agregados.get(base.pk, {})
+            entradas = dados.get('entradas') or Decimal('0')
+            saidas = dados.get('saidas') or Decimal('0')
+            linhas.append({
+                'base': base,
+                'quantidade': entradas - saidas,
+                'extras': {
+                    'ENTRADAS': cls._formatar_numero(entradas),
+                    'SAÍDAS': cls._formatar_numero(saidas),
+                    'UNIDADE': interpretacao.insumo.unidade_medida,
+                },
+            })
+        return cls._montar_ranking_quantidade_por_base(
+            interpretacao,
+            linhas,
+            conceito=interpretacao.insumo.descricao,
+            criterio='saldo atual disponível',
+            coluna_quantidade='SALDO ATUAL',
+            unidade=interpretacao.insumo.unidade_medida,
+        )
+
+    @classmethod
+    def _ranking_tags_por_base(cls, user, interpretacao):
+        from insumos.models import LoteTag
+
+        bases = cls._bases_do_escopo(user, interpretacao)
+        lotes_por_base = defaultdict(list)
+        for lote in LoteTag.objects.filter(
+            base__in=bases,
+            ativo=True,
+        ).prefetch_related('rolos'):
+            lotes_por_base[lote.base_id].append(lote)
+
+        linhas = []
+        for base in bases:
+            lotes = lotes_por_base[base.pk]
+            rolos_ativos = sum(
+                1 for lote in lotes for rolo in lote.rolos.all()
+                if rolo.status in {'DISPONIVEL', 'EM_USO'}
+            )
+            linhas.append({
+                'base': base,
+                'quantidade': sum(lote.quantidade_disponivel for lote in lotes),
+                'extras': {
+                    'LOTES ATIVOS': len(lotes),
+                    'ROLOS DISPONÍVEIS/EM USO': rolos_ativos,
+                },
+            })
+        return cls._montar_ranking_quantidade_por_base(
+            interpretacao,
+            linhas,
+            conceito='tags',
+            criterio='quantidade disponível nos lotes ativos',
+            coluna_quantidade='TAGS DISPONÍVEIS',
+        )
+
+    @classmethod
+    def _montar_ranking_quantidade_por_base(
+        cls,
+        interpretacao,
+        linhas,
+        *,
+        conceito,
+        criterio,
+        coluna_quantidade='QUANTIDADE',
+        unidade='',
+    ):
+        positivas = [item for item in linhas if item['quantidade'] > 0]
+        if not positivas:
+            return cls._resposta(
+                'indicadores',
+                f'Não encontrei saldo ou quantidade de {conceito.lower()} nas bases permitidas ao seu usuário.',
+            )
+
+        crescente = bool(re.search(r'\b(menos|menor)\b', interpretacao.texto))
+        candidatas = positivas if crescente else linhas
+        candidatas.sort(key=lambda item: (
+            item['quantidade'] if crescente else -item['quantidade'],
+            item['base'].nome,
+        ))
+        total_geral = sum(max(item['quantidade'], 0) for item in linhas)
+        destaque = candidatas[0]
+        participacao_destaque = Decimal(destaque['quantidade'] * 100) / total_geral
+        direcao = 'menos' if crescente else 'mais'
+        valor_destaque = cls._formatar_numero(destaque['quantidade'])
+        sufixo_unidade = f' {unidade}' if unidade else ''
+        conclusao = (
+            f'{destaque["base"].nome} é a base com {direcao} {conceito.lower()} pelo critério '
+            f'“{criterio}”: {valor_destaque}{sufixo_unidade} de '
+            f'{cls._formatar_numero(total_geral)}{sufixo_unidade} '
+            f'({cls._formatar_decimal(participacao_destaque)}% do total consultado).'
+        )
+
+        registros = []
+        for posicao, item in enumerate(candidatas, start=1):
+            participacao = Decimal(max(item['quantidade'], 0) * 100) / total_geral
+            registro = {
+                'POSIÇÃO': posicao,
+                'BASE': item['base'].nome,
+                coluna_quantidade: cls._formatar_numero(item['quantidade']),
+                'PARTICIPAÇÃO': f'{cls._formatar_decimal(participacao)}%',
+            }
+            registro.update(item.get('extras') or {})
+            registros.append(registro)
+
+        resposta = cls._resposta('indicadores', conclusao)
+        resposta['titulo'] = f'Comparativo de {conceito.lower()} por base'
+        resposta['componentes'] = [
+            {'tipo': 'texto', 'texto': conclusao},
+            {
+                'tipo': 'indicador',
+                'titulo': f'Base com {direcao} {conceito.lower()}',
+                'valor': f'{destaque["base"].nome} · {valor_destaque}{sufixo_unidade}',
+            },
+            {
+                'tipo': 'indicador',
+                'titulo': 'Participação no total consultado',
+                'valor': f'{cls._formatar_decimal(participacao_destaque)}%',
+            },
+            {
+                'tipo': 'tabela',
+                'titulo': f'Distribuição de {conceito.lower()} por base',
+                'rotulo_total': 'bases comparadas',
+                'rotulo_total_singular': 'base comparada',
+                'mensagem_vazia': f'Nenhuma base apresentou {conceito.lower()} para o critério informado.',
+                'colunas': [
+                    {'chave': chave, 'label': chave}
+                    for chave in registros[0]
+                ],
+                'registros': registros,
+            },
+        ]
+        resposta['metadados'] = {
+            'total': len(registros),
+            'rotulo_total': 'bases comparadas',
+            'rotulo_total_singular': 'base comparada',
+        }
+        return resposta
 
     @classmethod
     def _equipamentos_categoria_por_base(cls, user, interpretacao, qs):
@@ -2855,18 +3327,16 @@ class AssistenteOperacionalService:
         return qs
 
     @classmethod
-    def _linhas_detalhes_equipamentos(cls, user, qs, *, total, limite=25):
+    def _linhas_detalhes_equipamentos(cls, user, qs, *, total):
         if not total:
             return []
 
         from estoque.models import ItemEmprestimo, Sick, TransferenciaItem
         from insumos.models import ChecklistEquipamento
 
-        equipamentos = list(
-            qs.order_by(
-                'regional__nome', 'produto__categoria', 'produto__descricao', 'patrimonio'
-            )[:limite]
-        )
+        equipamentos = list(qs.order_by(
+            'regional__nome', 'produto__categoria', 'produto__descricao', 'patrimonio'
+        ))
         if not equipamentos:
             return []
 
@@ -3067,6 +3537,19 @@ class AssistenteOperacionalService:
             if re.search(rf'\b{re.escape(termo)}\b', texto):
                 return categoria
         return ''
+
+    @staticmethod
+    def _pergunta_ranking_por_base(texto):
+        menciona_base = bool(re.search(r'\b(base|bases|regional|regionais)\b', texto))
+        comparacao = bool(re.search(
+            r'\b(mais|menos|maior|menor|ranking|comparativo|comparar|compare)\b',
+            texto,
+        ))
+        posse_ou_quantidade = bool(re.search(
+            r'\b(possui|possuem|tem|têm|quantidade|estoque|saldo|concentra|concentracao)\b',
+            texto,
+        ))
+        return menciona_base and comparacao and (posse_ou_quantidade or 'qual' in texto)
 
     @staticmethod
     def _extrair_identificador_equipamento(texto):
@@ -3273,20 +3756,29 @@ class AssistenteOperacionalService:
     def _extrair_cliente(cls, texto):
         from insumos.models import Cliente
 
+        # Saudações não participam da identificação. Isso evita interpretar
+        # "Bom" de "Bom dia" como a sigla BOM, sem bloquear "cliente BOM".
+        texto_cliente = re.sub(
+            r'^\s*(?:oi|ola|bom dia|boa tarde|boa noite|e ai|e ae|eai|salve|hola|'
+            r'buenos dias|buenas tardes|buenas noches)\s*[,;:!?.-]*\s*',
+            '',
+            texto,
+        ).strip()
+
         for alias, sigla in cls.CLIENTE_ALIASES.items():
-            if re.search(rf'\b{re.escape(alias)}\b', texto):
+            if re.search(rf'\b{re.escape(alias)}\b', texto_cliente):
                 return Cliente.objects.filter(sigla__iexact=sigla).first()
 
         if cls._tem(
-            texto, 'inventario', 'inventarios', 'loja', 'previsao', 'pecas',
+            texto_cliente, 'inventario', 'inventarios', 'loja', 'previsao', 'pecas',
             'produtividade', 'quantos', 'quantas', 'mes', 'semana', 'hoje', 'amanha',
             'gasto', 'gastos', 'custo', 'custos', 'despesa', 'despesas'
-        ) or re.search(r'\b\d+\b', texto):
+        ) or re.search(r'\b\d+\b', texto_cliente):
             scores_por_sigla = {}
             for alias, sigla in cls.CLIENTE_ALIASES.items():
                 if ' ' in alias:
                     continue
-                score = cls._melhor_similaridade_token(texto, alias)
+                score = cls._melhor_similaridade_token(texto_cliente, alias)
                 if score >= 0.82:
                     scores_por_sigla[sigla] = max(score, scores_por_sigla.get(sigla, 0))
             candidatos_alias = [(score, sigla) for sigla, score in scores_por_sigla.items()]
@@ -3301,22 +3793,22 @@ class AssistenteOperacionalService:
         clientes = list(Cliente.objects.all().order_by('-nome'))
         for cliente in clientes:
             nome = cls._normalizar(cliente.nome)
-            if nome and nome in texto:
+            if nome and nome in texto_cliente:
                 return cliente
 
         siglas_ignoradas = {'dia', 'pra', 'ate', 'sim', 'nao', 'mes', 'ano', 'por'}
         for cliente in clientes:
             sigla = cls._normalizar(cliente.sigla)
             codigo_loja = r'(?=[a-z0-9-]*\d)[a-z0-9-]+'
-            if re.search(rf'\b{re.escape(sigla)}\b(?:\s+loja)?\s*{codigo_loja}\b', texto):
+            if re.search(rf'\b{re.escape(sigla)}\b(?:\s+loja)?\s*{codigo_loja}\b', texto_cliente):
                 return cliente
-            if re.search(rf'\b(?:cliente|rede|do|da)\s+{re.escape(sigla)}\b', texto):
+            if re.search(rf'\b(?:cliente|rede|do|da)\s+{re.escape(sigla)}\b', texto_cliente):
                 return cliente
             if sigla in siglas_ignoradas:
                 continue
             # Siglas de uma letra (como A) não podem competir com artigos da frase.
-            if len(sigla) > 1 and re.search(rf'\b{re.escape(sigla)}\b', texto) and cls._tem(
-                texto, 'inventario', 'inventarios', 'loja', 'previsao', 'pecas', 'produtividade',
+            if len(sigla) > 1 and re.search(rf'\b{re.escape(sigla)}\b', texto_cliente) and cls._tem(
+                texto_cliente, 'inventario', 'inventarios', 'loja', 'previsao', 'pecas', 'produtividade',
                 'cnpj', 'endereco', 'quantos', 'quantas', 'quantidade', 'total', 'mes',
                 'semana', 'hoje', 'amanha', 'gasto', 'gastos', 'custo', 'custos',
                 'despesa', 'despesas', 'fale', 'fala', 'sobre', 'resumo', 'visao',
@@ -3708,6 +4200,42 @@ class AssistenteOperacionalService:
         )
 
     @staticmethod
+    def _nova_consulta_inventarios(texto, continuacao=False):
+        """Distingue uma pergunta completa de um complemento da conversa anterior."""
+        if continuacao or not re.search(r'\binventarios?\b', texto):
+            return False
+        return bool(re.search(
+            r'\b(qual|quais|quantos|quantas|mostre|mostrar|liste|listar|inventarios?)\b',
+            texto,
+        ))
+
+    @classmethod
+    def _pergunta_inventarios_hoje_ambigua(
+        cls,
+        texto,
+        *,
+        contexto=None,
+        possui_escopo_explicito=False,
+    ):
+        """Pede a fonte quando 'inventários hoje' pode ser planejamento ou execução."""
+        contexto = contexto or {}
+        if possui_escopo_explicito:
+            return False
+        if contexto.get('intencao') in {'planejamento', 'inventarios_data_base'}:
+            return False
+        if not (
+            re.search(r'\binventarios?\b', texto) and
+            re.search(r'\bhoje\b', texto)
+        ):
+            return False
+        return not bool(re.search(
+            r'\b(planejad[oa]s?|planejamento|agenda|previst[oa]s?|dados locais|'
+            r'inventarios? locais?|execucao local|registrad[oa]s?|em andamento|'
+            r'finalizad[oa]s?|encerrad[oa]s?|realizad[oa]s?)\b',
+            texto,
+        ))
+
+    @staticmethod
     def _eh_confirmacao_capacidade(texto):
         return bool(re.search(r'^(entao\b|isso\b)|\b(nao atende|atende mesmo)\b', texto))
 
@@ -3764,6 +4292,7 @@ class AssistenteOperacionalService:
             re.search(r'\bprevisao\b.*\bpecas\b|\bpecas\b.*\bprevisao\b', texto) or
             re.search(r'\bregional\s+responsavel\b', texto) or
             re.search(r'\beventos?\s+(?:pai|filho)\b|\b(?:pai|filho)\s+e\s+(?:pai|filho)\b', texto) or
+            re.search(r'\b(estrutura\s+(?:dos|das|de)\s+(?:eventos|atividades)|atividades?\s+vinculadas?)\b', texto) or
             re.search(r'\bdisponibilidade\s+(?:da\s+)?equipe\b', texto) or
             re.search(r'\bavulsos?\b', texto)
         )
@@ -3781,7 +4310,7 @@ class AssistenteOperacionalService:
                 cls._eh_continuacao(texto)
                 or re.search(
                     r'\b(qual|quais|maior|menor|equipe|pessoas|pecas|regional|status|'
-                    r'planejado|realizado|pai|filho|disponibilidade|avulso|detalhe)\b',
+                    r'planejado|realizado|pai|filho|estrutura|atividades|vinculadas|disponibilidade|avulso|detalhe)\b',
                     texto,
                 )
             )
@@ -3803,9 +4332,9 @@ class AssistenteOperacionalService:
             return 'highest_pieces'
         if re.search(r'\bmaior\b.*\b(pessoas|equipe|demanda)\b', texto):
             return 'highest_headcount'
-        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?(?:eventos?\s+)?(?:pai|filhos?)\b', texto):
+        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?eventos?\s+principais\b', texto):
             return 'list'
-        if re.search(r'\b(?:pai|filho)\b', texto):
+        if re.search(r'\b(estrutura\s+(?:dos|das|de)\s+(?:eventos|atividades)|atividades?\s+vinculadas?)\b', texto):
             return 'hierarchy'
         if re.search(r'\b(disponibilidade|suficiente|suficientes|pessoas suficientes|equipe suficiente)\b', texto):
             return 'availability'
@@ -3840,9 +4369,9 @@ class AssistenteOperacionalService:
 
     @staticmethod
     def _extrair_kind_planejamento(texto):
-        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?(?:eventos?\s+)?pai\b', texto):
+        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?eventos?\s+principais\b', texto):
             return 'PAI'
-        if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?(?:eventos?\s+)?filhos?\b', texto):
+        if re.search(r'\b(?:somente|apenas)\s+(?:as\s+)?atividades?\s+vinculadas?\b', texto):
             return 'FILHO'
         return ''
 
@@ -4543,8 +5072,8 @@ class AssistenteOperacionalService:
         return {
             'intencao': intencao,
             'categoria': interpretacao.categoria,
-            'status': interpretacao.status if intencao in {'equipamentos_categoria', 'equipamentos'} else '',
-            'finalidade': interpretacao.finalidade if intencao in {'equipamentos_categoria', 'equipamentos'} else '',
+            'status': interpretacao.status if intencao in {'equipamentos_categoria', 'equipamentos', 'ranking_base'} else '',
+            'finalidade': interpretacao.finalidade if intencao in {'equipamentos_categoria', 'equipamentos', 'ranking_base'} else '',
             'equipamento_identificador': (
                 interpretacao.equipamento_identificador
                 if intencao in {'equipamentos_categoria', 'equipamentos'} else ''
@@ -4629,7 +5158,39 @@ class AssistenteOperacionalService:
             return f'Claro, {nome}. {texto[:1].lower()}{texto[1:]}'
         # Mantém o texto factual do serviço e evita repetir o nome do usuário
         # mecanicamente em todas as respostas.
+        primeira_palavra = re.match(r'[A-Za-zÀ-ÖØ-öø-ÿ]+', texto)
+        if primeira_palavra and len(primeira_palavra.group(0)) > 1 and primeira_palavra.group(0).isupper():
+            return texto
         return f'{texto[:1].lower()}{texto[1:]}'
+
+    @staticmethod
+    def _ocultar_terminologia_hierarquia(resposta):
+        """Evita expor nomes técnicos da hierarquia de planejamento na interface."""
+        def limpar(valor):
+            texto = str(valor or '')
+            substituicoes = (
+                (r'\bPAI\s*(?:/|E)\s*FILHOS?\b', 'estrutura das atividades'),
+                (r'\bEVENTOS?\s+FILHOS?\b', 'atividades vinculadas'),
+                (r'\bFILHOS?\b', 'atividades vinculadas'),
+                (r'\bEVENTOS?\s+PAI\b', 'eventos principais'),
+                (r'\bPAI\b', 'principal'),
+            )
+            for padrao, substituto in substituicoes:
+                texto = re.sub(padrao, substituto, texto, flags=re.IGNORECASE)
+            return texto
+
+        resposta = dict(resposta or {})
+        resposta['resposta'] = limpar(resposta.get('resposta'))
+        resposta['acoes'] = [
+            {
+                **acao,
+                'label': limpar(acao.get('label')),
+                'pergunta': limpar(acao.get('pergunta')),
+            }
+            for acao in resposta.get('acoes', [])
+            if isinstance(acao, dict)
+        ]
+        return resposta
 
     @staticmethod
     def _nome_usuario(user):

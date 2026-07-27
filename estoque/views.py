@@ -10,6 +10,7 @@ from .services.emprestimo_service import EmprestimoService
 from .services.comunicado_service import ComunicadoService
 from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
+from .services.manual_service import ManualService
 from .services.assistente.response_builder import construir_erro, construir_resposta
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
@@ -409,6 +410,31 @@ def assistente_operacional(request):
             'pergunta': pergunta,
             'resultado': resultado,
         }
+    )
+
+
+@login_required
+def manuais_view(request):
+    filtros = {
+        'q': request.GET.get('q', '').strip(),
+        'categoria': request.GET.get('categoria', '').strip(),
+        'idioma': request.GET.get('idioma', '').strip(),
+    }
+    catalogo_completo = ManualService.listar()
+    manuais = ManualService.listar(
+        termo=filtros['q'],
+        categoria=filtros['categoria'],
+        idioma=filtros['idioma'],
+    )
+    return render(
+        request,
+        'estoque/manuais.html',
+        {
+            'manuais': manuais,
+            'estatisticas': ManualService.estatisticas(catalogo_completo),
+            'categorias': sorted({item['categoria'] for item in catalogo_completo}),
+            'filtros': filtros,
+        },
     )
 
 @login_required
@@ -1958,10 +1984,18 @@ def marcar_sick_ajax(request, equipamento_id):
         motivo = body.get('motivo', '').strip()
         categoria = body.get('categoria', 'OPERACIONAL').strip()
         observacao = body.get('observacao', '').strip()
+        senha = body.get('senha', '')
     except json.JSONDecodeError:
         motivo = ''
         categoria = 'OPERACIONAL'
         observacao = ''
+        senha = ''
+
+    if not isinstance(senha, str) or not request.user.check_password(senha):
+        return JsonResponse({
+            'success': False,
+            'message': 'Senha incorreta. O equipamento não foi marcado como SICK.',
+        }, status=403)
 
     # Se não veio motivo ou está vazio, usa um valor padrão
     if not motivo:
@@ -2327,6 +2361,7 @@ def historico_equipamento_modal(request, equipamento_id):
             'bases': Base.objects.all().order_by('nome'),
             'produtos': Produto.objects.all().order_by('categoria', 'descricao'),
             'status_choices': Equipamento.STATUS_CHOICES,
+            'finalidade_choices': Equipamento.Finalidade.choices,
         }
     )
 
@@ -4851,6 +4886,15 @@ def editar_equipamento(request, equipamento_id):
     ).strip()
 
     finalidade = request.POST.get('finalidade', '').strip()
+
+    if finalidade not in Equipamento.Finalidade.values:
+        messages.error(
+            request,
+            'Selecione uma finalidade válida para o equipamento.'
+        )
+        return redirect(
+            request.META.get('HTTP_REFERER', '/')
+        )
 
     try:
 
