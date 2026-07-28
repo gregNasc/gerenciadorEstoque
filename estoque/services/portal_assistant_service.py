@@ -193,6 +193,7 @@ class InventoryPortalAssistantService:
         return bool(re.search(
             r"\b(total de pecas|pecas contadas?|itens? contados?|produtos? contados?|"
             r"produtividade|acuracidade|divergencias?|conferentes?|secoes?|progresso|"
+            r"indicadores?|contagens?|recontagens?|erros?|diferencas?|piores?|"
             r"percentual|porcentagem|deposito|piso de venda|informacoes?|detalhes?|"
             r"tudo|todos os dados)\b",
             text,
@@ -298,10 +299,7 @@ class InventoryPortalAssistantService:
                 lines.append(f"{cls.FIELD_LABELS.get(key, key)} | {value}")
 
         table_ids = cls._selected_tables(detail, interpretacao)
-        row_limit = 25 if (
-            "all" in getattr(interpretacao, "portal_metrics", []) or
-            re.search(r"\b(tudo|todos|todas|completo|completa)\b", interpretacao.texto)
-        ) else 10
+        row_limit = 25 if cls._wants_full_detail(interpretacao) else 10
         for table_id in table_ids:
             rows = list(detail.tables.get(table_id, []))
             if not rows:
@@ -365,7 +363,7 @@ class InventoryPortalAssistantService:
             )))
 
         if (
-            "diverg" in interpretacao.texto or
+            re.search(r"\b(divergencias?|erros?|diferencas?|piores?)\b", interpretacao.texto) or
             "divergences" in getattr(interpretacao, "portal_metrics", [])
         ):
             divergence_rows = []
@@ -427,15 +425,20 @@ class InventoryPortalAssistantService:
     def _selected_fields(cls, detail, interpretacao):
         text = interpretacao.texto
         metrics = set(getattr(interpretacao, "portal_metrics", []))
-        all_fields = "all" in metrics or bool(
-            re.search(r"\b(tudo|todos|todas|completo|completa|informacoes)\b", text)
-        )
+        all_fields = cls._wants_full_detail(interpretacao)
         groups = {
             "progresso": {"percConclusion", "percConclusionLoja", "percConclusionDeposito", "percConclusion1Contagem"},
             "produtividade": {"productivity", "qtyPeople", "qtyProductsCounted", "qtyItemCounted", "realtime_alteracao"},
             "acuracidade": {"accuracy", "accuracy_dp", "accuracy_lj"},
             "tempo": {"inicioINV", "finalINV", "duracaoINV", "realtime_alteracao"},
             "preparacao": {"percPreparationSaleFloor", "percPreparationDeposit"},
+            "contagem": {"qtyProductsCounted", "qtyItemCounted", "percConclusion1Contagem"},
+            "indicador": {
+                "qtyPeople", "qtyProductsCounted", "qtyItemCounted", "productivity",
+                "accuracy", "accuracy_dp", "accuracy_lj", "priceProductsCounted",
+                "percConclusion", "percConclusionLoja", "percConclusionDeposito",
+                "percConclusion1Contagem", "realtime_alteracao",
+            },
         }
         wanted = set(cls.FIELD_LABELS) if all_fields else {
             "statusId",
@@ -459,6 +462,8 @@ class InventoryPortalAssistantService:
             "accuracy": groups["acuracidade"],
             "progress": groups["progresso"],
             "times": groups["tempo"],
+            "counts": groups["contagem"],
+            "indicators": groups["indicador"],
         }
         for metric, keys in metric_fields.items():
             if metric in metrics:
@@ -473,9 +478,7 @@ class InventoryPortalAssistantService:
     def _selected_tables(cls, detail, interpretacao):
         text = interpretacao.texto
         metrics = set(getattr(interpretacao, "portal_metrics", []))
-        all_tables = "all" in metrics or bool(
-            re.search(r"\b(tudo|todos|todas|completo|completa|informacoes)\b", text)
-        )
+        all_tables = cls._wants_full_detail(interpretacao)
         if all_tables:
             return [table_id for table_id in cls.TABLE_LABELS if table_id in detail.tables]
         selected = set()
@@ -483,7 +486,7 @@ class InventoryPortalAssistantService:
             selected.update(cls.DETAIL_TABLE_GROUPS["secoes"])
         if re.search(r"\b(top|item|itens|indicador|indicadores)\b", text):
             selected.update(cls.DETAIL_TABLE_GROUPS["indicadores"])
-        if "diverg" in text:
+        if re.search(r"\b(divergencias?|erros?|diferencas?|piores?)\b", text):
             selected.update(cls.DETAIL_TABLE_GROUPS["divergencias"])
         if re.search(r"\b(conferente|conferentes|equipe)\b", text):
             selected.update(cls.DETAIL_TABLE_GROUPS["conferentes"])
@@ -491,11 +494,29 @@ class InventoryPortalAssistantService:
             "sections": "secoes",
             "divergences": "divergencias",
             "conferents": "conferentes",
+            "indicators": "indicadores",
+            "counts": "indicadores",
         }
         for metric, group in metric_groups.items():
             if metric in metrics:
                 selected.update(cls.DETAIL_TABLE_GROUPS[group])
         return [table_id for table_id in cls.TABLE_LABELS if table_id in selected]
+
+    @staticmethod
+    def _wants_full_detail(interpretacao):
+        text = interpretacao.texto
+        metrics = set(getattr(interpretacao, "portal_metrics", []))
+        explicit_full = "all" in metrics or bool(
+            re.search(
+                r"\b(tudo|todos|todas|completo|completa|informacoes|detalhe|detalhes|detalhar)\b",
+                text,
+            )
+        )
+        store_progress = bool(
+            interpretacao.loja
+            and re.search(r"\b(progresso|percentual|porcentagem|andamento)\b", text)
+        )
+        return explicit_full or store_progress
 
     @staticmethod
     def _append_chart_summary(lines, detail):

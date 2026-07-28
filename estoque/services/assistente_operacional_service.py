@@ -240,7 +240,8 @@ class AssistenteOperacionalService:
             'depois das', 'antes das', 'acima da media', 'custo adicional',
             'ultrapassou', 'ultrapassar', 'progresso', 'percentual', 'porcentagem',
             'acuracidade', 'conferente', 'conferentes', 'divergencia', 'divergencias',
-            'secoes', 'conexao', 'ultima atualizacao',
+            'diferenca', 'diferencas', 'erro', 'erros', 'secoes', 'conexao',
+            'ultima atualizacao',
         )
         simulacao_equipe_contextual = cls._pergunta_simulacao_equipe(texto)
         cliente_explicito = cls._extrair_cliente(texto) or cls._cliente_do_plano_portal(portal_plan)
@@ -504,7 +505,11 @@ class AssistenteOperacionalService:
             interpretacao.tipo_inventario = ''
             return interpretacao
 
-        if (portal_plan and portal_plan.is_portal_query) or cls._pergunta_portal_tempo_real(texto, contexto):
+        if (portal_plan and portal_plan.is_portal_query) or cls._pergunta_portal_tempo_real(
+            texto,
+            contexto,
+            possui_loja=bool(loja),
+        ):
             interpretacao.intencao = 'portal_tempo_real'
         elif cls._pergunta_planejamento(texto, contexto):
             interpretacao.intencao = 'planejamento'
@@ -4311,14 +4316,21 @@ class AssistenteOperacionalService:
         ))
 
     @classmethod
-    def _pergunta_portal_tempo_real(cls, texto, contexto):
+    def _pergunta_portal_tempo_real(cls, texto, contexto, *, possui_loja=False):
         contexto_portal = contexto.get('intencao') == 'portal_tempo_real'
+        troca_de_fonte = bool(re.search(
+            r'\b(dados locais|inventarios? locais?|relatorio local|execucao local|planejamento|planejado)\b',
+            texto,
+        ))
+        if contexto_portal and troca_de_fonte:
+            return False
         mencao_portal = bool(re.search(r'\b(portal|tempo real|realtime)\b', texto))
         indicador_operacional = bool(re.search(
             r'\b(andamento|agora|neste momento|nesse momento|progresso|percentual|porcentagem|'
             r'finalizado|finalizados|finalizada|finalizadas|concluido|concluidos|'
             r'concluida|concluidas|encerrado|encerrados|encerrada|encerradas|conexao|conectado|'
-            r'ultima atualizacao|produtividade|acuracidade|divergencias?|conferentes?|'
+            r'ultima atualizacao|produtividade|acuracidade|divergencias?|diferencas?|'
+            r'indicadores?|kpis?|contagens?|recontagens?|erros?|piores?|conferentes?|'
             r'total de pecas|pecas contadas?|itens? contados?|produtos? contados?|'
             r'secoes?|deposito|piso de venda)\b',
             texto,
@@ -4329,11 +4341,14 @@ class AssistenteOperacionalService:
             return True
         if inventario_explicito and indicador_operacional:
             return True
+        if possui_loja and indicador_operacional:
+            return True
         return bool(
             contexto_portal and
             (
                 cls._eh_continuacao(texto) or
                 indicador_operacional or
+                re.search(r'\b(fale sobre|mostre|abra|detalhe|detalhar)\b', texto) or
                 re.search(r'\b(status|lider|equipe|endereco|tipo|horario|detalhes?|informacoes?)\b', texto)
             )
         )
@@ -4342,12 +4357,18 @@ class AssistenteOperacionalService:
     def _interpretar_pergunta_portal_llm(cls, pergunta, texto, contexto):
         if not getattr(settings, 'TORY_LLM_ENABLED', False):
             return None
+        if re.search(
+            r'\b(dados locais|inventarios? locais?|relatorio local|execucao local|planejamento|planejado)\b',
+            texto,
+        ):
+            return None
         candidate = bool(
             contexto.get('intencao') == 'portal_tempo_real' or
             re.search(
                 r'\b(portal|tempo real|realtime|inventarios?|lojas? agora|neste momento|'
                 r'nesse momento|andamento|finalizados?|concluidos?|encerrados?|progresso|'
-                r'produtividade|divergencias?|diferencas?|erramos?|acuracidade|contamos?|'
+                r'produtividade|divergencias?|diferencas?|erros?|erramos?|piores?|'
+                r'acuracidade|indicadores?|kpis?|contagens?|recontagens?|contamos?|'
                 r'contado|contados|itens? contados?|pecas contadas?)\b',
                 texto,
             )

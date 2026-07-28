@@ -1,5 +1,6 @@
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from html.parser import HTMLParser
@@ -51,6 +52,60 @@ def _split_store(value):
     return match.group(1).upper(), match.group(2).strip()
 
 
+def _normalize_column_name(value):
+    normalized = unicodedata.normalize("NFKD", _clean_text(value))
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", " ", normalized.lower()).strip()
+
+
+_INVENTORY_COLUMN_ALIASES = {
+    "status": {"status", "estado", "situacao"},
+    "store": {"loja", "tienda", "local"},
+    "leaders": {"lider", "lideres", "lider es", "leader", "leaders"},
+    "regional": {"regional", "regiao", "region"},
+    "planned_time": {
+        "previsao",
+        "previsao de inicio",
+        "hora",
+        "hora prevista",
+        "inicio previsto",
+    },
+    "progress": {"progresso", "progreso", "avance", "percentual"},
+    "connection": {"conexao", "conexion", "conectividade"},
+    "inventory_type": {"tipo", "tipo de inventario"},
+    "inventory_date": {"data", "fecha", "data do inventario"},
+    "address": {"endereco", "direccion", "morada"},
+    "neighborhood": {"bairro", "comuna", "distrito"},
+    "city": {"cidade", "ciudad", "municipio"},
+}
+
+
+def _inventory_column_key(value):
+    normalized = _normalize_column_name(value)
+    if not normalized:
+        return ""
+    for key, aliases in _INVENTORY_COLUMN_ALIASES.items():
+        if normalized in aliases:
+            return key
+    return ""
+
+
+def _map_inventory_row(row):
+    cells = row["cells"]
+    candidates = (row.get("cell_labels", []), row.get("headers", []))
+    for labels in candidates:
+        if len(labels) != len(cells):
+            continue
+        mapped = {}
+        for label, value in zip(labels, cells):
+            key = _inventory_column_key(label)
+            if key and key not in mapped:
+                mapped[key] = value
+        if "store" in mapped:
+            return mapped
+    return {}
+
+
 @dataclass(frozen=True)
 class PortalInventorySummary:
     portal_id: int | None
@@ -88,6 +143,9 @@ class _InventoryTableParser(HTMLParser):
         self.rows = []
         self._row = None
         self._cell = None
+        self._cell_label = ""
+        self._header_cell = None
+        self._table_headers = []
         self._ignored = 0
 
     def handle_starttag(self, tag, attrs):
@@ -97,10 +155,25 @@ class _InventoryTableParser(HTMLParser):
             return
         if self._ignored:
             return
-        if tag == "tr":
-            self._row = {"cells": [], "detail_url": "", "connection": ""}
+        if tag == "table":
+            self._table_headers = []
+        elif tag == "tr":
+            self._row = {
+                "cells": [],
+                "cell_labels": [],
+                "detail_url": "",
+                "connection": "",
+            }
+        elif tag == "th":
+            self._header_cell = []
         elif tag == "td" and self._row is not None:
             self._cell = []
+            self._cell_label = _clean_text(
+                attrs_dict.get("data-label")
+                or attrs_dict.get("data-title")
+                or attrs_dict.get("aria-label")
+                or ""
+            )
         elif tag == "button" and self._row is not None and attrs_dict.get("data-url"):
             self._row["detail_url"] = attrs_dict["data-url"]
         elif tag == "div" and self._row is not None:
@@ -118,18 +191,28 @@ class _InventoryTableParser(HTMLParser):
             return
         if self._ignored:
             return
-        if tag == "td" and self._row is not None and self._cell is not None:
+        if tag == "th" and self._header_cell is not None:
+            self._table_headers.append(_clean_text(" ".join(self._header_cell)))
+            self._header_cell = None
+        elif tag == "td" and self._row is not None and self._cell is not None:
             self._row["cells"].append(_clean_text(" ".join(self._cell)))
+            self._row["cell_labels"].append(self._cell_label)
             self._cell = None
+            self._cell_label = ""
         elif tag == "tr" and self._row is not None:
             if self._row["cells"] and self._row["detail_url"]:
+                self._row["headers"] = list(self._table_headers)
                 self.rows.append(self._row)
             self._row = None
             self._cell = None
 
     def handle_data(self, data):
-        if not self._ignored and self._cell is not None:
+        if self._ignored:
+            return
+        if self._cell is not None:
             self._cell.append(data)
+        if self._header_cell is not None:
+            self._header_cell.append(data)
 
 
 class _CsrfParser(HTMLParser):
@@ -298,9 +381,32 @@ def parse_inventory_table(html, *, base_url):
     inventories = []
     for row in parser.rows:
         cells = row["cells"]
-        if len(cells) < 10:
+        mapped = _map_inventory_row(row)
+        if mapped:
+            values = mapped
+        elif len(cells) >= 10:
+            # Compatibilidade com a versão antiga do Portal, cujo fragmento AJAX
+            # não incluía cabeçalhos e tinha uma ordem fixa de 13 colunas.
+            values = {
+                "status": cells[1],
+                "store": cells[2],
+                "leaders": cells[3],
+                "regional": cells[4],
+                "planned_time": cells[5],
+                "progress": cells[6],
+                "inventory_type": cells[8],
+                "inventory_date": cells[9],
+                "address": cells[10] if len(cells) > 10 else "",
+                "neighborhood": cells[11] if len(cells) > 11 else "",
+                "city": cells[12] if len(cells) > 12 else "",
+            }
+        else:
             continue
-        client_code, store_number = _split_store(cells[2])
+
+        store_display = values.get("store", "")
+        if not store_display:
+            continue
+        client_code, store_number = _split_store(store_display)
         detail_url = urljoin(base_url.rstrip("/") + "/", row["detail_url"])
         id_match = re.search(r"/(\d+)/?$", urlparse(detail_url).path)
         inventories.append(
@@ -309,18 +415,18 @@ def parse_inventory_table(html, *, base_url):
                 detail_url=detail_url,
                 client_code=client_code,
                 store_number=store_number,
-                store_display=cells[2],
-                status=cells[1],
-                leaders=cells[3],
-                regional=cells[4],
-                planned_time=cells[5],
-                progress=cells[6],
-                connection_status=row["connection"],
-                inventory_type=cells[8],
-                inventory_date=_parse_portal_date(cells[9]),
-                address=cells[10] if len(cells) > 10 else "",
-                neighborhood=cells[11] if len(cells) > 11 else "",
-                city=cells[12] if len(cells) > 12 else "",
+                store_display=store_display,
+                status=values.get("status", ""),
+                leaders=values.get("leaders", ""),
+                regional=values.get("regional", ""),
+                planned_time=values.get("planned_time", ""),
+                progress=values.get("progress", ""),
+                connection_status=row["connection"] or values.get("connection", ""),
+                inventory_type=values.get("inventory_type", ""),
+                inventory_date=_parse_portal_date(values.get("inventory_date", "")),
+                address=values.get("address", ""),
+                neighborhood=values.get("neighborhood", ""),
+                city=values.get("city", ""),
             )
         )
     return inventories

@@ -46,6 +46,18 @@ class ToryPortalRoutingTests(TestCase):
         self.assertEqual(finalized.intencao, "portal_tempo_real")
         self.assertEqual(concluded.intencao, "portal_tempo_real")
 
+    def test_routes_store_progress_directly_to_complete_portal_detail(self):
+        Cliente.objects.create(sigla="MFT", nome="Muffato")
+
+        result = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "Qual o progresso da MFT 1038?",
+        )
+
+        self.assertEqual(result.intencao, "portal_tempo_real")
+        self.assertEqual(result.cliente.sigla, "MFT")
+        self.assertEqual(result.loja, "1038")
+
     @override_settings(TORY_LLM_ENABLED=True, OPENAI_API_KEY="test")
     @patch("estoque.services.portal_question_interpreter.PortalQuestionInterpreter.interpret")
     def test_llm_plan_understands_natural_question_without_inventory_word(self, interpret):
@@ -68,6 +80,88 @@ class ToryPortalRoutingTests(TestCase):
         self.assertEqual(result.portal_status, "in_progress")
         self.assertIn("divergences", result.portal_metrics)
 
+    def test_portal_follow_up_keeps_store_and_maps_errors_to_divergences(self):
+        Cliente.objects.create(sigla="MFT", nome="Muffato")
+        first = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "inventários agora",
+        )
+        first_context = AssistenteOperacionalService._contexto_interpretacao(first)
+
+        detail = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "fale sobre MFT 1038",
+            contexto=first_context,
+        )
+        detail_context = AssistenteOperacionalService._contexto_interpretacao(detail)
+        errors = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "maiores erros",
+            contexto=detail_context,
+        )
+        indicators = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "indicadores",
+            contexto=detail_context,
+        )
+        counts = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "contagens",
+            contexto=detail_context,
+        )
+        portal_detail = PortalInventoryDetail(
+            summary=summary(1, "1038"),
+            fields={
+                "qtyItemCounted": "10.000",
+                "qtyProductsCounted": "800",
+                "percConclusion1Contagem": "75%",
+            },
+            tables={
+                "divergencia_table": [{"Produto": "A", "Divergência": "10"}],
+                "table_topqtd": [{"Produto": "B", "Quantidade": "500"}],
+            },
+        )
+
+        self.assertEqual(detail.intencao, "portal_tempo_real")
+        self.assertEqual(detail.cliente.sigla, "MFT")
+        self.assertEqual(detail.loja, "1038")
+        self.assertEqual(errors.intencao, "portal_tempo_real")
+        self.assertEqual(errors.loja, "1038")
+        self.assertIn(
+            "divergencia_table",
+            InventoryPortalAssistantService._selected_tables(portal_detail, errors),
+        )
+        self.assertEqual(indicators.intencao, "portal_tempo_real")
+        self.assertEqual(counts.intencao, "portal_tempo_real")
+        self.assertIn(
+            "table_topqtd",
+            InventoryPortalAssistantService._selected_tables(portal_detail, indicators),
+        )
+        self.assertIn(
+            "qtyItemCounted",
+            dict(InventoryPortalAssistantService._selected_fields(portal_detail, counts)),
+        )
+
+    @override_settings(TORY_LLM_ENABLED=True, OPENAI_API_KEY="test")
+    @patch("estoque.services.portal_question_interpreter.PortalQuestionInterpreter.interpret")
+    def test_explicit_local_report_leaves_portal_context(self, interpret):
+        Cliente.objects.create(sigla="MFT", nome="Muffato")
+        context = {
+            "intencao": "portal_tempo_real",
+            "periodo_inicio": "2026-07-27",
+            "periodo_fim": "2026-07-28",
+            "portal_status": "in_progress",
+        }
+
+        result = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "fale sobre MFT 1038 no relatório local",
+            contexto=context,
+        )
+
+        self.assertNotEqual(result.intencao, "portal_tempo_real")
+        interpret.assert_not_called()
+
 
 @override_settings(
     INVENTORY_PORTAL_ENABLED=True,
@@ -75,6 +169,35 @@ class ToryPortalRoutingTests(TestCase):
     INVENTORY_PORTAL_MAX_DETAIL_RECORDS=20,
 )
 class ToryPortalAnswerTests(SimpleTestCase):
+    def test_store_progress_returns_complete_available_modal_detail(self):
+        interpretation = InterpretacaoOperacional(
+            pergunta="Qual o progresso da MFT 1038?",
+            texto="qual o progresso da mft 1038",
+            intencao="portal_tempo_real",
+            loja="1038",
+            portal_metrics=["progress"],
+        )
+        detail = PortalInventoryDetail(
+            summary=summary(1, "1038"),
+            fields={
+                "qtyItemCounted": "10.000",
+                "productivity": "650",
+                "accuracy_dp": "99,2%",
+                "percConclusion1Contagem": "80%",
+            },
+            tables={
+                "table_topqtd": [{"Produto": "A", "Quantidade": "500"}],
+                "divergencia_table": [{"Produto": "B", "Divergência": "20"}],
+            },
+        )
+
+        response = InventoryPortalAssistantService._detail_response(detail, interpretation)
+
+        self.assertIn("Acuracidade do depósito", response["resposta"])
+        self.assertIn("Conclusão da primeira contagem", response["resposta"])
+        self.assertIn("Itens com maior quantidade contada", response["resposta"])
+        self.assertIn("Divergências por item", response["resposta"])
+
     @patch("estoque.services.portal_assistant_service.timezone.localdate")
     def test_now_queries_today_and_previous_day(self, localdate):
         localdate.return_value = date(2026, 7, 29)

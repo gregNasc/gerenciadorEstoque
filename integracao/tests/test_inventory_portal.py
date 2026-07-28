@@ -20,6 +20,21 @@ LIST_HTML = """
 </tr></tbody></table>
 """
 
+COMPACT_LIST_HTML = """
+<table>
+  <thead><tr>
+    <th></th><th>Status</th><th>Loja</th><th>Previsão</th>
+    <th>Progresso</th><th>Conexão</th><th>Endereço</th>
+  </tr></thead>
+  <tbody><tr>
+    <td><button data-url="/inventory_collect/realtime_view/1038/">+</button></td>
+    <td>Em Andamento</td><td>MFT 1038</td><td>20:00</td><td>53%</td>
+    <td><div class="bolaVerde"></div></td>
+    <td>AV: VISCONDE DE TAUNAY, 2023</td>
+  </tr></tbody>
+</table>
+"""
+
 DETAIL_HTML = """
 <div data-invent-collect="9001"></div>
 <input name="qtyPeople" value="12">
@@ -50,6 +65,20 @@ class InventoryPortalParserTests(SimpleTestCase):
         self.assertEqual(rows[0].store_number, "0058")
         self.assertEqual(rows[0].inventory_date, date(2026, 7, 28))
         self.assertIn("Conectado", rows[0].connection_status)
+
+    def test_uses_headers_when_portal_omits_regional_and_type_columns(self):
+        rows = parse_inventory_table(
+            COMPACT_LIST_HTML,
+            base_url="https://novoportal.inventorybrasil.com.br/",
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].store_display, "MFT 1038")
+        self.assertEqual(rows[0].regional, "")
+        self.assertEqual(rows[0].planned_time, "20:00")
+        self.assertEqual(rows[0].progress, "53%")
+        self.assertEqual(rows[0].inventory_type, "")
+        self.assertEqual(rows[0].address, "AV: VISCONDE DE TAUNAY, 2023")
 
     def test_parses_modal_fields_progress_and_tables(self):
         summary = PortalInventorySummary(

@@ -41,6 +41,8 @@ class PortalQuestionInterpreter:
         "times",
         "address",
         "connection",
+        "indicators",
+        "counts",
     }
     SCHEMA = {
         "type": "object",
@@ -63,6 +65,7 @@ class PortalQuestionInterpreter:
                         "summary", "all", "total_items", "total_products",
                         "productivity", "divergences", "accuracy", "progress",
                         "sections", "conferents", "times", "address", "connection",
+                        "indicators", "counts",
                     ],
                 },
             },
@@ -141,14 +144,18 @@ Retorne somente o objeto do schema. Não responda à pergunta e não invente val
 
 Considere consulta do Portal quando o usuário pedir inventários em andamento,
 agora/neste momento, finalizados, progresso, total de peças ou itens contados,
-produtividade, divergências, acuracidade, seções, conferentes, conexão ou mencionar
-explicitamente Portal/tempo real. Uma continuação usa previous_context.
+produtividade, divergências, acuracidade, seções, conferentes, conexão, indicadores,
+contagens ou mencionar explicitamente Portal/tempo real. Uma continuação usa
+previous_context.
+Se o usuário pedir explicitamente dados locais, relatório local ou planejamento,
+marque is_portal_query=false mesmo quando previous_context for do Portal.
 
 Mapeamentos:
 - agora, neste/nesse momento, rolando: status=in_progress e data de hoje;
 - em andamento: status=in_progress;
 - finalizado/concluído/encerrado: status=finalized;
 - peça/item contado: total_items; SKU/produto contado: total_products;
+- indicadores/KPIs: indicators; contagem/contagens/recontagens: counts;
 - maior/pior diferença ou erro de contagem: divergences;
 - "todas as informações" ou equivalente: all.
 
