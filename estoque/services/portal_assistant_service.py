@@ -1,5 +1,7 @@
 import re
 import unicodedata
+from collections import Counter
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
@@ -81,11 +83,23 @@ class InventoryPortalAssistantService:
 
         try:
             with InventoryPortalClient() as client:
-                inventories = client.list_inventories(start=start, end=end)
-                inventories = cls._filter_requested(inventories, interpretacao)
-                inventories = cls._filter_authorized(user, inventories, interpretacao, start, end)
+                portal_inventories = client.list_inventories(start=start, end=end)
+                requested_inventories = cls._filter_requested(portal_inventories, interpretacao)
+                inventories = cls._filter_authorized(
+                    user,
+                    requested_inventories,
+                    interpretacao,
+                    start,
+                    end,
+                )
                 if not inventories:
-                    return cls._empty_response(interpretacao, start, end)
+                    return cls._empty_response(
+                        interpretacao,
+                        start,
+                        end,
+                        portal_inventories=portal_inventories,
+                        requested_inventories=requested_inventories,
+                    )
 
                 if len(inventories) == 1:
                     detail = client.get_inventory_detail(inventories[0])
@@ -123,6 +137,16 @@ class InventoryPortalAssistantService:
         today = timezone.localdate()
         start = interpretacao.periodo_inicio or interpretacao.data or today
         end = interpretacao.periodo_fim or interpretacao.data or start
+        current = getattr(interpretacao, "portal_status", "any") == "in_progress" or bool(
+            re.search(r"\b(em andamento|agora|neste momento|nesse momento)\b", interpretacao.texto)
+        )
+        explicit_date = bool(re.search(
+            r"\b(hoje|ontem|amanha|\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{2,4})\b",
+            interpretacao.texto,
+        ))
+        if current and not explicit_date:
+            start = today - timedelta(days=1)
+            end = today
         return start, end
 
     @classmethod
@@ -493,7 +517,35 @@ class InventoryPortalAssistantService:
             )))
 
     @classmethod
-    def _empty_response(cls, interpretacao, start, end):
+    def _empty_response(
+        cls,
+        interpretacao,
+        start,
+        end,
+        *,
+        portal_inventories=None,
+        requested_inventories=None,
+    ):
+        portal_inventories = portal_inventories or []
+        requested_inventories = requested_inventories or []
+        if not portal_inventories:
+            return cls._response(
+                "O Portal autenticou corretamente, mas não retornou inventários "
+                f"entre {start:%d/%m/%Y} e {end:%d/%m/%Y}. "
+                "Verifique se a conta do Portal enxerga esses inventários na própria tela.",
+                category="portal_sem_resultado",
+            )
+        if not requested_inventories:
+            statuses = Counter(inventory.status or "Sem status" for inventory in portal_inventories)
+            available = ", ".join(
+                f"{status}: {count}" for status, count in statuses.most_common(6)
+            )
+            return cls._response(
+                f"O Portal retornou {len(portal_inventories)} inventário(s) no período, "
+                "mas nenhum corresponde aos filtros pedidos. "
+                f"Status disponíveis: {available or 'não informado'}.",
+                category="portal_sem_resultado",
+            )
         scope = []
         if interpretacao.cliente:
             scope.append(interpretacao.cliente.sigla)
@@ -501,7 +553,10 @@ class InventoryPortalAssistantService:
             scope.append(f"loja {interpretacao.loja}")
         requested = " ".join(scope) or "o período solicitado"
         return cls._response(
-            f"Não encontrei no Portal inventários autorizados para {requested} entre {start:%d/%m/%Y} e {end:%d/%m/%Y}.",
+            f"O Portal retornou {len(requested_inventories)} inventário(s) compatíveis "
+            f"com {requested}, mas nenhum possui correspondência autorizada nos "
+            "inventários locais do seu perfil. Um administrador deve revisar cliente, "
+            "número da loja, data e base/regional.",
             category="portal_sem_resultado",
         )
 

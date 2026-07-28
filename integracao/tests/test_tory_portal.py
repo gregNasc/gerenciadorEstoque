@@ -75,6 +75,56 @@ class ToryPortalRoutingTests(TestCase):
     INVENTORY_PORTAL_MAX_DETAIL_RECORDS=20,
 )
 class ToryPortalAnswerTests(SimpleTestCase):
+    @patch("estoque.services.portal_assistant_service.timezone.localdate")
+    def test_now_queries_today_and_previous_day(self, localdate):
+        localdate.return_value = date(2026, 7, 29)
+        interpretation = InterpretacaoOperacional(
+            pergunta="inventários agora",
+            texto="inventarios agora",
+            intencao="portal_tempo_real",
+            data=date(2026, 7, 29),
+            portal_status="in_progress",
+        )
+
+        start, end = InventoryPortalAssistantService._period(interpretation)
+
+        self.assertEqual(start, date(2026, 7, 28))
+        self.assertEqual(end, date(2026, 7, 29))
+
+    def test_empty_response_distinguishes_portal_filter_and_authorization(self):
+        interpretation = InterpretacaoOperacional(
+            pergunta="inventários agora",
+            texto="inventarios agora",
+            intencao="portal_tempo_real",
+        )
+        row = summary(1, "58", status="Agendado")
+
+        no_portal_rows = InventoryPortalAssistantService._empty_response(
+            interpretation,
+            date(2026, 7, 28),
+            date(2026, 7, 29),
+            portal_inventories=[],
+            requested_inventories=[],
+        )
+        no_status_match = InventoryPortalAssistantService._empty_response(
+            interpretation,
+            date(2026, 7, 28),
+            date(2026, 7, 29),
+            portal_inventories=[row],
+            requested_inventories=[],
+        )
+        unauthorized = InventoryPortalAssistantService._empty_response(
+            interpretation,
+            date(2026, 7, 28),
+            date(2026, 7, 29),
+            portal_inventories=[row],
+            requested_inventories=[row],
+        )
+
+        self.assertIn("não retornou inventários", no_portal_rows["resposta"])
+        self.assertIn("Status disponíveis", no_status_match["resposta"])
+        self.assertIn("correspondência autorizada", unauthorized["resposta"])
+
     @patch("estoque.services.portal_assistant_service.InventoryPortalClient")
     def test_aggregates_items_productivity_and_divergences(self, client_class):
         rows = [summary(1, "58"), summary(2, "59")]
