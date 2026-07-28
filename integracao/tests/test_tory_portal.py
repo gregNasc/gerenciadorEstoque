@@ -58,6 +58,50 @@ class ToryPortalRoutingTests(TestCase):
         self.assertEqual(result.cliente.sigla, "MFT")
         self.assertEqual(result.loja, "1038")
 
+    def test_splits_compact_client_and_store_code(self):
+        Cliente.objects.create(sigla="TRK", nome="Track & Field")
+
+        result = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "Fale sobre DODA COMERCIO DO VESTUARIO LTDA loja TRK6702",
+        )
+
+        self.assertEqual(result.intencao, "inventarios_relatorio")
+        self.assertEqual(result.cliente.sigla, "TRK")
+        self.assertEqual(result.loja, "6702")
+
+    @override_settings(TORY_LLM_ENABLED=True, OPENAI_API_KEY="test")
+    @patch("estoque.services.portal_question_interpreter.PortalQuestionInterpreter.interpret")
+    def test_local_inventory_productivity_follow_up_does_not_switch_to_portal(
+        self,
+        interpret,
+    ):
+        Cliente.objects.create(sigla="TRK", nome="Track & Field")
+        context = {
+            "intencao": "inventarios_relatorio",
+            "cliente": "TRK",
+            "loja": "6702",
+            "periodo_inicio": "2026-07-28",
+            "periodo_fim": "2026-07-29",
+        }
+
+        result = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "produtividade",
+            contexto=context,
+        )
+        follow_up = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "mostre",
+            contexto=AssistenteOperacionalService._contexto_interpretacao(result),
+        )
+
+        self.assertEqual(result.intencao, "inventarios_relatorio")
+        self.assertEqual(result.loja, "6702")
+        self.assertEqual(follow_up.intencao, "inventarios_relatorio")
+        self.assertEqual(follow_up.loja, "6702")
+        interpret.assert_not_called()
+
     @override_settings(TORY_LLM_ENABLED=True, OPENAI_API_KEY="test")
     @patch("estoque.services.portal_question_interpreter.PortalQuestionInterpreter.interpret")
     def test_llm_plan_understands_natural_question_without_inventory_word(self, interpret):
@@ -189,6 +233,7 @@ class ToryPortalAnswerTests(SimpleTestCase):
                 "table_topqtd": [{"Produto": "A", "Quantidade": "500"}],
                 "divergencia_table": [{"Produto": "B", "Divergência": "20"}],
             },
+            charts={"avanco_geral": {"result": []}},
         )
 
         response = InventoryPortalAssistantService._detail_response(detail, interpretation)

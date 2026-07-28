@@ -28,7 +28,8 @@ COMPACT_LIST_HTML = """
   </tr></thead>
   <tbody><tr>
     <td><button data-url="/inventory_collect/realtime_view/1038/">+</button></td>
-    <td>Em Andamento</td><td>MFT 1038</td><td>20:00</td><td>53%</td>
+    <td>Em Andamento</td><td>MFT 1038</td><td>20:00</td>
+    <td><div class="progress-bar" role="progressbar" style="width: 53"></div></td>
     <td><div class="bolaVerde"></div></td>
     <td>AV: VISCONDE DE TAUNAY, 2023</td>
   </tr></tbody>

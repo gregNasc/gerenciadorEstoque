@@ -13,6 +13,7 @@ from django.utils import timezone
 from integracao.exceptions import (
     InventoryPortalAuthenticationError,
     InventoryPortalConfigurationError,
+    InventoryPortalError,
     InventoryPortalResponseError,
     InventoryPortalTransportError,
 )
@@ -102,6 +103,15 @@ def _map_inventory_row(row):
             if key and key not in mapped:
                 mapped[key] = value
         if "store" in mapped:
+            if not mapped.get("progress"):
+                mapped["progress"] = next(
+                    (
+                        value
+                        for value in cells
+                        if re.fullmatch(r"\s*[0-9]+(?:[.,][0-9]+)?\s*%\s*", value)
+                    ),
+                    "",
+                )
             return mapped
     return {}
 
@@ -144,6 +154,7 @@ class _InventoryTableParser(HTMLParser):
         self._row = None
         self._cell = None
         self._cell_label = ""
+        self._cell_progress = ""
         self._header_cell = None
         self._table_headers = []
         self._ignored = 0
@@ -168,6 +179,7 @@ class _InventoryTableParser(HTMLParser):
             self._header_cell = []
         elif tag == "td" and self._row is not None:
             self._cell = []
+            self._cell_progress = ""
             self._cell_label = _clean_text(
                 attrs_dict.get("data-label")
                 or attrs_dict.get("data-title")
@@ -178,6 +190,23 @@ class _InventoryTableParser(HTMLParser):
             self._row["detail_url"] = attrs_dict["data-url"]
         elif tag == "div" and self._row is not None:
             classes = _classes(attrs)
+            if self._cell is not None and (
+                "progress-bar" in classes or attrs_dict.get("role") == "progressbar"
+            ):
+                progress = _clean_text(
+                    attrs_dict.get("aria-valuenow") or attrs_dict.get("data-percent") or ""
+                )
+                if progress and not progress.endswith("%"):
+                    progress += "%"
+                if not progress:
+                    style_match = re.search(
+                        r"(?:^|;)\s*width\s*:\s*([0-9]+(?:[.,][0-9]+)?)\s*%?",
+                        attrs_dict.get("style", ""),
+                        re.IGNORECASE,
+                    )
+                    if style_match:
+                        progress = f"{style_match.group(1)}%"
+                self._cell_progress = progress
             if "bolaVerde" in classes:
                 self._row["connection"] = "Conectado nos últimos 15 minutos"
             elif "bolaVermelha" in classes:
@@ -195,10 +224,12 @@ class _InventoryTableParser(HTMLParser):
             self._table_headers.append(_clean_text(" ".join(self._header_cell)))
             self._header_cell = None
         elif tag == "td" and self._row is not None and self._cell is not None:
-            self._row["cells"].append(_clean_text(" ".join(self._cell)))
+            cell_text = _clean_text(" ".join(self._cell))
+            self._row["cells"].append(self._cell_progress or cell_text)
             self._row["cell_labels"].append(self._cell_label)
             self._cell = None
             self._cell_label = ""
+            self._cell_progress = ""
         elif tag == "tr" and self._row is not None:
             if self._row["cells"] and self._row["detail_url"]:
                 self._row["headers"] = list(self._table_headers)
@@ -277,7 +308,7 @@ class _InventoryDetailParser(HTMLParser):
             self._label_text = []
         elif tag == "input":
             key = attrs_dict.get("name") or element_id.removeprefix("id_")
-            input_type = attrs_dict.get("type", "text").lower()
+            input_type = str(attrs_dict.get("type") or "text").lower()
             if key and input_type not in {"hidden", "submit", "button", "file"}:
                 self.controls[key] = _clean_text(attrs_dict.get("value", ""))
         elif tag == "textarea":
@@ -596,7 +627,7 @@ class InventoryPortalClient:
             )
             payload = response.json()
             return payload if isinstance(payload, dict) else {}
-        except (InventoryPortalResponseError, ValueError):
+        except (InventoryPortalError, ValueError):
             logger.warning("inventory_portal_optional_data_failed endpoint=%s", endpoint)
             return {}
 

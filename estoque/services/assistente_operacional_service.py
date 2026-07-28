@@ -252,9 +252,21 @@ class AssistenteOperacionalService:
         insumo = cls._extrair_insumo(texto)
         if not insumo and (continuacao or contexto.get('intencao') == 'comparacao_precos'):
             insumo = cls._insumo_do_contexto(contexto)
-        loja = cls._extrair_loja(texto, cliente) or (
+        loja_explicita = cls._extrair_loja(texto, cliente) or (
             portal_plan.store_number if portal_plan else ''
         )
+        codigo_loja = re.fullmatch(r'([a-z]{2,10})[- ]?(\d+)', loja_explicita)
+        if codigo_loja:
+            from insumos.models import Cliente
+
+            cliente_codigo = Cliente.objects.filter(
+                sigla__iexact=codigo_loja.group(1)
+            ).first()
+            if cliente_codigo:
+                cliente_explicito = cliente_codigo
+                cliente = cliente_codigo
+                loja_explicita = codigo_loja.group(2)
+        loja = loja_explicita
         pessoas_filtro = cls._extrair_pessoas_filtro(texto)
         tipo_inventario = cls._extrair_tipo_inventario(texto) or (
             '' if nova_consulta_inventarios else contexto.get('tipo_inventario', '')
@@ -508,7 +520,7 @@ class AssistenteOperacionalService:
         if (portal_plan and portal_plan.is_portal_query) or cls._pergunta_portal_tempo_real(
             texto,
             contexto,
-            possui_loja=bool(loja),
+            possui_loja=bool(loja_explicita),
         ):
             interpretacao.intencao = 'portal_tempo_real'
         elif cls._pergunta_planejamento(texto, contexto):
@@ -4236,6 +4248,8 @@ class AssistenteOperacionalService:
     @staticmethod
     def _eh_continuacao(texto):
         return bool(
+            re.fullmatch(r'(mostre|mostrar|continue|continuar|detalhe|detalhar)', texto)
+            or
             re.search(
                 r'^(e\b|entao\b|nessa\b|nesta\b|ela\b|isso\b|ainda\b|tambem\b|'
                 r'a base\b|na base\b|base\b|essa base\b|esta base\b|a regional\b|essa regional\b|'
@@ -4325,6 +4339,16 @@ class AssistenteOperacionalService:
         if contexto_portal and troca_de_fonte:
             return False
         mencao_portal = bool(re.search(r'\b(portal|tempo real|realtime)\b', texto))
+        contexto_local = contexto.get('intencao') in {
+            'planejamento',
+            'inventarios_relatorio',
+            'inventarios_data_base',
+        }
+        execucao_explicita = bool(re.search(
+            r'\b(agora|neste momento|nesse momento|em andamento)\b', texto,
+        ))
+        if contexto_local and not (mencao_portal or execucao_explicita):
+            return False
         indicador_operacional = bool(re.search(
             r'\b(andamento|agora|neste momento|nesse momento|progresso|percentual|porcentagem|'
             r'finalizado|finalizados|finalizada|finalizadas|concluido|concluidos|'
@@ -4361,6 +4385,17 @@ class AssistenteOperacionalService:
             r'\b(dados locais|inventarios? locais?|relatorio local|execucao local|planejamento|planejado)\b',
             texto,
         ):
+            return None
+        contexto_local = contexto.get('intencao') in {
+            'planejamento',
+            'inventarios_relatorio',
+            'inventarios_data_base',
+        }
+        troca_explicita_portal = bool(re.search(
+            r'\b(portal|tempo real|realtime|agora|neste momento|nesse momento|em andamento)\b',
+            texto,
+        ))
+        if contexto_local and not troca_explicita_portal:
             return None
         candidate = bool(
             contexto.get('intencao') == 'portal_tempo_real' or

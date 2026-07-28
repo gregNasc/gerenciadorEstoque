@@ -1,3 +1,4 @@
+import logging
 import re
 import unicodedata
 from collections import Counter
@@ -15,6 +16,9 @@ from integracao.exceptions import (
 )
 from insumos.models import Inventario
 from insumos.utils import secure_queryset_insumos
+
+
+logger = logging.getLogger("integracao.inventory_portal")
 
 
 class InventoryPortalAssistantService:
@@ -130,6 +134,17 @@ class InventoryPortalAssistantService:
             return cls._response(
                 "Não consegui consultar o Portal neste momento. Nenhum dado operacional foi presumido.",
                 category="portal_indisponivel",
+            )
+        except Exception:
+            logger.exception(
+                "inventory_portal_detail_processing_failed user_id=%s store=%s",
+                getattr(user, "pk", None),
+                getattr(interpretacao, "loja", ""),
+            )
+            return cls._response(
+                "O Portal respondeu, mas o formato do detalhamento deste inventário "
+                "não pôde ser interpretado. A falha foi registrada para diagnóstico.",
+                category="portal_formato_inesperado",
             )
 
     @staticmethod
@@ -301,7 +316,10 @@ class InventoryPortalAssistantService:
         table_ids = cls._selected_tables(detail, interpretacao)
         row_limit = 25 if cls._wants_full_detail(interpretacao) else 10
         for table_id in table_ids:
-            rows = list(detail.tables.get(table_id, []))
+            rows = [
+                row for row in detail.tables.get(table_id, [])
+                if isinstance(row, dict)
+            ]
             if not rows:
                 continue
             if table_id == "divergencia_table":
@@ -523,13 +541,14 @@ class InventoryPortalAssistantService:
         productivity = detail.charts.get("produtividade", {})
         hours = productivity.get("lst_hour", []) if isinstance(productivity, dict) else []
         values = productivity.get("lst_prod", []) if isinstance(productivity, dict) else []
-        if hours and values:
+        if isinstance(hours, list) and isinstance(values, list) and hours and values:
             lines.extend(("", "PRODUTIVIDADE POR PERÍODO | PEÇAS/HORA"))
             for hour, value in list(zip(hours, values))[-10:]:
                 lines.append(f"{hour} | {value}")
 
         advance = detail.charts.get("avanco_geral", {})
-        datasets = advance.get("result", {}).get("datasets", []) if isinstance(advance, dict) else []
+        result = advance.get("result", {}) if isinstance(advance, dict) else {}
+        datasets = result.get("datasets", []) if isinstance(result, dict) else []
         if datasets:
             lines.extend(("", "Séries de avanço disponíveis: " + ", ".join(
                 str(dataset.get("label", "")).strip()
