@@ -50,9 +50,8 @@ def estoque_insumos(request):
     empresa_id = (request.GET.get('empresa') or '').strip()
     base_id = (request.GET.get('base') or '').strip()
 
-    # =====================================================
+
     # ESCOPO DE BASES PERMITIDAS PARA O USUÁRIO
-    # =====================================================
     if perfil.pode_ver_empresas_globais:
         bases_disponiveis_qs = (
             Base.objects
@@ -76,9 +75,8 @@ def estoque_insumos(request):
         or total_bases_disponiveis > 1
     )
 
-    # =====================================================
+
     # EMPRESAS QUE PODEM SER EXIBIDAS NO FILTRO
-    # =====================================================
     empresas = sorted(
         {
             base.empresa_id: base.empresa
@@ -87,9 +85,8 @@ def estoque_insumos(request):
         key=lambda empresa: empresa.nome,
     )
 
-    # =====================================================
+
     # BASES UTILIZADAS NA CONSULTA
-    # =====================================================
     bases_consulta = bases_disponiveis
     aguardando_filtro_base = False
 
@@ -186,9 +183,8 @@ def estoque_insumos(request):
         item['base'].nome,
     ))
 
-    # =====================================================
+
     # INDICADORES
-    # =====================================================
     total_itens = len(estoque)
     criticos = sum(
         1
@@ -206,9 +202,8 @@ def estoque_insumos(request):
         for item in estoque
     })
 
-    # =====================================================
+
     # AGRUPAMENTO POR CATEGORIA
-    # =====================================================
     estoque_por_categoria = defaultdict(list)
 
     for item in estoque:
@@ -895,7 +890,7 @@ def importar_excel(request):
                         if valor is not None:
                             dados_completos[nome_coluna] = serializar_valor(valor)
 
-                    # Remover colunas que já extraímos (para não duplicar)
+                    # Remover colunas que já foram extraídas (para não duplicar)
                     colunas_extraidas = ['SIGLA', 'Nº DA LOJA', 'DATA', 'ENDEREÇO', 'BAIRRO/NOME DA LOJA', 'CIDADE',
                                          'REGIONAL']
                     for col in colunas_extraidas:
@@ -1556,9 +1551,8 @@ def lista_checklists(request):
         .order_by("-data_inicio", "-id")
     )
 
-    # =========================================================
+
     # PERMISSÕES POR PERFIL E BASE
-    # =========================================================
     perfil = getattr(request.user, "perfil", None)
 
     if not request.user.is_superuser:
@@ -1587,18 +1581,16 @@ def lista_checklists(request):
                 inventario__base_id__in=bases_permitidas
             )
 
-    # =========================================================
+
     # PARÂMETROS DOS FILTROS
-    # =========================================================
     pesquisa = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
     data_inicio = request.GET.get("data_inicio", "").strip()
     data_fim = request.GET.get("data_fim", "").strip()
     por_pagina = request.GET.get("por_pagina", "10").strip()
 
-    # =========================================================
+
     # PESQUISA GERAL
-    # =========================================================
     if pesquisa:
         filtros_pesquisa = (
             Q(inventario__cliente__sigla__icontains=pesquisa)
@@ -1613,9 +1605,8 @@ def lista_checklists(request):
 
         checklists = checklists.filter(filtros_pesquisa)
 
-    # =========================================================
+
     # FILTRO POR DATA INICIAL
-    # =========================================================
     if data_inicio:
         try:
             data_inicio_convertida = datetime.strptime(
@@ -1629,9 +1620,8 @@ def lista_checklists(request):
         except ValueError:
             data_inicio = ""
 
-    # =========================================================
+
     # FILTRO POR DATA FINAL
-    # =========================================================
     if data_fim:
         try:
             data_fim_convertida = datetime.strptime(
@@ -1645,10 +1635,9 @@ def lista_checklists(request):
         except ValueError:
             data_fim = ""
 
-    # =========================================================
+
     # CARDS DE RESUMO
     # Os contadores respeitam as permissões, pesquisa e período.
-    # =========================================================
     queryset_resumo = checklists
 
     resumo = {
@@ -1664,10 +1653,9 @@ def lista_checklists(request):
         ).count(),
     }
 
-    # =========================================================
+
     # FILTRO POR STATUS
     # Aplicado após os cards para não zerar os outros contadores.
-    # =========================================================
     status_validos = {
         "ABERTO",
         "EM_EXECUCAO",
@@ -1679,9 +1667,8 @@ def lista_checklists(request):
     else:
         status = ""
 
-    # =========================================================
+
     # PAGINAÇÃO
-    # =========================================================
     opcoes_por_pagina = {10, 25, 50}
 
     try:

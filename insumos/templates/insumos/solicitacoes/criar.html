@@ -4,151 +4,1227 @@
 {% block title %}{% trans "Nova solicitação de insumos" %}{% endblock %}
 
 {% block content %}
-<main class="container-fluid p-4">
-    <header class="border-bottom pb-3 mb-3">
-        <a class="text-decoration-none" href="{% url 'insumos:lista_solicitacoes_insumo' %}"><i class="bi bi-arrow-left"></i> {% trans "Solicitações" %}</a>
-        <h1 class="h3 mt-2 mb-1">{% trans "Nova solicitação de insumos" %}</h1>
-        <p class="text-secondary mb-0">{% trans "Informe a base e os itens necessários." %}</p>
+
+<style>
+    .solicitacao-page {
+        --solicitacao-border: #e7eaf0;
+        --solicitacao-muted: #667085;
+        --solicitacao-background: #f6f8fb;
+        max-width: 1440px;
+        margin: 0 auto;
+    }
+
+    /* Cabeçalho */
+    .solicitacao-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--solicitacao-border);
+        border-radius: 1rem;
+        background:
+            radial-gradient(
+                circle at top right,
+                rgba(var(--bs-primary-rgb), 0.14),
+                transparent 38%
+            ),
+            linear-gradient(
+                135deg,
+                rgba(var(--bs-primary-rgb), 0.08),
+                rgba(var(--bs-primary-rgb), 0.02) 55%,
+                #ffffff
+            );
+        box-shadow: 0 0.5rem 1.5rem rgba(16, 24, 40, 0.05);
+    }
+
+    .solicitacao-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 1.25rem;
+        color: var(--solicitacao-muted);
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition:
+            color 0.2s ease,
+            transform 0.2s ease;
+    }
+
+    .solicitacao-back:hover {
+        color: var(--bs-primary);
+        transform: translateX(-2px);
+    }
+
+    .solicitacao-title-group {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .solicitacao-title-icon {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 3.25rem;
+        height: 3.25rem;
+        border-radius: 0.9rem;
+        background: var(--bs-primary);
+        color: #ffffff;
+        font-size: 1.4rem;
+        box-shadow: 0 0.65rem 1.2rem rgba(var(--bs-primary-rgb), 0.2);
+    }
+
+    .solicitacao-eyebrow {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--bs-primary);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .solicitacao-title {
+        margin-bottom: 0.25rem;
+        font-size: clamp(1.45rem, 2vw, 1.9rem);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+
+    .solicitacao-subtitle {
+        margin-bottom: 0;
+        color: var(--solicitacao-muted);
+    }
+
+    /* Cards */
+    .solicitacao-card {
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--solicitacao-border);
+        border-radius: 1rem;
+        background: #ffffff;
+        box-shadow: 0 0.35rem 1.25rem rgba(16, 24, 40, 0.045);
+    }
+
+    .solicitacao-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.15rem 1.25rem;
+        border-bottom: 1px solid var(--solicitacao-border);
+        background: #ffffff;
+    }
+
+    .solicitacao-card-title {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
+    .solicitacao-step {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 0.7rem;
+        background: rgba(var(--bs-primary-rgb), 0.1);
+        color: var(--bs-primary);
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .solicitacao-card-heading {
+        margin-bottom: 0.15rem;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .solicitacao-card-description {
+        margin-bottom: 0;
+        color: var(--solicitacao-muted);
+        font-size: 0.82rem;
+    }
+
+    .solicitacao-card-body {
+        padding: 1.25rem;
+    }
+
+    /* Formulário */
+    .solicitacao-form-fields .form-label {
+        margin-bottom: 0.45rem;
+        color: #344054;
+        font-size: 0.84rem;
+        font-weight: 600;
+    }
+
+    .solicitacao-form-fields input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+    .solicitacao-form-fields select,
+    .solicitacao-form-fields textarea {
+        display: block;
+        width: 100%;
+        padding: 0.65rem 0.85rem;
+        border: 1px solid #d0d5dd;
+        border-radius: 0.6rem;
+        background-color: #ffffff;
+        color: #212529;
+        transition:
+            border-color 0.15s ease-in-out,
+            box-shadow 0.15s ease-in-out;
+    }
+
+    .solicitacao-form-fields textarea {
+        min-height: 105px;
+        resize: vertical;
+    }
+
+    .solicitacao-form-fields input:focus,
+    .solicitacao-form-fields select:focus,
+    .solicitacao-form-fields textarea:focus {
+        border-color: rgba(var(--bs-primary-rgb), 0.75);
+        outline: 0;
+        box-shadow: 0 0 0 0.22rem rgba(var(--bs-primary-rgb), 0.12);
+    }
+
+    .solicitacao-required {
+        margin-left: 0.15rem;
+        color: var(--bs-danger);
+    }
+
+    .solicitacao-help {
+        margin-top: 0.4rem;
+        color: var(--solicitacao-muted);
+        font-size: 0.78rem;
+    }
+
+    .solicitacao-field-error {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.4rem;
+        color: var(--bs-danger);
+        font-size: 0.8rem;
+    }
+
+    /* Contador */
+    .carrinho-contador {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.7rem;
+        border: 1px solid rgba(var(--bs-primary-rgb), 0.15);
+        border-radius: 2rem;
+        background: rgba(var(--bs-primary-rgb), 0.08);
+        color: var(--bs-primary);
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    /* Inclusão de itens */
+    .carrinho-adicionar {
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid var(--solicitacao-border);
+        border-radius: 0.8rem;
+        background: var(--solicitacao-background);
+    }
+
+    .carrinho-adicionar .form-label {
+        margin-bottom: 0.4rem;
+        color: #344054;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .carrinho-adicionar .form-control,
+    .carrinho-adicionar .form-select {
+        min-height: 42px;
+        border-color: #d0d5dd;
+        border-radius: 0.6rem;
+        background-color: #ffffff;
+    }
+
+    .carrinho-adicionar .form-control:focus,
+    .carrinho-adicionar .form-select:focus {
+        border-color: rgba(var(--bs-primary-rgb), 0.75);
+        box-shadow: 0 0 0 0.22rem rgba(var(--bs-primary-rgb), 0.12);
+    }
+
+    .carrinho-adicionar .btn {
+        min-height: 42px;
+        border-radius: 0.6rem;
+        font-weight: 600;
+    }
+
+    .carrinho-orientacao {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.8rem;
+        color: var(--solicitacao-muted);
+        font-size: 0.77rem;
+    }
+
+    .carrinho-feedback {
+        display: none;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.7rem 0.85rem;
+        margin-bottom: 1rem;
+        border-radius: 0.65rem;
+        font-size: 0.82rem;
+        font-weight: 500;
+    }
+
+    .carrinho-feedback.is-visible {
+        display: flex;
+    }
+
+    .carrinho-feedback.is-success {
+        border: 1px solid #a6f4c5;
+        background: #ecfdf3;
+        color: #067647;
+    }
+
+    .carrinho-feedback.is-danger {
+        border: 1px solid #fecdca;
+        background: #fef3f2;
+        color: #b42318;
+    }
+
+    .carrinho-feedback.is-info {
+        border: 1px solid #b2ddff;
+        background: #eff8ff;
+        color: #175cd3;
+    }
+
+    /* Tabela */
+    .carrinho-table-wrapper {
+        overflow: hidden;
+        border: 1px solid var(--solicitacao-border);
+        border-radius: 0.8rem;
+    }
+
+    .carrinho-table {
+        margin-bottom: 0;
+    }
+
+    .carrinho-table thead th {
+        padding: 0.85rem 1rem;
+        border-bottom-width: 1px;
+        background: #f9fafb;
+        color: #475467;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .carrinho-table tbody td {
+        padding: 0.85rem 1rem;
+        border-color: #eaecf0;
+        vertical-align: middle;
+    }
+
+    .carrinho-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .carrinho-produto {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-width: 220px;
+    }
+
+    .carrinho-produto-icon {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.6rem;
+        background: rgba(var(--bs-primary-rgb), 0.08);
+        color: var(--bs-primary);
+    }
+
+    .carrinho-produto-nome {
+        display: block;
+        color: #101828;
+        font-size: 0.88rem;
+        font-weight: 600;
+    }
+
+    .carrinho-produto-unidade {
+        margin-top: 0.1rem;
+        color: var(--solicitacao-muted);
+        font-size: 0.75rem;
+    }
+
+    .carrinho-categoria {
+        display: inline-flex;
+        padding: 0.3rem 0.55rem;
+        border: 1px solid #e4e7ec;
+        border-radius: 2rem;
+        background: #f9fafb;
+        color: #475467;
+        font-size: 0.74rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .carrinho-table .form-control {
+        min-width: 110px;
+        min-height: 38px;
+        border-color: #d0d5dd;
+        border-radius: 0.5rem;
+        font-size: 0.84rem;
+    }
+
+    .btn-remover-item {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.35rem;
+        height: 2.35rem;
+        padding: 0;
+        border-radius: 0.55rem;
+    }
+
+    /* Estado vazio */
+    .carrinho-vazio {
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+
+    .carrinho-vazio-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.5rem;
+        height: 3.5rem;
+        margin-bottom: 0.9rem;
+        border-radius: 1rem;
+        background: #f2f4f7;
+        color: #98a2b3;
+        font-size: 1.45rem;
+    }
+
+    .carrinho-vazio h3 {
+        margin-bottom: 0.3rem;
+        color: #344054;
+        font-size: 0.95rem;
+        font-weight: 700;
+    }
+
+    .carrinho-vazio p {
+        max-width: 430px;
+        margin: 0 auto;
+        color: var(--solicitacao-muted);
+        font-size: 0.82rem;
+    }
+
+    /* Ações */
+    .solicitacao-actions {
+        position: sticky;
+        bottom: 1rem;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--solicitacao-border);
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 0.65rem 1.75rem rgba(16, 24, 40, 0.12);
+        backdrop-filter: blur(10px);
+    }
+
+    .solicitacao-actions-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--solicitacao-muted);
+        font-size: 0.8rem;
+    }
+
+    .solicitacao-actions .btn {
+        min-height: 42px;
+        padding-inline: 1rem;
+        border-radius: 0.6rem;
+        font-weight: 600;
+    }
+
+    @media (max-width: 767.98px) {
+        .solicitacao-hero {
+            padding: 1.25rem;
+        }
+
+        .solicitacao-title-group {
+            align-items: flex-start;
+        }
+
+        .solicitacao-title-icon {
+            width: 2.8rem;
+            height: 2.8rem;
+        }
+
+        .solicitacao-card-header {
+            align-items: flex-start;
+        }
+
+        .solicitacao-card-body {
+            padding: 1rem;
+        }
+
+        .solicitacao-actions {
+            bottom: 0.5rem;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .solicitacao-actions-info {
+            justify-content: center;
+            text-align: center;
+        }
+
+        .solicitacao-actions-buttons {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .solicitacao-page {
+            padding-right: 0.75rem !important;
+            padding-left: 0.75rem !important;
+        }
+
+        .solicitacao-actions-buttons {
+            grid-template-columns: 1fr;
+        }
+
+        .solicitacao-card-description {
+            display: none;
+        }
+    }
+</style>
+
+<main class="container-fluid px-3 px-lg-4 py-4 solicitacao-page">
+
+    <!-- Cabeçalho -->
+    <header class="solicitacao-hero">
+        <a
+            class="solicitacao-back"
+            href="{% url 'insumos:lista_solicitacoes_insumo' %}"
+        >
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            <span>{% trans "Voltar para solicitações" %}</span>
+        </a>
+
+        <div class="solicitacao-title-group">
+            <div class="solicitacao-title-icon">
+                <i class="bi bi-box-seam" aria-hidden="true"></i>
+            </div>
+
+            <div>
+                <span class="solicitacao-eyebrow">
+                    {% trans "Gestão de insumos" %}
+                </span>
+
+                <h1 class="solicitacao-title">
+                    {% trans "Nova solicitação de insumos" %}
+                </h1>
+
+                <p class="solicitacao-subtitle">
+                    {% trans "Informe os dados da solicitação e adicione os itens necessários." %}
+                </p>
+            </div>
+        </div>
     </header>
 
-    <form method="post" novalidate id="form-solicitacao">{% csrf_token %}
-        <section class="row g-3 mb-4">
-            {% for field in form %}<div class="{% if field.name == 'justificativa' %}col-12{% else %}col-lg-6{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
-        </section>
+    <form method="post" novalidate id="form-solicitacao">
+        {% csrf_token %}
 
-        <section class="border-top pt-3">
-            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-                <h2 class="h5 mb-0">{% trans "Carrinho de insumos" %}</h2>
-                <span class="badge text-bg-primary" id="contador-carrinho">0 {% trans "itens" %}</span>
-            </div>
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger d-flex align-items-start gap-2 mb-4" role="alert">
+                <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
 
-            <div class="row g-2 align-items-end bg-light border p-3 mb-3">
-                <div class="col-xl-5">
-                    <label class="form-label" for="produto-carrinho">{% trans "Insumo" %}</label>
-                    <select class="form-select" id="produto-carrinho">
-                        <option value="">{% trans "Selecione" %}</option>
-                        {% regroup insumos by categoria.nome as categorias %}
-                        {% for categoria in categorias %}<optgroup label="{{ categoria.grouper }}">{% for insumo in categoria.list %}<option value="{{ insumo.id }}" data-nome="{{ insumo.descricao }}" data-unidade="{{ insumo.unidade_medida }}" data-categoria="{{ insumo.categoria.nome }}">{{ insumo.descricao }} ({{ insumo.unidade_medida }})</option>{% endfor %}</optgroup>{% endfor %}
-                    </select>
+                <div>
+                    {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
                 </div>
-                <div class="col-xl-2 col-md-4"><label class="form-label" for="quantidade-carrinho">{% trans "Quantidade" %}</label><input class="form-control" id="quantidade-carrinho" type="number" min="0" step="1" value="1"></div>
-                <div class="col-xl-3 col-md-8"><label class="form-label" for="observacao-carrinho">{% trans "Observação" %}</label><input class="form-control" id="observacao-carrinho"></div>
-                <div class="col-xl-2"><button class="btn btn-outline-primary w-100" type="button" id="adicionar-item"><i class="bi bi-cart-plus"></i> {% trans "Adicionar" %}</button></div>
+            </div>
+        {% endif %}
+
+        <!-- Dados gerais -->
+        <section class="solicitacao-card">
+            <div class="solicitacao-card-header">
+                <div class="solicitacao-card-title">
+                    <span class="solicitacao-step">1</span>
+
+                    <div>
+                        <h2 class="solicitacao-card-heading">
+                            {% trans "Dados da solicitação" %}
+                        </h2>
+
+                        <p class="solicitacao-card-description">
+                            {% trans "Defina a base, a justificativa e as demais informações necessárias." %}
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle" id="tabela-itens">
-                    <thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Categoria" %}</th><th style="width:170px">{% trans "Quantidade" %}</th><th>{% trans "Observação" %}</th><th style="width:48px"></th></tr></thead>
-                    <tbody></tbody>
-                </table>
+            <div class="solicitacao-card-body">
+                <div class="row g-3 solicitacao-form-fields">
+                    {% for field in form %}
+                        {% if field.is_hidden %}
+                            {{ field }}
+                        {% else %}
+                            <div class="{% if field.name == 'justificativa' %}col-12{% else %}col-md-6{% endif %}">
+                                <label
+                                    class="form-label"
+                                    for="{{ field.id_for_label }}"
+                                >
+                                    {{ field.label }}
+
+                                    {% if field.field.required %}
+                                        <span
+                                            class="solicitacao-required"
+                                            title="{% trans 'Campo obrigatório' %}"
+                                        >*</span>
+                                    {% endif %}
+                                </label>
+
+                                {{ field }}
+
+                                {% if field.help_text %}
+                                    <div class="solicitacao-help">
+                                        {{ field.help_text|safe }}
+                                    </div>
+                                {% endif %}
+
+                                {% for error in field.errors %}
+                                    <div class="solicitacao-field-error">
+                                        <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                                        <span>{{ error }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             </div>
-            <div class="text-center text-secondary py-4 border-bottom" id="carrinho-vazio">{% trans "Nenhum item adicionado." %}</div>
         </section>
 
-        <div class="d-flex justify-content-end gap-2 border-top pt-3"><a class="btn btn-outline-secondary" href="{% url 'insumos:lista_solicitacoes_insumo' %}">{% trans "Cancelar" %}</a><button class="btn btn-primary" id="enviar-solicitacao" type="submit" disabled><i class="bi bi-send"></i> {% trans "Enviar solicitação" %}</button></div>
+        <!-- Carrinho -->
+        <section class="solicitacao-card">
+            <div class="solicitacao-card-header">
+                <div class="solicitacao-card-title">
+                    <span class="solicitacao-step">2</span>
+
+                    <div>
+                        <h2 class="solicitacao-card-heading">
+                            {% trans "Itens solicitados" %}
+                        </h2>
+
+                        <p class="solicitacao-card-description">
+                            {% trans "Selecione os insumos e informe suas respectivas quantidades." %}
+                        </p>
+                    </div>
+                </div>
+
+                <span
+                    class="carrinho-contador"
+                    id="contador-carrinho"
+                    aria-live="polite"
+                >
+                    <i class="bi bi-cart3" aria-hidden="true"></i>
+                    <span id="contador-carrinho-texto">
+                        0 {% trans "itens" %}
+                    </span>
+                </span>
+            </div>
+
+            <div class="solicitacao-card-body">
+
+                <!-- Formulário de inclusão -->
+                <div class="carrinho-adicionar">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-xl-5">
+                            <label
+                                class="form-label"
+                                for="produto-carrinho"
+                            >
+                                {% trans "Insumo" %}
+                            </label>
+
+                            <select
+                                class="form-select"
+                                id="produto-carrinho"
+                            >
+                                <option value="">
+                                    {% trans "Selecione um insumo" %}
+                                </option>
+
+                                {% regroup insumos by categoria.nome as categorias %}
+
+                                {% for categoria in categorias %}
+                                    <optgroup label="{{ categoria.grouper }}">
+                                        {% for insumo in categoria.list %}
+                                            <option
+                                                value="{{ insumo.id }}"
+                                                data-nome="{{ insumo.descricao }}"
+                                                data-unidade="{{ insumo.unidade_medida }}"
+                                                data-categoria="{{ insumo.categoria.nome }}"
+                                            >
+                                                {{ insumo.descricao }}
+                                                ({{ insumo.unidade_medida }})
+                                            </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-xl-2 col-md-4">
+                            <label
+                                class="form-label"
+                                for="quantidade-carrinho"
+                            >
+                                {% trans "Quantidade" %}
+                            </label>
+
+                            <input
+                                class="form-control"
+                                id="quantidade-carrinho"
+                                type="number"
+                                min="1"
+                                step="1"
+                                value="1"
+                            >
+                        </div>
+
+                        <div class="col-xl-3 col-md-8">
+                            <label
+                                class="form-label"
+                                for="observacao-carrinho"
+                            >
+                                {% trans "Observação" %}
+                            </label>
+
+                            <input
+                                class="form-control"
+                                id="observacao-carrinho"
+                                type="text"
+                                maxlength="255"
+                                placeholder="{% trans 'Opcional' %}"
+                            >
+                        </div>
+
+                        <div class="col-xl-2">
+                            <button
+                                class="btn btn-primary w-100"
+                                type="button"
+                                id="adicionar-item"
+                            >
+                                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                                {% trans "Adicionar" %}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="carrinho-orientacao">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+
+                        <span>
+                            {% trans "Ao adicionar novamente o mesmo insumo, sua quantidade será somada à existente." %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Retorno das ações do carrinho -->
+                <div
+                    class="carrinho-feedback"
+                    id="mensagem-carrinho"
+                    role="status"
+                    aria-live="polite"
+                ></div>
+
+                <!-- Itens -->
+                <div class="carrinho-table-wrapper">
+                    <div class="table-responsive">
+                        <table
+                            class="table table-hover align-middle carrinho-table"
+                            id="tabela-itens"
+                        >
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Insumo" %}</th>
+                                    <th>{% trans "Categoria" %}</th>
+
+                                    <th style="width: 160px;">
+                                        {% trans "Quantidade" %}
+                                    </th>
+
+                                    <th style="min-width: 220px;">
+                                        {% trans "Observação" %}
+                                    </th>
+
+                                    <th
+                                        class="text-center"
+                                        style="width: 70px;"
+                                    >
+                                        <span class="visually-hidden">
+                                            {% trans "Ações" %}
+                                        </span>
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="carrinho-vazio" id="carrinho-vazio">
+                        <div class="carrinho-vazio-icon">
+                            <i class="bi bi-cart-x" aria-hidden="true"></i>
+                        </div>
+
+                        <h3>{% trans "O carrinho está vazio" %}</h3>
+
+                        <p>
+                            {% trans "Selecione um insumo, informe a quantidade e clique em Adicionar." %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Ações -->
+        <div class="solicitacao-actions">
+            <div class="solicitacao-actions-info">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+
+                <span>
+                    {% trans "Revise os dados antes de enviar a solicitação." %}
+                </span>
+            </div>
+
+            <div class="d-flex gap-2 solicitacao-actions-buttons">
+                <a
+                    class="btn btn-outline-secondary"
+                    href="{% url 'insumos:lista_solicitacoes_insumo' %}"
+                >
+                    {% trans "Cancelar" %}
+                </a>
+
+                <button
+                    class="btn btn-primary"
+                    id="enviar-solicitacao"
+                    type="submit"
+                    disabled
+                >
+                    <i class="bi bi-send me-1" aria-hidden="true"></i>
+                    <span>{% trans "Enviar solicitação" %}</span>
+                </button>
+            </div>
+        </div>
     </form>
 </main>
 
 <script>
 (function () {
+    'use strict';
+
+    const form = document.getElementById('form-solicitacao');
     const produto = document.getElementById('produto-carrinho');
     const quantidade = document.getElementById('quantidade-carrinho');
     const observacao = document.getElementById('observacao-carrinho');
+    const adicionar = document.getElementById('adicionar-item');
     const corpo = document.querySelector('#tabela-itens tbody');
     const vazio = document.getElementById('carrinho-vazio');
-    const contador = document.getElementById('contador-carrinho');
+    const contadorTexto = document.getElementById('contador-carrinho-texto');
     const enviar = document.getElementById('enviar-solicitacao');
+    const mensagem = document.getElementById('mensagem-carrinho');
+
+    let temporizadorMensagem = null;
+
+    const textos = {
+        item: '{{ _("item")|escapejs }}',
+        itens: '{{ _("itens")|escapejs }}',
+        selecioneInsumo: '{{ _("Selecione um insumo válido.")|escapejs }}',
+        quantidadeInvalida: '{{ _("Informe uma quantidade maior que zero.")|escapejs }}',
+        itemAdicionado: '{{ _("Item adicionado ao carrinho.")|escapejs }}',
+        quantidadeAtualizada: '{{ _("A quantidade do item existente foi atualizada.")|escapejs }}',
+        itemRemovido: '{{ _("Item removido do carrinho.")|escapejs }}',
+        removerItem: '{{ _("Remover item")|escapejs }}',
+        enviando: '{{ _("Enviando...")|escapejs }}',
+        adicioneItem: '{{ _("Adicione pelo menos um item antes de enviar.")|escapejs }}'
+    };
+
+    /**
+     * Aplica classes Bootstrap aos campos vindos do Django Form.
+     * Isso evita depender exclusivamente dos widgets configurados no forms.py.
+     */
+    function prepararCamposDjango() {
+        const campos = form.querySelectorAll(
+            '.solicitacao-form-fields input, ' +
+            '.solicitacao-form-fields select, ' +
+            '.solicitacao-form-fields textarea'
+        );
+
+        campos.forEach(function (campo) {
+            if (campo.type === 'hidden') {
+                return;
+            }
+
+            if (campo.type === 'checkbox' || campo.type === 'radio') {
+                campo.classList.add('form-check-input');
+            } else if (campo.tagName === 'SELECT') {
+                campo.classList.add('form-select');
+            } else {
+                campo.classList.add('form-control');
+            }
+
+            const coluna = campo.closest('[class*="col-"]');
+
+            if (
+                coluna &&
+                coluna.querySelector('.solicitacao-field-error')
+            ) {
+                campo.classList.add('is-invalid');
+                campo.setAttribute('aria-invalid', 'true');
+            }
+        });
+    }
+
+    function formatarQuantidade(valor) {
+        const numero = Number.parseFloat(valor);
+
+        if (!Number.isFinite(numero)) {
+            return '';
+        }
+
+        return Number.isInteger(numero)
+            ? String(numero)
+            : numero.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    }
 
     function atualizarResumo() {
         const total = corpo.querySelectorAll('tr').length;
-        contador.textContent = total + (total === 1 ? ' {% trans "item" %}' : ' {% trans "itens" %}');
+
+        contadorTexto.textContent =
+            total + ' ' + (total === 1 ? textos.item : textos.itens);
+
         vazio.classList.toggle('d-none', total > 0);
         enviar.disabled = total === 0;
     }
 
     function campoOculto(nome, valor) {
         const input = document.createElement('input');
+
         input.type = 'hidden';
         input.name = nome;
         input.value = valor;
+
         return input;
     }
 
-    document.getElementById('adicionar-item').addEventListener('click', function () {
+    function exibirMensagem(texto, tipo) {
+        window.clearTimeout(temporizadorMensagem);
+
+        mensagem.className =
+            'carrinho-feedback is-visible is-' + tipo;
+
+        const icones = {
+            success: 'bi-check-circle-fill',
+            danger: 'bi-exclamation-circle-fill',
+            info: 'bi-info-circle-fill'
+        };
+
+        mensagem.replaceChildren();
+
+        const icone = document.createElement('i');
+        icone.className = 'bi ' + (icones[tipo] || icones.info);
+        icone.setAttribute('aria-hidden', 'true');
+
+        const conteudo = document.createElement('span');
+        conteudo.textContent = texto;
+
+        mensagem.append(icone, conteudo);
+
+        temporizadorMensagem = window.setTimeout(function () {
+            mensagem.className = 'carrinho-feedback';
+            mensagem.replaceChildren();
+        }, 3500);
+    }
+
+    function criarLinha(opcao, valorQuantidade) {
+        const linha = document.createElement('tr');
+        linha.dataset.insumo = produto.value;
+
+        /*
+         * Produto
+         */
+        const colunaProduto = document.createElement('td');
+
+        const produtoWrapper = document.createElement('div');
+        produtoWrapper.className = 'carrinho-produto';
+
+        const produtoIcone = document.createElement('span');
+        produtoIcone.className = 'carrinho-produto-icon';
+        produtoIcone.innerHTML =
+            '<i class="bi bi-box-seam" aria-hidden="true"></i>';
+
+        const produtoTexto = document.createElement('div');
+
+        const nome = document.createElement('strong');
+        nome.className = 'carrinho-produto-nome';
+        nome.textContent = opcao.dataset.nome;
+
+        const unidade = document.createElement('div');
+        unidade.className = 'carrinho-produto-unidade';
+        unidade.textContent = opcao.dataset.unidade;
+
+        produtoTexto.append(nome, unidade);
+        produtoWrapper.append(produtoIcone, produtoTexto);
+
+        colunaProduto.append(
+            produtoWrapper,
+            campoOculto('insumo', produto.value)
+        );
+
+        /*
+         * Categoria
+         */
+        const colunaCategoria = document.createElement('td');
+
+        const categoria = document.createElement('span');
+        categoria.className = 'carrinho-categoria';
+        categoria.textContent = opcao.dataset.categoria;
+
+        colunaCategoria.appendChild(categoria);
+
+        /*
+         * Quantidade
+         */
+        const colunaQuantidade = document.createElement('td');
+
+        const inputQuantidade = document.createElement('input');
+        inputQuantidade.className = 'form-control';
+        inputQuantidade.type = 'number';
+        inputQuantidade.name = 'quantidade';
+        inputQuantidade.min = quantidade.min || '1';
+        inputQuantidade.step = quantidade.step || '1';
+        inputQuantidade.required = true;
+        inputQuantidade.value = formatarQuantidade(valorQuantidade);
+        inputQuantidade.setAttribute(
+            'aria-label',
+            '{{ _("Quantidade solicitada")|escapejs }}'
+        );
+
+        colunaQuantidade.appendChild(inputQuantidade);
+
+        /*
+         * Observação
+         */
+        const colunaObservacao = document.createElement('td');
+
+        const inputObservacao = document.createElement('input');
+        inputObservacao.className = 'form-control';
+        inputObservacao.type = 'text';
+        inputObservacao.name = 'observacao_item';
+        inputObservacao.maxLength = 255;
+        inputObservacao.value = observacao.value.trim();
+        inputObservacao.placeholder =
+            '{{ _("Observação opcional")|escapejs }}';
+
+        colunaObservacao.appendChild(inputObservacao);
+
+        /*
+         * Remover
+         */
+        const colunaAcao = document.createElement('td');
+        colunaAcao.className = 'text-center';
+
+        const remover = document.createElement('button');
+        remover.className =
+            'btn btn-outline-danger btn-remover-item remover-item';
+        remover.type = 'button';
+        remover.title = textos.removerItem;
+        remover.setAttribute('aria-label', textos.removerItem);
+        remover.innerHTML =
+            '<i class="bi bi-trash3" aria-hidden="true"></i>';
+
+        colunaAcao.appendChild(remover);
+
+        linha.append(
+            colunaProduto,
+            colunaCategoria,
+            colunaQuantidade,
+            colunaObservacao,
+            colunaAcao
+        );
+
+        return linha;
+    }
+
+    function adicionarItem() {
         const opcao = produto.options[produto.selectedIndex];
         const valorQuantidade = Number.parseFloat(quantidade.value);
-        if (!produto.value || !Number.isFinite(valorQuantidade) || valorQuantidade <= 0) {
+
+        if (!produto.value || !opcao || !opcao.dataset.nome) {
+            exibirMensagem(textos.selecioneInsumo, 'danger');
             produto.focus();
             return;
         }
 
-        const existente = corpo.querySelector('tr[data-insumo="' + produto.value + '"]');
+        if (
+            !Number.isFinite(valorQuantidade) ||
+            valorQuantidade <= 0
+        ) {
+            exibirMensagem(textos.quantidadeInvalida, 'danger');
+            quantidade.focus();
+            return;
+        }
+
+        const existente = corpo.querySelector(
+            'tr[data-insumo="' +
+            CSS.escape(produto.value) +
+            '"]'
+        );
+
         if (existente) {
-            const campoQuantidade = existente.querySelector('input[name="quantidade"]');
-            campoQuantidade.value = (Number.parseFloat(campoQuantidade.value) + valorQuantidade).toFixed(2);
-            const campoObservacao = existente.querySelector('input[name="observacao_item"]');
-            if (observacao.value.trim() && !campoObservacao.value.includes(observacao.value.trim())) {
-                campoObservacao.value = [campoObservacao.value, observacao.value.trim()].filter(Boolean).join('; ');
+            const campoQuantidade = existente.querySelector(
+                'input[name="quantidade"]'
+            );
+
+            const quantidadeAtual =
+                Number.parseFloat(campoQuantidade.value) || 0;
+
+            campoQuantidade.value = formatarQuantidade(
+                quantidadeAtual + valorQuantidade
+            );
+
+            const campoObservacao = existente.querySelector(
+                'input[name="observacao_item"]'
+            );
+
+            const novaObservacao = observacao.value.trim();
+
+            if (
+                novaObservacao &&
+                !campoObservacao.value.includes(novaObservacao)
+            ) {
+                campoObservacao.value = [
+                    campoObservacao.value,
+                    novaObservacao
+                ]
+                    .filter(Boolean)
+                    .join('; ');
             }
+
+            existente.classList.add('table-primary');
+
+            window.setTimeout(function () {
+                existente.classList.remove('table-primary');
+            }, 700);
+
+            exibirMensagem(textos.quantidadeAtualizada, 'info');
         } else {
-            const linha = document.createElement('tr');
-            linha.dataset.insumo = produto.value;
-
-            const colunaProduto = document.createElement('td');
-            const nome = document.createElement('strong');
-            nome.textContent = opcao.dataset.nome;
-            const unidade = document.createElement('div');
-            unidade.className = 'small text-secondary';
-            unidade.textContent = opcao.dataset.unidade;
-            colunaProduto.append(nome, unidade, campoOculto('insumo', produto.value));
-
-            const colunaCategoria = document.createElement('td');
-            colunaCategoria.textContent = opcao.dataset.categoria;
-
-            const colunaQuantidade = document.createElement('td');
-            const inputQuantidade = document.createElement('input');
-            inputQuantidade.className = 'form-control';
-            inputQuantidade.type = 'number';
-            inputQuantidade.name = 'quantidade';
-            inputQuantidade.min = '0';
-            inputQuantidade.step = '1';
-            inputQuantidade.required = true;
-            inputQuantidade.value = valorQuantidade.toFixed(2);
-            colunaQuantidade.appendChild(inputQuantidade);
-
-            const colunaObservacao = document.createElement('td');
-            const inputObservacao = document.createElement('input');
-            inputObservacao.className = 'form-control';
-            inputObservacao.name = 'observacao_item';
-            inputObservacao.value = observacao.value.trim();
-            colunaObservacao.appendChild(inputObservacao);
-
-            const colunaAcao = document.createElement('td');
-            const remover = document.createElement('button');
-            remover.className = 'btn btn-outline-danger remover-item';
-            remover.type = 'button';
-            remover.title = '{% trans "Remover item" %}';
-            remover.innerHTML = '<i class="bi bi-trash"></i>';
-            colunaAcao.appendChild(remover);
-
-            linha.append(colunaProduto, colunaCategoria, colunaQuantidade, colunaObservacao, colunaAcao);
+            const linha = criarLinha(opcao, valorQuantidade);
             corpo.appendChild(linha);
+
+            exibirMensagem(textos.itemAdicionado, 'success');
         }
 
         produto.value = '';
         quantidade.value = '1';
         observacao.value = '';
+
         atualizarResumo();
+        produto.focus();
+    }
+
+    adicionar.addEventListener('click', adicionarItem);
+
+    produto.addEventListener('change', function () {
+        if (produto.value) {
+            quantidade.focus();
+            quantidade.select();
+        }
+    });
+
+    quantidade.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Enter') {
+            evento.preventDefault();
+            adicionarItem();
+        }
+    });
+
+    observacao.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Enter') {
+            evento.preventDefault();
+            adicionarItem();
+        }
     });
 
     corpo.addEventListener('click', function (evento) {
         const botao = evento.target.closest('.remover-item');
-        if (!botao) return;
+
+        if (!botao) {
+            return;
+        }
+
         botao.closest('tr').remove();
+
         atualizarResumo();
+        exibirMensagem(textos.itemRemovido, 'info');
     });
 
+    corpo.addEventListener('input', function (evento) {
+        if (evento.target.name !== 'quantidade') {
+            return;
+        }
+
+        const valor = Number.parseFloat(evento.target.value);
+
+        evento.target.classList.toggle(
+            'is-invalid',
+            !Number.isFinite(valor) || valor <= 0
+        );
+    });
+
+    form.addEventListener('submit', function (evento) {
+        const total = corpo.querySelectorAll('tr').length;
+
+        if (total === 0) {
+            evento.preventDefault();
+            exibirMensagem(textos.adicioneItem, 'danger');
+            produto.focus();
+            return;
+        }
+
+        enviar.disabled = true;
+        enviar.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" ' +
+            'aria-hidden="true"></span>' +
+            '<span>' + textos.enviando + '</span>';
+    });
+
+    prepararCamposDjango();
     atualizarResumo();
 })();
 </script>
+
 {% endblock %}

@@ -73,7 +73,6 @@ def _bases_agrupadas_por_nome(queryset):
 def _bases_unicas_por_nome(queryset):
     return [bases[0] for bases in _bases_agrupadas_por_nome(queryset).values()]
 
-
 def _base_contexto_usuario(request):
     """Resolve e persiste uma base selecionada sem confiar apenas no cliente."""
     perfil = request.user.perfil
@@ -412,7 +411,6 @@ def assistente_operacional(request):
         }
     )
 
-
 @login_required
 def manuais_view(request):
     filtros = {
@@ -588,7 +586,7 @@ def cadastrar_usuario(request):
                 role = request.POST.get('role', 'operador')
                 regionais_ids = request.POST.getlist('regionais')
 
-                # ---------------- VALIDAÇÕES ----------------
+                # VALIDAÇÕES
                 if not username:
                     messages.error(request, "Informe o nome de usuário.")
                     return redirect('estoque:cadastrar_usuario')
@@ -609,7 +607,7 @@ def cadastrar_usuario(request):
                     messages.error(request, f"E-mail '{email}' já está em uso.")
                     return redirect('estoque:cadastrar_usuario')
 
-                # ---------------- REGRA REGIONAL ----------------
+                # REGRA REGIONAL
                 empresa = None
                 regionais = Base.objects.none()
 
@@ -626,7 +624,7 @@ def cadastrar_usuario(request):
 
                     empresa = regionais.first().empresa
 
-                # ---------------- CRIA USUÁRIO ----------------
+                # CRIA USUÁRIO
                 user = User.objects.create_user(
                     username=username,
                     password=password,
@@ -635,7 +633,7 @@ def cadastrar_usuario(request):
                     is_active=True
                 )
 
-                # ---------------- PERFIL ----------------
+                # PERFIL
                 perfil, _ = Perfil.objects.get_or_create(user=user)
 
                 perfil.role = role
@@ -1131,7 +1129,7 @@ def detalhes_produto_view(request, produto_id, regional_id):
     if request.method == 'POST':
         acao = request.POST.get('acao')
 
-        # ---------------- SICK ----------------
+        # SICK
         if acao == 'sick':
             messages.error(
                 request,
@@ -1139,7 +1137,7 @@ def detalhes_produto_view(request, produto_id, regional_id):
             )
             return redirect(request.path)
 
-        # ---------------- TRANSFERÊNCIA ----------------
+        # TRANSFERÊNCIA
         elif acao == 'transferir':
 
             if not perfil.pode_transferir():
@@ -1999,7 +1997,7 @@ def marcar_sick_ajax(request, equipamento_id):
 
     # Se não veio motivo ou está vazio, usa um valor padrão
     if not motivo:
-        motivo = 'Via sistema'
+        motivo = 'Manutenção'
 
     try:
         sick = SickService.marcar_como_sick(

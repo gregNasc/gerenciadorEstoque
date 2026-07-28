@@ -176,6 +176,25 @@ INVENTORY_PLANNING_SYSTEM_USERNAME = os.getenv(
     'inventory_planning_sync',
 )
 
+# Leitura autenticada e somente-leitura da tela de inventários em tempo real.
+INVENTORY_PORTAL_ENABLED = os.getenv('INVENTORY_PORTAL_ENABLED', 'False').lower() == 'true'
+INVENTORY_PORTAL_URL = os.getenv(
+    'INVENTORY_PORTAL_URL',
+    'https://novoportal.inventorybrasil.com.br/',
+)
+INVENTORY_PORTAL_USERNAME = os.getenv('INVENTORY_PORTAL_USERNAME', '')
+INVENTORY_PORTAL_PASSWORD = os.getenv('INVENTORY_PORTAL_PASSWORD', '')
+INVENTORY_PORTAL_TIMEOUT = float(os.getenv('INVENTORY_PORTAL_TIMEOUT', '20'))
+INVENTORY_PORTAL_MAX_RANGE_DAYS = int(os.getenv('INVENTORY_PORTAL_MAX_RANGE_DAYS', '31'))
+INVENTORY_PORTAL_MAX_DETAIL_RECORDS = int(os.getenv('INVENTORY_PORTAL_MAX_DETAIL_RECORDS', '20'))
+
+# Interpretação opcional de linguagem natural. O LLM não acessa ferramentas nem
+# dados do Portal; ele retorna apenas filtros estruturados validados pelo Django.
+TORY_LLM_ENABLED = os.getenv('TORY_LLM_ENABLED', 'False').lower() == 'true'
+TORY_LLM_MODEL = os.getenv('TORY_LLM_MODEL', 'gpt-5.6-sol')
+TORY_LLM_TIMEOUT = float(os.getenv('TORY_LLM_TIMEOUT', '20'))
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+
 CACHES = {
     'default': {
         'BACKEND': os.getenv(
@@ -199,6 +218,16 @@ LOGGING = {
         'integracao.inventory_planning': {
             'handlers': ['console'],
             'level': os.getenv('INVENTORY_PLANNING_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'integracao.inventory_portal': {
+            'handlers': ['console'],
+            'level': os.getenv('INVENTORY_PORTAL_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'integracao.tory_llm': {
+            'handlers': ['console'],
+            'level': os.getenv('TORY_LLM_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
     },

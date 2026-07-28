@@ -8,6 +8,7 @@ from difflib import SequenceMatcher
 from math import ceil
 from numbers import Number
 
+from django.conf import settings
 from django.db.models import Case, Count, DecimalField, Prefetch, Q, Sum, Value, When, prefetch_related_objects
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -56,6 +57,10 @@ class InterpretacaoOperacional:
     external_region_name: str = ''
     external_inventory_type_name: str = ''
     external_inventory_type_kind: str = ''
+    portal_status: str = 'any'
+    portal_client_code: str = ''
+    portal_metrics: list[str] = field(default_factory=list)
+    portal_llm_used: bool = False
 
 class AssistenteOperacionalService:
     NOME_ASSISTENTE = 'Tory'
@@ -156,6 +161,7 @@ class AssistenteOperacionalService:
         interpretacao = cls.interpretar(user, pergunta, contexto=contexto)
 
         roteadores = {
+            'portal_tempo_real': cls._portal_tempo_real,
             'planejamento': cls._planejamento,
             'esclarecer_inventarios': cls._esclarecer_inventarios,
             'esclarecer_ranking': cls._esclarecer_ranking,
@@ -206,6 +212,7 @@ class AssistenteOperacionalService:
         texto = cls._corrigir_termos(cls._normalizar(pergunta))
         texto = cls._remover_vocativo_tory(texto)
         texto = cls._interpretar_linguagem_cotidiana(texto)
+        portal_plan = cls._interpretar_pergunta_portal_llm(pergunta, texto, contexto)
         continuacao = cls._eh_continuacao(texto)
         nova_consulta_inventarios = cls._nova_consulta_inventarios(texto, continuacao)
         consulta_equipamento_explicita = bool(
@@ -231,10 +238,12 @@ class AssistenteOperacionalService:
             'etapa', 'tipo', 'horario', 'historico', 'duracao', 'durou', 'demorou',
             'comecou', 'terminou', 'atraso', 'tempo efetivo', 'tempo produtivo',
             'depois das', 'antes das', 'acima da media', 'custo adicional',
-            'ultrapassou', 'ultrapassar',
+            'ultrapassou', 'ultrapassar', 'progresso', 'percentual', 'porcentagem',
+            'acuracidade', 'conferente', 'conferentes', 'divergencia', 'divergencias',
+            'secoes', 'conexao', 'ultima atualizacao',
         )
         simulacao_equipe_contextual = cls._pergunta_simulacao_equipe(texto)
-        cliente_explicito = cls._extrair_cliente(texto)
+        cliente_explicito = cls._extrair_cliente(texto) or cls._cliente_do_plano_portal(portal_plan)
         cliente_contexto = None if nova_consulta_inventarios else cls._cliente_do_contexto(contexto)
         cliente = None if cls._quer_todos_clientes(texto) else (
             cliente_explicito or cliente_contexto
@@ -242,7 +251,9 @@ class AssistenteOperacionalService:
         insumo = cls._extrair_insumo(texto)
         if not insumo and (continuacao or contexto.get('intencao') == 'comparacao_precos'):
             insumo = cls._insumo_do_contexto(contexto)
-        loja = cls._extrair_loja(texto, cliente)
+        loja = cls._extrair_loja(texto, cliente) or (
+            portal_plan.store_number if portal_plan else ''
+        )
         pessoas_filtro = cls._extrair_pessoas_filtro(texto)
         tipo_inventario = cls._extrair_tipo_inventario(texto) or (
             '' if nova_consulta_inventarios else contexto.get('tipo_inventario', '')
@@ -255,15 +266,24 @@ class AssistenteOperacionalService:
         if pessoas_filtro is None and (continuacao or (consulta_relatorio and not nova_consulta_inventarios)):
             pessoas_filtro = contexto.get('pessoas_filtro')
         periodo_inicio_atual, periodo_fim_atual = cls._extrair_periodo(texto)
+        if not periodo_inicio_atual and portal_plan and portal_plan.start_date:
+            periodo_inicio_atual = portal_plan.start_date
+            periodo_fim_atual = portal_plan.end_date or portal_plan.start_date
         periodo_inicio, periodo_fim = periodo_inicio_atual, periodo_fim_atual
         if not periodo_inicio and (
             continuacao or consulta_custo or
             contexto.get('intencao') == 'planejamento' or
+            contexto.get('intencao') == 'portal_tempo_real' or
             (consulta_relatorio and not cliente_explicito)
         ):
             periodo_inicio = cls._data_contexto_chave(contexto, 'periodo_inicio')
             periodo_fim = cls._data_contexto_chave(contexto, 'periodo_fim')
         data_interpretada_atual = cls._extrair_data(texto)
+        if (
+            not data_interpretada_atual and portal_plan and portal_plan.start_date and
+            portal_plan.start_date == portal_plan.end_date
+        ):
+            data_interpretada_atual = portal_plan.start_date
         data_interpretada = data_interpretada_atual
         if not data_interpretada and periodo_inicio and periodo_inicio == periodo_fim:
             data_interpretada = periodo_inicio
@@ -409,6 +429,20 @@ class AssistenteOperacionalService:
             external_region_name=contexto.get('external_region_name', '') if manter_entidades_externas else '',
             external_inventory_type_name=external_type_name,
             external_inventory_type_kind=external_type_kind,
+            portal_status=(
+                portal_plan.status if portal_plan else
+                contexto.get('portal_status', 'any')
+                if contexto.get('intencao') == 'portal_tempo_real' and not nova_consulta_inventarios
+                else 'any'
+            ),
+            portal_client_code=(
+                portal_plan.client_code if portal_plan else
+                contexto.get('portal_client_code', '')
+                if contexto.get('intencao') == 'portal_tempo_real' and not nova_consulta_inventarios
+                else ''
+            ),
+            portal_metrics=portal_plan.metrics if portal_plan else [],
+            portal_llm_used=bool(portal_plan and portal_plan.is_portal_query),
         )
 
         if not pergunta:
@@ -470,7 +504,9 @@ class AssistenteOperacionalService:
             interpretacao.tipo_inventario = ''
             return interpretacao
 
-        if cls._pergunta_planejamento(texto, contexto):
+        if (portal_plan and portal_plan.is_portal_query) or cls._pergunta_portal_tempo_real(texto, contexto):
+            interpretacao.intencao = 'portal_tempo_real'
+        elif cls._pergunta_planejamento(texto, contexto):
             interpretacao.intencao = 'planejamento'
             # Em planejamento, uma cidade/regional representa o escopo externo. Ela
             # não pode ser convertida silenciosamente em uma base local quando há
@@ -647,6 +683,12 @@ class AssistenteOperacionalService:
         from estoque.services.planning_assistant_service import PlanningAssistantService
 
         return PlanningAssistantService.respond(user, interpretacao)
+
+    @classmethod
+    def _portal_tempo_real(cls, user, interpretacao):
+        from estoque.services.portal_assistant_service import InventoryPortalAssistantService
+
+        return InventoryPortalAssistantService.respond(user, interpretacao)
 
     @classmethod
     def _aplicar_escopo_de_base(cls, user, interpretacao):
@@ -4231,7 +4273,7 @@ class AssistenteOperacionalService:
         return not bool(re.search(
             r'\b(planejad[oa]s?|planejamento|agenda|previst[oa]s?|dados locais|'
             r'inventarios? locais?|execucao local|registrad[oa]s?|em andamento|'
-            r'finalizad[oa]s?|encerrad[oa]s?|realizad[oa]s?)\b',
+            r'finalizad[oa]s?|concluid[oa]s?|encerrad[oa]s?|realizad[oa]s?)\b',
             texto,
         ))
 
@@ -4267,6 +4309,65 @@ class AssistenteOperacionalService:
             r'custo adicional|ultrapassou|ultrapassar)\b',
             texto,
         ))
+
+    @classmethod
+    def _pergunta_portal_tempo_real(cls, texto, contexto):
+        contexto_portal = contexto.get('intencao') == 'portal_tempo_real'
+        mencao_portal = bool(re.search(r'\b(portal|tempo real|realtime)\b', texto))
+        indicador_operacional = bool(re.search(
+            r'\b(andamento|agora|neste momento|nesse momento|progresso|percentual|porcentagem|'
+            r'finalizado|finalizados|finalizada|finalizadas|concluido|concluidos|'
+            r'concluida|concluidas|encerrado|encerrados|encerrada|encerradas|conexao|conectado|'
+            r'ultima atualizacao|produtividade|acuracidade|divergencias?|conferentes?|'
+            r'total de pecas|pecas contadas?|itens? contados?|produtos? contados?|'
+            r'secoes?|deposito|piso de venda)\b',
+            texto,
+        ))
+        inventario_explicito = bool(re.search(r'\binventarios?\b', texto))
+
+        if mencao_portal and (inventario_explicito or indicador_operacional or contexto_portal):
+            return True
+        if inventario_explicito and indicador_operacional:
+            return True
+        return bool(
+            contexto_portal and
+            (
+                cls._eh_continuacao(texto) or
+                indicador_operacional or
+                re.search(r'\b(status|lider|equipe|endereco|tipo|horario|detalhes?|informacoes?)\b', texto)
+            )
+        )
+
+    @classmethod
+    def _interpretar_pergunta_portal_llm(cls, pergunta, texto, contexto):
+        if not getattr(settings, 'TORY_LLM_ENABLED', False):
+            return None
+        candidate = bool(
+            contexto.get('intencao') == 'portal_tempo_real' or
+            re.search(
+                r'\b(portal|tempo real|realtime|inventarios?|lojas? agora|neste momento|'
+                r'nesse momento|andamento|finalizados?|concluidos?|encerrados?|progresso|'
+                r'produtividade|divergencias?|diferencas?|erramos?|acuracidade|contamos?|'
+                r'contado|contados|itens? contados?|pecas contadas?)\b',
+                texto,
+            )
+        )
+        if not candidate:
+            return None
+        from estoque.services.portal_question_interpreter import PortalQuestionInterpreter
+
+        plan = PortalQuestionInterpreter.interpret(pergunta, context=contexto)
+        return plan if plan and plan.is_portal_query else None
+
+    @classmethod
+    def _cliente_do_plano_portal(cls, portal_plan):
+        if not portal_plan or not portal_plan.client_code:
+            return None
+        from insumos.models import Cliente
+
+        normalized = cls._normalizar(portal_plan.client_code)
+        code = cls.CLIENTE_ALIASES.get(normalized, portal_plan.client_code)
+        return Cliente.objects.filter(sigla__iexact=code).first()
 
     @classmethod
     def _pergunta_planejamento(cls, texto, contexto):
@@ -5090,6 +5191,9 @@ class AssistenteOperacionalService:
             'insumo_id': interpretacao.insumo.id if interpretacao.insumo else None,
             'periodo_inicio': interpretacao.periodo_inicio.isoformat() if interpretacao.periodo_inicio else '',
             'periodo_fim': interpretacao.periodo_fim.isoformat() if interpretacao.periodo_fim else '',
+            'portal_status': interpretacao.portal_status if intencao == 'portal_tempo_real' else 'any',
+            'portal_client_code': interpretacao.portal_client_code if intencao == 'portal_tempo_real' else '',
+            'portal_metrics': interpretacao.portal_metrics if intencao == 'portal_tempo_real' else [],
             'planning_action': interpretacao.planning_action,
             'planning_statuses': interpretacao.planning_statuses,
             'planning_location': interpretacao.planning_location,

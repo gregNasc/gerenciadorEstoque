@@ -21,3 +21,22 @@ class InventoryPlanningRateLimitError(InventoryPlanningError):
 class InventoryPlanningTransportError(InventoryPlanningError):
     pass
 
+
+class InventoryPortalError(Exception):
+    """Erro base seguro para a leitura do Portal Inventory Brasil."""
+
+
+class InventoryPortalConfigurationError(InventoryPortalError):
+    pass
+
+
+class InventoryPortalAuthenticationError(InventoryPortalError):
+    pass
+
+
+class InventoryPortalResponseError(InventoryPortalError):
+    pass
+
+
+class InventoryPortalTransportError(InventoryPortalError):
+    pass
