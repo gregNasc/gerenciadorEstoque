@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
-from django.test import TestCase
+from django.template.loader import render_to_string
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -29,6 +30,28 @@ from insumos.models import (
     LoteTag,
     MovimentacaoInsumo,
 )
+
+
+class ChecklistModalMarkupTests(SimpleTestCase):
+    def test_fechar_modal_nao_envia_formulario(self):
+        html = render_to_string(
+            'estoque/checklist.html',
+            {
+                'editando': False,
+                'inventarios': [],
+                'lotes_tags': [],
+            },
+        )
+
+        self.assertIn(
+            '<button type="button" aria-label="Fechar" '
+            'onclick="fecharModal()">&times;</button>',
+            html,
+        )
+        self.assertIn(
+            '<button type="button" onclick="confirmarSelecao()">Confirmar</button>',
+            html,
+        )
 
 
 class ToryTemposOperacionaisTests(TestCase):

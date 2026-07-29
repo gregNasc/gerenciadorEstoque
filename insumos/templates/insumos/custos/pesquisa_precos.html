@@ -17,13 +17,14 @@
         <div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{% url 'insumos:precos_insumos' %}"><i class="bi bi-tags"></i> {% trans "Cotações" %}</a><a class="btn btn-outline-secondary" href="{% url 'insumos:fornecedores_insumos' %}"><i class="bi bi-building"></i> {% trans "Fornecedores" %}</a></div>
     </header>
 
-    {% if pode_pesquisar and not api_configurada %}<div class="alert alert-warning"><strong>{% trans "Integração pendente." %}</strong> {% trans "Configure MERCADO_LIVRE_ACCESS_TOKEN no ambiente para habilitar novas pesquisas online." %}</div>{% endif %}
+    {% if pode_pesquisar and not api_configurada %}<div class="alert alert-warning"><strong>{% trans "Integração pendente." %}</strong> {% trans "Habilite Gimba ou Fidelity nas variáveis de ambiente, ou configure o token do Mercado Livre, para fazer novas pesquisas." %}</div>{% endif %}
 
     <form method="post" class="row g-2 align-items-end bg-light border p-3 mb-3">{% csrf_token %}
-        <div class="col-lg-4"><label class="form-label" for="insumo-pesquisa">{% trans "Insumo" %}</label><select class="form-select" id="insumo-pesquisa" name="insumo" required><option value="">{% trans "Selecione" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" {% if insumo_selecionado.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
-        <div class="col-lg-4"><label class="form-label" for="termo-pesquisa">{% trans "Termo de pesquisa" %}</label><input class="form-control" id="termo-pesquisa" name="termo" value="{{ termo }}" placeholder="{% trans 'Ex.: papel sulfite A4 500 folhas' %}"></div>
+        <div class="col-lg-3"><label class="form-label" for="insumo-pesquisa">{% trans "Insumo" %}</label><select class="form-select" id="insumo-pesquisa" name="insumo" required><option value="">{% trans "Selecione" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" {% if insumo_selecionado.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
+        <div class="col-lg-2"><label class="form-label" for="fonte-pesquisa">{% trans "Fornecedor" %}</label><select class="form-select" id="fonte-pesquisa" name="fonte" required><option value="">{% trans "Selecione" %}</option>{% for item in fontes %}<option value="{{ item.codigo }}" {% if fonte == item.codigo %}selected{% endif %} {% if not item.habilitada %}disabled{% endif %}>{{ item.nome }}{% if not item.habilitada %} — {% trans "desabilitado" %}{% endif %}</option>{% endfor %}</select></div>
+        <div class="col-lg-3"><label class="form-label" for="termo-pesquisa">{% trans "Termo de pesquisa" %}</label><input class="form-control" id="termo-pesquisa" name="termo" value="{{ termo }}" placeholder="{% trans 'Ex.: papel sulfite A4 500 folhas' %}"></div>
         <div class="col-lg-2"><label class="form-label" for="quantidade-pesquisa">{% trans "Quantidade desejada" %}</label><input class="form-control" id="quantidade-pesquisa" name="quantidade" type="number" min="0.01" step="0.01" value="{{ quantidade }}"></div>
-        <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit" {% if not pode_pesquisar %}disabled{% endif %}><i class="bi bi-cloud-download"></i> {% trans "Pesquisar preços" %}</button></div>
+        <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit" {% if not pode_pesquisar or not api_configurada %}disabled{% endif %}><i class="bi bi-cloud-download"></i> {% trans "Pesquisar preços" %}</button></div>
     </form>
 
     <section class="row g-3 mb-3" aria-label="{% trans 'Indicadores da pesquisa' %}">
@@ -40,7 +41,36 @@
     </section>
 
     <section class="border-top pt-3"><div class="d-flex justify-content-between align-items-center gap-2 flex-wrap"><h2 class="h5 mb-0">{% trans "Ofertas online" %}</h2>{% if pesquisa %}<small class="text-secondary">{% trans "Atualizado em" %} {{ pesquisa.pesquisado_em|date:'d/m/Y H:i' }}</small>{% endif %}</div>
-        <div class="table-responsive mt-2"><table class="table table-hover align-middle"><thead><tr><th>{% trans "Posição" %}</th><th>{% trans "Produto" %}</th><th>{% trans "Vendedor" %}</th><th>{% trans "Preço" %}</th><th>{% trans "Frete" %}</th><th>{% trans "Total comparado" %}</th><th></th></tr></thead><tbody>{% for oferta in ofertas %}<tr {% if oferta.preco_total == menor %}class="table-success"{% endif %}><td>{{ forloop.counter }}</td><td><strong>{{ oferta.titulo }}</strong><div class="small text-secondary">{{ oferta.get_fonte_display|default:oferta.fonte }}</div></td><td>{{ oferta.vendedor|default:'-' }}</td><td>R$ {{ oferta.preco|floatformat:2 }}</td><td>{% if oferta.frete_conhecido %}R$ {{ oferta.frete|floatformat:2 }}{% else %}<span class="text-warning">{% trans "Consultar" %}</span>{% endif %}</td><td><strong>R$ {{ oferta.preco_total|floatformat:2 }}</strong>{% if not oferta.frete_conhecido %}<div class="small text-secondary">{% trans "sem frete" %}</div>{% endif %}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ oferta.url }}" target="_blank" rel="noopener noreferrer" title="{% trans 'Abrir oferta' %}"><i class="bi bi-box-arrow-up-right"></i></a></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-secondary py-4">{% trans "Selecione um insumo e faça uma pesquisa para comparar ofertas." %}</td></tr>{% endfor %}</tbody></table></div>
+        <div class="table-responsive mt-2">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>{% trans "Posição" %}</th><th>{% trans "Produto" %}</th><th>{% trans "Vendedor" %}</th><th>{% trans "Preço" %}</th><th>{% trans "Frete" %}</th><th>{% trans "Total comparado" %}</th><th></th></tr></thead>
+                <tbody>
+                {% for oferta in ofertas %}
+                    <tr {% if oferta.preco_total == menor %}class="table-success"{% endif %}>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ oferta.titulo }}</strong><div class="small text-secondary">{{ oferta.get_fonte_display|default:oferta.fonte }}</div></td>
+                        <td>{{ oferta.vendedor|default:'-' }}</td>
+                        <td>R$ {{ oferta.preco|floatformat:2 }}</td>
+                        <td>{% if oferta.frete_conhecido %}R$ {{ oferta.frete|floatformat:2 }}{% else %}<span class="text-warning">{% trans "Consultar" %}</span>{% endif %}</td>
+                        <td><strong>R$ {{ oferta.preco_total|floatformat:2 }}</strong>{% if not oferta.frete_conhecido %}<div class="small text-secondary">{% trans "sem frete" %}</div>{% endif %}</td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a class="btn btn-sm btn-outline-primary" href="{{ oferta.url }}" target="_blank" rel="noopener noreferrer" title="{% trans 'Abrir oferta' %}"><i class="bi bi-box-arrow-up-right"></i></a>
+                                {% if pode_pesquisar and oferta.fornecedor_integrado %}
+                                <form method="post" action="{% url 'insumos:usar_oferta_como_preco' oferta.id %}" onsubmit="return confirm('{% trans "Confirma usar este valor como custo padrão do insumo? Verifique antes a embalagem e a unidade do anúncio." %}')">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-success" type="submit" title="{% trans 'Usar como padrão' %}"><i class="bi bi-check2-circle"></i> {% trans "Usar como padrão" %}</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7" class="text-center text-secondary py-4">{% trans "Selecione um insumo e faça uma pesquisa para comparar ofertas." %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
         <p class="small text-secondary">{% trans "Quando o frete não é informado pela fonte, o ranking considera apenas o preço do produto e sinaliza essa limitação." %}</p>
     </section>
 

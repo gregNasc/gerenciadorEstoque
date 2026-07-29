@@ -63,7 +63,7 @@
                         <tbody>
                         {% for fornecedor in fornecedores %}
                         <tr>
-                            <td data-label="{% trans 'Fornecedor' %}"><strong>{{ fornecedor.nome }}</strong><div class="small text-secondary">{{ fornecedor.cnpj_formatado }}{% if fornecedor.contato %}<br>{{ fornecedor.contato }}{% endif %}</div></td>
+                            <td data-label="{% trans 'Fornecedor' %}"><strong>{{ fornecedor.nome }}</strong><div class="small text-secondary">{{ fornecedor.cnpj_formatado }}{% if fornecedor.contato %}<br>{{ fornecedor.contato }}{% endif %}{% if fornecedor.site %}<br><a href="{{ fornecedor.site }}" target="_blank" rel="noopener noreferrer">{% trans "Abrir site" %}</a>{% endif %}</div></td>
                             <td data-label="{% trans 'Itens cotados' %}">{{ fornecedor.itens }}</td>
                             <td data-label="{% trans 'Cotações' %}">{{ fornecedor.cotacoes }}</td>
                             <td data-label="{% trans 'Menor preço' %}" class="money-cell">{% if fornecedor.menor_preco %}R$ {{ fornecedor.menor_preco|floatformat:4 }}{% else %}—{% endif %}</td>

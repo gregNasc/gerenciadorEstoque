@@ -1,6 +1,42 @@
 from django.core.management.base import BaseCommand
 from insumos.models import CategoriaInsumo, Insumo
 
+
+TAG_DESCRICOES = (
+    'Etiqueta Setor 00001',
+    'Etiqueta Setor 01000',
+    'Etiqueta Setor 02000',
+    'Etiqueta Setor 03000',
+    'Etiqueta Setor 03500 - Peso Variável',
+    'Etiqueta Setor 04000',
+    'Etiqueta Setor 05000',
+    'Etiqueta Setor 06000',
+    'Etiqueta Setor 07000',
+    'Etiqueta Setor 08000',
+    'Etiqueta Setor 09000',
+    'Etiqueta Setor 10000',
+    'Etiqueta Setor 11000',
+    'Etiqueta Setor 12000',
+    'Etiqueta Setor 13000',
+    'Etiqueta Setor 14000',
+    'Etiqueta Setor 15000',
+    'Etiqueta Setor 16000',
+    'Etiqueta Setor 17000',
+    'Etiqueta Setor 18000',
+    'Etiqueta Setor 19000',
+    'Etiqueta Setor 20000',
+)
+
+TAG_INSUMOS = [
+    {
+        'descricao': descricao,
+        'unidade': 'ROLO',
+        'tipo': 'LOTE',
+    }
+    for descricao in TAG_DESCRICOES
+]
+
+
 class Command(BaseCommand):
 
     help = 'Carga inicial de categorias e insumos'
@@ -58,121 +94,13 @@ class Command(BaseCommand):
                 'tipo': 'QUANTIDADE',
             },
             {
-                'descricao': 'Etiqueta Setor 0001',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 1000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 2000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 3000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 3500 - Peso Variável',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 4000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 5000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 6000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 7000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 8000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 9000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 10000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 11000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 12000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 13000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 14000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 15000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 16000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 17000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 18000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 19000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
-                'descricao': 'Etiqueta Setor 20000',
-                'unidade': 'ROLO',
-                'tipo': 'LOTE',
-            },
-            {
                 'descricao': 'Marcador Coletado',
                 'unidade': 'UN',
                 'tipo': 'QUANTIDADE',
             },
         ],
+
+        'TAGS': TAG_INSUMOS,
 
         'EPI': [
             {

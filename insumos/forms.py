@@ -83,12 +83,13 @@ class FornecedorInsumoForm(forms.ModelForm):
     class Meta:
         model = FornecedorInsumo
         fields = [
-            'nome', 'documento', 'contato', 'email', 'telefone',
+            'nome', 'documento', 'site', 'contato', 'email', 'telefone',
             'prazo_entrega_dias', 'observacao', 'ativo',
         ]
         labels = {
             'nome': _('Nome'),
             'documento': _('CNPJ'),
+            'site': _('Site'),
             'contato': _('Contato'),
             'email': _('E-mail'),
             'telefone': _('Telefone'),
@@ -99,6 +100,10 @@ class FornecedorInsumoForm(forms.ModelForm):
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'documento': forms.TextInput(attrs={'class': 'form-control'}),
+            'site': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://fornecedor.com.br/',
+            }),
             'contato': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'telefone': forms.TextInput(attrs={'class': 'form-control'}),

@@ -20,6 +20,11 @@ urlpatterns = [
     path('custos/precos/', custos.precos_insumos, name='precos_insumos'),
     path('custos/fornecedores/', custos.fornecedores_insumos, name='fornecedores_insumos'),
     path('custos/pesquisa/', custos.pesquisa_precos_online, name='pesquisa_precos_online'),
+    path(
+        'custos/pesquisa/ofertas/<int:oferta_id>/usar/',
+        custos.usar_oferta_como_preco,
+        name='usar_oferta_como_preco',
+    ),
     path('solicitacoes/', solicitacoes.lista_solicitacoes, name='lista_solicitacoes_insumo'),
     path('solicitacoes/nova/', solicitacoes.criar_solicitacao, name='criar_solicitacao_insumo'),
     path('solicitacoes/<int:pk>/', solicitacoes.detalhe_solicitacao, name='detalhe_solicitacao'),

@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_POST
 
 from estoque.models import Base
 
@@ -298,6 +299,11 @@ def pesquisa_precos_online(request):
     insumo_id = _id_opcional(request.POST.get('insumo') or request.GET.get('insumo'))
     insumo = Insumo.objects.filter(pk=insumo_id, ativo=True).first()
     termo = (request.POST.get('termo') or request.GET.get('termo') or '').strip()
+    fonte = (request.POST.get('fonte') or request.GET.get('fonte') or '').strip().upper()
+    fontes = PrecoOnlineService.fontes_disponiveis()
+    fontes_habilitadas = [item for item in fontes if item['habilitada']]
+    if not fonte and fontes_habilitadas:
+        fonte = fontes_habilitadas[0]['codigo']
     try:
         quantidade = Decimal(request.POST.get('quantidade') or request.GET.get('quantidade') or '1')
     except InvalidOperation:
@@ -316,11 +322,12 @@ def pesquisa_precos_online(request):
                     insumo=insumo,
                     termo=termo or insumo.descricao,
                     usuario=request.user,
+                    fonte=fonte,
                 )
                 messages.success(request, _('Pesquisa de preços atualizada.'))
                 return redirect(
                     f"{reverse('insumos:pesquisa_precos_online')}?insumo={insumo.id}"
-                    f"&quantidade={quantidade}&termo={termo or insumo.descricao}"
+                    f"&quantidade={quantidade}&termo={termo or insumo.descricao}&fonte={fonte}"
                 )
             except PrecoOnlineErro as erro:
                 messages.error(request, str(erro))
@@ -328,11 +335,23 @@ def pesquisa_precos_online(request):
     pesquisa = None
     ofertas = OfertaPrecoOnline.objects.none()
     if insumo:
-        pesquisa = PesquisaPrecoOnline.objects.filter(insumo=insumo).first()
+        pesquisas = PesquisaPrecoOnline.objects.filter(insumo=insumo)
+        if fonte:
+            pesquisas = pesquisas.filter(fonte=fonte)
+        pesquisa = pesquisas.first()
         if pesquisa:
             ofertas = pesquisa.ofertas.select_related('insumo').order_by('preco_total', 'titulo')
 
     ofertas_lista = list(ofertas)
+    fornecedores_por_fonte = {
+        fornecedor.fonte_online: fornecedor
+        for fornecedor in FornecedorInsumo.objects.filter(
+            ativo=True,
+            fonte_online__in={oferta.fonte for oferta in ofertas_lista},
+        )
+    }
+    for oferta in ofertas_lista:
+        oferta.fornecedor_integrado = fornecedores_por_fonte.get(oferta.fonte)
     menor = ofertas_lista[0].preco_total if ofertas_lista else Decimal('0')
     maior = max((oferta.preco_total for oferta in ofertas_lista), default=Decimal('0'))
     media = (
@@ -348,6 +367,8 @@ def pesquisa_precos_online(request):
         'insumos': Insumo.objects.filter(ativo=True).order_by('descricao'),
         'insumo_selecionado': insumo,
         'termo': termo or (insumo.descricao if insumo else ''),
+        'fonte': fonte,
+        'fontes': fontes,
         'quantidade': quantidade,
         'pesquisa': pesquisa,
         'ofertas': ofertas_lista,
@@ -366,3 +387,73 @@ def pesquisa_precos_online(request):
             'values': [float(oferta.preco_total) for oferta in reversed(historico)],
         },
     })
+
+
+@login_required
+@require_POST
+def usar_oferta_como_preco(request, oferta_id):
+    if not CustoInsumoService.pode_visualizar(request.user) or not _pode_editar(request.user):
+        raise PermissionDenied
+
+    oferta = get_object_or_404(
+        OfertaPrecoOnline.objects.select_related('insumo', 'pesquisa'),
+        pk=oferta_id,
+    )
+    fornecedor = FornecedorInsumo.objects.filter(
+        fonte_online=oferta.fonte,
+        ativo=True,
+    ).first()
+    if fornecedor is None:
+        messages.error(
+            request,
+            _('A oferta não está vinculada a um fornecedor cadastrado.'),
+        )
+        return redirect(
+            f"{reverse('insumos:pesquisa_precos_online')}?insumo={oferta.insumo_id}"
+            f"&fonte={oferta.fonte}"
+        )
+
+    with transaction.atomic():
+        PrecoFornecedorInsumo.objects.filter(
+            insumo=oferta.insumo,
+            fornecedor=fornecedor,
+            ativo=True,
+        ).update(ativo=False)
+        preco = PrecoFornecedorInsumo.objects.create(
+            insumo=oferta.insumo,
+            fornecedor=fornecedor,
+            valor_unitario=oferta.preco,
+            vigente_desde=timezone.localdate(),
+            ativo=True,
+            observacao=(
+                f'Preço importado da pesquisa online. Oferta {oferta.codigo_externo}: '
+                f'{oferta.url}'
+            ),
+            cadastrado_por=request.user,
+        )
+        oferta.insumo.valor_medio = oferta.preco
+        oferta.insumo.preco_referencia = preco
+        oferta.insumo.save(update_fields=['valor_medio', 'preco_referencia'])
+        HistoricoInsumo.objects.create(
+            tipo='PRECO',
+            usuario=request.user,
+            descricao=f'Preço online aplicado a {oferta.insumo.descricao}',
+            dados={
+                'insumo': oferta.insumo.descricao,
+                'fornecedor': fornecedor.nome,
+                'fonte': oferta.fonte,
+                'oferta': oferta.codigo_externo,
+                'valor_unitario': str(oferta.preco),
+                'url': oferta.url,
+                'custo_atual': True,
+            },
+        )
+
+    messages.success(
+        request,
+        _('Preço da oferta aplicado como custo padrão do insumo.'),
+    )
+    return redirect(
+        f"{reverse('insumos:pesquisa_precos_online')}?insumo={oferta.insumo_id}"
+        f"&fonte={oferta.fonte}"
+    )

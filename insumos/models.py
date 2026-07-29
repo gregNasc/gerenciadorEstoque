@@ -65,8 +65,20 @@ class Insumo(models.Model):
         return self.descricao
 
 class FornecedorInsumo(models.Model):
+    FONTES_ONLINE = [
+        ('GIMBA', 'Gimba'),
+        ('FIDELITY', 'Fidelity Suprimentos'),
+    ]
+
     nome = models.CharField(max_length=160, unique=True)
     documento = models.CharField(max_length=30, unique=True, db_index=True)
+    site = models.URLField(max_length=300, blank=True)
+    fonte_online = models.CharField(
+        max_length=40,
+        choices=FONTES_ONLINE,
+        blank=True,
+        db_index=True,
+    )
     contato = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True)
     telefone = models.CharField(max_length=30, blank=True)
@@ -78,6 +90,13 @@ class FornecedorInsumo(models.Model):
 
     class Meta:
         ordering = ['nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['fonte_online'],
+                condition=~Q(fonte_online=''),
+                name='fornecedor_fonte_online_unica',
+            ),
+        ]
 
     def __str__(self):
         return self.nome

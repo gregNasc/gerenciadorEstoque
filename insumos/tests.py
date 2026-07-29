@@ -6,6 +6,7 @@ import openpyxl
 
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -14,6 +15,7 @@ from django.utils import timezone
 
 from estoque.models import Base, Empresa, Equipamento, Perfil, Produto
 from insumos.constants import GruposInsumos
+from insumos.management.commands.carga_inicial_insumos import TAG_DESCRICOES
 from insumos.models import (
     CategoriaInsumo,
     ChecklistDiario,
@@ -26,6 +28,26 @@ from insumos.models import (
     ItemSolicitacaoInsumo,
     SolicitacaoInsumo,
 )
+
+
+class CargaInicialTagsTests(TestCase):
+    def test_tags_ficam_em_categoria_propria_e_em_ordem_numerica(self):
+        call_command('carga_inicial_insumos', verbosity=0)
+        call_command('carga_inicial_insumos', verbosity=0)
+
+        descricoes = list(
+            Insumo.objects.filter(categoria__nome='TAGS')
+            .order_by('descricao')
+            .values_list('descricao', flat=True)
+        )
+
+        self.assertEqual(descricoes, list(TAG_DESCRICOES))
+        self.assertFalse(
+            Insumo.objects.filter(
+                categoria__nome='DEPARTAMENTO PESSOAL',
+                descricao__startswith='Etiqueta Setor ',
+            ).exists()
+        )
 
 
 class SolicitacaoInsumoFluxoTests(TestCase):
