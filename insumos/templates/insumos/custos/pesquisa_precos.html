@@ -20,12 +20,39 @@
     {% if pode_pesquisar and not api_configurada %}<div class="alert alert-warning"><strong>{% trans "Integração pendente." %}</strong> {% trans "Habilite Gimba ou Fidelity nas variáveis de ambiente, ou configure o token do Mercado Livre, para fazer novas pesquisas." %}</div>{% endif %}
 
     <form method="post" class="row g-2 align-items-end bg-light border p-3 mb-3">{% csrf_token %}
-        <div class="col-lg-3"><label class="form-label" for="insumo-pesquisa">{% trans "Insumo" %}</label><select class="form-select" id="insumo-pesquisa" name="insumo" required><option value="">{% trans "Selecione" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" {% if insumo_selecionado.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
+        <div class="col-lg-3"><label class="form-label" for="insumo-pesquisa">{% trans "Insumo" %}</label><select class="form-select" id="insumo-pesquisa" name="insumo" required><option value="">{% trans "Selecione" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" data-termo="{{ insumo.termo_pesquisa_online|default:insumo.descricao }}" {% if insumo_selecionado.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
         <div class="col-lg-2"><label class="form-label" for="fonte-pesquisa">{% trans "Fornecedor" %}</label><select class="form-select" id="fonte-pesquisa" name="fonte" required><option value="">{% trans "Selecione" %}</option>{% for item in fontes %}<option value="{{ item.codigo }}" {% if fonte == item.codigo %}selected{% endif %} {% if not item.habilitada %}disabled{% endif %}>{{ item.nome }}{% if not item.habilitada %} — {% trans "desabilitado" %}{% endif %}</option>{% endfor %}</select></div>
         <div class="col-lg-3"><label class="form-label" for="termo-pesquisa">{% trans "Termo de pesquisa" %}</label><input class="form-control" id="termo-pesquisa" name="termo" value="{{ termo }}" placeholder="{% trans 'Ex.: papel sulfite A4 500 folhas' %}"></div>
         <div class="col-lg-2"><label class="form-label" for="quantidade-pesquisa">{% trans "Quantidade desejada" %}</label><input class="form-control" id="quantidade-pesquisa" name="quantidade" type="number" min="0.01" step="0.01" value="{{ quantidade }}"></div>
         <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit" {% if not pode_pesquisar or not api_configurada %}disabled{% endif %}><i class="bi bi-cloud-download"></i> {% trans "Pesquisar preços" %}</button></div>
     </form>
+
+    {% if comparacao_fornecedores %}
+    <section class="mb-3" aria-labelledby="titulo-comparacao-fornecedores">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+            <h2 class="h5 mb-0" id="titulo-comparacao-fornecedores">{% trans "Menor preço por fornecedor" %}</h2>
+            <small class="text-secondary">{% trans "Compare a embalagem e a unidade antes de escolher." %}</small>
+        </div>
+        <div class="row g-3">
+            {% for item in comparacao_fornecedores %}
+            <div class="col-md-6">
+                <article class="purchase-kpi">
+                    <span class="small text-secondary">{{ item.nome }}</span>
+                    {% if item.oferta %}
+                    <strong>R$ {{ item.oferta.preco|floatformat:2 }}</strong>
+                    <div class="small mb-2">{{ item.oferta.titulo }}</div>
+                    <a class="btn btn-sm btn-outline-primary" href="{{ item.oferta.url }}" target="_blank" rel="noopener noreferrer">{% trans "Ver melhor oferta" %}</a>
+                    {% elif item.habilitada %}
+                    <strong>—</strong><div class="small text-secondary">{% trans "Nenhuma oferta encontrada para este termo." %}</div>
+                    {% else %}
+                    <strong>—</strong><div class="small text-warning">{% trans "Integração desabilitada." %}</div>
+                    {% endif %}
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 
     <section class="row g-3 mb-3" aria-label="{% trans 'Indicadores da pesquisa' %}">
         <div class="col-xl col-md-4"><div class="purchase-kpi"><span class="small text-secondary">{% trans "Ofertas encontradas" %}</span><strong>{{ ofertas|length }}</strong></div></div>
@@ -82,6 +109,12 @@
     function renderChart(id, data, type) { new Chart(document.getElementById(id), {type: type, data: {labels: data.labels, datasets: [{data: data.values, backgroundColor: '#3d5a80', borderColor: '#1e3c72', borderWidth: 2}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}}); }
     renderChart('chartOfertas', readChart('chart-ofertas-data'), 'bar');
     renderChart('chartHistorico', readChart('chart-historico-data'), 'line');
+    const seletorInsumo = document.getElementById('insumo-pesquisa');
+    const campoTermo = document.getElementById('termo-pesquisa');
+    seletorInsumo.addEventListener('change', function () {
+        const opcao = this.options[this.selectedIndex];
+        campoTermo.value = opcao.dataset.termo || '';
+    });
     </script>
 </main>
 {% endblock %}

@@ -195,14 +195,13 @@ TORY_LLM_MODEL = os.getenv('TORY_LLM_MODEL', 'gpt-5.6-sol')
 TORY_LLM_TIMEOUT = float(os.getenv('TORY_LLM_TIMEOUT', '20'))
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
-# Pesquisa manual de preços. Os catálogos HTML ficam desabilitados até a
-# empresa confirmar a autorização de uso e ativá-los explicitamente no ambiente.
+# Pesquisa manual de preços nos fornecedores utilizados pela empresa.
 ONLINE_PRICE_SEARCH_TIMEOUT = float(os.getenv('ONLINE_PRICE_SEARCH_TIMEOUT', '15'))
 GIMBA_PRICE_SEARCH_ENABLED = os.getenv(
-    'GIMBA_PRICE_SEARCH_ENABLED', 'False'
+    'GIMBA_PRICE_SEARCH_ENABLED', 'True'
 ).lower() == 'true'
 FIDELITY_PRICE_SEARCH_ENABLED = os.getenv(
-    'FIDELITY_PRICE_SEARCH_ENABLED', 'False'
+    'FIDELITY_PRICE_SEARCH_ENABLED', 'True'
 ).lower() == 'true'
 
 CACHES = {

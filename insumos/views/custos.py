@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -318,16 +319,23 @@ def pesquisa_precos_online(request):
             messages.error(request, _('Selecione um insumo para pesquisar.'))
         else:
             try:
-                PrecoOnlineService.pesquisar(
+                nova_pesquisa = PrecoOnlineService.pesquisar(
                     insumo=insumo,
-                    termo=termo or insumo.descricao,
+                    termo=termo or insumo.termo_pesquisa_online or insumo.descricao,
                     usuario=request.user,
                     fonte=fonte,
                 )
+                for aviso in getattr(nova_pesquisa, 'avisos', []):
+                    messages.warning(request, aviso)
                 messages.success(request, _('Pesquisa de preços atualizada.'))
+                parametros = urlencode({
+                    'insumo': insumo.id,
+                    'quantidade': quantidade,
+                    'termo': nova_pesquisa.termo,
+                    'fonte': nova_pesquisa.fonte,
+                })
                 return redirect(
-                    f"{reverse('insumos:pesquisa_precos_online')}?insumo={insumo.id}"
-                    f"&quantidade={quantidade}&termo={termo or insumo.descricao}&fonte={fonte}"
+                    f"{reverse('insumos:pesquisa_precos_online')}?{parametros}"
                 )
             except PrecoOnlineErro as erro:
                 messages.error(request, str(erro))
@@ -352,6 +360,19 @@ def pesquisa_precos_online(request):
     }
     for oferta in ofertas_lista:
         oferta.fornecedor_integrado = fornecedores_por_fonte.get(oferta.fonte)
+    melhores_por_fonte = {}
+    for oferta in ofertas_lista:
+        melhores_por_fonte.setdefault(oferta.fonte, oferta)
+    fontes_por_codigo = {item['codigo']: item for item in fontes}
+    comparacao_fornecedores = [
+        {
+            'codigo': codigo,
+            'nome': fontes_por_codigo[codigo]['nome'],
+            'habilitada': fontes_por_codigo[codigo]['habilitada'],
+            'oferta': melhores_por_fonte.get(codigo),
+        }
+        for codigo in ('GIMBA', 'FIDELITY')
+    ] if pesquisa and pesquisa.fonte == PrecoOnlineService.FONTE_COMPARATIVO else []
     menor = ofertas_lista[0].preco_total if ofertas_lista else Decimal('0')
     maior = max((oferta.preco_total for oferta in ofertas_lista), default=Decimal('0'))
     media = (
@@ -366,12 +387,15 @@ def pesquisa_precos_online(request):
     return render(request, 'insumos/custos/pesquisa_precos.html', {
         'insumos': Insumo.objects.filter(ativo=True).order_by('descricao'),
         'insumo_selecionado': insumo,
-        'termo': termo or (insumo.descricao if insumo else ''),
+        'termo': termo or (
+            (insumo.termo_pesquisa_online or insumo.descricao) if insumo else ''
+        ),
         'fonte': fonte,
         'fontes': fontes,
         'quantidade': quantidade,
         'pesquisa': pesquisa,
         'ofertas': ofertas_lista,
+        'comparacao_fornecedores': comparacao_fornecedores,
         'menor': menor,
         'maior': maior,
         'media': media,
@@ -379,7 +403,10 @@ def pesquisa_precos_online(request):
         'pode_pesquisar': _pode_editar(request.user),
         'api_configurada': PrecoOnlineService.configurado(),
         'chart_ofertas': {
-            'labels': [oferta.titulo[:35] for oferta in ofertas_lista[:12]],
+            'labels': [
+                f'{oferta.vendedor}: {oferta.titulo}'[:55]
+                for oferta in ofertas_lista[:12]
+            ],
             'values': [float(oferta.preco_total) for oferta in ofertas_lista[:12]],
         },
         'chart_historico': {

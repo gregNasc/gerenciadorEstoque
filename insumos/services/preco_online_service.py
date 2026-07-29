@@ -2,6 +2,7 @@ import json
 import os
 import re
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal, InvalidOperation
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
@@ -83,30 +84,48 @@ class CatalogoHtmlProvider:
             raise PrecoOnlineErro(
                 f'A pesquisa na {cls.ROTULO} ainda não está habilitada no ambiente.'
             )
-        requisicao = Request(
-            cls._url_busca(termo),
-            headers={
-                'Accept': 'text/html,application/xhtml+xml',
-                'Accept-Language': 'pt-BR,pt;q=0.9',
-                'User-Agent': 'GerenciadorEstoque/1.0 (pesquisa manual de precos)',
-            },
-        )
-        try:
-            with urlopen(
-                requisicao,
-                timeout=getattr(settings, 'ONLINE_PRICE_SEARCH_TIMEOUT', 15),
-            ) as resposta:
-                charset = resposta.headers.get_content_charset() or 'utf-8'
-                html = resposta.read().decode(charset, errors='replace')
-        except HTTPError as erro:
-            raise PrecoOnlineErro(
-                f'A {cls.ROTULO} respondeu com erro HTTP {erro.code}.'
-            ) from erro
-        except (URLError, TimeoutError, OSError) as erro:
-            raise PrecoOnlineErro(
-                f'Não foi possível consultar a {cls.ROTULO} neste momento.'
-            ) from erro
-        return cls._extrair_ofertas(html, max(1, min(int(limite), 50)))
+        limite = max(1, min(int(limite), 50))
+        for termo_busca in cls._termos_busca(termo):
+            requisicao = Request(
+                cls._url_busca(termo_busca),
+                headers={
+                    'Accept': 'text/html,application/xhtml+xml',
+                    'Accept-Language': 'pt-BR,pt;q=0.9',
+                    'User-Agent': 'GerenciadorEstoque/1.0 (pesquisa manual de precos)',
+                },
+            )
+            try:
+                with urlopen(
+                    requisicao,
+                    timeout=getattr(settings, 'ONLINE_PRICE_SEARCH_TIMEOUT', 15),
+                ) as resposta:
+                    charset = resposta.headers.get_content_charset() or 'utf-8'
+                    html = resposta.read().decode(charset, errors='replace')
+            except HTTPError as erro:
+                raise PrecoOnlineErro(
+                    f'A {cls.ROTULO} respondeu com erro HTTP {erro.code}.'
+                ) from erro
+            except (URLError, TimeoutError, OSError) as erro:
+                raise PrecoOnlineErro(
+                    f'Não foi possível consultar a {cls.ROTULO} neste momento.'
+                ) from erro
+            ofertas = cls._extrair_ofertas(html, limite)
+            if ofertas:
+                return ofertas
+        return []
+
+    @staticmethod
+    def _termos_busca(termo):
+        termo = ' '.join(str(termo or '').split())
+        palavras = termo.split()
+        termos = [termo]
+        if len(palavras) > 2:
+            conectivos = {'a', 'as', 'com', 'da', 'das', 'de', 'do', 'dos', 'e', 'para'}
+            tamanho = 3 if palavras[1].lower() in conectivos else 2
+            amplo = ' '.join(palavras[:tamanho])
+            if amplo.casefold() != termo.casefold():
+                termos.append(amplo)
+        return termos
 
     @classmethod
     def _ancoras_por_url(cls, html):
@@ -279,10 +298,19 @@ class MercadoLivreProvider:
 
 class PrecoOnlineService:
     PROVIDERS = (GimbaProvider, FidelityProvider, MercadoLivreProvider)
+    FORNECEDORES_COMPARAVEIS = (GimbaProvider, FidelityProvider)
+    FONTE_COMPARATIVO = 'COMPARATIVO'
 
     @classmethod
     def fontes_disponiveis(cls):
-        return [
+        fornecedores_habilitados = any(
+            provider.configurado() for provider in cls.FORNECEDORES_COMPARAVEIS
+        )
+        return [{
+            'codigo': cls.FONTE_COMPARATIVO,
+            'nome': 'Comparar Gimba e Fidelity',
+            'habilitada': fornecedores_habilitados,
+        }] + [
             {
                 'codigo': provider.NOME,
                 'nome': provider.ROTULO,
@@ -306,20 +334,67 @@ class PrecoOnlineService:
         return next((item for item in cls.PROVIDERS if item.configurado()), None)
 
     @classmethod
-    @transaction.atomic
     def pesquisar(cls, *, insumo, termo, usuario, fonte=None):
-        termo = (termo or insumo.descricao).strip()
+        termo = (
+            termo
+            or insumo.termo_pesquisa_online
+            or insumo.descricao
+        ).strip()
         if len(termo) < 3:
             raise PrecoOnlineErro('Informe ao menos três caracteres para pesquisar.')
 
-        provider = cls._provider(fonte)
-        if provider is None:
-            raise PrecoOnlineErro('Nenhuma fonte de pesquisa online está habilitada.')
-        resultados = provider.buscar(termo)
+        fonte = (fonte or '').strip().upper()
+        avisos = []
+        if fonte == cls.FONTE_COMPARATIVO:
+            resultados = []
+            consultas_bem_sucedidas = 0
+            providers_habilitados = []
+            for provider in cls.FORNECEDORES_COMPARAVEIS:
+                if provider.configurado():
+                    providers_habilitados.append(provider)
+                else:
+                    avisos.append(f'{provider.ROTULO}: integração desabilitada.')
+            with ThreadPoolExecutor(max_workers=len(providers_habilitados) or 1) as executor:
+                consultas = {
+                    executor.submit(provider.buscar, termo): provider
+                    for provider in providers_habilitados
+                }
+                for consulta in as_completed(consultas):
+                    try:
+                        resultados.extend(consulta.result())
+                        consultas_bem_sucedidas += 1
+                    except PrecoOnlineErro as erro:
+                        avisos.append(str(erro))
+            if not consultas_bem_sucedidas:
+                detalhe = ' '.join(avisos)
+                raise PrecoOnlineErro(
+                    detalhe or 'Nenhum fornecedor está disponível para comparação.'
+                )
+            fonte_pesquisa = cls.FONTE_COMPARATIVO
+        else:
+            provider = cls._provider(fonte)
+            if provider is None:
+                raise PrecoOnlineErro('Nenhuma fonte de pesquisa online está habilitada.')
+            resultados = provider.buscar(termo)
+            fonte_pesquisa = provider.NOME
+
+        pesquisa = cls._salvar_pesquisa(
+            insumo=insumo,
+            termo=termo,
+            usuario=usuario,
+            fonte=fonte_pesquisa,
+            resultados=resultados,
+        )
+        pesquisa.avisos = avisos
+        return pesquisa
+
+    @staticmethod
+    @transaction.atomic
+    def _salvar_pesquisa(*, insumo, termo, usuario, fonte, resultados):
         pesquisa = PesquisaPrecoOnline.objects.create(
             insumo=insumo,
             termo=termo,
-            fonte=provider.NOME,
+            fonte=fonte,
             pesquisado_por=usuario,
         )
         OfertaPrecoOnline.objects.bulk_create([

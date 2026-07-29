@@ -24,6 +24,11 @@ class Insumo(models.Model):
     ]
 
     descricao = models.CharField(max_length=150)
+    termo_pesquisa_online = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='Termo usado para localizar este insumo nos catálogos dos fornecedores.',
+    )
 
     categoria = models.ForeignKey(CategoriaInsumo, on_delete=models.PROTECT)
     unidade_medida = models.CharField(max_length=20)

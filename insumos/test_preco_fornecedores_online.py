@@ -17,11 +17,22 @@ from insumos.models import (
 from insumos.services.preco_online_service import (
     FidelityProvider,
     GimbaProvider,
+    PrecoOnlineErro,
     PrecoOnlineService,
 )
 
 
 class CatalogosFornecedoresTests(SimpleTestCase):
+    def test_termo_amplo_preserva_conectivo(self):
+        self.assertEqual(
+            FidelityProvider._termos_busca('cabo de rede RJ45 CAT6'),
+            ['cabo de rede RJ45 CAT6', 'cabo de rede'],
+        )
+        self.assertEqual(
+            FidelityProvider._termos_busca('papel sulfite A4 75g 500 folhas'),
+            ['papel sulfite A4 75g 500 folhas', 'papel sulfite'],
+        )
+
     def test_fidelity_extrai_produto_e_preco_publico(self):
         html = '''
             <a href="/produto/papel-a4/"><img src="papel.jpg"></a>
@@ -148,3 +159,66 @@ class UsarOfertaComoPrecoTests(TestCase):
         buscar.assert_called_once_with('papel sulfite a4')
         self.assertEqual(pesquisa.fonte, 'GIMBA')
         self.assertEqual(pesquisa.ofertas.get().codigo_externo, '2502')
+
+    @patch.object(FidelityProvider, 'buscar')
+    @patch.object(GimbaProvider, 'buscar')
+    def test_comparativo_reune_ofertas_dos_dois_fornecedores(self, buscar_gimba, buscar_fidelity):
+        buscar_gimba.return_value = [{
+            'fonte': 'GIMBA',
+            'codigo_externo': '2502',
+            'titulo': 'Papel sulfite Gimba',
+            'vendedor': 'Gimba',
+            'url': 'https://www.gimba.com.br/?PID=2502',
+            'preco': Decimal('34.50'),
+            'frete': None,
+            'preco_total': Decimal('34.50'),
+            'frete_conhecido': False,
+            'condicao': 'novo',
+        }]
+        buscar_fidelity.return_value = [{
+            'fonte': 'FIDELITY',
+            'codigo_externo': 'papel-a4',
+            'titulo': 'Papel sulfite Fidelity',
+            'vendedor': 'Fidelity Suprimentos',
+            'url': 'https://fidelitysuprimentos.com.br/produto/papel-a4/',
+            'preco': Decimal('28.90'),
+            'frete': None,
+            'preco_total': Decimal('28.90'),
+            'frete_conhecido': False,
+            'condicao': 'novo',
+        }]
+
+        pesquisa = PrecoOnlineService.pesquisar(
+            insumo=self.insumo,
+            termo='papel sulfite a4 500 folhas',
+            usuario=self.usuario,
+            fonte='COMPARATIVO',
+        )
+
+        self.assertEqual(pesquisa.fonte, 'COMPARATIVO')
+        self.assertEqual(
+            set(pesquisa.ofertas.values_list('fonte', flat=True)),
+            {'GIMBA', 'FIDELITY'},
+        )
+        buscar_gimba.assert_called_once_with('papel sulfite a4 500 folhas')
+        buscar_fidelity.assert_called_once_with('papel sulfite a4 500 folhas')
+
+    @patch.object(FidelityProvider, 'buscar')
+    @patch.object(GimbaProvider, 'buscar')
+    def test_comparativo_preserva_um_fornecedor_quando_outro_falha(
+        self,
+        buscar_gimba,
+        buscar_fidelity,
+    ):
+        buscar_gimba.side_effect = PrecoOnlineErro('Gimba indisponível.')
+        buscar_fidelity.return_value = []
+
+        pesquisa = PrecoOnlineService.pesquisar(
+            insumo=self.insumo,
+            termo='papel sulfite',
+            usuario=self.usuario,
+            fonte='COMPARATIVO',
+        )
+
+        self.assertEqual(pesquisa.fonte, 'COMPARATIVO')
+        self.assertEqual(pesquisa.avisos, ['Gimba indisponível.'])

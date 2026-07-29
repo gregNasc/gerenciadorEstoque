@@ -22,6 +22,7 @@ class InsumoForm(forms.ModelForm):
         fields = [
             'base',
             'descricao',
+            'termo_pesquisa_online',
             'categoria',
             'unidade_medida',
             'tipo_controle',
@@ -34,6 +35,10 @@ class InsumoForm(forms.ModelForm):
             'descricao': forms.TextInput(
                 attrs={'class': 'form-control'}
             ),
+            'termo_pesquisa_online': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex.: papel sulfite A4 75g 500 folhas',
+            }),
             'categoria': forms.Select(
                 attrs={'class': 'form-select'}
             ),
