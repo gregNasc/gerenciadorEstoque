@@ -31,14 +31,18 @@
                     </h4>
 
                     <p class="text-muted mb-0">
-                        Transferência #{{ transferencia.id }}
+                        Transferência {{ transferencia.protocolo|default:transferencia.id }}
+                        · {{ transferencia.regional_origem.nome }} → {{ transferencia.regional_destino.nome }}
                     </p>
 
                 </div>
 
-                <span class="badge bg-secondary">
-                    {{ transferencia.itens.count }} item{{ transferencia.itens.count|pluralize }}
-                </span>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-secondary">{{ transferencia.get_status_display|default:transferencia.status }}</span>
+                    <span class="badge bg-light text-dark border">
+                        {{ transferencia.itens.count }} item{{ transferencia.itens.count|pluralize }}
+                    </span>
+                </div>
 
             </div>
 
@@ -56,6 +60,8 @@
                             <th class="ps-4">Produto</th>
                             <th>Série</th>
                             <th>Patrimônio</th>
+                            <th>Status da conferência</th>
+                            <th>Ocorrência / tratativa</th>
                             <th>Regional Origem</th>
                             <th>Regional Atual</th>
                         </tr>
@@ -81,6 +87,36 @@
                             </td>
 
                             <td>
+                                {% if item.status == 'RECEBIDO' %}
+                                    <span class="badge bg-success">Recebido</span>
+                                {% elif item.status == 'DIVERGENTE' %}
+                                    <span class="badge bg-warning text-dark">Divergente</span>
+                                {% elif item.status == 'NAO_RECEBIDO' %}
+                                    <span class="badge bg-danger">Não recebido</span>
+                                {% elif item.status == 'ENVIADO' %}
+                                    <span class="badge bg-info text-dark">Enviado</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ item.status }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% for pendencia in item.pendencias.all %}
+                                    <div class="small mb-2">
+                                        <strong>{{ pendencia.get_tipo_display }}</strong>
+                                        · {{ pendencia.get_status_display }}<br>
+                                        {{ pendencia.descricao|default:"Sem observação registrada." }}
+                                        {% if pendencia.serie_recebida or pendencia.patrimonio_recebido %}
+                                            <br>Série recebida: {{ pendencia.serie_recebida|default:"-" }}
+                                            · Patrimônio recebido: {{ pendencia.patrimonio_recebido|default:"-" }}
+                                        {% endif %}
+                                    </div>
+                                {% empty %}
+                                    <span class="text-muted">Sem pendência</span>
+                                {% endfor %}
+                            </td>
+
+                            <td>
                                 <span class="badge bg-light text-dark border">
                                     {{ transferencia.regional_origem.nome }}
                                 </span>
@@ -98,7 +134,7 @@
 
                         <tr>
 
-                            <td colspan="3"
+                            <td colspan="7"
                                 class="text-center text-muted py-5">
 
                                 Nenhum item encontrado.
@@ -118,6 +154,28 @@
         </div>
 
     </div>
+
+    {% with divergencias=transferencia.divergenciatransferencia_set.all %}
+        {% if divergencias %}
+            <div class="card border-warning shadow-sm mt-4">
+                <div class="card-header bg-warning-subtle fw-semibold">
+                    Divergências de identificação
+                </div>
+                <div class="card-body">
+                    {% for divergencia in divergencias %}
+                        <div class="mb-3{% if not forloop.last %} border-bottom pb-3{% endif %}">
+                            <strong>{{ divergencia.equipamento_enviado.produto.descricao }}</strong><br>
+                            Esperado: série {{ divergencia.equipamento_enviado.numero_serie|default:"-" }}
+                            · patrimônio {{ divergencia.equipamento_enviado.patrimonio|default:"-" }}<br>
+                            Recebido: série {{ divergencia.serie_recebida|default:"-" }}
+                            · patrimônio {{ divergencia.patrimonio_recebido|default:"-" }}<br>
+                            <span class="text-muted">{{ divergencia.observacao }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
 
 </div>
 

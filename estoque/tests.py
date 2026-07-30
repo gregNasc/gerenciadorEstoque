@@ -10,14 +10,19 @@ from django.urls import reverse
 from django.utils import timezone
 
 from estoque.models import (
-    Base, Comunicado, Empresa, Emprestimo, Equipamento, GrupoRegional,
-    ItemEmprestimo, Perfil, Produto, Sick, Transferencia, TransferenciaItem,
+    Base, Comunicado, DivergenciaTransferencia, Empresa, Emprestimo,
+    Equipamento, GrupoRegional, ItemEmprestimo, PendenciaTransferencia, Perfil,
+    Produto, Sick, Transferencia, TransferenciaItem,
 )
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.assistente.response_builder import construir_erro, construir_resposta
 from estoque.services.comunicado_service import ComunicadoService
 from estoque.services.emprestimo_service import EmprestimoService
-from estoque.services.transferencia_services import criar_transferencia
+from estoque.services.transferencia_services import (
+    criar_transferencia,
+    enviar_transferencia,
+    receber_transferencia,
+)
 from insumos.models import (
     CategoriaInsumo,
     ChecklistEquipamento,
@@ -700,6 +705,142 @@ class TransferenciaServiceTests(TestCase):
         self.assertTrue(primeira.protocolo)
         self.assertTrue(segunda.protocolo)
         self.assertNotEqual(primeira.protocolo, segunda.protocolo)
+
+    def test_recebimento_atualiza_itens_e_gera_comunicados(self):
+        transferencia = criar_transferencia(
+            equipamentos=self.equipamentos,
+            regional_destino=self.destino,
+            solicitado_por=self.usuario,
+        )
+        enviar_transferencia(transferencia, self.usuario)
+        self.assertFalse(
+            transferencia.itens.exclude(status='ENVIADO').exists()
+        )
+        receber_transferencia(transferencia, self.usuario)
+
+        transferencia.refresh_from_db()
+        self.assertEqual(transferencia.status, 'CONCLUIDA')
+        self.assertFalse(
+            transferencia.itens.exclude(status='RECEBIDO').exists()
+        )
+        self.assertTrue(
+            Comunicado.objects.filter(
+                titulo=f'Transferência {transferencia.protocolo} recebida'
+            ).exists()
+        )
+
+    def test_visualizacao_exibe_status_divergencia_e_tratativa(self):
+        transferencia = criar_transferencia(
+            equipamentos=[self.equipamentos[0]],
+            regional_destino=self.destino,
+            solicitado_por=self.usuario,
+        )
+        item = transferencia.itens.get()
+        item.status = 'DIVERGENTE'
+        item.save(update_fields=['status'])
+        DivergenciaTransferencia.objects.create(
+            transferencia=transferencia,
+            item=item,
+            equipamento_enviado=item.equipamento,
+            serie_recebida='SERIE-DIVERGENTE',
+            patrimonio_recebido='PAT-DIVERGENTE',
+            observacao='Segregar e validar fotografia com a origem.',
+        )
+        PendenciaTransferencia.objects.create(
+            transferencia=transferencia,
+            item=item,
+            tipo='DIVERGENCIA',
+            patrimonio_esperado=item.equipamento.patrimonio,
+            serie_esperada=item.equipamento.numero_serie,
+            patrimonio_recebido='PAT-DIVERGENTE',
+            serie_recebida='SERIE-DIVERGENTE',
+            descricao='Aguardar conferência da etiqueta física.',
+            criado_por=self.usuario,
+            equipamento=item.equipamento,
+            motivo='IDENTIFICACAO_DIVERGENTE',
+        )
+
+        self.client.force_login(self.usuario)
+        response = self.client.get(
+            reverse('estoque:transferencia_selecionados', args=[transferencia.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, transferencia.protocolo)
+        self.assertContains(response, 'Divergente')
+        self.assertContains(response, 'SERIE-DIVERGENTE')
+        self.assertContains(response, 'Aguardar conferência da etiqueta física.')
+
+
+class EmprestimoComPendenciaTests(TestCase):
+    def setUp(self):
+        empresa = Empresa.objects.create(nome='Empresa Emprestimo Pendente')
+        self.usuario = User.objects.create_user('gestor_emprestimo_pendente')
+        grupo = GrupoRegional.objects.create(
+            nome='Grupo Emprestimo Pendente',
+            gestor_principal=self.usuario,
+        )
+        self.origem = Base.objects.create(
+            nome='Origem Emprestimo', empresa=empresa, grupo_regional=grupo,
+        )
+        self.destino = Base.objects.create(
+            nome='Destino Emprestimo', empresa=empresa, grupo_regional=grupo,
+        )
+        produto = Produto.objects.create(
+            codigo='PROD-EMP-PEND',
+            descricao='Coletor emprestado',
+            fabricante='Fabricante',
+            modelo='Modelo',
+            categoria='Coletores',
+        )
+        self.equipamentos = [
+            Equipamento.objects.create(
+                produto=produto,
+                numero_serie=f'SER-EMP-PEND-{indice}',
+                patrimonio=f'PAT-EMP-PEND-{indice}',
+                regional=self.origem,
+                codigo=f'EQP-EMP-PEND-{indice}',
+            )
+            for indice in range(2)
+        ]
+
+    def test_devolucao_incompleta_comunica_divergencia_sem_finalizar(self):
+        with patch(
+            'estoque.services.emprestimo_service.'
+            'NotificacaoService.emprestimo_aguardando_recebimento'
+        ):
+            emprestimo = EmprestimoService.criar(
+                self.origem,
+                self.destino,
+                self.usuario,
+                'Apoio operacional',
+                date.today(),
+                self.equipamentos,
+            )
+
+        ids = [str(item.id) for item in emprestimo.itens.all()]
+        EmprestimoService.receber(emprestimo, ids, self.usuario)
+        EmprestimoService.devolver(emprestimo, ids[:1], self.usuario)
+        EmprestimoService.confirmar_devolucao(
+            emprestimo,
+            ids[:1],
+            self.usuario,
+        )
+
+        emprestimo.refresh_from_db()
+        self.assertEqual(emprestimo.status, 'EMPRESTADO')
+        self.assertTrue(
+            Comunicado.objects.filter(
+                titulo='Divergencia no emprestimo',
+                mensagem__contains=emprestimo.protocolo,
+            ).exists()
+        )
+        self.assertFalse(
+            Comunicado.objects.filter(
+                titulo='Emprestimo finalizado',
+                mensagem__contains=emprestimo.regional_origem.nome,
+            ).exists()
+        )
 
     @patch(
         'estoque.services.emprestimo_service.'

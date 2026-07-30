@@ -214,13 +214,15 @@ class UltimoChecklistPorLojaTests(TestCase):
         self.base = Base.objects.create(nome='OXXO SP SUL X', empresa=self.empresa)
         self.outra_base = Base.objects.create(nome='RIO DE JANEIRO', empresa=self.empresa)
         self.admin = User.objects.create_user('admin_teste', password='teste', is_staff=True)
-        Perfil.objects.create(user=self.admin, empresa=self.empresa, role=Perfil.Role.ADMIN)
+        perfil_admin = self.admin.perfil
+        perfil_admin.empresa = self.empresa
+        perfil_admin.role = Perfil.Role.ADMIN
+        perfil_admin.save(update_fields=['empresa', 'role'])
         self.operador = User.objects.create_user('operador_teste', password='teste')
-        perfil_operador = Perfil.objects.create(
-            user=self.operador,
-            empresa=self.empresa,
-            role=Perfil.Role.OPERADOR,
-        )
+        perfil_operador = self.operador.perfil
+        perfil_operador.empresa = self.empresa
+        perfil_operador.role = Perfil.Role.OPERADOR
+        perfil_operador.save(update_fields=['empresa', 'role'])
         perfil_operador.bases_checklist.add(self.outra_base)
         self.cliente = Cliente.objects.create(sigla='OXX', nome='Mercado OXXO')
 

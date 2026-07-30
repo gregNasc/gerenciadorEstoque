@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import unicodedata
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal, InvalidOperation
@@ -110,6 +111,7 @@ class CatalogoHtmlProvider:
                     f'Não foi possível consultar a {cls.ROTULO} neste momento.'
                 ) from erro
             ofertas = cls._extrair_ofertas(html, limite)
+            ofertas = cls._filtrar_ofertas_relevantes(ofertas, termo_busca)
             if ofertas:
                 return ofertas
         return []
@@ -126,6 +128,33 @@ class CatalogoHtmlProvider:
             if amplo.casefold() != termo.casefold():
                 termos.append(amplo)
         return termos
+
+    @staticmethod
+    def _filtrar_ofertas_relevantes(ofertas, termo):
+        def normalizar(texto):
+            texto = unicodedata.normalize('NFKD', str(texto or ''))
+            texto = ''.join(char for char in texto if not unicodedata.combining(char))
+            return re.findall(r'[a-z0-9]+', texto.casefold())
+
+        ignoradas = {
+            'com', 'cada', 'das', 'dos', 'para', 'por', 'uma', 'unidade',
+            'unidades', 'metro', 'metros', 'caixa', 'pacote',
+        }
+        tokens = [
+            token for token in normalizar(termo)
+            if len(token) >= 3 and not token.isdigit() and token not in ignoradas
+        ]
+        if not tokens:
+            return ofertas
+        minimo = max(1, (len(tokens) * 3 + 4) // 5)
+        principal = tokens[0]
+        relevantes = []
+        for oferta in ofertas:
+            titulo = set(normalizar(oferta.get('titulo')))
+            correspondencias = sum(token in titulo for token in tokens)
+            if principal in titulo and correspondencias >= minimo:
+                relevantes.append(oferta)
+        return relevantes
 
     @classmethod
     def _ancoras_por_url(cls, html):

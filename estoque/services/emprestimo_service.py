@@ -220,7 +220,13 @@ class EmprestimoService:
                 emprestimo
             )
         emprestimo.save()
-        ComunicadoService.emp_devolucao(
-            emprestimo,
-            usuario,
-        )
+        if possui_pendencias:
+            ComunicadoService.emp_divergencia(
+                emprestimo,
+                usuario,
+            )
+        else:
+            ComunicadoService.emp_devolucao(
+                emprestimo,
+                usuario,
+            )

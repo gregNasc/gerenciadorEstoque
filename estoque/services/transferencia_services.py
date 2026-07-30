@@ -8,11 +8,23 @@ from estoque.models import (
     Historico,
     Notificacao,
 )
+from .comunicado_service import ComunicadoService
 
 STATUS_PENDENTE = 'PENDENTE'
 STATUS_EM_TRANSITO = 'EM_TRANSITO'
 STATUS_CONCLUIDA = 'CONCLUIDA'
 STATUS_CANCELADA = 'CANCELADA'
+
+
+def _comunicar(transferencia, usuario, titulo, mensagem, tipo='OPERACIONAL'):
+    return ComunicadoService.criar_acao(
+        titulo=titulo,
+        mensagem=mensagem,
+        usuario=usuario,
+        tipo=tipo,
+        bases=[transferencia.regional_origem, transferencia.regional_destino],
+        empresa=transferencia.regional_origem.empresa,
+    )
 
 def validar_transferencia(equipamento):
 
@@ -144,6 +156,16 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
         ignore_conflicts=True
     )
 
+    _comunicar(
+        transferencia,
+        solicitado_por,
+        f'Transferência {transferencia.protocolo} criada',
+        (
+            f'Transferência criada de {regional_origem.nome} para '
+            f'{regional_destino.nome}, com {len(equipamentos)} equipamento(s).'
+        ),
+    )
+
     return transferencia
 
 @transaction.atomic
@@ -163,6 +185,8 @@ def enviar_transferencia(transferencia, user):
             'data_envio'
         ]
     )
+
+    transferencia.itens.update(status='ENVIADO')
 
     historicos = []
 
@@ -215,6 +239,16 @@ def enviar_transferencia(transferencia, user):
         ignore_conflicts=True
     )
 
+    _comunicar(
+        transferencia,
+        user,
+        f'Transferência {transferencia.protocolo} enviada',
+        (
+            f'Equipamentos enviados de {transferencia.regional_origem.nome} '
+            f'para {transferencia.regional_destino.nome}.'
+        ),
+    )
+
     return transferencia
 
 @transaction.atomic
@@ -243,6 +277,8 @@ def receber_transferencia(transferencia, user):
 
     historicos = []
 
+    itens_atualizados = []
+
     for item in itens:
 
         equipamento = item.equipamento
@@ -251,6 +287,9 @@ def receber_transferencia(transferencia, user):
         equipamento.status = 'ATIVO'
 
         equipamentos.append(equipamento)
+
+        item.status = 'RECEBIDO'
+        itens_atualizados.append(item)
 
         historicos.append(
             Historico(
@@ -270,7 +309,45 @@ def receber_transferencia(transferencia, user):
         ['regional', 'status']
     )
 
+    TransferenciaItem.objects.bulk_update(
+        itens_atualizados,
+        ['status']
+    )
+
     Historico.objects.bulk_create(historicos)
+
+    usuarios_origem = (
+        transferencia.regional_origem.perfis
+        .select_related('user')
+        .all()
+    )
+    notificacoes = [
+        Notificacao(
+            usuario=perfil.user,
+            transferencia=transferencia,
+            tipo='TRANSFERENCIA',
+            evento='RECEBIDA',
+            mensagem=(
+                f'Transferência recebida por '
+                f'{transferencia.regional_destino.nome}'
+            ),
+            link=f'/transferencias/{transferencia.id}/',
+        )
+        for perfil in usuarios_origem
+        if perfil.user
+    ]
+    Notificacao.objects.bulk_create(notificacoes, ignore_conflicts=True)
+
+    _comunicar(
+        transferencia,
+        user,
+        f'Transferência {transferencia.protocolo} recebida',
+        (
+            f'{transferencia.regional_destino.nome} confirmou o recebimento '
+            f'de {len(itens)} equipamento(s) enviados por '
+            f'{transferencia.regional_origem.nome}.'
+        ),
+    )
 
     return transferencia
 
@@ -323,6 +400,18 @@ def cancelar_transferencia(transferencia, user):
     )
 
     Historico.objects.bulk_create(historicos)
+
+    _comunicar(
+        transferencia,
+        user,
+        f'Transferência {transferencia.protocolo} cancelada',
+        (
+            f'A transferência de {transferencia.regional_origem.nome} para '
+            f'{transferencia.regional_destino.nome} foi cancelada e os '
+            f'equipamentos foram liberados.'
+        ),
+        tipo='URGENTE',
+    )
 
     return transferencia
 

@@ -3709,8 +3709,12 @@ def caixa_solicitacoes(request):
 def transferencia_selecionados(request, id):
 
     transferencia = get_object_or_404(
-        Transferencia.objects.prefetch_related(
-            'itens__equipamento__produto'
+        Transferencia.objects
+        .select_related('regional_origem', 'regional_destino', 'solicitado_por')
+        .prefetch_related(
+            'itens__equipamento__produto',
+            'itens__pendencias',
+            'divergenciatransferencia_set__item',
         ),
         id=id
     )

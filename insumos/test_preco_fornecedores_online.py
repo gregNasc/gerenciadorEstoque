@@ -33,6 +33,19 @@ class CatalogosFornecedoresTests(SimpleTestCase):
             ['papel sulfite A4 75g 500 folhas', 'papel sulfite'],
         )
 
+    def test_resultados_sem_relacao_com_o_termo_sao_descartados(self):
+        ofertas = [
+            {'titulo': 'Papel sulfite A4 500 folhas'},
+            {'titulo': 'Cabo de rede RJ45 CAT6 2 metros'},
+        ]
+
+        filtradas = FidelityProvider._filtrar_ofertas_relevantes(
+            ofertas,
+            'cabo de rede RJ45 CAT6 2 metros',
+        )
+
+        self.assertEqual(filtradas, [ofertas[1]])
+
     def test_fidelity_extrai_produto_e_preco_publico(self):
         html = '''
             <a href="/produto/papel-a4/"><img src="papel.jpg"></a>
