@@ -1302,8 +1302,12 @@ def sick_view(request):
                         sick_id=sick_id,
                         usuario=request.user,
                         destino=request.POST.get('destino_manutencao'),
+                        tipo_destino=(
+                            request.POST.get('tipo_destino') or Sick.TipoDestino.MATRIZ
+                        ),
                         transportadora=request.POST.get('transportadora_ou_portador'),
                         protocolo=request.POST.get('protocolo_envio'),
+                        codigo_rastreio=request.POST.get('codigo_rastreio_envio'),
                         observacao=request.POST.get('observacao'),
                     )
                 elif acao == 'confirmar_recebimento':
@@ -1341,6 +1345,7 @@ def sick_view(request):
                     resultado = SickService.confirmar_retorno(
                         sick_id=sick_id, usuario=request.user,
                         observacao=request.POST.get('observacao'),
+                        codigo_rastreio_retorno=request.POST.get('codigo_rastreio_retorno'),
                     )
                 else:
                     raise ValidationError('Ação de SICK inválida.')
@@ -1593,36 +1598,25 @@ def sick_view(request):
     ).prefetch_related(
         Prefetch(
             'equipamento__sicks',
-            queryset=Sick.objects.select_related(
+            queryset=SickService.visiveis_para(request.user, Sick.objects.select_related(
                 'resolvido_por', 'enviado_manutencao_por',
                 'recebido_manutencao_por', 'avaliacao_iniciada_por',
                 'manutencao_iniciada_por', 'manutencao_concluida_por',
                 'retorno_confirmado_por',
-            ).order_by('-data_ocorrencia'),
+            )).order_by('-data_ocorrencia'),
             to_attr='historico_sick_prefetch',
         ),
         Prefetch(
             'equipamento__historico_set',
-            queryset=Historico.objects.select_related('usuario').order_by('data'),
+            queryset=SickService.filtrar_historicos_visiveis(
+                request.user,
+                Historico.objects.select_related('usuario'),
+            ).order_by('data'),
             to_attr='eventos_sick_prefetch',
         ),
     )
 
-    if pode_realizar_manutencao_sick(request.user):
-
-        sicks = qs
-
-    else:
-
-        if not perfil.regionais.exists():
-
-            sicks = qs.none()
-
-        else:
-
-            sicks = qs.filter(
-                equipamento__regional__in=perfil.regionais.all()
-            )
+    sicks = SickService.visiveis_para(request.user, qs)
 
     situacao_filter = (
         request.GET.get('situacao') or request.GET.get('status') or ''
@@ -2017,17 +2011,18 @@ def marcar_sick_ajax(request, equipamento_id):
 def detalhes_sick(request, sick_id):
 
     sick = get_object_or_404(
-        Sick.objects.select_related(
+        SickService.visiveis_para(request.user, Sick.objects.select_related(
             'equipamento',
             'equipamento__produto',
             'equipamento__regional',
             'resolvido_por'
-        ),
+        )),
         id=sick_id
     )
 
     historicos = Historico.objects.filter(
-        equipamento=sick.equipamento
+        equipamento=sick.equipamento,
+        detalhes__sick_id=sick.pk,
     ).order_by('-data')
 
     return render(
@@ -2060,6 +2055,7 @@ def historico_view(request):
         .all()
         .order_by('-data')
     )
+    historico = SickService.filtrar_historicos_visiveis(request.user, historico)
 
     if tipo_acao and tipo_acao != 'todos':
         historico = historico.filter(tipo_acao=tipo_acao)
@@ -2121,12 +2117,12 @@ def historico_view(request):
 @role_required('admin', 'gestor')
 def historico_detalhes_view(request, historico_id):
     historico = get_object_or_404(
-        Historico.objects.select_related(
+        SickService.filtrar_historicos_visiveis(request.user, Historico.objects.select_related(
             'equipamento',
             'equipamento__produto',
             'equipamento__regional',
             'usuario'
-        ),
+        )),
         id=historico_id
     )
 
@@ -3068,6 +3064,7 @@ def criar_emprestimo(request):
                 motivo=motivo,
                 data_prevista=data_prevista,
                 equipamentos=equipamentos_selecionados,
+                codigo_rastreio_envio=request.POST.get('codigo_rastreio_envio'),
             )
 
             messages.success(
@@ -3314,6 +3311,7 @@ def devolver_emprestimo(request, emprestimo_id):
             emprestimo,
             devolvidos,
             request.user,
+            codigo_rastreio_devolucao=request.POST.get('codigo_rastreio_devolucao'),
         )
 
         messages.success(
@@ -3821,7 +3819,8 @@ def separar_transferencia(request, transferencia_id):
 
             transferencia.status = 'EM_TRANSITO'
             transferencia.data_envio = timezone.now()
-            transferencia.save()
+            transferencia.codigo_rastreio = request.POST.get('codigo_rastreio', '').strip()
+            transferencia.save(update_fields=['status', 'data_envio', 'codigo_rastreio', 'updated_at'])
 
             usuarios = User.objects.filter(
                 perfil__regionais=transferencia.regional_destino
@@ -4127,7 +4126,8 @@ def transferencia_detalhe(request, id):
 
             transferencia.status = 'EM_TRANSITO'
             transferencia.data_envio = timezone.now()
-            transferencia.save(update_fields=['status', 'data_envio'])
+            transferencia.codigo_rastreio = request.POST.get('codigo_rastreio', '').strip()
+            transferencia.save(update_fields=['status', 'data_envio', 'codigo_rastreio', 'updated_at'])
 
             usuarios_destino = User.objects.filter(
                 perfil__regionais=transferencia.regional_destino
@@ -4609,9 +4609,9 @@ def receber_transferencia(request, transferencia_id):
 def cancelar_transferencia(request, transferencia_id):
     transferencia = get_object_or_404(
         secure_queryset(
-            Transferencia.objects.select_related('equipamento'),
+            Transferencia.objects.select_related('regional_origem__empresa', 'regional_destino'),
             request.user,
-            'equipamento__regional__empresa'
+            'regional_origem__empresa'
         ),
         id=transferencia_id
     )
@@ -4620,27 +4620,8 @@ def cancelar_transferencia(request, transferencia_id):
         messages.error(request, "Apenas pendentes.")
         return redirect('estoque:lista_transferencias')
 
-    with transaction.atomic():
-
-        transferencia = Transferencia.objects.select_for_update().get(id=transferencia.id)
-
-        transferencia.status = 'CANCELADO'
-        transferencia.save(update_fields=['status'])
-
-        equipamento = transferencia.equipamento
-        equipamento.status = 'ATIVO'
-        equipamento.save(update_fields=['status'])
-
-        Historico.objects.create(
-            equipamento=equipamento,
-            tipo_acao='TRANSFERENCIA_CANCELADA',
-            usuario=request.user,
-            detalhes={
-                'origem': transferencia.regional_origem.nome,
-                'destino': transferencia.regional_destino.nome,
-                'protocolo': transferencia.protocolo
-            }
-        )
+    from estoque.services.transferencia_services import cancelar_transferencia as cancelar
+    cancelar(transferencia, request.user)
 
     messages.success(request, "Cancelada com sucesso.")
     return redirect('estoque:lista_transferencias')
@@ -4694,8 +4675,8 @@ def lista_transferencias(request):
 
     total_pendentes = sum(t.status == 'PENDENTE' for t in transferencias)
     total_em_transito = sum(t.status == 'EM_TRANSITO' for t in transferencias)
-    total_concluidas = sum(t.status in ['CONCLUIDA', 'RECEBIDO'] for t in transferencias)
-    total_canceladas = sum(t.status == 'CANCELADO' for t in transferencias)
+    total_concluidas = sum(t.status == 'CONCLUIDA' for t in transferencias)
+    total_canceladas = sum(t.status == 'CANCELADA' for t in transferencias)
 
     for t in transferencias:
         t.pode_receber = (
@@ -4730,11 +4711,15 @@ def equipamentos_por_regional(request, produto_id, regional_id):
     if not perfil.is_admin and not perfil.regionais.filter(id=regional_id).exists():
         return JsonResponse({'erro': 'Acesso negado a esta regional'}, status=403)
 
+    sicks_visiveis = SickService.visiveis_para(
+        request.user,
+        Sick.objects.order_by('-data_ocorrencia'),
+    )
     equipamentos = Equipamento.objects.filter(
         produto_id=produto_id,
         regional_id=regional_id
     ).select_related('produto', 'regional__empresa').prefetch_related(
-        Prefetch('sicks', queryset=Sick.objects.order_by('-data_ocorrencia'), to_attr='sicks_ordenados')
+        Prefetch('sicks', queryset=sicks_visiveis, to_attr='sicks_ordenados')
     )
 
     data = {

@@ -50,6 +50,20 @@
                         <td>
                             <div class="fw-bold">{{ e.protocolo }}</div>
                             <small class="text-muted">{{ e.solicitado_por }}</small>
+                            {% if e.codigo_rastreio_envio %}
+                            <div>
+                                <a href="{{ e.url_rastreio_envio }}" target="_blank" rel="noopener noreferrer" class="small">
+                                    Rastrear envio <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                            {% if e.codigo_rastreio_devolucao %}
+                            <div>
+                                <a href="{{ e.url_rastreio_devolucao }}" target="_blank" rel="noopener noreferrer" class="small">
+                                    Rastrear devolução <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endif %}
                         </td>
 
                         <!-- ORIGEM / DESTINO -->

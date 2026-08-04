@@ -2,6 +2,17 @@
 
 {% block content %}
 
+<div class="container-fluid px-4 mt-3 text-end">
+    {% if transferencia.codigo_rastreio %}
+    <a class="btn btn-outline-secondary" href="{{ transferencia.url_rastreio }}" target="_blank" rel="noopener noreferrer">
+        <i class="bi bi-truck me-1"></i> Rastrear {{ transferencia.codigo_rastreio }}
+    </a>
+    {% endif %}
+    <a class="btn btn-outline-primary" href="{% url 'estoque:declaracao_transferencia' transferencia.id %}">
+        Declaração de conteúdo
+    </a>
+</div>
+
 {% if transferencia.status == 'PENDENTE' %}
 
 <div class="container-fluid px-4 mt-4">
@@ -249,6 +260,12 @@
                 </div>
 
                 <!-- AÇÕES -->
+                <div class="row justify-content-end mt-4">
+                    <div class="col-lg-5">
+                        <label class="form-label fw-semibold">Código de rastreio dos Correios</label>
+                        <input type="text" name="codigo_rastreio" class="form-control" placeholder="AA123456789BR">
+                    </div>
+                </div>
                 <div class="d-flex justify-content-end mt-4">
 
                     <button

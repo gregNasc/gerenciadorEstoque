@@ -1,0 +1,67 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container py-4">
+  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:coleta' auditoria.id %}">← {% trans "Voltar" %}</a>
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div><h2 class="mb-1">{% trans "Apuração da auditoria" %} — {{ auditoria.base.nome }}</h2><div class="text-muted">{{ auditoria.campanha.nome }}</div></div>
+    <span class="badge fs-6 {% if auditoria.status == 'FINALIZADA' %}bg-success{% elif auditoria.status == 'EM_REGULARIZACAO' %}bg-warning text-dark{% elif auditoria.status == 'ENVIADA' %}bg-info text-dark{% else %}bg-secondary{% endif %}">{{ auditoria.get_status_display }}</span>
+  </div>
+
+  {% if auditoria.status == 'ENVIADA' %}
+    <div class="alert alert-info">{% trans "A coleta foi concluída. O administrador deve solicitar correções ou validar o resultado como fonte de verdade." %}</div>
+  {% elif auditoria.status == 'EM_REGULARIZACAO' %}
+    <div class="alert alert-warning">
+      <strong>{% trans "Correções solicitadas" %}</strong><br>
+      {% trans "Prazo" %}: {{ auditoria.prazo_correcao_em|date:"d/m/Y H:i" }}<br>
+      {{ auditoria.orientacoes_correcao }}
+      {% if not prazo_correcao_ativo %}<div class="fw-semibold mt-2">{% trans "O prazo para respostas foi encerrado." %}</div>{% endif %}
+    </div>
+  {% elif resultado_finalizado %}
+    <div class="alert alert-success">{% trans "Resultado validado e salvo como fonte de verdade. O relatório final foi liberado para a base." %}</div>
+  {% endif %}
+
+  <div class="card shadow-sm mb-4"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    <a class="btn btn-outline-secondary" href="{% url 'auditorias:coleta' auditoria.id %}">{% trans "Ver equipamentos auditados" %}</a>
+    {% if pode_baixar_relatorio %}
+      <a class="btn btn-outline-success" href="{% url 'auditorias:relatorio_base' auditoria.id 'xlsx' %}">XLSX {% if resultado_finalizado %}{% trans "final" %}{% else %}{% trans "parcial" %}{% endif %}</a>
+    {% endif %}
+  </div></div>
+
+  {% if admin and not resultado_finalizado %}
+    <div class="row g-3 mb-4">
+      {% if pode_solicitar_correcao %}
+        <div class="col-lg-6"><div class="card border-warning shadow-sm h-100"><div class="card-body">
+          <h5 class="card-title">{% trans "Solicitar correções à base" %}</h5>
+          <p class="text-muted">{% trans "Defina um novo prazo para justificativas e providências sobre as diferenças." %}</p>
+          <form method="post" action="{% url 'auditorias:base_solicitar_correcao' auditoria.id %}">{% csrf_token %}{{ form_correcao.as_p }}<button class="btn btn-warning">{% trans "Solicitar correções" %}</button></form>
+        </div></div></div>
+      {% endif %}
+      {% if pode_validar %}
+        <div class="col-lg-6"><div class="card border-success shadow-sm h-100"><div class="card-body">
+          <h5 class="card-title">{% trans "Validar resultado" %}</h5>
+          <p>{% trans "Confirma a apuração como fonte de verdade. Equipamentos não localizados serão marcados como inativos, sem mudar de base." %}</p>
+          <form method="post" action="{% url 'auditorias:base_finalizar' auditoria.id %}">{% csrf_token %}
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" value="1" name="confirmar_validacao" id="confirmar-validacao" required><label class="form-check-label" for="confirmar-validacao">{% trans "Confirmo a validação e a inativação dos itens não localizados." %}</label></div>
+            <button class="btn btn-success">{% trans "Validar resultado" %}</button>
+          </form>
+        </div></div></div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if pode_reabrir and not resultado_finalizado %}
+    <div class="card border-secondary shadow-sm mb-4"><div class="card-body">
+      <h5 class="card-title">{% trans "Reabrir a coleta" %}</h5>
+      <form method="post" action="{% url 'auditorias:base_reabrir' auditoria.id %}">{% csrf_token %}<div class="input-group"><input class="form-control" name="justificativa" required placeholder="{% trans 'Justificativa da reabertura' %}"><button class="btn btn-outline-secondary">{% trans "Reabrir coleta" %}</button></div></form>
+    </div></div>
+  {% endif %}
+
+  <div class="card shadow-sm"><div class="card-header bg-body fw-semibold">{% trans "Divergências encontradas" %}</div><div class="list-group list-group-flush">
+    {% for divergencia in divergencias %}
+      <a class="list-group-item list-group-item-action py-3" href="{% url 'auditorias:divergencia_detalhe' divergencia.id %}"><div class="d-flex justify-content-between gap-3"><div><strong>{{ divergencia.get_tipo_display }}</strong><br><small class="text-muted">{{ divergencia.equipamento|default:divergencia.descricao }}</small>{% if divergencia.identificador_informado %}<div class="mt-1"><span class="fw-semibold">{% trans "Identificador informado" %}:</span> <code>{{ divergencia.identificador_informado }}</code></div>{% endif %}{% if divergencia.justificativa_base %}<div class="mt-2"><span class="badge bg-info text-dark">{% trans "Respondida pela base" %}</span></div>{% endif %}</div><span class="badge bg-warning text-dark align-self-start">{{ divergencia.get_status_display }}</span></div></a>
+    {% empty %}<div class="text-center text-muted py-5">{% trans "Nenhuma divergência encontrada." %}</div>{% endfor %}
+  </div></div>
+</div>
+{% endblock %}

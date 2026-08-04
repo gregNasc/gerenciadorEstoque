@@ -369,7 +369,24 @@
         <div class="col-12 col-md-3"><strong>{% trans "Categoria do problema" %}</strong><br>{{ sick.categoria }}</div>
         <div class="col-12 col-md-6"><strong>{% trans "Motivo" %}</strong><br>{{ sick.motivo }}</div>
         <div class="col-6 col-md-3"><strong>{% trans "Destino" %}</strong><br>{{ sick.destino_manutencao|default:"—" }}</div>
+        <div class="col-6 col-md-3"><strong>{% trans "Tipo de destino" %}</strong><br>{{ sick.get_tipo_destino_display|default:"—" }}</div>
         <div class="col-6 col-md-3"><strong>{% trans "Previsão de retorno" %}</strong><br>{{ sick.previsao_retorno|date:"d/m/Y"|default:"—" }}</div>
+        {% if sick.codigo_rastreio_envio %}
+        <div class="col-12 col-md-4">
+          <strong>{% trans "Rastreio do envio" %}</strong><br>
+          <a href="{{ sick.url_rastreio_envio }}" target="_blank" rel="noopener noreferrer" class="link-primary">
+            {{ sick.codigo_rastreio_envio }} <i class="bi bi-box-arrow-up-right"></i>
+          </a>
+        </div>
+        {% endif %}
+        {% if sick.codigo_rastreio_retorno %}
+        <div class="col-12 col-md-4">
+          <strong>{% trans "Rastreio do retorno" %}</strong><br>
+          <a href="{{ sick.url_rastreio_retorno }}" target="_blank" rel="noopener noreferrer" class="link-primary">
+            {{ sick.codigo_rastreio_retorno }} <i class="bi bi-box-arrow-up-right"></i>
+          </a>
+        </div>
+        {% endif %}
       </div>
 
       <div class="sick-timeline mb-4">
@@ -416,7 +433,30 @@
         {% endif %}
         {% if sick.etapa == 'IDENTIFICADO' and sick.pode_enviar_base %}
         <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-building me-1"></i>{% trans "Etapa 1 — responsabilidade da base onde o equipamento está parado" %}</div>
-        <details class="action-box"><summary class="btn btn-primary">{% trans "Enviar para manutenção — etapa 2" %}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="enviar_para_manutencao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><label class="form-label">{% trans "Destino" %} *</label><input name="destino_manutencao" required class="form-control mb-2"><label class="form-label">{% trans "Transportadora ou portador" %}</label><input name="transportadora_ou_portador" class="form-control mb-2"><label class="form-label">{% trans "Protocolo/rastreio" %}</label><input name="protocolo_envio" class="form-control mb-2"><textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observação' %}"></textarea><button class="btn btn-primary">{% trans "Confirmar envio para manutenção" %}</button></form></details>
+        <details class="action-box">
+          <summary class="btn btn-primary">{% trans "Enviar para manutenção — etapa 2" %}</summary>
+          <form method="post" class="card card-body mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="enviar_para_manutencao">
+            <input type="hidden" name="sick_id" value="{{ sick.id }}">
+            <label class="form-label">{% trans "Fluxo da manutenção" %} *</label>
+            <select name="tipo_destino" required class="form-select mb-2">
+              <option value="MATRIZ">{% trans "Enviar para a matriz" %}</option>
+              <option value="TERCEIRIZADA">{% trans "Enviar para manutenção terceirizada" %}</option>
+            </select>
+            <div class="form-text mb-2">{% trans "No fluxo terceirizado, somente a base de origem controla e visualiza o envio e o retorno." %}</div>
+            <label class="form-label">{% trans "Destino" %} *</label>
+            <input name="destino_manutencao" required class="form-control mb-2">
+            <label class="form-label">{% trans "Transportadora ou portador" %}</label>
+            <input name="transportadora_ou_portador" class="form-control mb-2">
+            <label class="form-label">{% trans "Protocolo do envio" %}</label>
+            <input name="protocolo_envio" class="form-control mb-2">
+            <label class="form-label">{% trans "Código de rastreio dos Correios" %}</label>
+            <input name="codigo_rastreio_envio" class="form-control mb-2" placeholder="AA123456789BR">
+            <textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observação' %}"></textarea>
+            <button class="btn btn-primary">{% trans "Confirmar envio para manutenção" %}</button>
+          </form>
+        </details>
         {% elif sick.etapa == 'IDENTIFICADO' %}
         <div class="alert alert-dark border w-100 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>{% trans "Aguardando a base responsável registrar o envio para a manutenção." %}</div>
         {% elif sick.etapa == 'EM_TRANSITO' and sick.pode_confirmar_recebimento %}
@@ -434,7 +474,18 @@
         <details class="action-box"><summary class="btn btn-outline-danger">{% trans "Inativar sem reparo" %}</summary><form method="post" class="card card-body mt-2 border-danger">{% csrf_token %}<input type="hidden" name="acao" value="inativar_sem_reparo"><input type="hidden" name="sick_id" value="{{ sick.id }}"><p class="small text-secondary">{% trans "Use somente após confirmar tecnicamente que o equipamento não possui mais conserto." %}</p><label class="form-label">{% trans "Justificativa técnica" %} *</label><textarea name="motivo_inativacao" required class="form-control mb-3" placeholder="{% trans 'Descreva por que o equipamento não pode ser reparado' %}"></textarea><button class="btn btn-danger">{% trans "Confirmar inativação" %}</button></form></details>
         {% endif %}
         {% elif sick.etapa == 'AGUARDANDO_RETORNO' and sick.pode_acao_base %}
-        <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="confirmar_retorno"><input type="hidden" name="sick_id" value="{{ sick.id }}"><button class="btn btn-success">{% trans "Confirmar retorno para a base" %}</button></form>
+        <details class="action-box">
+          <summary class="btn btn-success">{% trans "Confirmar retorno para a base" %}</summary>
+          <form method="post" class="card card-body mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="confirmar_retorno">
+            <input type="hidden" name="sick_id" value="{{ sick.id }}">
+            <label class="form-label">{% trans "Código de rastreio do retorno" %}</label>
+            <input name="codigo_rastreio_retorno" class="form-control mb-2" placeholder="AA123456789BR">
+            <textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observação do recebimento' %}"></textarea>
+            <button class="btn btn-success">{% trans "Confirmar retorno para a base" %}</button>
+          </form>
+        </details>
         {% endif %}
       </div>
     </div>

@@ -1,0 +1,198 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container py-4">
+  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:campanha_detalhe' auditoria.campanha_id %}">← {% trans "Voltar" %}</a>
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h2 class="mb-1">{% trans "Coleta de auditoria" %} — {{ auditoria.base.nome }}</h2>
+      <div class="text-muted">{{ auditoria.campanha.nome }}</div>
+    </div>
+    <span class="badge fs-6 {% if auditoria.status == 'EM_ANDAMENTO' or auditoria.status == 'REABERTA' %}bg-primary{% elif auditoria.status == 'FINALIZADA' %}bg-success{% elif auditoria.status == 'COM_DIVERGENCIAS' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+      {% if not pode_ver_apuracao and auditoria.snapshot_criado_em and not resultado_liberado and auditoria.status != 'EM_ANDAMENTO' and auditoria.status != 'REABERTA' %}{% trans "Em apuração" %}{% else %}{{ auditoria.get_status_display }}{% endif %}
+    </span>
+  </div>
+
+  {% if pode_ver_apuracao %}
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card h-100 shadow-sm"><div class="card-body">
+        <div class="text-muted small">{% trans "Esperados localizados" %}</div>
+        <div class="fs-3 fw-semibold">{{ indicadores.lidos }}/{{ indicadores.esperados }}</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card h-100 shadow-sm"><div class="card-body">
+        <div class="text-muted small">{% trans "Leituras registradas" %}</div>
+        <div class="fs-3 fw-semibold">{{ indicadores.leituras_total }}</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card h-100 shadow-sm"><div class="card-body">
+        <div class="text-muted small">{% trans "Na base correta" %}</div>
+        <div class="fs-3 fw-semibold text-success">{{ indicadores.corretos }}</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card h-100 shadow-sm"><div class="card-body">
+        <div class="text-muted small">{% trans "Divergências abertas" %}</div>
+        <div class="fs-3 fw-semibold text-warning">{{ indicadores.divergencias_abertas }}</div>
+      </div></div>
+    </div>
+  </div>
+  {% else %}
+    <div class="row g-3 mb-4">
+      <div class="col-md-4"><div class="card h-100 shadow-sm"><div class="card-body">
+        <div class="text-muted small">{% trans "Leituras registradas" %}</div>
+        <div class="fs-3 fw-semibold">{{ indicadores.leituras_total }}</div>
+      </div></div></div>
+      <div class="col-md-8"><div class="alert alert-secondary h-100 mb-0">
+        <strong>{% trans "Auditoria às cegas" %}</strong><br>
+        {% trans "A relação esperada e a classificação dos equipamentos ficam reservadas para a apuração administrativa." %}
+      </div></div>
+    </div>
+  {% endif %}
+
+  {% if auditoria.status == 'NAO_INICIADA' or auditoria.status == 'DISPONIVEL' %}
+    <div class="card shadow-sm mb-4"><div class="card-body">
+      <h5 class="card-title">{% trans "Iniciar coleta" %}</h5>
+      <p class="card-text text-muted">{% trans "O snapshot será criado com os equipamentos vinculados à base neste momento." %}</p>
+      <form method="post" action="{% url 'auditorias:base_iniciar' auditoria.id %}">
+        {% csrf_token %}
+        <button class="btn btn-primary">{% trans "Iniciar e criar snapshot" %}</button>
+      </form>
+    </div></div>
+  {% endif %}
+
+  {% if auditoria.status == 'EM_ANDAMENTO' or auditoria.status == 'REABERTA' %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-body fw-semibold">{% trans "Registrar equipamento" %}</div>
+      <div class="card-body">
+        <label class="form-label" for="leitura">{% trans "Patrimônio, série ou código" %}</label>
+        <div class="input-group">
+          <input autofocus id="leitura" class="form-control" autocomplete="off">
+          <button id="registrar" type="button" class="btn btn-primary">{% trans "Registrar" %}</button>
+        </div>
+        <div id="resultado" class="alert mt-3 mb-0 d-none"></div>
+      </div>
+    </div>
+
+    <div class="card border-warning shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">{% trans "Concluir e enviar auditoria" %}</h5>
+        <p class="card-text">
+          {% trans "Use esta ação somente quando a coleta terminar. Depois do envio, o administrador fará a apuração do resultado." %}
+        </p>
+        <form method="post" action="{% url 'auditorias:base_enviar' auditoria.id %}">
+          {% csrf_token %}
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" value="1" id="confirmar-envio" name="confirmar_envio" required>
+            <label class="form-check-label" for="confirmar-envio">{% trans "Confirmo que a coleta foi concluída." %}</label>
+          </div>
+          <button class="btn btn-success">{% trans "Concluir e enviar auditoria" %}</button>
+        </form>
+      </div>
+    </div>
+  {% elif auditoria.status == 'EM_REGULARIZACAO' %}
+    <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>{% trans "O administrador solicitou correções. Consulte as divergências, orientações e prazo." %}</span>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'auditorias:divergencias' auditoria.id %}">{% trans "Ver correções" %}</a>
+    </div>
+  {% elif resultado_liberado %}
+    <div class="alert alert-success d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>{% trans "O resultado final foi validado e está disponível." %}</span>
+      <a class="btn btn-sm btn-outline-success" href="{% url 'auditorias:divergencias' auditoria.id %}">{% trans "Ver resultado final" %}</a>
+    </div>
+  {% elif auditoria.snapshot_criado_em and pode_ver_apuracao %}
+    <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>{% trans "A coleta está em apuração administrativa." %}</span>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'auditorias:divergencias' auditoria.id %}">{% trans "Abrir apuração" %}</a>
+    </div>
+  {% elif auditoria.snapshot_criado_em %}
+    <div class="alert alert-info">{% trans "A coleta foi enviada e está em apuração pelo administrador. O resultado será liberado após a finalização." %}</div>
+  {% endif %}
+
+  {% if pode_ver_apuracao and auditoria.snapshot_criado_em %}
+    <div class="card shadow-sm">
+      <div class="card-header bg-body d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">{% trans "Equipamentos do snapshot" %}</span>
+        <small class="text-muted">{{ indicadores.esperados }} {% trans "equipamentos" %}</small>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light"><tr>
+            <th>{% trans "Equipamento" %}</th>
+            <th>{% trans "Patrimônio" %}</th>
+            <th>{% trans "Número de série" %}</th>
+            <th>{% trans "Status no início" %}</th>
+            <th>{% trans "Status atual" %}</th>
+            <th>{% trans "Situação da coleta" %}</th>
+          </tr></thead>
+          <tbody>
+          {% for item in pagina_equipamentos %}
+            <tr>
+              <td><div class="fw-semibold">{{ item.produto_descricao|default:item.codigo }}</div><small class="text-muted">{{ item.codigo }}</small></td>
+              <td>{{ item.patrimonio|default:"-" }}</td>
+              <td>{{ item.numero_serie|default:"-" }}</td>
+              <td><span class="badge bg-secondary">{{ item.status_snapshot_display }}</span></td>
+              <td><span class="badge bg-secondary">{{ item.equipamento.get_status_display }}</span></td>
+              <td>
+                {% if item.leitura_em %}<span class="badge bg-success">{{ item.situacao_coleta }}</span><div><small class="text-muted">{{ item.leitura_em|date:"d/m/Y H:i" }}</small></div>
+                {% else %}<span class="badge bg-light text-dark border">{% trans "Não lido" %}</span>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">{% trans "O snapshot ainda não foi criado." %}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pagina_equipamentos.paginator.num_pages > 1 %}
+        <div class="card-footer bg-body">
+          <nav aria-label="{% trans 'Paginação dos equipamentos' %}"><ul class="pagination pagination-sm justify-content-center mb-0">
+            {% if pagina_equipamentos.has_previous %}<li class="page-item"><a class="page-link" href="?pagina={{ pagina_equipamentos.previous_page_number }}">{% trans "Anterior" %}</a></li>{% endif %}
+            <li class="page-item disabled"><span class="page-link">{{ pagina_equipamentos.number }}/{{ pagina_equipamentos.paginator.num_pages }}</span></li>
+            {% if pagina_equipamentos.has_next %}<li class="page-item"><a class="page-link" href="?pagina={{ pagina_equipamentos.next_page_number }}">{% trans "Próxima" %}</a></li>{% endif %}
+          </ul></nav>
+        </div>
+      {% endif %}
+    </div>
+  {% elif auditoria.status == 'EM_ANDAMENTO' or auditoria.status == 'REABERTA' %}
+    <div class="card shadow-sm">
+      <div class="card-header bg-body fw-semibold">{% trans "Últimas leituras registradas" %}</div>
+      <div class="table-responsive"><table class="table align-middle mb-0">
+        <thead class="table-light"><tr><th>{% trans "Identificador informado" %}</th><th>{% trans "Data e hora" %}</th><th>{% trans "Situação" %}</th></tr></thead>
+        <tbody>
+        {% for leitura in leituras %}
+          <tr><td>{{ leitura.valor_informado }}</td><td>{{ leitura.lida_em|date:"d/m/Y H:i" }}</td><td><span class="badge bg-success">{% trans "Registrado" %}</span></td></tr>
+        {% empty %}
+          <tr><td colspan="3" class="text-center text-muted py-4">{% trans "Nenhuma leitura registrada." %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+const input = document.getElementById('leitura');
+const botao = document.getElementById('registrar');
+const resultado = document.getElementById('resultado');
+if (botao) {
+  botao.addEventListener('click', async () => {
+    const resposta = await fetch('{% url "auditorias:registrar_leitura" auditoria.id %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''},
+      body: JSON.stringify({valor: input.value, idempotency_key: crypto.randomUUID()}),
+    });
+    const dados = await resposta.json();
+    resultado.classList.remove('d-none', 'alert-success', 'alert-danger');
+    resultado.classList.add(dados.ok ? 'alert-success' : 'alert-danger');
+    resultado.textContent = dados.ok ? dados.mensagem : (dados.erros || []).join(' ');
+    if (dados.ok) { input.value = ''; input.focus(); }
+  });
+  input.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); botao.click(); } });
+}
+</script>
+{% endblock %}

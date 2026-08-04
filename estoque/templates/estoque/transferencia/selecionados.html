@@ -38,6 +38,11 @@
                 </div>
 
                 <div class="d-flex gap-2 align-items-center">
+                    {% if transferencia.codigo_rastreio %}
+                    <a href="{{ transferencia.url_rastreio }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-truck me-1"></i> Rastrear {{ transferencia.codigo_rastreio }}
+                    </a>
+                    {% endif %}
                     <span class="badge bg-secondary">{{ transferencia.get_status_display|default:transferencia.status }}</span>
                     <span class="badge bg-light text-dark border">
                         {{ transferencia.itens.count }} item{{ transferencia.itens.count|pluralize }}

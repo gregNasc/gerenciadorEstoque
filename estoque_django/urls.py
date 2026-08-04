@@ -21,6 +21,7 @@ urlpatterns = [
     #path('estoque/', include('estoque.urls')),
     path('insumos/', include('insumos.urls')),
     path('integracao/', include('integracao.urls')),
+    path('auditorias/', include('auditorias.urls')),
 ]
 
 urlpatterns += [

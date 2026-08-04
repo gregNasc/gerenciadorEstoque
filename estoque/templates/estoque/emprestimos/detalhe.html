@@ -28,6 +28,11 @@
 
         <div class="mt-3 mt-md-0">
 
+            <a href="{% url 'estoque:declaracao_emprestimo' emprestimo.id %}"
+               class="btn btn-outline-primary">
+                {% trans "Declaração de conteúdo" %}
+            </a>
+
             <a href="{% url 'estoque:lista_emprestimos' %}"
                class="btn btn-outline-secondary">
 
@@ -39,6 +44,29 @@
         </div>
 
     </div>
+
+    {% if emprestimo.codigo_rastreio_envio or emprestimo.codigo_rastreio_devolucao %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body d-flex flex-wrap gap-4">
+            {% if emprestimo.codigo_rastreio_envio %}
+            <div>
+                <small class="text-muted d-block">Rastreio do envio</small>
+                <a href="{{ emprestimo.url_rastreio_envio }}" target="_blank" rel="noopener noreferrer" class="fw-semibold">
+                    {{ emprestimo.codigo_rastreio_envio }} <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+            </div>
+            {% endif %}
+            {% if emprestimo.codigo_rastreio_devolucao %}
+            <div>
+                <small class="text-muted d-block">Rastreio da devolução</small>
+                <a href="{{ emprestimo.url_rastreio_devolucao }}" target="_blank" rel="noopener noreferrer" class="fw-semibold">
+                    {{ emprestimo.codigo_rastreio_devolucao }} <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- ALERTA DE ATRASO -->
     {% if emprestimo.esta_atrasado %}

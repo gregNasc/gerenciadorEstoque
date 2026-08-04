@@ -1,0 +1,88 @@
+import hashlib
+import hmac
+import json
+
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+
+from .models import ComunicadoEntrega
+
+
+def _assinatura_valida(request):
+    if not settings.WHATSAPP_WEBHOOK_APP_SECRET:
+        return False
+    recebida = request.headers.get('X-Hub-Signature-256', '')
+    esperada = 'sha256=' + hmac.new(
+        settings.WHATSAPP_WEBHOOK_APP_SECRET.encode(),
+        request.body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(recebida, esperada)
+
+
+@csrf_exempt
+def whatsapp_webhook(request):
+    if request.method == 'GET':
+        if (
+            settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN
+            and
+            request.GET.get('hub.mode') == 'subscribe'
+            and hmac.compare_digest(
+                request.GET.get('hub.verify_token', ''),
+                settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+            )
+        ):
+            return HttpResponse(request.GET.get('hub.challenge', ''))
+        return HttpResponse(status=403)
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    if not _assinatura_valida(request):
+        return HttpResponse(status=403)
+    try:
+        payload = json.loads(request.body or b'{}')
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': True})
+
+    mapa = {
+        'sent': ComunicadoEntrega.Status.ENVIADA,
+        'delivered': ComunicadoEntrega.Status.ENTREGUE,
+        'read': ComunicadoEntrega.Status.LIDA,
+        'failed': ComunicadoEntrega.Status.FALHA,
+    }
+    agora = timezone.now()
+    for entrada in payload.get('entry', []):
+        for alteracao in entrada.get('changes', []):
+            for status in alteracao.get('value', {}).get('statuses', []):
+                novo = mapa.get(status.get('status'))
+                if not novo:
+                    continue
+                entrega = ComunicadoEntrega.objects.filter(
+                    provider_message_id=status.get('id', '')
+                ).first()
+                if not entrega:
+                    continue
+                ordem = {
+                    ComunicadoEntrega.Status.ENVIADA: 1,
+                    ComunicadoEntrega.Status.ENTREGUE: 2,
+                    ComunicadoEntrega.Status.LIDA: 3,
+                }
+                if novo != ComunicadoEntrega.Status.FALHA and ordem.get(novo, 0) < ordem.get(entrega.status, 0):
+                    continue
+                entrega.status = novo
+                campos = ['status']
+                if novo == ComunicadoEntrega.Status.ENVIADA and not entrega.enviada_em:
+                    entrega.enviada_em = agora
+                    campos.append('enviada_em')
+                elif novo == ComunicadoEntrega.Status.ENTREGUE:
+                    entrega.entregue_em = agora
+                    campos.append('entregue_em')
+                elif novo == ComunicadoEntrega.Status.LIDA:
+                    entrega.lida_em = agora
+                    campos.append('lida_em')
+                elif novo == ComunicadoEntrega.Status.FALHA:
+                    entrega.ultimo_erro = 'Falha informada pelo webhook do provedor.'
+                    campos.append('ultimo_erro')
+                entrega.save(update_fields=campos)
+    return JsonResponse({'ok': True})

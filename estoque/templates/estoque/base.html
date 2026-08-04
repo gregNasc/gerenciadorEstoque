@@ -466,6 +466,13 @@
 
                         </li>
 
+                        <li>
+                            <a class="dropdown-item" href="{% url 'auditorias:campanha_lista' %}">
+                                <i class="bi bi-clipboard-check"></i>
+                                {% trans "Auditorias" %}
+                            </a>
+                        </li>
+
                         <!-- TODAS -->
                         {% if perfil.role == 'admin' %}
 

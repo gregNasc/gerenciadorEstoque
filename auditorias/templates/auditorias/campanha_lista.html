@@ -1,0 +1,7 @@
+{% extends 'estoque/base.html' %}{% load i18n %}
+{% block content %}
+<div class="container py-4">
+  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'estoque:index' %}">← {% trans "Voltar" %}</a>
+  <div class="d-flex justify-content-between align-items-center"><h2>{% trans "Auditorias" %}</h2>{% if pode_criar %}<a class="btn btn-primary" href="{% url 'auditorias:campanha_criar' %}">{% trans "Nova campanha" %}</a>{% endif %}</div>
+  <div class="list-group mt-3">{% for campanha in campanhas %}<a class="list-group-item list-group-item-action" href="{% url 'auditorias:campanha_detalhe' campanha.id %}"><strong>{{ campanha.nome }}</strong><span class="badge bg-secondary float-end">{{ campanha.get_status_display }}</span><br><small>{{ campanha.empresa.nome }}</small></a>{% empty %}<p class="text-muted">{% trans "Nenhuma campanha disponível." %}</p>{% endfor %}</div>
+</div>{% endblock %}

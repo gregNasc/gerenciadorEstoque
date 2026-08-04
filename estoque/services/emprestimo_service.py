@@ -10,7 +10,10 @@ class EmprestimoService:
 
     @staticmethod
     @transaction.atomic
-    def criar(base_origem, base_destino, user, motivo, data_prevista, equipamentos):
+    def criar(
+        base_origem, base_destino, user, motivo, data_prevista, equipamentos,
+        codigo_rastreio_envio='',
+    ):
 
         if base_origem.grupo_regional != base_destino.grupo_regional:
             raise ValidationError(
@@ -32,6 +35,7 @@ class EmprestimoService:
             data_prevista_devolucao=data_prevista,
             grupo=base_origem.grupo_regional,
             status='AGUARDANDO_RECEBIMENTO',
+            codigo_rastreio_envio=(codigo_rastreio_envio or '').strip(),
         )
 
         for equipamento in equipamentos:
@@ -87,8 +91,8 @@ class EmprestimoService:
             eq.status = 'RESERVADO_TRANSFERENCIA'
             eq.save()
 
-        emprestimo.status = 'RESERVADO'
-        emprestimo.save()
+        emprestimo.status = Emprestimo.Status.AGUARDANDO_RECEBIMENTO
+        emprestimo.save(update_fields=['status'])
 
         ComunicadoService.emp_item_reservado(emprestimo)
 
@@ -99,8 +103,8 @@ class EmprestimoService:
         if not emprestimo.itens.exists():
             raise ValidationError("Sem itens para envio.")
 
-        emprestimo.status = 'EM_TRANSITO'
-        emprestimo.save()
+        emprestimo.status = Emprestimo.Status.AGUARDANDO_RECEBIMENTO
+        emprestimo.save(update_fields=['status'])
 
         for item in emprestimo.itens.all():
             item.status = 'ENVIADO'
@@ -141,7 +145,7 @@ class EmprestimoService:
 
     @staticmethod
     @transaction.atomic
-    def devolver(emprestimo, itens_devolvidos_ids, usuario,):
+    def devolver(emprestimo, itens_devolvidos_ids, usuario, codigo_rastreio_devolucao=''):
 
         for item in emprestimo.itens.all():
 
@@ -162,7 +166,8 @@ class EmprestimoService:
         emprestimo.status = (
             'AGUARDANDO_CONFIRMACAO_DEVOLUCAO'
         )
-        emprestimo.save()
+        emprestimo.codigo_rastreio_devolucao = (codigo_rastreio_devolucao or '').strip()
+        emprestimo.save(update_fields=['status', 'codigo_rastreio_devolucao', 'atualizado_em'])
         ComunicadoService.emp_devolucao_pendente(
             emprestimo,
             usuario,

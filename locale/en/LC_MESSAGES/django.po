@@ -1,0 +1,4240 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 12:18-0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: .\auditorias\forms.py:41 .\insumos\forms.py:164
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:16
+msgid "Justificativa"
+msgstr "Justification"
+
+#: .\auditorias\models.py:14 .\estoque\models.py:519
+msgid "Rascunho"
+msgstr "Draft"
+
+#: .\auditorias\models.py:15
+msgid "Agendada"
+msgstr "Scheduled"
+
+#: .\auditorias\models.py:16 .\auditorias\models.py:45
+msgid "Em andamento"
+msgstr "In progress"
+
+#: .\auditorias\models.py:17
+msgid "Encerrada"
+msgstr "Closed"
+
+#: .\auditorias\models.py:18 .\auditorias\models.py:198 .\estoque\models.py:420
+#: .\estoque\models.py:522 .\estoque\models.py:930
+#: .\estoque\templates\estoque\transferencia\listar.html:146
+#: .\estoque\templates\estoque\transferencia\listar.html:343
+msgid "Cancelada"
+msgstr "Canceled"
+
+#: .\auditorias\models.py:43
+msgid "Não iniciada"
+msgstr "Not started"
+
+#: .\auditorias\models.py:44
+msgid "Disponível"
+msgstr "Available"
+
+#: .\auditorias\models.py:46
+msgid "Enviada para análise"
+msgstr "Submitted for review"
+
+#: .\auditorias\models.py:47
+msgid "Com divergências"
+msgstr "With discrepancies"
+
+#: .\auditorias\models.py:48
+msgid "Em regularização"
+msgstr "Under reconciliation"
+
+#: .\auditorias\models.py:49
+msgid "Finalizada"
+msgstr "Completed"
+
+#: .\auditorias\models.py:50
+msgid "Reaberta"
+msgstr "Reopened"
+
+#: .\auditorias\models.py:51
+msgid "Expirada"
+msgstr "Expired"
+
+#: .\auditorias\models.py:52
+msgid "Dispensada"
+msgstr "Waived"
+
+#: .\auditorias\models.py:89
+msgid "O encerramento deve ser posterior ao início."
+msgstr ""
+
+#: .\auditorias\models.py:91
+msgid "O período máximo da auditoria é de 31 dias."
+msgstr ""
+
+#: .\auditorias\models.py:93
+msgid "A base deve pertencer à empresa da campanha."
+msgstr ""
+
+#: .\auditorias\models.py:127
+msgid "O snapshot de auditoria é imutável."
+msgstr ""
+
+#: .\auditorias\models.py:133
+#: .\estoque\templates\estoque\declaracoes\formulario.html:36
+#: .\estoque\templates\estoque\detalhes_produto.html:31
+#: .\estoque\templates\estoque\editar_equipamento.html:13
+#: .\estoque\templates\estoque\estoque.html:1491
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:112
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:247
+#: .\estoque\templates\estoque\sick.html:368
+msgid "Patrimônio"
+msgstr "Asset tag"
+
+#: .\auditorias\models.py:134
+#: .\estoque\templates\estoque\declaracoes\formulario.html:36
+#: .\estoque\templates\estoque\editar_equipamento.html:12
+msgid "Número de série"
+msgstr "Serial number"
+
+#: .\auditorias\models.py:135
+msgid "Código interno"
+msgstr ""
+
+#: .\auditorias\models.py:136
+msgid "Não identificado"
+msgstr ""
+
+#: .\auditorias\models.py:139
+msgid "Leitor"
+msgstr ""
+
+#: .\auditorias\models.py:140
+msgid "Digitação manual"
+msgstr ""
+
+#: .\auditorias\models.py:141
+msgid "Importação de planilha"
+msgstr ""
+
+#: .\auditorias\models.py:144
+msgid "Localizado na base correta"
+msgstr "Found at the correct site"
+
+#: .\auditorias\models.py:145
+msgid "Localizado em outra base"
+msgstr "Found at another site"
+
+#: .\auditorias\models.py:146
+msgid "Equipamento não cadastrado"
+msgstr "Unregistered equipment"
+
+#: .\auditorias\models.py:147 .\auditorias\models.py:187
+msgid "Identificador duplicado"
+msgstr "Duplicate identifier"
+
+#: .\auditorias\models.py:148
+msgid "Leitura duplicada"
+msgstr "Duplicate reading"
+
+#: .\auditorias\models.py:149 .\estoque\models.py:626
+msgid "Em transferência"
+msgstr "In transfer"
+
+#: .\auditorias\models.py:150 .\estoque\models.py:249 .\estoque\models.py:287
+msgid "Emprestado"
+msgstr "On loan"
+
+#: .\auditorias\models.py:151 .\auditorias\models.py:188
+msgid "Status incompatível"
+msgstr "Incompatible status"
+
+#: .\auditorias\models.py:184
+msgid "Encontrado em outra base"
+msgstr ""
+
+#: .\auditorias\models.py:185
+msgid "Não localizado"
+msgstr ""
+
+#: .\auditorias\models.py:186
+msgid "Não cadastrado"
+msgstr ""
+
+#: .\auditorias\models.py:189
+msgid "Conflito com transferência"
+msgstr ""
+
+#: .\auditorias\models.py:190
+msgid "Conflito com empréstimo"
+msgstr ""
+
+#: .\auditorias\models.py:193
+msgid "Aberta"
+msgstr "Open"
+
+#: .\auditorias\models.py:194
+msgid "Em análise"
+msgstr "Under review"
+
+#: .\auditorias\models.py:195
+msgid "Aguardando transferência"
+msgstr "Awaiting transfer"
+
+#: .\auditorias\models.py:196
+msgid "Resolvida"
+msgstr "Resolved"
+
+#: .\auditorias\models.py:197
+msgid "Bloqueada"
+msgstr "Blocked"
+
+#: .\auditorias\models.py:239
+msgid "Manter na base atual"
+msgstr "Keep at current site"
+
+#: .\auditorias\models.py:240
+msgid "Transferir equipamento"
+msgstr "Transfer equipment"
+
+#: .\auditorias\models.py:241
+msgid "Ajuste administrativo"
+msgstr "Administrative adjustment"
+
+#: .\auditorias\models.py:242
+msgid "Sem alteração"
+msgstr "No change"
+
+#: .\auditorias\models.py:275
+msgid "Eventos de auditoria são imutáveis."
+msgstr ""
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:2
+msgid "Agendar campanha"
+msgstr "Schedule campaign"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:3
+#: .\estoque\templates\estoque\editar_equipamento.html:45
+#: .\estoque\templates\estoque\sick.html:366
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:222
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+#: .\insumos\templates\insumos\estoque_insumos.html:108
+#: .\insumos\templates\insumos\estoque_insumos.html:286
+#: .\insumos\templates\insumos\estoque_insumos.html:467
+#: .\insumos\templates\insumos\lista_checklists.html:362
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Base"
+msgstr "Site"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:3
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:220
+msgid "Início"
+msgstr "Start"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:3
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:221
+msgid "Fim"
+msgstr "End"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:3
+#: .\estoque\templates\estoque\caixa_separacao.html:31
+#: .\estoque\templates\estoque\caixa_transferencias.html:35
+#: .\estoque\templates\estoque\detalhes_produto.html:35
+#: .\estoque\templates\estoque\editar_equipamento.html:46
+#: .\estoque\templates\estoque\estoque.html:1494
+#: .\estoque\templates\estoque\lista_transferencias.html:21
+#: .\estoque\templates\estoque\lista_transferencias.html:82
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:225
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:191
+#: .\estoque\templates\estoque\transferencia\listar.html:109
+#: .\estoque\templates\estoque\transferencia\listar.html:203
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:37
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:73
+#: .\insumos\templates\insumos\custos\precos_insumos.html:37
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:99
+#: .\insumos\templates\insumos\estoque_insumos.html:291
+#: .\insumos\templates\insumos\lista_checklists.html:213
+#: .\insumos\templates\insumos\lista_checklists.html:364
+#: .\insumos\templates\insumos\solicitacoes\lista.html:29
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Status"
+msgstr "Status"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:3
+#: .\estoque\templates\estoque\caixa_separacao.html:82
+#: .\estoque\templates\estoque\comunicados\caixa.html:158
+msgid "Abrir"
+msgstr "Open"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:4
+msgid "Adicionar base"
+msgstr "Add site"
+
+#: .\auditorias\templates\auditorias\campanha_detalhe.html:4
+#: .\insumos\templates\insumos\solicitacoes\criar.html:741
+msgid "Adicionar"
+msgstr "Add"
+
+#: .\auditorias\templates\auditorias\campanha_form.html:2
+msgid "Nova campanha de auditoria"
+msgstr "New audit campaign"
+
+#: .\auditorias\templates\auditorias\campanha_form.html:2
+msgid "Criar campanha"
+msgstr "Create campaign"
+
+#: .\auditorias\templates\auditorias\campanha_lista.html:4
+msgid "Auditorias"
+msgstr "Audits"
+
+#: .\auditorias\templates\auditorias\campanha_lista.html:4
+msgid "Nova campanha"
+msgstr "New campaign"
+
+#: .\auditorias\templates\auditorias\campanha_lista.html:5
+msgid "Nenhuma campanha disponível."
+msgstr "No campaigns available."
+
+#: .\auditorias\templates\auditorias\coleta.html:2
+msgid "Coleta de auditoria"
+msgstr "Audit collection"
+
+#: .\auditorias\templates\auditorias\coleta.html:2
+msgid "lidos"
+msgstr "read"
+
+#: .\auditorias\templates\auditorias\coleta.html:3
+msgid "Iniciar e criar snapshot"
+msgstr "Start and create snapshot"
+
+#: .\auditorias\templates\auditorias\coleta.html:4
+msgid "Patrimônio, série ou código"
+msgstr "Asset tag, serial number, or code"
+
+#: .\auditorias\templates\auditorias\coleta.html:4
+msgid "Registrar"
+msgstr "Register"
+
+#: .\auditorias\templates\auditorias\coleta.html:4
+msgid "Enviar auditoria"
+msgstr "Submit audit"
+
+#: .\auditorias\templates\auditorias\coleta.html:5
+msgid "Ver divergências"
+msgstr "View discrepancies"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:2
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:33
+#: .\estoque\templates\estoque\estoque.html:473
+#: .\estoque\templates\estoque\historico.html:81
+#: .\estoque\templates\estoque\historico.html:140
+#: .\estoque\templates\estoque\index.html:30
+#: .\estoque\templates\estoque\lista_transferencias.html:80
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:84
+#: .\estoque\templates\estoque\sick.html:216
+msgid "Equipamento"
+msgstr "Equipment"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:2
+msgid "Base esperada"
+msgstr "Expected site"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:2
+msgid "Base encontrada"
+msgstr "Found at site"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:3
+msgid "Manter na base encontrada"
+msgstr "Keep at found site"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:3
+msgid "Confirmar"
+msgstr "Confirm"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:3
+msgid "Criar transferência direta"
+msgstr "Create direct transfer"
+
+#: .\auditorias\templates\auditorias\divergencia_detalhe.html:3
+msgid "Criar transferência"
+msgstr "Create transfer"
+
+#: .\auditorias\templates\auditorias\divergencias.html:2
+msgid "Divergências"
+msgstr "Discrepancies"
+
+#: .\auditorias\templates\auditorias\divergencias.html:2
+msgid "Nenhuma divergência."
+msgstr "No discrepancies."
+
+#: .\estoque\forms.py:19
+msgid "Quantidade de volumes"
+msgstr "Number of packages"
+
+#: .\estoque\forms.py:20
+msgid "Valor total declarado"
+msgstr "Total declared value"
+
+#: .\estoque\forms.py:21
+msgid "Peso total (kg)"
+msgstr "Total weight (kg)"
+
+#: .\estoque\forms.py:22 .\estoque\templates\estoque\sick.html:432
+msgid "Observações"
+msgstr "Notes"
+
+#: .\estoque\forms.py:33 .\estoque\templates\estoque\cadastrar_usuarios.html:78
+#: .\insumos\forms.py:95
+msgid "Nome"
+msgstr "Name"
+
+#: .\estoque\forms.py:34
+msgid "Logradouro"
+msgstr "Street"
+
+#: .\estoque\forms.py:35
+msgid "Número"
+msgstr "Number"
+
+#: .\estoque\forms.py:36
+msgid "Complemento"
+msgstr "Additional address information"
+
+#: .\estoque\forms.py:37
+msgid "Bairro"
+msgstr "District"
+
+#: .\estoque\forms.py:38
+msgid "Cidade"
+msgstr "City"
+
+#: .\estoque\forms.py:39
+msgid "UF"
+msgstr "State"
+
+#: .\estoque\forms.py:40
+msgid "CEP"
+msgstr "Postal code"
+
+#: .\estoque\forms.py:41
+msgid "CPF/CNPJ/Documento estrangeiro"
+msgstr "CPF/CNPJ/Foreign ID"
+
+#: .\estoque\forms.py:42
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:238
+#: .\insumos\forms.py:100
+msgid "Telefone"
+msgstr "Phone"
+
+#: .\estoque\forms.py:43 .\estoque\templates\estoque\editar_equipamento.html:47
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:141
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:214
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:51
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:61
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:74
+msgid "Responsável"
+msgstr "Responsible person"
+
+#: .\estoque\forms.py:90 .\estoque\templates\estoque\estoque.html:493
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:23
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:24
+msgid "Selecione"
+msgstr ""
+
+#: .\estoque\forms.py:91 .\estoque\models.py:215 .\estoque\models.py:384
+#: .\estoque\templates\estoque\index.html:22
+#: .\estoque\templates\estoque\index.html:191
+#: .\estoque\templates\estoque\solicitacoes\criar.html:66
+#: .\estoque\utils.py:101
+msgid "Coletores"
+msgstr ""
+
+#: .\estoque\forms.py:92 .\estoque\models.py:216 .\estoque\models.py:385
+#: .\estoque\templates\estoque\index.html:23
+#: .\estoque\templates\estoque\index.html:195
+#: .\estoque\templates\estoque\solicitacoes\criar.html:67
+#: .\estoque\utils.py:102
+msgid "Impressoras"
+msgstr ""
+
+#: .\estoque\forms.py:93 .\estoque\models.py:217 .\estoque\models.py:386
+#: .\estoque\templates\estoque\index.html:24
+#: .\estoque\templates\estoque\index.html:199
+#: .\estoque\templates\estoque\solicitacoes\criar.html:68
+#: .\estoque\utils.py:103
+msgid "Notebooks"
+msgstr ""
+
+#: .\estoque\forms.py:94 .\estoque\models.py:218 .\estoque\models.py:387
+#: .\estoque\templates\estoque\index.html:25
+#: .\estoque\templates\estoque\index.html:203
+#: .\estoque\templates\estoque\solicitacoes\criar.html:69
+#: .\estoque\utils.py:104
+msgid "Routers"
+msgstr ""
+
+#: .\estoque\models.py:233
+#: .\estoque\templates\estoque\comunicados\detalhe.html:52
+msgid "Operacional"
+msgstr ""
+
+#: .\estoque\models.py:234
+msgid "Administrativo"
+msgstr ""
+
+#: .\estoque\models.py:243 .\estoque\models.py:745 .\insumos\forms.py:103
+#: .\insumos\forms.py:141
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:73
+#: .\insumos\templates\insumos\custos\precos_insumos.html:99
+msgid "Ativo"
+msgstr ""
+
+#: .\estoque\models.py:244
+msgid "Reservado para Transferencia"
+msgstr ""
+
+#: .\estoque\models.py:245
+msgid "Em Transito"
+msgstr ""
+
+#: .\estoque\models.py:246
+msgid "Manutencao"
+msgstr ""
+
+#: .\estoque\models.py:247 .\estoque\templates\estoque\estoque.html:162
+#: .\estoque\templates\estoque\estoque.html:284
+#: .\estoque\templates\estoque\estoque.html:1887
+#: .\estoque\templates\estoque\index.html:132
+#: .\estoque\templates\estoque\index.html:226
+msgid "Sick"
+msgstr ""
+
+#: .\estoque\models.py:248
+msgid "Em Uso"
+msgstr ""
+
+#: .\estoque\models.py:250
+msgid "Baixa"
+msgstr ""
+
+#: .\estoque\models.py:251 .\estoque\models.py:749
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:286
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:73
+#: .\insumos\templates\insumos\custos\precos_insumos.html:99
+msgid "Inativo"
+msgstr ""
+
+#: .\estoque\models.py:286
+msgid "Aguardando recebimento"
+msgstr ""
+
+#: .\estoque\models.py:290
+msgid "Aguardando confirmação da devolução"
+msgstr ""
+
+#: .\estoque\models.py:292 .\estoque\models.py:362 .\estoque\models.py:759
+#: .\insumos\templates\insumos\lista_checklists.html:243
+#: .\insumos\templates\insumos\lista_checklists.html:422
+msgid "Finalizado"
+msgstr ""
+
+#: .\estoque\models.py:293
+msgid "Cancelado"
+msgstr ""
+
+#: .\estoque\models.py:333
+msgid "Reservado"
+msgstr ""
+
+#: .\estoque\models.py:334
+msgid "Enviado"
+msgstr ""
+
+#: .\estoque\models.py:335
+msgid "Recebido"
+msgstr ""
+
+#: .\estoque\models.py:336
+msgid "Devolvido"
+msgstr ""
+
+#: .\estoque\models.py:337
+msgid "Divergência"
+msgstr ""
+
+#: .\estoque\models.py:358 .\estoque\models.py:417 .\estoque\models.py:924
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:236
+#: .\estoque\templates\estoque\transferencia\listar.html:125
+#: .\estoque\templates\estoque\transferencia\listar.html:316
+msgid "Pendente"
+msgstr "Pending"
+
+#: .\estoque\models.py:359
+msgid "Aprovado"
+msgstr ""
+
+#: .\estoque\models.py:360
+msgid "Rejeitado"
+msgstr ""
+
+#: .\estoque\models.py:361
+msgid "Em Transferência"
+msgstr ""
+
+#: .\estoque\models.py:418 .\estoque\templates\estoque\estoque.html:175
+#: .\estoque\templates\estoque\estoque.html:285
+#: .\estoque\templates\estoque\estoque.html:1888
+#: .\estoque\templates\estoque\transferencia\listar.html:132
+#: .\estoque\templates\estoque\transferencia\listar.html:325
+msgid "Em trânsito"
+msgstr ""
+
+#: .\estoque\models.py:419
+#: .\estoque\templates\estoque\transferencia\listar.html:139
+#: .\estoque\templates\estoque\transferencia\listar.html:334
+msgid "Concluída"
+msgstr ""
+
+#: .\estoque\models.py:423
+msgid "Transferência comum"
+msgstr ""
+
+#: .\estoque\models.py:424 .\estoque\models.py:618
+msgid "Solicitação"
+msgstr ""
+
+#: .\estoque\models.py:425
+msgid "Auditoria e divergência"
+msgstr ""
+
+#: .\estoque\models.py:426
+msgid "Devolução de empréstimo"
+msgstr ""
+
+#: .\estoque\models.py:500
+msgid "Transferência concluída não pode ser cancelada."
+msgstr ""
+
+#: .\estoque\models.py:502
+msgid "Somente transferências pendentes podem ser canceladas."
+msgstr ""
+
+#: .\estoque\models.py:515 .\estoque\models.py:619 .\estoque\models.py:833
+#: .\estoque\templates\estoque\estoque.html:1459
+#: .\estoque\templates\estoque\transferencia\listar.html:199
+msgid "Transferência"
+msgstr ""
+
+#: .\estoque\models.py:516
+msgid "Empréstimo"
+msgstr ""
+
+#: .\estoque\models.py:520
+msgid "Emitida"
+msgstr ""
+
+#: .\estoque\models.py:521
+msgid "Substituída"
+msgstr ""
+
+#: .\estoque\models.py:588
+msgid "Informe exatamente uma operação."
+msgstr ""
+
+#: .\estoque\models.py:595
+msgid "Tipo incompatível com a operação informada."
+msgstr ""
+
+#: .\estoque\models.py:623
+msgid "Criada"
+msgstr ""
+
+#: .\estoque\models.py:624
+msgid "Aprovada"
+msgstr ""
+
+#: .\estoque\models.py:625
+msgid "Rejeitada"
+msgstr ""
+
+#: .\estoque\models.py:627
+msgid "Recebida"
+msgstr ""
+
+#: .\estoque\models.py:746 .\estoque\models.py:834
+#: .\estoque\templates\estoque\base.html:502
+msgid "SICK"
+msgstr ""
+
+#: .\estoque\models.py:747
+#: .\estoque\templates\estoque\comunicados\detalhe.html:45
+#: .\estoque\templates\estoque\estoque.html:188
+#: .\estoque\templates\estoque\estoque.html:286
+#: .\estoque\templates\estoque\estoque.html:1455
+#: .\estoque\templates\estoque\estoque.html:1889
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:8
+#: .\estoque\templates\estoque\sick.html:115
+msgid "Manutenção"
+msgstr ""
+
+#: .\estoque\models.py:748
+msgid "Sucata"
+msgstr ""
+
+#: .\estoque\models.py:753
+msgid "Identificado na base"
+msgstr ""
+
+#: .\estoque\models.py:754
+msgid "Em trânsito para manutenção"
+msgstr ""
+
+#: .\estoque\models.py:755 .\estoque\models.py:839
+msgid "Recebido pela manutenção"
+msgstr ""
+
+#: .\estoque\models.py:756
+msgid "Em avaliação técnica"
+msgstr ""
+
+#: .\estoque\models.py:757 .\estoque\templates\estoque\sick.html:277
+msgid "Em manutenção"
+msgstr ""
+
+#: .\estoque\models.py:758
+msgid "Aguardando retorno para a base"
+msgstr ""
+
+#: .\estoque\models.py:832
+msgid "Criação"
+msgstr ""
+
+#: .\estoque\models.py:835
+msgid "Edição"
+msgstr ""
+
+#: .\estoque\models.py:836
+msgid "Marcado como SICK"
+msgstr ""
+
+#: .\estoque\models.py:837
+msgid "SICK atualizado"
+msgstr ""
+
+#: .\estoque\models.py:838
+msgid "Enviado para manutenção"
+msgstr ""
+
+#: .\estoque\models.py:840
+msgid "Avaliação técnica iniciada"
+msgstr ""
+
+#: .\estoque\models.py:841
+msgid "Manutenção iniciada"
+msgstr ""
+
+#: .\estoque\models.py:842
+msgid "Manutenção atualizada"
+msgstr ""
+
+#: .\estoque\models.py:843
+msgid "Manutenção concluída"
+msgstr ""
+
+#: .\estoque\models.py:844
+msgid "Aguardando retorno"
+msgstr ""
+
+#: .\estoque\models.py:845
+msgid "Retorno confirmado"
+msgstr ""
+
+#: .\estoque\models.py:846
+msgid "SICK finalizado"
+msgstr ""
+
+#: .\estoque\models.py:847
+msgid "SICK reaberto"
+msgstr ""
+
+#: .\estoque\models.py:848
+msgid "Localizado em auditoria"
+msgstr ""
+
+#: .\estoque\models.py:849
+msgid "Divergência de auditoria"
+msgstr ""
+
+#: .\estoque\models.py:850
+msgid "Base atualizada por auditoria"
+msgstr ""
+
+#: .\estoque\models.py:851
+msgid "Transferência criada por auditoria"
+msgstr ""
+
+#: .\estoque\models.py:852
+msgid "Regularizado por auditoria"
+msgstr ""
+
+#: .\estoque\models.py:919
+msgid "Sistema"
+msgstr "System"
+
+#: .\estoque\models.py:920
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:86 .\insumos\forms.py:99
+msgid "E-mail"
+msgstr ""
+
+#: .\estoque\models.py:921
+msgid "WhatsApp"
+msgstr ""
+
+#: .\estoque\models.py:925
+msgid "Processando"
+msgstr "Processing"
+
+#: .\estoque\models.py:926
+msgid "Enviada"
+msgstr "Sent"
+
+#: .\estoque\models.py:927
+msgid "Entregue"
+msgstr "Delivered"
+
+#: .\estoque\models.py:928
+msgid "Lida"
+msgstr "Read"
+
+#: .\estoque\models.py:929
+msgid "Falha"
+msgstr "Failed"
+
+#: .\estoque\models.py:931
+msgid "Ignorada"
+msgstr "Ignored"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:9
+msgid "Alocação da Solicitação"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:19
+#: .\estoque\templates\estoque\comunicados\criar.html:16
+#: .\estoque\templates\estoque\comunicados\detalhe.html:15
+#: .\estoque\templates\estoque\estoque.html:423
+#: .\estoque\templates\estoque\historico_detalhes.html:18
+#: .\estoque\templates\estoque\solicitacoes\criar.html:102
+msgid "Voltar"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:30
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:216
+#: .\insumos\templates\insumos\solicitacoes\criar.html:637
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:19
+msgid "Itens solicitados"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:39
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:24
+#: .\estoque\templates\estoque\index.html:19
+#: .\estoque\templates\estoque\sick.html:188
+#: .\estoque\templates\estoque\sick.html:415
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+#: .\insumos\templates\insumos\solicitacoes\criar.html:773
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:19
+msgid "Categoria"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:40
+#: .\estoque\templates\estoque\declaracoes\formulario.html:36
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:231
+#: .\estoque\templates\estoque\solicitacoes\criar.html:75
+#: .\estoque\templates\estoque\solicitar.html:21
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+#: .\insumos\templates\insumos\solicitacoes\criar.html:704
+#: .\insumos\templates\insumos\solicitacoes\criar.html:776
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:19
+msgid "Quantidade"
+msgstr "Quantity"
+
+#: .\estoque\templates\estoque\alocacao\painel.html:41
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:72
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:14
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Solicitante"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:96
+msgid "Quantidade necessária:"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:240
+#: .\estoque\templates\estoque\assistente\tory_modal.html:30
+#: .\estoque\templates\estoque\comunicados\criar.html:87
+#: .\estoque\templates\estoque\estoque.html:107
+#: .\estoque\templates\estoque\sick.html:326
+#: .\insumos\templates\insumos\estoque_insumos.html:146
+#: .\insumos\templates\insumos\lista_checklists.html:320
+msgid "Limpar"
+msgstr ""
+
+#: .\estoque\templates\estoque\alocacao\painel.html:245
+msgid "Gerar Transferências"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:13
+#, python-format
+msgid ""
+"Olá, %(nome)s! Posso consultar planejamento, execução, estoque, insumos e "
+"indicadores dentro do seu perfil de acesso."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:20
+msgid "O que você deseja consultar?"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:21
+msgid "Use uma sugestão ou escreva a pergunta do seu jeito."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:23
+msgid "Sugestões de perguntas"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:24
+msgid "Coletores ativos"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:25
+msgid "Planejados amanhã"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:26
+msgid "Transferências pendentes"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:27
+msgid "Indicadores gerais"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\conversa.html:28
+msgid "Como usar"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\favoritos.html:5
+msgid "Acesso rápido"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\favoritos.html:6
+msgid "Consultas favoritas"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\favoritos.html:12
+msgid "Nenhuma consulta favoritada"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\favoritos.html:13
+msgid "Favorite uma resposta para reutilizar a pergunta durante esta sessão."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\historico.html:5
+msgid "Nesta sessão"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\historico.html:6
+msgid "Histórico de consultas"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\historico.html:12
+msgid "Seu histórico está vazio"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\historico.html:13
+msgid "As perguntas feitas nesta página aparecerão aqui."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:5
+msgid "Nenhum resultado estruturado ainda"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:6
+msgid "Tabelas e listas extensas aparecerão aqui sem ocupar toda a conversa."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:11
+msgid "Resultado atual"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:12
+msgid "Resultados da consulta"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:19
+msgid "Pesquisar nos resultados"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:21
+msgid "Pesquisar nos resultados..."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\abas\resultados.html:25
+msgid "Paginação dos resultados"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:19
+#: .\estoque\templates\estoque\assistente\tory_widget.html:19
+#: .\estoque\templates\estoque\assistente_operacional.html:4
+#: .\estoque\templates\estoque\assistente_operacional.html:10
+msgid "Assistente Operacional"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:26
+msgid "Analisando"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:28
+msgid "Limpar conversa"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:32
+msgid "Minimizar Tory"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:35
+msgid "Fechar Tory"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:39
+msgid "Seções da Tory"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:41
+msgid "Conversa"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:44
+msgid "Resultados"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:48
+msgid "Histórico"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:51
+msgid "Favoritos"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:66
+msgid "Pergunte à Tory"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:73
+msgid "Pergunte sobre planejamento, execução, estoque ou uma regional..."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:77
+msgid "Enter envia · Shift+Enter quebra a linha"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:79
+msgid "Interromper"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_modal.html:82
+msgid "Enviar"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_widget.html:6
+msgid "Tory · conversa em andamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_widget.html:8
+msgid "Dispensar"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_widget.html:18
+msgid "Abrir Tory, Assistente Operacional"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente\tory_widget.html:22
+msgid "Abrir Tory"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:12
+msgid ""
+"Converse sobre planejamento, execução, estoque, insumos, inventários, "
+"checklists e indicadores."
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:16
+msgid "Respeita seu perfil de acesso"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:27
+msgid "Pergunta"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:34
+msgid "Ex.: Quais inventários estão planejados para amanhã?"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:40
+msgid "Perguntar"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:50
+msgid "Resposta"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:56
+msgid "Opções de base"
+msgstr ""
+
+#: .\estoque\templates\estoque\assistente_operacional.html:78
+msgid "Exemplos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:14
+#: .\estoque\templates\registration\login.html:209
+msgid "Gerenciador de Estoque"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:51
+#: .\estoque\templates\estoque\index.html:10
+msgid "Dashboard de Ativos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:81
+#: .\estoque\templates\estoque\checklist.html:4
+msgid "Checklist"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:89
+msgid "Novo Checklist"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:100
+msgid "Lista de Checklists"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:119
+#: .\estoque\templates\estoque\estoque.html:3
+msgid "Estoque"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:153
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:4
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:193
+msgid "Custos de insumos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:160
+#: .\insumos\templates\insumos\custos\precos_insumos.html:16
+msgid "Preços unitários"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:166
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:199
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:17
+#: .\insumos\templates\insumos\custos\precos_insumos.html:22
+msgid "Fornecedores"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:172
+msgid "Pesquisa de preços"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:221
+msgid "Importar Excel"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:242
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:9
+msgid "Solicitações"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:252
+#: .\insumos\templates\insumos\solicitacoes\lista.html:5
+#: .\insumos\templates\insumos\solicitacoes\lista.html:11
+msgid "Solicitações de insumos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:262
+msgid "Solicitações de equipamentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:277
+msgid "Assistente"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:293
+#: .\estoque\templates\estoque\comunicados\caixa.html:16
+msgid "Comunicados"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:313
+msgid "Caixa de Comunicados"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:333
+msgid "Enviar Comunicado"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:364
+#: .\estoque\templates\estoque\lista_transferencias.html:3
+#: .\estoque\templates\estoque\transferencia\listar.html:4
+#: .\estoque\templates\estoque\transferencia\listar.html:16
+msgid "Transferências"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:386
+msgid "Pedidos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:408
+msgid "Separação"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:429
+#: .\estoque\templates\estoque\caixa_transferencias.html:4
+#: .\estoque\templates\estoque\caixa_transferencias.html:12
+msgid "Recebimentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:451
+msgid "Empréstimos"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:482
+msgid "Todas Transferências"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:521
+msgid "Cadastros"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:554
+msgid "Manuais"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:566
+msgid "Usuários"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:594
+msgid "Sair"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:632
+#: .\estoque\templates\estoque\comunicados\caixa.html:42
+msgid "Novo comunicado"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:637
+msgid "Ver agora"
+msgstr ""
+
+#: .\estoque\templates\estoque\base.html:643
+#: .\estoque\templates\estoque\estoque.html:430
+#: .\estoque\templates\estoque\estoque.html:463
+#: .\insumos\templates\insumos\estoque_insumos.html:36
+#: .\insumos\templates\insumos\estoque_insumos.html:436
+msgid "Fechar"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:3
+msgid "Cadastrar Equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:10
+msgid "➕ Novo Equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:15
+msgid "Base do contexto:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:67
+#: .\insumos\templates\insumos\cadastrar_insumos.html:69
+msgid "Salvar"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:79
+msgid "🔍 Confirme os dados"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:84
+msgid "Categoria:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:85
+#: .\estoque\templates\estoque\movimentar_estoque.html:10
+msgid "Equipamento:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:86
+msgid "Nº de Série:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:87
+msgid "Patrimônio:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:88
+msgid "Regional:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:89
+msgid "Finalidade:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:90
+msgid "Responsável:"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:99
+msgid "✏️ Corrigir"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:100
+msgid "✅ Confirmar e Salvar"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:253
+msgid "Nenhuma foto selecionada"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:4
+msgid "Usuarios - Gerenciador de Estoque"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:12
+msgid "Usuarios"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:13
+msgid "Cadastro, acesso por empresa/base e contatos para comunicados."
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:18
+msgid "Novo usuario"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:28
+msgid "Cadastrar usuario"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:29
+msgid "Preencha o essencial para liberar o acesso."
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:31
+#: .\estoque\templates\estoque\comunicados\caixa.html:107
+msgid "Novo"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:41
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:237
+msgid "Acesso"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:46
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:235
+#: .\estoque\templates\estoque\historico_detalhes.html:33
+msgid "Usuario"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:50
+#: .\estoque\templates\registration\login.html:255
+#: .\insumos\templates\insumos\estoque_insumos.html:509
+msgid "Senha"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:54
+msgid "Tipo de acesso"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:64
+msgid "Usuario ativo"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:73
+msgid "Identificacao"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:82
+msgid "Sobrenome"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:95
+msgid "Comunicacao"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:100
+msgid "Telefone principal"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:104
+msgid "Telefone alternativo"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:113
+msgid "Empresa e bases operacionais"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:118
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:236
+#: .\estoque\templates\estoque\comunicados\criar.html:73
+#: .\estoque\templates\estoque\sick.html:365
+#: .\insumos\templates\insumos\estoque_insumos.html:78
+#: .\insumos\templates\insumos\estoque_insumos.html:283
+msgid "Empresa"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:120
+msgid "Selecione a empresa"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:128
+#: .\estoque\templates\estoque\comunicados\criar.html:84
+msgid "Bases"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:130
+msgid "Selecionar bases visiveis"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:133
+#: .\estoque\templates\estoque\comunicados\criar.html:85
+msgid "Limpar bases"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:138
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:174
+#: .\estoque\templates\estoque\comunicados\criar.html:92
+msgid "Buscar base"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:157
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:193
+#: .\estoque\templates\estoque\comunicados\criar.html:110
+msgid "Nenhuma base cadastrada."
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:160
+msgid "Selecione uma empresa para filtrar as bases."
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:164
+msgid "Bases do checklist"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:166
+msgid "Copiar bases de acesso"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:169
+msgid "Limpar bases do checklist"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:197
+msgid "Opcional. Se vazio, o checklist usa todas as bases de acesso."
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:206
+msgid "Salvar usuario"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:209
+msgid "Cancelar edicao"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:222
+msgid "Usuarios cadastrados"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:223
+msgid "Use a busca e clique em editar para atualizar acesso ou contatos."
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:227
+msgid "Buscar usuario"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:239
+#: .\estoque\templates\estoque\historico_detalhes.html:30
+msgid "Acao"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:264
+#: .\estoque\templates\estoque\estoque.html:81
+#: .\estoque\templates\estoque\index.html:68
+#: .\estoque\templates\estoque\lista_transferencias.html:35
+#: .\estoque\templates\estoque\sick.html:168
+#: .\estoque\templates\estoque\sick.html:196
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:222
+msgid "Todas"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:268
+msgid "Sem empresa"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:273
+msgid "Administrador"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:275
+msgid "Planejamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:277
+msgid "Compras"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:279
+msgid "Financeiro"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:281
+msgid "Executivo"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:293
+msgid "Nao informado"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:300
+msgid "Editar usuario"
+msgstr ""
+
+#: .\estoque\templates\estoque\cadastrar_usuarios.html:307
+msgid "Nenhum usuario cadastrado."
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:9
+msgid "Caixa de Separação"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:13
+msgid "Transferências aguardando separação de equipamentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:29
+#: .\estoque\templates\estoque\caixa_transferencias.html:33
+#: .\estoque\templates\estoque\detalhes_produto.html:34
+#: .\estoque\templates\estoque\lista_transferencias.html:33
+#: .\estoque\templates\estoque\transferencia\listar.html:200
+#: .\estoque\templates\estoque\transferencia\listar.html:256
+msgid "Origem"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:30
+#: .\estoque\templates\estoque\caixa_transferencias.html:34
+#: .\estoque\templates\estoque\lista_transferencias.html:45
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:29
+#: .\estoque\templates\estoque\sick.html:371
+#: .\estoque\templates\estoque\sick.html:419
+#: .\estoque\templates\estoque\transferencia\criar.html:13
+#: .\estoque\templates\estoque\transferencia\listar.html:201
+#: .\estoque\templates\estoque\transferencia\listar.html:278
+msgid "Destino"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:32
+msgid "Criado em"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:33
+#: .\estoque\templates\estoque\caixa_transferencias.html:37
+#: .\estoque\templates\estoque\detalhes_produto.html:37
+#: .\estoque\templates\estoque\historico.html:144
+#: .\estoque\templates\estoque\lista_transferencias.html:86
+#: .\estoque\templates\estoque\transferencia\listar.html:205
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:74
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:100
+#: .\insumos\templates\insumos\lista_checklists.html:366
+#: .\insumos\templates\insumos\solicitacoes\criar.html:788
+msgid "Ações"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_separacao.html:100
+msgid "Nenhuma transferência encontrada."
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_transferencias.html:15
+msgid "Transferências em trânsito para sua regional"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_transferencias.html:20
+msgid "transferência(s)"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_transferencias.html:36
+#: .\estoque\templates\estoque\lista_transferencias.html:85
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:196
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:88
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:91
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Data"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_transferencias.html:89
+#: .\estoque\templates\estoque\estoque.html:413
+#: .\estoque\templates\estoque\estoque.html:837
+#: .\estoque\templates\estoque\historico.html:195
+msgid "Detalhes"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_transferencias.html:98
+#: .\estoque\templates\estoque\transferencia\listar.html:388
+msgid "Receber"
+msgstr ""
+
+#: .\estoque\templates\estoque\caixa_transferencias.html:114
+msgid "Nenhuma transferência em trânsito."
+msgstr ""
+
+#: .\estoque\templates\estoque\checklist.html:1153
+msgid "Pré-preenchido com o checklist anterior"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:23
+msgid "novo(s)"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:31
+msgid "Mensagens, arquivos e avisos operacionais do sistema."
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:139
+msgid "anexo(s)"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:202
+msgid "Nenhum comunicado disponível"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\caixa.html:206
+msgid "Quando novos avisos forem enviados, eles aparecerão aqui."
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:10
+msgid "Novo Comunicado"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:11
+msgid "Envio rápido para empresas, bases ou todos os usuários."
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:27
+msgid "Conteúdo"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:31
+msgid "Título"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:32
+msgid "Ex.: Atualização de sistema"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:36
+msgid "Mensagem"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:41
+#: .\estoque\templates\estoque\comunicados\detalhe.html:201
+msgid "Anexos"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:54
+msgid "Destino e envio"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:58
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:225
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:272
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Tipo"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:68
+msgid "Enviar para todos"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:75
+msgid "Todas as empresas"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:99
+msgid "Selecionar bases visíveis"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:113
+msgid "Nenhuma base corresponde à busca."
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:117
+msgid "Nenhuma base selecionada: o envio considera a empresa escolhida."
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:123
+#: .\estoque\templates\estoque\comunicados\detalhe.html:87
+msgid "Expira em"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:128
+msgid "Usuario pode remover da caixa"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\criar.html:134
+msgid "Enviar comunicado"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:38
+msgid "Urgente"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:59
+msgid "Informativo"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:110
+msgid "Total enviados"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:130
+msgid "Total lidos"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:152
+msgid "Leitura"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:273
+msgid "Clique para abrir ou baixar"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:322
+msgid "Usuários que visualizaram"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:386
+msgid "Nenhum usuário visualizou ainda."
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:409
+msgid "Usuários que ainda não visualizaram"
+msgstr ""
+
+#: .\estoque\templates\estoque\comunicados\detalhe.html:461
+msgid "Todos os usuários visualizaram."
+msgstr ""
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:8
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:33
+msgid "Declaração de conteúdo"
+msgstr "Contents declaration"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:9
+msgid "Versão"
+msgstr "Version"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:12
+msgid "Baixar PDF"
+msgstr "Download PDF"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:17
+msgid ""
+"As alterações realizadas nesta tela serão aplicadas somente a esta "
+"declaração."
+msgstr ""
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:25
+msgid "Remetente"
+msgstr "Sender"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:26
+msgid "Destinatário"
+msgstr "Recipient"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:32
+#: .\estoque\templates\estoque\transferencia\listar.html:202
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Itens"
+msgstr "Items"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:36
+#: .\estoque\templates\estoque\detalhes_produto.html:32
+#: .\estoque\templates\estoque\estoque.html:280
+#: .\estoque\templates\estoque\selecionados.html:12
+msgid "Descrição"
+msgstr "Description"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:36
+msgid "Valor unitário"
+msgstr "Unit value"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:48
+msgid "Salvar rascunho"
+msgstr "Save draft"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:51
+msgid "Emitir PDF"
+msgstr "Issue PDF"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:55
+msgid "Criar nova versão"
+msgstr "Create new version"
+
+#: .\estoque\templates\estoque\declaracoes\formulario.html:60
+msgid "Histórico de versões"
+msgstr "Version history"
+
+#: .\estoque\templates\estoque\detalhes_produto.html:3
+msgid "Detalhes do Item"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:12
+msgid "📄 Detalhes de"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:30
+msgid "Selecionar"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:33
+msgid "Qtd"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:36
+msgid "Foto"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:64
+msgid "Sem Foto"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:80
+#: .\estoque\templates\estoque\estoque.html:379
+#: .\estoque\templates\estoque\index.html:145
+msgid "Nenhum equipamento encontrado."
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:92
+msgid "📤 Transferência de Equipamentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:95
+msgid "Transferir para:"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:108
+msgid "Processar Transferência"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:118
+msgid "← Voltar ao Estoque"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:133
+msgid "Registrar Equipamento como Sick"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:142
+msgid "Descreva o motivo do Sick"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:146
+#: .\estoque\templates\estoque\editar_equipamento.html:53
+#: .\estoque\templates\estoque\estoque.html:544
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:50
+#: .\insumos\templates\insumos\custos\precos_insumos.html:78
+#: .\insumos\templates\insumos\estoque_insumos.html:544
+#: .\insumos\templates\insumos\solicitacoes\criar.html:828
+msgid "Cancelar"
+msgstr ""
+
+#: .\estoque\templates\estoque\detalhes_produto.html:147
+msgid "Confirmar SICK"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:3
+#: .\estoque\templates\estoque\editar_equipamento.html:7
+msgid "Editar equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:10
+#: .\estoque\templates\estoque\estoque.html:1492
+msgid "Empresa / Base"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:15
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:272
+msgid "Finalidade do equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:32
+msgid ""
+"Utilizado diretamente nas operações e contabilizado na disponibilidade "
+"operacional."
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:34
+msgid ""
+"Destinado a atividades administrativas e separado dos equipamentos "
+"operacionais."
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:44
+#: .\estoque\templates\estoque\estoque.html:1841
+#: .\estoque\templates\estoque\historico_detalhes.html:36
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:96
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:180
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:73
+msgid "Produto"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:49
+msgid "Nova foto"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:50
+msgid "Justificativa da edição"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:51
+#: .\estoque\templates\estoque\estoque.html:512
+msgid "Confirme sua senha"
+msgstr ""
+
+#: .\estoque\templates\estoque\editar_equipamento.html:53
+msgid "Salvar alterações"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:13
+msgid "📋 Estoque Geral"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:15
+msgid "Gestão de equipamentos por regional"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:25
+msgid "📊 Relatórios Administrativos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:31
+#: .\estoque\templates\estoque\estoque.html:72
+#: .\estoque\templates\estoque\index.html:66
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:121
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:197
+#: .\estoque\templates\estoque\selecionados.html:11
+#: .\estoque\templates\estoque\sick.html:160
+msgid "Regional"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:40
+msgid "Todas as regionais"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:100
+#: .\estoque\templates\estoque\sick.html:319
+#: .\estoque\templates\estoque\transferencia\listar.html:157
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:228
+#: .\insumos\templates\insumos\estoque_insumos.html:139
+msgid "Aplicar"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:123
+#: .\estoque\templates\estoque\estoque.html:281
+#: .\estoque\templates\estoque\estoque.html:1286
+#: .\estoque\templates\estoque\estoque.html:1439
+#: .\estoque\templates\estoque\index.html:218
+#: .\insumos\templates\insumos\lista_checklists.html:130
+msgid "Total"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:136
+#: .\estoque\templates\estoque\estoque.html:282
+#: .\estoque\templates\estoque\estoque.html:1443
+#: .\estoque\templates\estoque\estoque.html:1885
+#: .\estoque\templates\estoque\index.html:124
+#: .\estoque\templates\estoque\index.html:222
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:37
+#: .\insumos\templates\insumos\custos\precos_insumos.html:37
+msgid "Ativos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:149
+#: .\estoque\templates\estoque\estoque.html:283
+#: .\estoque\templates\estoque\estoque.html:1447
+#: .\estoque\templates\estoque\estoque.html:1886
+#: .\estoque\templates\estoque\index.html:128
+#: .\estoque\templates\estoque\index.html:234
+msgid "Administrativos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:201
+#: .\estoque\templates\estoque\estoque.html:287
+#: .\estoque\templates\estoque\estoque.html:1890
+#: .\estoque\templates\estoque\index.html:136
+#: .\estoque\templates\estoque\index.html:230
+#: .\estoque\templates\estoque\sick.html:291
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:37
+#: .\insumos\templates\insumos\custos\precos_insumos.html:37
+msgid "Inativos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:211
+msgid "Equipamentos por modelo"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:215
+msgid ""
+"Clique em uma linha para abrir o detalhamento por regional. Use os cards "
+"para filtrar por status."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:220
+#: .\insumos\templates\insumos\estoque_insumos.html:230
+#: .\insumos\templates\insumos\estoque_insumos.html:894
+msgid "Filtro: Todos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:235
+#: .\estoque\templates\estoque\sick.html:301
+#: .\estoque\templates\estoque\transferencia\listar.html:84
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:36
+#: .\insumos\templates\insumos\custos\precos_insumos.html:36
+msgid "Busca rápida"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:242
+msgid "Filtrar por descrição..."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:288
+msgid "Disponibilidade"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:289
+#: .\estoque\templates\estoque\estoque.html:1495
+#: .\estoque\templates\estoque\historico.html:141
+#: .\insumos\templates\insumos\estoque_insumos.html:295
+msgid "Ação"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:372
+msgid "Detalhar"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:389
+msgid "Nenhum equipamento encontrado nesta categoria."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:437
+#: .\estoque\templates\estoque\estoque.html:843
+#: .\estoque\templates\estoque\estoque.html:1026
+msgid "Carregando..."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:456
+msgid "Marcar equipamento como SICK"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:469
+msgid "Informe o motivo para registrar a ocorrência do equipamento."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:478
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:19
+#: .\estoque\templates\estoque\sick.html:370
+#: .\estoque\templates\estoque\sick.html:415
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:85
+#: .\estoque\templates\estoque\solicitar.html:26
+#: .\insumos\templates\insumos\estoque_insumos.html:524
+msgid "Motivo"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:489
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:18
+#: .\estoque\templates\estoque\sick.html:369
+msgid "Categoria do problema"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:496
+msgid "Dano"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:497
+msgid "Outro"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:501
+#: .\estoque\templates\estoque\sick.html:415
+#: .\estoque\templates\estoque\sick.html:419 .\insumos\forms.py:102
+#: .\insumos\forms.py:142
+#: .\insumos\templates\insumos\solicitacoes\criar.html:722
+#: .\insumos\templates\insumos\solicitacoes\criar.html:780
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:19
+msgid "Observação"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:525
+msgid "Digite a senha do seu usuário para confirmar esta alteração."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:534
+#: .\estoque\templates\estoque\estoque.html:954
+#: .\estoque\templates\estoque\estoque.html:2207
+msgid "Preencha todos os campos e confirme sua senha."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:552
+#: .\estoque\templates\estoque\estoque.html:2257
+msgid "Confirmar com senha"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1126
+msgid "Tentar novamente"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1253
+msgid "Nenhuma regional encontrada para este produto."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1327
+msgid "Erro ao carregar regionais:"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1433
+msgid "equipamento(s)"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1470
+msgid "Pesquisar equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1477
+msgid "Pesquisar por patrimônio, número de série, empresa ou base..."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1490
+#: .\estoque\templates\estoque\sick.html:367
+msgid "Série"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1493
+#: .\estoque\templates\estoque\index.html:79
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:130
+msgid "Finalidade"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1506
+msgid "Nenhum equipamento encontrado para esta regional."
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1700
+msgid "equipamento(s) visível(is)"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1777
+msgid "Erro ao carregar equipamentos:"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1796
+#: .\estoque\templates\estoque\sick.html:390
+msgid "Histórico do equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1816
+msgid "Voltar para equipamentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1829
+msgid "Erro ao carregar histórico:"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1884
+#: .\estoque\templates\estoque\historico.html:70
+#: .\estoque\templates\estoque\index.html:81
+#: .\estoque\templates\estoque\lista_transferencias.html:23
+#: .\estoque\templates\estoque\lista_transferencias.html:47
+#: .\estoque\templates\estoque\sick.html:224
+#: .\estoque\templates\estoque\sick.html:256
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:223
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:225
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:37
+#: .\insumos\templates\insumos\custos\precos_insumos.html:37
+#: .\insumos\templates\insumos\lista_checklists.html:222
+#: .\insumos\templates\insumos\solicitacoes\lista.html:29
+msgid "Todos"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1979
+msgid "Filtro"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:1985
+msgid "modelo(s) visível(is)"
+msgstr ""
+
+#: .\estoque\templates\estoque\estoque.html:2215
+msgid "Salvando..."
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:3
+msgid "Histórico de Movimentações"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:32
+msgid "Total de Registros"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:68
+msgid "Tipo de Ação"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:90
+#: .\estoque\templates\estoque\lista_transferencias.html:79
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Protocolo"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:99
+msgid "Data Início"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:107
+msgid "Data Fim"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:132
+msgid "Registros"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:139
+msgid "Data/Hora"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:142
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:51
+#: .\estoque\templates\registration\login.html:229
+msgid "Usuário"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:143
+msgid "Resumo"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico.html:202
+msgid "Nenhum registro encontrado com os filtros aplicados."
+msgstr ""
+
+#: .\estoque\templates\estoque\historico_detalhes.html:4
+#: .\estoque\templates\estoque\historico_detalhes.html:10
+msgid "Detalhes do Historico"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico_detalhes.html:26
+msgid "Registro"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico_detalhes.html:39
+msgid "Serie"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico_detalhes.html:42
+msgid "Patrimonio"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico_detalhes.html:52
+msgid "Detalhes completos"
+msgstr ""
+
+#: .\estoque\templates\estoque\historico_detalhes.html:69
+msgid "Sem detalhes adicionais."
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:3
+msgid "Dashboard | Estoque"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:11
+msgid "Visão geral dos equipamentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:96
+msgid "Dados sincronizados!"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:96
+msgid "Todas as informações estão consistentes em tempo real."
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:159
+#, python-format
+msgid "Ver detalhes da regional %(nome)s"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:179
+msgid "Nenhum equipamento desta categoria na regional"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:239
+msgid "Disponibilidade:"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:253
+#: .\insumos\templates\insumos\solicitacoes\lista.html:46
+msgid "Ver detalhes"
+msgstr ""
+
+#: .\estoque\templates\estoque\index.html:267
+msgid "Detalhes da Regional"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:11
+msgid "🚚 Transferências"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:57
+#: .\insumos\templates\insumos\lista_checklists.html:363
+msgid "Data início"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:62
+msgid "Data fim"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:67
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:38
+#: .\insumos\templates\insumos\custos\precos_insumos.html:38
+#: .\insumos\templates\insumos\lista_checklists.html:312
+msgid "Filtrar"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:81
+msgid "Origem → Destino"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:83
+msgid "Dias"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:84
+msgid "Solicitado por"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:146
+msgid "✔ Receber"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:151
+msgid "✔ Concluído"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:154
+msgid "✖ Cancelado"
+msgstr ""
+
+#: .\estoque\templates\estoque\lista_transferencias.html:165
+#: .\estoque\templates\estoque\transferencia\listar.html:404
+msgid "Nenhuma transferência encontrada"
+msgstr ""
+
+#: .\estoque\templates\estoque\movimentar_estoque.html:3
+#: .\estoque\templates\estoque\movimentar_estoque.html:8
+msgid "Solicitar Transferência"
+msgstr ""
+
+#: .\estoque\templates\estoque\movimentar_estoque.html:11
+msgid "Regional Atual:"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:16
+msgid "Informações do Registro"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:27
+msgid "Data / Hora"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:39
+msgid "Última Ação"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:63
+msgid "Status Atual"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:103
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:259
+msgid "Número de Série"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:162
+msgid "Editar Equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:290
+msgid "Utilizado diretamente nas operações e no cálculo de disponibilidade."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:292
+msgid ""
+"Destinado ao trabalho administrativo e separado da disponibilidade "
+"operacional."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:305
+msgid "Nova Foto"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:328
+msgid "Motivo da Alteração"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:340
+msgid "Senha de Confirmação"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:358
+msgid "Salvar Alterações"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\historico_detalhes.html:380
+msgid "Detalhes da Auditoria"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:3
+msgid "Detalhes das etapas desta ocorrência"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:4
+msgid "Identificado"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:5
+msgid "Envio"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:6
+msgid "Recebimento"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:7
+#: .\estoque\templates\estoque\sick.html:107
+msgid "Avaliação"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:9
+#: .\estoque\templates\estoque\sick.html:123
+#: .\insumos\templates\insumos\lista_checklists.html:436
+msgid "Retorno"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:10
+msgid "Finalização"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:16
+msgid "Data e hora"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:17
+msgid "Registrado por"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:17
+msgid "Não registrado"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:20
+msgid "Observação inicial"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:27
+msgid "Enviado em"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:28
+msgid "Enviado por"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:30
+#: .\estoque\templates\estoque\sick.html:419
+msgid "Transportadora ou portador"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:31
+msgid "Protocolo ou rastreio"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:32
+msgid "Observação do envio"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:34
+msgid "Envio ainda não registrado."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:40
+msgid "Recebido em"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:41
+msgid "Confirmado por"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:42
+msgid "Observação do recebimento"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:44
+msgid "Recebimento ainda não confirmado."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:50
+msgid "Avaliação iniciada em"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:52
+msgid "Observação da avaliação"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:54
+msgid "Avaliação técnica ainda não iniciada."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:60
+msgid "Manutenção iniciada em"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:62
+#: .\estoque\templates\estoque\sick.html:372
+msgid "Previsão de retorno"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:63
+#: .\estoque\templates\estoque\sick.html:430
+msgid "Causa identificada"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:64
+#: .\estoque\templates\estoque\sick.html:385
+#: .\estoque\templates\estoque\sick.html:430
+msgid "Diagnóstico"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:65
+msgid "Observação técnica / ação planejada"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:67
+msgid "Manutenção ainda não iniciada."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:73
+msgid "Manutenção concluída em"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:75
+msgid "Apto para retorno"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:76
+#: .\estoque\templates\estoque\sick.html:432
+msgid "Solução aplicada"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:77
+msgid "Resultado da manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:78
+msgid "Observação da conclusão"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:80
+msgid "Conclusão e retorno ainda não registrados."
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:86
+msgid "Finalizado em"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:87
+msgid "Finalizado por"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:88
+msgid "Situação final"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:89
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:28
+msgid "Observação da finalização"
+msgstr ""
+
+#: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:91
+msgid "Ocorrência ainda não finalizada."
+msgstr ""
+
+#: .\estoque\templates\estoque\selecionados.html:3
+#: .\estoque\templates\estoque\selecionados.html:6
+msgid "Produtos Selecionados"
+msgstr ""
+
+#: .\estoque\templates\estoque\selecionados.html:25
+msgid "Voltar ao Estoque"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:4
+msgid "Fluxo SICK"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:16
+msgid "🛠️ Equipamentos em SICK"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:20
+msgid "Gestão de equipamentos com problemas, manutenção e retorno às bases"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:25
+msgid "em aberto"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:39
+msgid "Fila da manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:41
+msgid ""
+"Equipamentos destinados ao fluxo de recebimento, avaliação e manutenção."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:52
+msgid "SICKs das suas bases"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:54
+msgid ""
+"Acompanhe os equipamentos vinculados às bases permitidas para o seu usuário."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:66
+msgid "Etapas do fluxo"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:70
+msgid "Selecione uma etapa para visualizar os equipamentos correspondentes."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:77
+msgid "Etapas do SICK"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:83
+msgid "1. Aguardando envio"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:91
+msgid "2. Aguardando recebimento"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:99
+msgid "Recebidos"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:131
+#: .\insumos\templates\insumos\lista_checklists.html:172
+msgid "Finalizados"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:139
+msgid "Inativos / sucata"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:150
+msgid "Filtros de equipamentos SICK"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:244
+msgid "Situação"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:263
+#: .\estoque\templates\estoque\sick.html:404
+msgid "Em aberto"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:270
+#: .\estoque\templates\estoque\transferencia\listar.html:58
+#: .\insumos\templates\insumos\solicitacoes\lista.html:19
+msgid "Pendentes"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:284
+msgid "Resolvidos"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:310
+msgid "Equipamento, série, patrimônio ou regional..."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:337
+msgid "Equipamentos encontrados"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:341
+msgid "Visualize o histórico e execute as ações disponíveis para cada etapa."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:346
+#: .\estoque\templates\estoque\transferencia\listar.html:187
+msgid "registro(s)"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:385
+msgid "Solução"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:392
+msgid "Reincidente"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:393
+msgid "ocorrência(s)"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:394
+msgid "envio(s) à manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:401
+msgid "Abertura"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:402
+msgid "Problema"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:403
+msgid "Envio à manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:404
+#: .\estoque\templates\estoque\sick.html:432
+#: .\insumos\templates\insumos\custos\precos_insumos.html:52
+#: .\insumos\templates\insumos\custos\precos_insumos.html:60
+msgid "Resultado"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:405
+msgid "Atual"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:415
+msgid "Editar informações"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:415
+msgid "Salvar informações"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:418
+msgid "Etapa 1 — responsabilidade da base onde o equipamento está parado"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:419
+msgid "Enviar para manutenção — etapa 2"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:419
+msgid "Protocolo/rastreio"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:419
+msgid "Confirmar envio para manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:421
+msgid "Aguardando a base responsável registrar o envio para a manutenção."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:423
+msgid "Etapa 2 — confirmação exclusiva Manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:424
+msgid "Confirmar recebimento"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:426
+msgid "Envio registrado. Aguardando manutenção confirmar o recebimento."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:428
+msgid "Iniciar avaliação"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:430
+msgid "Iniciar manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:430
+msgid "Ação planejada/observação técnica"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:430
+msgid "Previsão para conclusão/retorno"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:432
+msgid "Concluir manutenção"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:432
+msgid "Possui condição de retornar?"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:432
+msgid "Sim"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:432
+msgid "Não — requer decisão administrativa"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:432
+msgid "Registrar conclusão"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:434
+msgid "Inativar sem reparo"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:434
+msgid ""
+"Use somente após confirmar tecnicamente que o equipamento não possui mais "
+"conserto."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:434
+msgid "Justificativa técnica"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:434
+msgid "Descreva por que o equipamento não pode ser reparado"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:434
+msgid "Confirmar inativação"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:437
+msgid "Confirmar retorno para a base"
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:442
+msgid "Nenhum equipamento em SICK."
+msgstr ""
+
+#: .\estoque\templates\estoque\sick.html:442
+msgid "Nenhum registro SICK encontrado para os filtros informados."
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:14
+msgid "Pedidos Pendentes"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:18
+msgid "Solicitações aguardando aprovação ou encaminhamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:59
+#: .\estoque\templates\estoque\solicitacoes\criar.html:52
+msgid "Regional solicitante"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:110
+msgid "Encaminhar"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:121
+msgid "Recusar"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:157
+msgid "Motivo da solicitação"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:180
+msgid "Informações"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:275
+msgid "Recusar solicitação"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:283
+msgid "Motivo da recusa"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:300
+msgid "Confirmar Recusa"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\caixa.html:324
+msgid "Nenhuma solicitação pendente."
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:15
+msgid "Nova Solicitação de Equipamentos"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:22
+msgid "Preencha os dados abaixo para solicitar equipamentos para sua regional."
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:31
+msgid "Regional Solicitante"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:36
+msgid "Selecione a regional"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:59
+msgid "Tipo de Equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:64
+msgid "Selecione o tipo de equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:82
+msgid "Informe a quantidade necessária"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:88
+msgid "Motivo da Solicitação"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:94
+msgid "Explique brevemente o motivo da solicitação"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitacoes\criar.html:106
+#: .\estoque\templates\estoque\solicitar.html:31
+msgid "Enviar Solicitação"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitar.html:5
+msgid "Solicitar Equipamento"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitar.html:11
+msgid "Tipo de equipamento necessário"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitar.html:13
+msgid "Coletor"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitar.html:14
+msgid "Impressora"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitar.html:15
+msgid "Notebook"
+msgstr ""
+
+#: .\estoque\templates\estoque\solicitar.html:16
+msgid "Router"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\criar.html:6
+msgid "Nova Transferência"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\criar.html:34
+msgid "Origem:"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\criar.html:41
+msgid "Produto:"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\criar.html:42
+msgid "Quantidade:"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\criar.html:53
+msgid "Salvar Transferência"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:20
+msgid "Acompanhe movimentações de equipamentos entre bases e regionais."
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:36
+msgid "Total de transferências"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:99
+msgid "Protocolo, regional, usuário ou equipamento..."
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:118
+msgid "Todos os status"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:163
+#: .\estoque\templates\estoque\transferencia\listar.html:164
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:228
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:38
+#: .\insumos\templates\insumos\custos\precos_insumos.html:38
+#: .\insumos\templates\insumos\solicitacoes\lista.html:30
+msgid "Limpar filtros"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:178
+msgid "Movimentações encontradas"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:182
+msgid "Consulte origem, destino, itens, prazos e ações disponíveis."
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:204
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:72
+msgid "Prazo"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:302
+msgid "outros itens"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:357
+#: .\estoque\templates\estoque\transferencia\listar.html:361
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:72
+msgid "dias"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:372
+#: .\estoque\templates\estoque\transferencia\listar.html:373
+msgid "Visualizar transferência"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:408
+msgid "As transferências aparecerão aqui quando forem criadas."
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:429
+msgid "Nenhum resultado para o filtro atual"
+msgstr ""
+
+#: .\estoque\templates\estoque\transferencia\listar.html:433
+msgid "Revise o texto pesquisado ou selecione outro status."
+msgstr ""
+
+#: .\estoque\templates\registration\login.html:9
+msgid "Login - Gerenciador de Estoque"
+msgstr ""
+
+#: .\estoque\templates\registration\login.html:210
+msgid "Faça login para acessar o sistema"
+msgstr ""
+
+#: .\estoque\templates\registration\login.html:291
+msgid "Entrar"
+msgstr ""
+
+#: .\estoque\templates\registration\login.html:297
+msgid "Esqueceu a senha?"
+msgstr ""
+
+#: .\estoque\templates\registration\login.html:303
+msgid "Sistema protegido"
+msgstr ""
+
+#: .\insumos\forms.py:73 .\insumos\forms.py:96
+#: .\insumos\templates\insumos\custos\precos_insumos.html:52
+#: .\insumos\templates\insumos\custos\precos_insumos.html:57
+msgid "CNPJ"
+msgstr ""
+
+#: .\insumos\forms.py:85
+msgid "Informe um CNPJ com 14 dígitos."
+msgstr ""
+
+#: .\insumos\forms.py:97
+msgid "Site"
+msgstr ""
+
+#: .\insumos\forms.py:98
+msgid "Contato"
+msgstr ""
+
+#: .\insumos\forms.py:101
+msgid "Prazo de entrega em dias"
+msgstr ""
+
+#: .\insumos\forms.py:125
+msgid "Usar como custo atual do insumo"
+msgstr ""
+
+#: .\insumos\forms.py:136
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:88
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:91
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:23
+#: .\insumos\templates\insumos\custos\precos_insumos.html:46
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:94
+#: .\insumos\templates\insumos\estoque_insumos.html:287
+#: .\insumos\templates\insumos\solicitacoes\criar.html:668
+#: .\insumos\templates\insumos\solicitacoes\criar.html:772
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:19
+msgid "Insumo"
+msgstr ""
+
+#: .\insumos\forms.py:137
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:66
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:88
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:91
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:24
+#: .\insumos\templates\insumos\custos\precos_insumos.html:52
+#: .\insumos\templates\insumos\custos\precos_insumos.html:56
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:95
+msgid "Fornecedor"
+msgstr ""
+
+#: .\insumos\forms.py:138
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:88
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:91
+#: .\insumos\templates\insumos\custos\precos_insumos.html:52
+#: .\insumos\templates\insumos\custos\precos_insumos.html:58
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:96
+msgid "Preço unitário"
+msgstr ""
+
+#: .\insumos\forms.py:139
+#: .\insumos\templates\insumos\custos\precos_insumos.html:52
+#: .\insumos\templates\insumos\custos\precos_insumos.html:59
+msgid "Vigente desde"
+msgstr ""
+
+#: .\insumos\forms.py:140
+msgid "Vigente até"
+msgstr ""
+
+#: .\insumos\forms.py:162
+msgid "Base solicitante"
+msgstr ""
+
+#: .\insumos\forms.py:163
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:15
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Prioridade"
+msgstr ""
+
+#: .\insumos\templates\insumos\cadastrar_insumos.html:4
+msgid "Entrada de Insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\cadastrar_insumos.html:13
+msgid "➕ Novo Insumo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:194
+msgid "Análise financeira dos consumos registrados nos inventários."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:197
+msgid "Ações de custos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:198
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:22
+msgid "Preços"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:207
+msgid "Cobertura financeira incompleta."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:208
+#, python-format
+msgid ""
+"%(insumos_com_preco)s de %(total_insumos)s insumos ativos possuem preço. "
+"Existem %(consumos_sem_custo)s consumos sem custo unitário no filtro atual."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:216
+msgid "Filtros do relatório"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:223
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+#: .\insumos\templates\insumos\lista_checklists.html:361
+msgid "Cliente"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:224
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Loja"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:226
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Pessoas"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:227
+msgid "Inventário específico"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:227
+msgid "Todos os inventários"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:232
+msgid "Indicadores financeiros"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:233
+msgid "Gasto no período"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:234
+msgid "Inventários com consumo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:235
+msgid "Média por inventário"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:236
+msgid "Média por pessoa"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:237
+msgid "Valor estimado do estoque"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:241
+msgid "Seções do relatório de custos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:242
+msgid "Visão geral"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:243
+msgid "Por tipo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:244
+msgid "Insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:245
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:272
+msgid "Inventários"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:253
+msgid "Distribuição por cliente"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:253
+msgid "Participação de cada cliente no custo total filtrado."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:254
+msgid "Sem custos por cliente para este filtro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:259
+msgid "Evolução mensal"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:259
+msgid "Comportamento do gasto ao longo dos meses disponíveis."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:260
+msgid "Sem evolução mensal para este filtro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:269
+msgid "Custo por tipo de inventário"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:269
+msgid "Comparação financeira entre as etapas e modalidades."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:269
+msgid "Sem custos por tipo para este filtro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:272
+msgid "Resumo por tipo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:272
+msgid "Quantidade de inventários e custo acumulado."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:272
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Custo total"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:272
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+msgid "Sem dados para o filtro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:280
+msgid "Insumos com maior custo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:280
+msgid "Ranking dos materiais com maior impacto financeiro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:280
+msgid "Sem consumo de insumos para este filtro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+msgid "Detalhamento dos insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+msgid "Quantidade consumida e custo acumulado."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+msgid "Qtd."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:283
+msgid "Custo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:291
+msgid "Inventários de maior custo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:291
+msgid "Os dez inventários com maior gasto no período selecionado."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:291
+msgid "Nenhum inventário com consumo para este filtro."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Detalhamento por inventário"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Custos, pessoas e consumo de cada operação."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "com consumo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Custo/pessoa"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\dashboard_custos.html:294
+msgid "Nenhum consumo encontrado para os filtros selecionados."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:4
+msgid "Fornecedores de insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:16
+msgid "Análise de fornecedores"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:17
+msgid ""
+"Compare cobertura, preços e prazo de entrega dos fornecedores cadastrados."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:20
+#: .\insumos\templates\insumos\custos\precos_insumos.html:20
+msgid "Navegação financeira"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:21
+#: .\insumos\templates\insumos\custos\precos_insumos.html:21
+msgid "Custos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:26
+msgid "Indicadores de fornecedores"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:27
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:59
+msgid "Fornecedores cadastrados"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:28
+msgid "Fornecedores ativos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:29
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:67
+msgid "Itens cotados"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:30
+msgid "Cotações ativas"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:34
+msgid "Filtros de fornecedores"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:36
+msgid "Buscar nome, CNPJ, contato ou e-mail..."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:46
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:74
+msgid "Editar fornecedor"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:46
+msgid "Cadastrar fornecedor"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:46
+msgid "Mantenha os dados comerciais e o prazo de entrega atualizados."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:50
+msgid "Salvar fornecedor"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:59
+msgid "Cobertura de itens, valores praticados e prazo médio informado."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:59
+#: .\insumos\templates\insumos\custos\precos_insumos.html:87
+msgid "exibidos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:68
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:17
+msgid "Cotações"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:69
+#: .\insumos\templates\insumos\custos\precos_insumos.html:60
+msgid "Menor preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:70
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:60
+msgid "Preço médio"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:62
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:71
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:61
+msgid "Maior preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:66
+msgid "Abrir site"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:74
+#: .\insumos\templates\insumos\custos\precos_insumos.html:100
+msgid "Editar"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:76
+msgid "Nenhum fornecedor encontrado."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:85
+msgid "Cotações recentes"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:85
+msgid "Últimos preços ativos informados pelos fornecedores."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\fornecedores_insumos.html:92
+msgid "Nenhuma cotação ativa."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:4
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:16
+msgid "Pesquisa e decisão de compra"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:16
+msgid "Compare ofertas online e cotações cadastradas antes de comprar."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:20
+msgid "Integração pendente."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:20
+msgid ""
+"Habilite Gimba ou Fidelity nas variáveis de ambiente, ou configure o token "
+"do Mercado Livre, para fazer novas pesquisas."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:24
+msgid "desabilitado"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:25
+msgid "Termo de pesquisa"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:25
+msgid "Ex.: papel sulfite A4 500 folhas"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:26
+msgid "Quantidade desejada"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:27
+msgid "Pesquisar preços"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:33
+msgid "Menor preço por fornecedor"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:34
+msgid "Compare a embalagem e a unidade antes de escolher."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:44
+msgid "Ver melhor oferta"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:46
+msgid "Nenhuma oferta encontrada para este termo."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:48
+msgid "Integração desabilitada."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:57
+msgid "Indicadores da pesquisa"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:58
+msgid "Ofertas encontradas"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:59
+msgid "Melhor preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:62
+msgid "Economia potencial"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:62
+#, python-format
+msgid "para %(quantidade)s unidade(s)"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:66
+msgid "Comparação das ofertas atuais"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:67
+msgid "Histórico das pesquisas"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:70
+msgid "Ofertas online"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:70
+msgid "Atualizado em"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:73
+msgid "Posição"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:73
+msgid "Vendedor"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:73
+msgid "Preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:73
+msgid "Frete"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:73
+msgid "Total comparado"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:81
+msgid "Consultar"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:82
+msgid "sem frete"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:85
+msgid "Abrir oferta"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:87
+msgid ""
+"Confirma usar este valor como custo padrão do insumo? Verifique antes a "
+"embalagem e a unidade do anúncio."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:89
+msgid "Usar como padrão"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:96
+msgid "Selecione um insumo e faça uma pesquisa para comparar ofertas."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\pesquisa_precos.html:101
+msgid ""
+"Quando o frete não é informado pela fonte, o ranking considera apenas o "
+"preço do produto e sinaliza essa limitação."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:4
+msgid "Preços de insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:17
+msgid "Histórico de cotações e custo atual utilizado nos novos consumos."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:26
+msgid "Indicadores de preços"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:27
+msgid "Preços cadastrados"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:28
+msgid "Preços ativos"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:29
+msgid "Insumos cotados"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:30
+msgid "Fornecedores cotados"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:34
+msgid "Filtros de preços"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:36
+msgid "Buscar insumo ou fornecedor..."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:43
+msgid "Comparar preços por insumo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:43
+msgid ""
+"Visualize a cotação vigente de cada fornecedor e identifique o menor valor."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:46
+#: .\insumos\templates\insumos\solicitacoes\criar.html:676
+msgid "Selecione um insumo"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:47
+msgid "Comparar"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:60
+msgid "Acima do menor preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:62
+msgid "Cadastre preços de pelo menos um fornecedor para comparar este insumo."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:74
+#: .\insumos\templates\insumos\custos\precos_insumos.html:100
+msgid "Editar preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:74
+msgid "Cadastrar preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:74
+msgid "Registre fornecedor, vigência e valor unitário."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:78
+msgid "Salvar preço"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:87
+msgid "Histórico de preços"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:87
+msgid "Cotações mais recentes e custo de referência de cada insumo."
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:97
+msgid "Vigência"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:90
+#: .\insumos\templates\insumos\custos\precos_insumos.html:98
+msgid "Custo atual"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:98
+msgid "Referência"
+msgstr ""
+
+#: .\insumos\templates\insumos\custos\precos_insumos.html:102
+msgid "Nenhum preço encontrado."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:4
+msgid "Estoque de Insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:14
+msgid "📋 Estoque de Insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:17
+msgid "Saldos disponíveis por base e categoria"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:51
+msgid "Base vinculada"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:87
+msgid "Todas as empresas permitidas"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:117
+msgid "Selecione uma base"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:153
+msgid "Exibindo apenas as bases vinculadas ao seu usuário."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:172
+msgid "Itens com saldo"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:184
+msgid "Itens críticos"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:196
+msgid "Bases com saldo"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:208
+msgid "Categorias ativas"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:221
+msgid "Insumos por categoria"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:225
+msgid ""
+"Use os cards para filtrar os itens e as abas para navegar entre as "
+"categorias."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:288
+msgid "Unidade"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:289
+msgid "Saldo"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:290
+msgid "Mínimo"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:336
+msgid "Crítico"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:340
+msgid "OK"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:361
+msgid "Ajustar"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:372
+msgid "Nenhum item encontrado nesta categoria."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:385
+msgid "Nenhum item corresponde ao filtro selecionado."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:399
+msgid "Selecione uma base para carregar os saldos de insumos."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:406
+msgid "Nenhum insumo com saldo foi encontrado para as bases selecionadas."
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:429
+msgid "Ajustar estoque"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:454
+msgid "Item"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:480
+msgid "Saldo atual"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:493
+msgid "Saldo real"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:549
+msgid "Salvar ajuste"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:797
+msgid "item(ns) visível(is)"
+msgstr ""
+
+#: .\insumos\templates\insumos\estoque_insumos.html:893
+msgid "Filtro: Críticos"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:4
+#: .\insumos\templates\insumos\lista_checklists.html:115
+msgid "Checklists"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:119
+msgid "Consulta e acompanhamento dos checklists de inventário."
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:144
+msgid "Abertos"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:158
+#: .\insumos\templates\insumos\lista_checklists.html:236
+msgid "Em execução"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:195
+msgid "Pesquisa"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:204
+msgid "ID, cliente, loja, base ou usuário"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:229
+msgid "Aberto"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:253
+msgid "Data inicial"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:270
+msgid "Data final"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:287
+msgid "Por página"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:334
+msgid "registro encontrado"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:336
+msgid "registros encontrados"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:342
+msgid "Exibindo"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:360
+msgid "Inventário"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:365
+msgid "Criado por"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:429
+msgid "Abrir checklist"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:434
+msgid "Visualizar"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:450
+msgid "Nenhum checklist encontrado com os filtros informados."
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:466
+msgid "Paginação dos checklists"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:476
+msgid "Primeira página"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:494
+#: .\insumos\templates\insumos\lista_checklists.html:498
+msgid "Anterior"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:524
+#: .\insumos\templates\insumos\lista_checklists.html:528
+msgid "Próxima"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:539
+msgid "Última página"
+msgstr ""
+
+#: .\insumos\templates\insumos\lista_checklists.html:553
+#, python-format
+msgid ""
+"\n"
+"                    Página %(atual)s de %(total)s\n"
+"                "
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:4
+#: .\insumos\templates\insumos\solicitacoes\criar.html:544
+msgid "Nova solicitação de insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:530
+msgid "Voltar para solicitações"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:540
+msgid "Gestão de insumos"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:548
+msgid "Informe os dados da solicitação e adicione os itens necessários."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:577
+msgid "Dados da solicitação"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:581
+msgid "Defina a base, a justificativa e as demais informações necessárias."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:603
+msgid "Campo obrigatório"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:641
+msgid "Selecione os insumos e informe suas respectivas quantidades."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:653
+#: .\insumos\templates\insumos\solicitacoes\criar.html:864
+msgid "itens"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:730
+msgid "Opcional"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:750
+msgid ""
+"Ao adicionar novamente o mesmo insumo, sua quantidade será somada à "
+"existente."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:803
+msgid "O carrinho está vazio"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:806
+msgid "Selecione um insumo, informe a quantidade e clique em Adicionar."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:819
+msgid "Revise os dados antes de enviar a solicitação."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:838
+msgid "Enviar solicitação"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:863
+msgid "item"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:865
+msgid "Selecione um insumo válido."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:866
+msgid "Informe uma quantidade maior que zero."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:867
+msgid "Item adicionado ao carrinho."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:868
+msgid "A quantidade do item existente foi atualizada."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:869
+msgid "Item removido do carrinho."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:870
+msgid "Remover item"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:871
+msgid "Enviando..."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:872
+msgid "Adicione pelo menos um item antes de enviar."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:1033
+msgid "Quantidade solicitada"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\criar.html:1050
+msgid "Observação opcional"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:21
+msgid "Observação da análise"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:24
+msgid "Analisar solicitação"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:24
+msgid "Observação ou motivo"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:24
+msgid "Aprovar"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:24
+msgid "Reprovar"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:26
+msgid "Encaminhar para compra"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:28
+msgid "Finalizar solicitação"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:28
+msgid "Confirma a finalização desta solicitação?"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:12
+msgid "Acompanhe pedidos, decisões e compras por protocolo."
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:14
+msgid "Nova solicitação"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:18
+msgid "Resumo das solicitações"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:20
+msgid "Aprovadas"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:21
+msgid "Em compra"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:22
+msgid "Reprovadas"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:23
+msgid "Finalizadas"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:28
+msgid "Pesquisar"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:28
+msgid "Protocolo, base, solicitante ou insumo"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:30
+msgid "Buscar"
+msgstr ""
+
+#: .\insumos\templates\insumos\solicitacoes\lista.html:48
+msgid "Nenhuma solicitação encontrada."
+msgstr ""
+
+#: .\insumos\views\custos.py:175
+msgid "Preço unitário registrado com sucesso."
+msgstr ""
+
+#: .\insumos\views\custos.py:247
+msgid "Fornecedor salvo com sucesso."
+msgstr ""
+
+#: .\insumos\views\custos.py:319
+msgid "Selecione um insumo para pesquisar."
+msgstr ""
+
+#: .\insumos\views\custos.py:330
+msgid "Pesquisa de preços atualizada."
+msgstr ""
+
+#: .\insumos\views\custos.py:436
+msgid "A oferta não está vinculada a um fornecedor cadastrado."
+msgstr ""
+
+#: .\insumos\views\custos.py:481
+msgid "Preço da oferta aplicado como custo padrão do insumo."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:104
+msgid "Selecione um insumo e informe uma quantidade maior que zero."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:123
+msgid "Inclua ao menos um item válido na solicitação."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:132
+msgid "Solicitação de insumos enviada para Compras."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:173
+msgid "Solicitação aprovada."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:180
+msgid "Solicitação reprovada."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:187
+msgid "Solicitação encaminhada para compra."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:194
+msgid "Solicitação finalizada."
+msgstr ""
+
+#: .\insumos\views\solicitacoes.py:196
+msgid "Ação inválida."
+msgstr ""

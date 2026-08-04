@@ -1,5 +1,6 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -14,10 +15,16 @@ class ComunicadoSickService:
     @staticmethod
     def notificar_admins(*, sick, acao, usuario, etapa_anterior=None, etapa_nova=None, detalhes=None):
         equipamento = sick.equipamento
+        base_origem = sick.base_origem or equipamento.regional
+        terceirizada = sick.tipo_destino == Sick.TipoDestino.TERCEIRIZADA
         destinatarios = ComunicadoService.usuarios_por_bases(
-            [equipamento.regional],
-            incluir_admins=True,
+            [base_origem],
+            incluir_admins=not terceirizada,
         )
+        if terceirizada:
+            destinatarios = destinatarios.exclude(
+                perfil__role='admin',
+            ).exclude(username='rafael.ribeiro')
         nome_usuario = usuario.get_full_name() or usuario.get_username()
         dados = {
             'sick_id': sick.pk,
@@ -37,7 +44,7 @@ class ComunicadoSickService:
             f'Série: {equipamento.numero_serie or "N/A"}\n'
             f'Patrimônio: {equipamento.patrimonio or "N/A"}\n'
             f'Empresa: {equipamento.regional.empresa.nome}\n'
-            f'Base: {equipamento.regional.nome}\n'
+            f'Base: {base_origem.nome}\n'
             f'Etapa anterior: {etapa_anterior or "-"}\n'
             f'Nova etapa: {etapa_nova or sick.etapa}\n'
             f'Responsável: {nome_usuario}\n'
@@ -80,6 +87,35 @@ class SickService:
         return perfil
 
     @classmethod
+    def visiveis_para(cls, usuario, queryset=None):
+        queryset = queryset if queryset is not None else Sick.objects.all()
+        perfil = cls._perfil(usuario)
+        if perfil.is_admin or usuario.username == 'rafael.ribeiro':
+            return queryset.exclude(tipo_destino=Sick.TipoDestino.TERCEIRIZADA)
+
+        bases = perfil.regionais.all()
+        return queryset.filter(
+            Q(
+                tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
+                base_origem__in=bases,
+            ) |
+            Q(
+                ~Q(tipo_destino=Sick.TipoDestino.TERCEIRIZADA),
+                equipamento__regional__in=bases,
+            )
+        ).distinct()
+
+    @classmethod
+    def filtrar_historicos_visiveis(cls, usuario, queryset):
+        ids_visiveis = cls.visiveis_para(usuario).values('pk')
+        ids_ocultos = list(
+            Sick.objects.exclude(pk__in=ids_visiveis).values_list('pk', flat=True)
+        )
+        if not ids_ocultos:
+            return queryset
+        return queryset.exclude(detalhes__sick_id__in=ids_ocultos)
+
+    @classmethod
     def _validar_acesso_base(cls, usuario, equipamento):
         perfil = cls._perfil(usuario)
         if perfil.is_admin:
@@ -88,6 +124,26 @@ class SickService:
             raise PermissionDenied('Usuário sem acesso à base do equipamento.')
         if perfil.empresa_id and perfil.empresa_id != equipamento.regional.empresa_id:
             raise PermissionDenied('Equipamento pertence a outra empresa.')
+        return perfil
+
+    @classmethod
+    def _validar_acesso_sick(cls, usuario, sick):
+        if sick.tipo_destino != Sick.TipoDestino.TERCEIRIZADA:
+            perfil = cls._perfil(usuario)
+            if perfil.is_admin or usuario.username == 'rafael.ribeiro':
+                return perfil
+            return cls._validar_acesso_base(usuario, sick.equipamento)
+
+        perfil = cls._perfil(usuario)
+        if perfil.is_admin or usuario.username == 'rafael.ribeiro':
+            raise PermissionDenied('Este SICK terceirizado é restrito à base de origem.')
+        base_id = sick.base_origem_id or sick.equipamento.regional_id
+        if not (perfil.is_gestor or perfil.is_operador):
+            raise PermissionDenied('Este SICK terceirizado é restrito à base de origem.')
+        if not perfil.regionais.filter(pk=base_id).exists():
+            raise PermissionDenied('Este SICK terceirizado é restrito à base de origem.')
+        if perfil.empresa_id and perfil.empresa_id != sick.equipamento.regional.empresa_id:
+            raise PermissionDenied('Este SICK terceirizado pertence a outra empresa.')
         return perfil
 
     @classmethod
@@ -148,12 +204,14 @@ class SickService:
             },
         )
 
-    @staticmethod
-    def _carregar_sick(sick_id):
+    @classmethod
+    def _carregar_sick(cls, sick_id, usuario=None):
         sick = Sick.objects.select_for_update().get(pk=sick_id)
         sick.equipamento = Equipamento.objects.select_for_update(of=('self',)).select_related(
             'produto', 'regional__empresa'
         ).get(pk=sick.equipamento_id)
+        if usuario is not None:
+            cls._validar_acesso_sick(usuario, sick)
         return sick
 
     @staticmethod
@@ -181,6 +239,7 @@ class SickService:
         observacao = cls._texto_obrigatorio(observacao, 'observacao')
         sick = Sick.objects.create(
             equipamento=equipamento,
+            base_origem=equipamento.regional,
             categoria=categoria,
             motivo=motivo,
             descricao=observacao,
@@ -203,7 +262,7 @@ class SickService:
     @classmethod
     @transaction.atomic
     def atualizar_informacoes(cls, *, sick_id, usuario, categoria, motivo, observacao=''):
-        sick = cls._carregar_sick(sick_id)
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_acesso_base(usuario, sick.equipamento)
         if sick.etapa == Sick.Etapa.FINALIZADO:
             raise ValidationError('Um SICK finalizado não pode ser editado sem reabertura.')
@@ -227,29 +286,47 @@ class SickService:
 
     @classmethod
     @transaction.atomic
-    def enviar_para_manutencao(cls, *, sick_id, usuario, destino, transportadora='', protocolo='', observacao=''):
-        sick = cls._carregar_sick(sick_id)
+    def enviar_para_manutencao(
+        cls, *, sick_id, usuario, destino, tipo_destino=Sick.TipoDestino.MATRIZ,
+        transportadora='', protocolo='', codigo_rastreio='', observacao='',
+    ):
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_envio_pela_base(usuario, sick.equipamento)
         cls._validar_etapa(sick, Sick.Etapa.IDENTIFICADO)
         destino = cls._texto_obrigatorio(destino, 'destino_manutencao')
+        if tipo_destino not in Sick.TipoDestino.values:
+            raise ValidationError({'tipo_destino': 'Selecione matriz ou manutenção terceirizada.'})
         anterior = sick.etapa
-        sick.etapa = Sick.Etapa.EM_TRANSITO
+        sick.tipo_destino = tipo_destino
+        sick.etapa = (
+            Sick.Etapa.AGUARDANDO_RETORNO
+            if tipo_destino == Sick.TipoDestino.TERCEIRIZADA
+            else Sick.Etapa.EM_TRANSITO
+        )
         sick.enviado_manutencao_em = timezone.now()
         sick.enviado_manutencao_por = usuario
         sick.destino_manutencao = destino
         sick.transportadora_ou_portador = (transportadora or '').strip()
         sick.protocolo_envio = (protocolo or '').strip()
+        sick.codigo_rastreio_envio = (codigo_rastreio or '').strip()
         if observacao:
             sick.observacao_tecnica = observacao.strip()
         sick.save()
-        detalhes = {'destino': destino, 'protocolo': protocolo, 'transportadora': transportadora, 'observacao': observacao}
+        detalhes = {
+            'destino': destino,
+            'tipo_destino': tipo_destino,
+            'protocolo': protocolo,
+            'codigo_rastreio': sick.codigo_rastreio_envio,
+            'transportadora': transportadora,
+            'observacao': observacao,
+        }
         cls._registrar_transicao(sick, usuario, anterior, 'SICK_ENVIO_MANUTENCAO', 'Equipamento enviado para manutenção', detalhes)
         return sick
 
     @classmethod
     @transaction.atomic
     def confirmar_recebimento(cls, *, sick_id, usuario, observacao=''):
-        sick = cls._carregar_sick(sick_id)
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_permissao(usuario, sick.equipamento, tipo='manutencao', permissao='receber_equipamento_manutencao')
         cls._validar_etapa(sick, Sick.Etapa.EM_TRANSITO)
         anterior = sick.etapa
@@ -263,7 +340,7 @@ class SickService:
     @classmethod
     @transaction.atomic
     def iniciar_avaliacao(cls, *, sick_id, usuario, observacao=''):
-        sick = cls._carregar_sick(sick_id)
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_permissao(usuario, sick.equipamento, tipo='manutencao', permissao='avaliar_equipamento_sick')
         cls._validar_etapa(sick, Sick.Etapa.RECEBIDO)
         anterior = sick.etapa
@@ -280,7 +357,7 @@ class SickService:
         cls, *, sick_id, usuario, causa, diagnostico, observacao,
         previsao_retorno=None,
     ):
-        sick = cls._carregar_sick(sick_id)
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_permissao(usuario, sick.equipamento, tipo='manutencao', permissao='iniciar_manutencao_equipamento')
         cls._validar_etapa(sick, Sick.Etapa.EM_AVALIACAO)
         causa = cls._texto_obrigatorio(causa, 'causa_identificada')
@@ -317,7 +394,7 @@ class SickService:
     @classmethod
     @transaction.atomic
     def concluir_manutencao(cls, *, sick_id, usuario, solucao, resultado, apto_retorno, observacao=''):
-        sick = cls._carregar_sick(sick_id)
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_permissao(usuario, sick.equipamento, tipo='manutencao', permissao='concluir_manutencao_equipamento')
         cls._validar_etapa(sick, Sick.Etapa.EM_MANUTENCAO)
         solucao = cls._texto_obrigatorio(solucao, 'solucao_aplicada')
@@ -348,7 +425,7 @@ class SickService:
     @classmethod
     @transaction.atomic
     def inativar_sem_reparo(cls, *, sick_id, usuario, motivo):
-        sick = cls._carregar_sick(sick_id)
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_permissao(
             usuario, sick.equipamento, tipo='manutencao',
             permissao='concluir_manutencao_equipamento',
@@ -381,8 +458,8 @@ class SickService:
 
     @classmethod
     @transaction.atomic
-    def confirmar_retorno(cls, *, sick_id, usuario, observacao=''):
-        sick = cls._carregar_sick(sick_id)
+    def confirmar_retorno(cls, *, sick_id, usuario, observacao='', codigo_rastreio_retorno=''):
+        sick = cls._carregar_sick(sick_id, usuario)
         cls._validar_permissao(usuario, sick.equipamento, tipo='base', permissao='confirmar_retorno_equipamento')
         cls._validar_etapa(sick, Sick.Etapa.AGUARDANDO_RETORNO)
         anterior = sick.etapa
@@ -392,11 +469,22 @@ class SickService:
         sick.resolvido_por = usuario
         sick.retorno_confirmado_em = timezone.now()
         sick.retorno_confirmado_por = usuario
+        sick.codigo_rastreio_retorno = (codigo_rastreio_retorno or '').strip()
         sick.status_final = 'ATIVO'
         sick.equipamento.status = 'ATIVO'
         sick.equipamento.save(update_fields=['status', 'data_atualizacao'])
         sick.save()
-        cls._registrar_transicao(sick, usuario, anterior, 'SICK_RETORNO_CONFIRMADO', 'Retorno do equipamento confirmado pela base', {'observacao': observacao})
+        cls._registrar_transicao(
+            sick,
+            usuario,
+            anterior,
+            'SICK_RETORNO_CONFIRMADO',
+            'Retorno do equipamento confirmado pela base',
+            {
+                'observacao': observacao,
+                'codigo_rastreio_retorno': sick.codigo_rastreio_retorno,
+            },
+        )
         return sick
 
     @classmethod

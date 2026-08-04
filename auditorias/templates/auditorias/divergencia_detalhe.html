@@ -1,0 +1,41 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container py-4">
+  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:divergencias' divergencia.auditoria_base_id %}">← {% trans "Voltar" %}</a>
+  <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div><h2 class="mb-1">{{ divergencia.get_tipo_display }}</h2><div class="text-muted">{{ divergencia.auditoria_base.base.nome }}</div></div>
+    <span class="badge bg-warning text-dark fs-6">{{ divergencia.get_status_display }}</span>
+  </div>
+  <div class="card shadow-sm mb-4"><div class="card-body">
+    <p>{{ divergencia.descricao }}</p>
+    <dl class="row mb-0">
+      <dt class="col-sm-3">{% trans "Equipamento" %}</dt><dd class="col-sm-9">{{ divergencia.equipamento|default:'-' }}</dd>
+      <dt class="col-sm-3">{% trans "Identificador informado" %}</dt><dd class="col-sm-9">{% if divergencia.identificador_informado %}<code>{{ divergencia.identificador_informado }}</code>{% if divergencia.tipo_identificador_informado %} · {{ divergencia.tipo_identificador_informado }}{% endif %}{% else %}-{% endif %}</dd>
+      <dt class="col-sm-3">{% trans "Base esperada" %}</dt><dd class="col-sm-9">{{ divergencia.base_esperada|default:'-' }}</dd>
+      <dt class="col-sm-3">{% trans "Base encontrada" %}</dt><dd class="col-sm-9">{{ divergencia.base_encontrada|default:'-' }}</dd>
+    </dl>
+  </div></div>
+  {% if divergencia.justificativa_base %}
+    <div class="card border-info shadow-sm mb-4"><div class="card-body"><h5>{% trans "Resposta da base" %}</h5><p class="mb-1">{{ divergencia.justificativa_base }}</p><small class="text-muted">{{ divergencia.respondida_por }} · {{ divergencia.respondida_em|date:"d/m/Y H:i" }}</small></div></div>
+  {% endif %}
+  {% if pode_responder %}
+    <form class="card card-body border-warning shadow-sm mb-4" method="post" action="{% url 'auditorias:divergencia_responder' divergencia.id %}">{% csrf_token %}<h5>{% trans "Justificar ou informar correção" %}</h5>{{ form_resposta.as_p }}<button class="btn btn-warning">{% trans "Enviar para análise" %}</button></form>
+  {% elif em_correcao and not prazo_ativo %}
+    <div class="alert alert-warning">{% trans "O prazo definido pelo administrador foi encerrado." %}</div>
+  {% endif %}
+  {% if pode_regularizar %}
+    {% if divergencia.tipo == 'OUTRA_BASE' %}
+      {% if divergencia.status == 'ABERTA' or divergencia.status == 'EM_ANALISE' %}
+        <div class="row g-3">
+          <div class="col-md-6"><form class="card card-body shadow-sm h-100" method="post" action="{% url 'auditorias:divergencia_manter' divergencia.id %}">{% csrf_token %}<h4>{% trans "Manter na base encontrada" %}</h4>{{ form_manter.as_p }}<button class="btn btn-primary">{% trans "Confirmar" %}</button></form></div>
+          <div class="col-md-6"><form class="card card-body shadow-sm h-100" method="post" action="{% url 'auditorias:divergencia_transferir' divergencia.id %}">{% csrf_token %}<h4>{% trans "Criar transferência direta" %}</h4>{{ form_transferir.as_p }}<button class="btn btn-warning">{% trans "Criar transferência" %}</button></form></div>
+        </div>
+      {% endif %}
+    {% endif %}
+  {% else %}
+    {% if not divergencia.auditoria_base.finalizada_em and not em_correcao %}<div class="alert alert-info">{% trans "Esta divergência ainda está em apuração administrativa." %}</div>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -234,6 +234,12 @@
                                         <small class="text-secondary">
                                             {{ t.solicitado_por }}
                                         </small>
+
+                                        {% if t.codigo_rastreio %}
+                                            <a href="{{ t.url_rastreio }}" target="_blank" rel="noopener noreferrer" class="small mt-1">
+                                                {% trans "Rastrear" %} {{ t.codigo_rastreio }} <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                        {% endif %}
                                     </div>
                                 </td>
 

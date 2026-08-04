@@ -225,6 +225,16 @@ class SickAdmin(EmpresaAdminMixin, admin.ModelAdmin):
 
     readonly_fields = ("data_ocorrencia",)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).exclude(
+            tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
+        )
+
+    def has_view_permission(self, request, obj=None):
+        if obj and obj.tipo_destino == Sick.TipoDestino.TERCEIRIZADA:
+            return False
+        return super().has_view_permission(request, obj)
+
     def motivo_resumido(self, obj):
         return obj.motivo[:50] + "..." if len(obj.motivo) > 50 else obj.motivo
     motivo_resumido.short_description = "Motivo"
@@ -247,6 +257,16 @@ class HistoricoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
     )
 
     list_select_related = ("equipamento", "usuario")
+
+    def get_queryset(self, request):
+        ids_terceirizados = list(Sick.objects.filter(
+            tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
+        ).values_list('pk', flat=True))
+        if not ids_terceirizados:
+            return super().get_queryset(request)
+        return super().get_queryset(request).exclude(
+            detalhes__sick_id__in=ids_terceirizados,
+        )
 
     list_filter = ("tipo_acao", "data", "usuario")
 

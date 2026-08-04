@@ -311,6 +311,54 @@ class FluxoSickTests(EquipamentosSickBaseTests):
         sick.refresh_from_db()
         self.assertEqual(sick.etapa, Sick.Etapa.EM_TRANSITO)
 
+    def test_terceirizada_fica_restrita_a_base_e_controla_envio_e_retorno(self):
+        rafael = User.objects.create_user(username='rafael.ribeiro', password='senha-forte')
+        rafael.perfil.role = Perfil.Role.OPERADOR
+        rafael.perfil.save()
+        sick = self._abrir(usuario=self.operador)
+
+        SickService.enviar_para_manutencao(
+            sick_id=sick.pk,
+            usuario=self.operador,
+            destino='Assistência externa',
+            tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
+            codigo_rastreio='AA123456789BR',
+        )
+        sick.refresh_from_db()
+
+        self.assertEqual(sick.base_origem, self.base)
+        self.assertEqual(sick.etapa, Sick.Etapa.AGUARDANDO_RETORNO)
+        self.assertIn('objetos=AA123456789BR', sick.url_rastreio_envio)
+        self.assertTrue(SickService.visiveis_para(self.operador).filter(pk=sick.pk).exists())
+        self.assertFalse(SickService.visiveis_para(self.admin).filter(pk=sick.pk).exists())
+        self.assertFalse(SickService.visiveis_para(rafael).filter(pk=sick.pk).exists())
+        historicos_sick = Historico.objects.filter(detalhes__sick_id=sick.pk)
+        self.assertTrue(SickService.filtrar_historicos_visiveis(self.operador, historicos_sick).exists())
+        self.assertFalse(SickService.filtrar_historicos_visiveis(self.admin, historicos_sick).exists())
+        comunicado_envio = Comunicado.objects.filter(dados__sick_id=sick.pk).latest('pk')
+        self.assertTrue(comunicado_envio.usuarios.filter(pk=self.operador.pk).exists())
+        self.assertFalse(comunicado_envio.usuarios.filter(pk=self.admin.pk).exists())
+        self.assertFalse(comunicado_envio.usuarios.filter(pk=rafael.pk).exists())
+        with self.assertRaises(PermissionDenied):
+            SickService.confirmar_retorno(sick_id=sick.pk, usuario=self.admin)
+        with self.assertRaises(PermissionDenied):
+            SickService.confirmar_retorno(sick_id=sick.pk, usuario=rafael)
+
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse('estoque:sick'), {'etapa': 'AGUARDANDO_RETORNO'})
+        self.assertNotContains(response, self.equipamento.numero_serie)
+
+        SickService.confirmar_retorno(
+            sick_id=sick.pk,
+            usuario=self.operador,
+            codigo_rastreio_retorno='BB987654321BR',
+        )
+        sick.refresh_from_db()
+        self.equipamento.refresh_from_db()
+        self.assertEqual(sick.etapa, Sick.Etapa.FINALIZADO)
+        self.assertEqual(self.equipamento.status, 'ATIVO')
+        self.assertIn('objetos=BB987654321BR', sick.url_rastreio_retorno)
+
     def test_admin_confirma_recebimento_mas_nao_recebe_botao_de_envio_da_base(self):
         sick = self._abrir(usuario=self.operador)
         self.client.force_login(self.admin)

@@ -98,7 +98,7 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
 
     for equipamento in equipamentos:
 
-        equipamento.status = 'EM_TRANSITO'
+        equipamento.status = 'RESERVADO_TRANSFERENCIA'
 
     Equipamento.objects.bulk_update(
         equipamentos,
@@ -169,7 +169,7 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
     return transferencia
 
 @transaction.atomic
-def enviar_transferencia(transferencia, user):
+def enviar_transferencia(transferencia, user, codigo_rastreio=''):
 
     if transferencia.status != STATUS_PENDENTE:
         raise ValueError(
@@ -178,15 +178,27 @@ def enviar_transferencia(transferencia, user):
 
     transferencia.status = STATUS_EM_TRANSITO
     transferencia.data_envio = timezone.now()
+    transferencia.codigo_rastreio = (codigo_rastreio or '').strip()
 
     transferencia.save(
         update_fields=[
             'status',
-            'data_envio'
+            'data_envio',
+            'codigo_rastreio',
         ]
     )
 
     transferencia.itens.update(status='ENVIADO')
+
+    equipamentos = [
+        item.equipamento
+        for item in transferencia.itens.select_related('equipamento')
+        if item.equipamento_id
+    ]
+    for equipamento in equipamentos:
+        equipamento.status = 'EM_TRANSITO'
+    if equipamentos:
+        Equipamento.objects.bulk_update(equipamentos, ['status'])
 
     historicos = []
 

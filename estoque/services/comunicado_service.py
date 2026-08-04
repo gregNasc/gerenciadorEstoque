@@ -60,6 +60,8 @@ class ComunicadoService:
         permitir_limpar=True,
         expira_em=None,
         incluir_admins=True,
+        dados=None,
+        url='',
     ):
         if usuario is None:
             usuario = User.objects.filter(is_active=True, is_superuser=True).first()
@@ -77,6 +79,8 @@ class ComunicadoService:
             enviar_para_todos=enviar_para_todos,
             permitir_limpar=permitir_limpar,
             expira_em=expira_em or ComunicadoService.expira_em_padrao(),
+            dados=dados,
+            url=url,
         )
 
         if enviar_para_todos:
@@ -95,7 +99,124 @@ class ComunicadoService:
                 )
             )
 
+        transaction.on_commit(
+            lambda comunicado_id=comunicado.id: __import__(
+                'estoque.services.comunicacoes.dispatcher',
+                fromlist=['ComunicacaoDispatcher'],
+            ).ComunicacaoDispatcher.criar_entregas(comunicado_id)
+        )
+
         return comunicado
+
+    @staticmethod
+    def auditoria_aberta(auditoria_base, usuario):
+        return ComunicadoService.criar_acao(
+            titulo=f'Auditoria aberta — {auditoria_base.base.nome}',
+            mensagem=(
+                f'A coleta da campanha {auditoria_base.campanha.nome} foi iniciada '
+                f'na base {auditoria_base.base.nome}.'
+            ),
+            usuario=usuario,
+            bases=[auditoria_base.base],
+            empresa=auditoria_base.campanha.empresa,
+            dados={'template_codigo': 'auditoria_aberta', 'auditoria_base_id': auditoria_base.pk},
+            url=f'/auditorias/bases/{auditoria_base.pk}/coleta/',
+        )
+
+    @staticmethod
+    def auditoria_enviada(auditoria_base, usuario):
+        administradores = User.objects.filter(is_active=True).filter(
+            Q(is_superuser=True) | Q(perfil__role='admin')
+        ).distinct()
+        return ComunicadoService.criar_acao(
+            titulo=f'Auditoria enviada — {auditoria_base.base.nome}',
+            mensagem=(
+                f'A auditoria da base {auditoria_base.base.nome} foi enviada para análise. '
+                f'Status: {auditoria_base.get_status_display()}.'
+            ),
+            usuario=usuario,
+            tipo='OPERACIONAL',
+            usuarios=administradores,
+            empresa=auditoria_base.campanha.empresa,
+            dados={
+                'template_codigo': 'auditoria_enviada',
+                'auditoria_base_id': auditoria_base.pk,
+            },
+            url=f'/auditorias/bases/{auditoria_base.pk}/divergencias/',
+        )
+
+    @staticmethod
+    def auditoria_finalizada(auditoria_base, usuario):
+        tem_divergencias = auditoria_base.divergencias.exclude(
+            status__in=['RESOLVIDA', 'CANCELADA']
+        ).exists()
+        return ComunicadoService.criar_acao(
+            titulo=f'Resultado da auditoria — {auditoria_base.base.nome}',
+            mensagem=(
+                f'O resultado final da auditoria da base {auditoria_base.base.nome} foi liberado. '
+                f'Status: {auditoria_base.get_status_display()}.'
+            ),
+            usuario=usuario,
+            tipo='URGENTE' if tem_divergencias else 'OPERACIONAL',
+            bases=[auditoria_base.base],
+            empresa=auditoria_base.campanha.empresa,
+            dados={
+                'template_codigo': 'auditoria_resultado_final',
+                'auditoria_base_id': auditoria_base.pk,
+            },
+            url=f'/auditorias/bases/{auditoria_base.pk}/divergencias/',
+        )
+
+    @staticmethod
+    def auditoria_correcao_solicitada(auditoria_base, usuario):
+        prazo = timezone.localtime(auditoria_base.prazo_correcao_em).strftime('%d/%m/%Y às %H:%M')
+        return ComunicadoService.criar_acao(
+            titulo=f'Correções solicitadas — {auditoria_base.base.nome}',
+            mensagem=(
+                f'O administrador solicitou correções na auditoria da base '
+                f'{auditoria_base.base.nome}. Prazo: {prazo}. '
+                f'Orientações: {auditoria_base.orientacoes_correcao}'
+            ),
+            usuario=usuario,
+            tipo='URGENTE',
+            bases=[auditoria_base.base],
+            empresa=auditoria_base.campanha.empresa,
+            dados={
+                'template_codigo': 'auditoria_correcao_solicitada',
+                'auditoria_base_id': auditoria_base.pk,
+            },
+            url=f'/auditorias/bases/{auditoria_base.pk}/divergencias/',
+        )
+
+    @staticmethod
+    def auditoria_equipamento_mantido(divergencia, resolucao, usuario):
+        return ComunicadoService.criar_acao(
+            titulo='Equipamento regularizado por auditoria',
+            mensagem=(
+                f'O equipamento {divergencia.equipamento.codigo} foi mantido na base '
+                f'{divergencia.base_encontrada.nome}. Justificativa: {resolucao.justificativa}'
+            ),
+            usuario=usuario,
+            bases=[resolucao.base_anterior, resolucao.nova_base],
+            empresa=divergencia.auditoria_base.campanha.empresa,
+            dados={'template_codigo': 'auditoria_equipamento_mantido', 'divergencia_id': divergencia.pk},
+            url=f'/auditorias/divergencias/{divergencia.pk}/',
+        )
+
+    @staticmethod
+    def auditoria_transferencia_criada(divergencia, transferencia, usuario):
+        return ComunicadoService.criar_acao(
+            titulo=f'Transferência de auditoria {transferencia.protocolo}',
+            mensagem=(
+                f'A transferência do equipamento {divergencia.equipamento.codigo} foi criada de '
+                f'{transferencia.regional_origem.nome} para {transferencia.regional_destino.nome}.'
+            ),
+            usuario=usuario,
+            bases=[transferencia.regional_origem, transferencia.regional_destino],
+            empresa=transferencia.regional_destino.empresa,
+            dados={'template_codigo': 'auditoria_transferencia_criada', 'divergencia_id': divergencia.pk},
+            url=f'/transferencias/{transferencia.pk}/',
+        )
 
     @staticmethod
     def excluir_expirados():

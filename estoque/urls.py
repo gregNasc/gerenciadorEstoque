@@ -3,6 +3,8 @@ from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 from . import views
 from .views import lista_transferencias
+from . import declaracao_views
+from . import comunicacao_views
 
 app_name = 'estoque'
 
@@ -66,7 +68,6 @@ urlpatterns = [
     # ---------------- SOLICITAÇÕES ----------------
     path('solicitacoes/', views.caixa_solicitacoes, name='caixa_solicitacoes'),
     path('solicitacoes/criar/', views.criar_solicitacao, name='criar_solicitacao'),
-    path('transferencias/separacao/', views.caixa_separacao, name='caixa_separacao'),
     path('solicitacoes/<int:solicitacao_id>/alocacao/', views.painel_alocacao, name='painel_alocacao'),
 
 
@@ -94,8 +95,16 @@ urlpatterns = [
     path('emprestimos/<int:emprestimo_id>/receber/', views.receber_emprestimo, name='receber_emprestimo'),
     path('emprestimos/<int:emprestimo_id>/devolver/', views.devolver_emprestimo, name='devolver_emprestimo'),
 #    path('emprestimos/<int:emprestimo_id>/enviar/', views.enviar_emprestimo, name='enviar_emprestimo'),
-    path('emprestimos/', views.lista_emprestimos, name='lista_emprestimos'),
     path('emprestimos/<int:emprestimo_id>/confirmar-devolucao/', views.receber_devolucao_emprestimo, name='receber_devolucao_emprestimo'),
+
+    # ---------------- DECLARAÇÃO DOS CORREIOS ----------------
+    path('transferencias/<int:transferencia_id>/declaracao/', declaracao_views.declaracao_transferencia, name='declaracao_transferencia'),
+    path('emprestimos/<int:emprestimo_id>/declaracao/', declaracao_views.declaracao_emprestimo, name='declaracao_emprestimo'),
+    path('declaracoes/<int:declaracao_id>/', declaracao_views.declaracao_detalhe, name='declaracao_detalhe'),
+    path('declaracoes/<int:declaracao_id>/emitir/', declaracao_views.emitir_declaracao, name='emitir_declaracao'),
+    path('declaracoes/<int:declaracao_id>/pdf/', declaracao_views.baixar_declaracao, name='baixar_declaracao'),
+    path('declaracoes/<int:declaracao_id>/substituir/', declaracao_views.substituir_declaracao, name='substituir_declaracao'),
+    path('integracoes/whatsapp/webhook/', comunicacao_views.whatsapp_webhook, name='whatsapp_webhook'),
 
     # ---------------- PASSWORD RESET ----------------
     path('password-reset/', auth_views.PasswordResetView.as_view(

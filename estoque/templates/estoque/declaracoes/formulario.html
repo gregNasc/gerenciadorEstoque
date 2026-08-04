@@ -1,0 +1,64 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2>{% trans "Declaração de conteúdo" %}</h2>
+      <p class="text-muted mb-0">{% trans "Versão" %} {{ declaracao.versao }} · {{ declaracao.get_status_display }}</p>
+    </div>
+    {% if declaracao.arquivo %}
+      <a class="btn btn-primary" href="{% url 'estoque:baixar_declaracao' declaracao.id %}">{% trans "Baixar PDF" %}</a>
+    {% endif %}
+  </div>
+
+  <div class="alert alert-info">
+    {% trans "As alterações realizadas nesta tela serão aplicadas somente a esta declaração." %}
+  </div>
+
+  {% if declaracao.status == 'RASCUNHO' %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="row g-3">
+      <div class="col-lg-6"><div class="card card-body h-100"><h4>{% trans "Remetente" %}</h4>{{ form_remetente.as_p }}</div></div>
+      <div class="col-lg-6"><div class="card card-body h-100"><h4>{% trans "Destinatário" %}</h4>{{ form_destinatario.as_p }}</div></div>
+      <div class="col-md-4">{{ form.quantidade_volumes.label_tag }}{{ form.quantidade_volumes }}</div>
+      <div class="col-md-4">{{ form.valor_total_declarado.label_tag }}{{ form.valor_total_declarado }}</div>
+      <div class="col-md-4">{{ form.peso_total_kg.label_tag }}{{ form.peso_total_kg }}</div>
+      <div class="col-12">{{ form.observacoes.label_tag }}{{ form.observacoes }}</div>
+    </div>
+    <h4 class="mt-4">{% trans "Itens" %}</h4>
+    {{ formset.management_form }}
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>{% trans "Descrição" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Valor unitário" %}</th><th>{% trans "Patrimônio" %}</th><th>{% trans "Número de série" %}</th></tr></thead>
+        <tbody>
+        {% for item_form in formset %}
+          <tr>
+            <td>{{ item_form.id }}{{ item_form.ordem }}{{ item_form.descricao }}{{ item_form.descricao.errors }}</td>
+            <td>{{ item_form.quantidade }}</td><td>{{ item_form.valor_unitario }}</td>
+            <td>{{ item_form.patrimonio }}</td><td>{{ item_form.numero_serie }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-outline-primary" type="submit">{% trans "Salvar rascunho" %}</button>
+  </form>
+  <form class="d-inline" method="post" action="{% url 'estoque:emitir_declaracao' declaracao.id %}">
+    {% csrf_token %}<button class="btn btn-success mt-3" type="submit">{% trans "Emitir PDF" %}</button>
+  </form>
+  {% else %}
+  <form method="post" action="{% url 'estoque:substituir_declaracao' declaracao.id %}">
+    {% csrf_token %}<button class="btn btn-outline-warning" type="submit">{% trans "Criar nova versão" %}</button>
+  </form>
+  {% endif %}
+
+  {% if versoes %}
+  <h4 class="mt-4">{% trans "Histórico de versões" %}</h4>
+  <ul>{% for versao in versoes %}<li>v{{ versao.versao }} — {{ versao.get_status_display }}{% if versao.arquivo %} · <a href="{% url 'estoque:baixar_declaracao' versao.id %}">PDF</a>{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+</div>
+{% endblock %}

@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'estoque.apps.EstoqueConfig',
+    'auditorias.apps.AuditoriasConfig',
     'core',
     'insumos',
     'integracao.apps.IntegracaoConfig',
@@ -140,6 +141,7 @@ USE_TZ = True
 LANGUAGES = [
     ('pt-br', 'Português'),
     ('es', 'Español'),
+    ('en', 'English'),
 ]
 
 # Static files (CSS, JavaScript, Images)
@@ -194,6 +196,20 @@ TORY_LLM_ENABLED = os.getenv('TORY_LLM_ENABLED', 'False').lower() == 'true'
 TORY_LLM_MODEL = os.getenv('TORY_LLM_MODEL', 'gpt-5.6-sol')
 TORY_LLM_TIMEOUT = float(os.getenv('TORY_LLM_TIMEOUT', '20'))
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+
+# Entregas opcionais por WhatsApp. Permanecem desabilitadas por padrão.
+WHATSAPP_ENABLED = os.getenv('WHATSAPP_ENABLED', 'False').lower() == 'true'
+WHATSAPP_PROVIDER = os.getenv('WHATSAPP_PROVIDER', 'disabled')
+WHATSAPP_API_BASE_URL = os.getenv('WHATSAPP_API_BASE_URL', '')
+WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
+WHATSAPP_BUSINESS_ACCOUNT_ID = os.getenv('WHATSAPP_BUSINESS_ACCOUNT_ID', '')
+WHATSAPP_WEBHOOK_VERIFY_TOKEN = os.getenv('WHATSAPP_WEBHOOK_VERIFY_TOKEN', '')
+WHATSAPP_WEBHOOK_APP_SECRET = os.getenv('WHATSAPP_WEBHOOK_APP_SECRET', '')
+WHATSAPP_DEFAULT_COUNTRY_CODE = os.getenv('WHATSAPP_DEFAULT_COUNTRY_CODE', '55')
+WHATSAPP_TIMEOUT = float(os.getenv('WHATSAPP_TIMEOUT', '10'))
+WHATSAPP_MAX_RETRIES = int(os.getenv('WHATSAPP_MAX_RETRIES', '5'))
+WHATSAPP_RETRY_BASE_SECONDS = int(os.getenv('WHATSAPP_RETRY_BASE_SECONDS', '60'))
 
 # Pesquisa manual de preços nos fornecedores utilizados pela empresa.
 ONLINE_PRICE_SEARCH_TIMEOUT = float(os.getenv('ONLINE_PRICE_SEARCH_TIMEOUT', '15'))

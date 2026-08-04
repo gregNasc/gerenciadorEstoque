@@ -1,9 +1,68 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Produto, Equipamento, Transferencia, Sick, Base
+from .models import DeclaracaoCorreios, DeclaracaoCorreiosItem, Produto, Equipamento, Transferencia, Sick, Base
 from estoque.models import Base
 from django.utils.translation import gettext_lazy as _
+
+
+class DeclaracaoCorreiosForm(forms.ModelForm):
+    class Meta:
+        model = DeclaracaoCorreios
+        fields = [
+            'quantidade_volumes',
+            'valor_total_declarado',
+            'peso_total_kg',
+            'observacoes',
+        ]
+        labels = {
+            'quantidade_volumes': _('Quantidade de volumes'),
+            'valor_total_declarado': _('Valor total declarado'),
+            'peso_total_kg': _('Peso total (kg)'),
+            'observacoes': _('Observações'),
+        }
+        widgets = {
+            'quantidade_volumes': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
+            'valor_total_declarado': forms.NumberInput(attrs={'min': 0, 'step': '0.01', 'class': 'form-control'}),
+            'peso_total_kg': forms.NumberInput(attrs={'min': 0, 'step': '0.001', 'class': 'form-control'}),
+            'observacoes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }
+
+
+class DeclaracaoEnderecoForm(forms.Form):
+    nome_destinatario = forms.CharField(label=_('Nome'), max_length=150)
+    logradouro = forms.CharField(label=_('Logradouro'), max_length=180)
+    numero = forms.CharField(label=_('Número'), max_length=30)
+    complemento = forms.CharField(label=_('Complemento'), max_length=100, required=False)
+    bairro = forms.CharField(label=_('Bairro'), max_length=100)
+    cidade = forms.CharField(label=_('Cidade'), max_length=100)
+    uf = forms.CharField(label=_('UF'), max_length=2)
+    cep = forms.CharField(label=_('CEP'), max_length=9)
+    documento = forms.CharField(label=_('CPF/CNPJ/Documento estrangeiro'), max_length=30, required=False)
+    telefone = forms.CharField(label=_('Telefone'), max_length=20, required=False)
+    responsavel = forms.CharField(label=_('Responsável'), max_length=150, required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault('class', 'form-control')
+
+
+DeclaracaoCorreiosItemFormSet = forms.inlineformset_factory(
+    DeclaracaoCorreios,
+    DeclaracaoCorreiosItem,
+    fields=['descricao', 'quantidade', 'valor_unitario', 'patrimonio', 'numero_serie', 'ordem'],
+    extra=0,
+    can_delete=False,
+    widgets={
+        'descricao': forms.TextInput(attrs={'class': 'form-control'}),
+        'quantidade': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
+        'valor_unitario': forms.NumberInput(attrs={'min': 0, 'step': '0.01', 'class': 'form-control'}),
+        'patrimonio': forms.TextInput(attrs={'class': 'form-control'}),
+        'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
+        'ordem': forms.HiddenInput(),
+    },
+)
 
 # ================= PRODUTO =================
 class ProdutoForm(forms.ModelForm):

@@ -3391,6 +3391,7 @@ class AssistenteOperacionalService:
             return []
 
         from estoque.models import ItemEmprestimo, Sick, TransferenciaItem
+        from estoque.services.sick_service import SickService
         from insumos.models import ChecklistEquipamento
 
         equipamentos = list(qs.order_by(
@@ -3411,7 +3412,10 @@ class AssistenteOperacionalService:
             equipamentos,
             Prefetch(
                 'sicks',
-                queryset=Sick.objects.filter(ativo=True).order_by('-data_ocorrencia'),
+                queryset=SickService.visiveis_para(
+                    user,
+                    Sick.objects.filter(ativo=True),
+                ).order_by('-data_ocorrencia'),
                 to_attr='sicks_ativos_tory',
             ),
             Prefetch(
