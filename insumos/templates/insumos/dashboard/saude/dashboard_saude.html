@@ -1,0 +1,981 @@
+{% extends "estoque/base.html" %}
+{% load i18n %}
+
+{% block title %}Saúde do estoque de insumos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .insumos-health-page {
+        --health-success: #198754;
+        --health-warning: #f0ad4e;
+        --health-danger: #dc3545;
+        --health-dark-danger: #9f1239;
+        --health-muted: #6c757d;
+        --health-surface: #ffffff;
+        --health-background: #f6f8fb;
+        --health-border: #e5e9f0;
+        background: var(--health-background);
+        margin: -1.5rem -0.75rem 0;
+        padding: 1.5rem 0.75rem 3rem;
+        min-height: calc(100vh - 90px);
+    }
+
+    .health-header {
+        background: linear-gradient(25deg, #e5e7eb, #e5e7eb);
+        color: #1f2937;
+        border: 1px solid #d1d5db;
+        border-radius: 1.25rem;
+        padding: 1.75rem;
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+    }
+
+    .health-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+        margin-bottom: 0.65rem;
+    }
+
+    .health-header h1 {
+        color: #1f2937;
+        font-size: clamp(1.6rem, 3vw, 2.35rem);
+        font-weight: 700;
+        margin-bottom: 0.45rem;
+    }
+
+    .health-header p {
+        color: #6b7280;
+        max-width: 780px;
+        margin-bottom: 0;
+    }
+
+    .health-rule {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 1rem;
+    }
+
+    .health-rule-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        color: #1f2937;
+        font-size: 0.75rem;
+    }
+
+    .health-rule-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+    }
+
+    .health-filter-card,
+    .health-panel,
+    .health-kpi,
+    .regional-health-card {
+        background: var(--health-surface);
+        border: 1px solid var(--health-border);
+        border-radius: 1rem;
+        box-shadow: 0 0.35rem 1.2rem rgba(15, 23, 42, 0.05);
+    }
+
+    .health-filter-card {
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .health-filter-card .form-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #5b6573;
+        margin-bottom: 0.35rem;
+    }
+
+    .health-kpi {
+        height: 100%;
+        padding: 1.15rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .health-kpi::after {
+        content: "";
+        position: absolute;
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        right: -38px;
+        bottom: -42px;
+        background: currentColor;
+        opacity: 0.06;
+    }
+
+    .health-kpi-icon {
+        width: 2.7rem;
+        height: 2.7rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.8rem;
+        background: #f1f4f8;
+        font-size: 1.2rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .health-kpi-label {
+        color: #6b7280;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.25rem;
+    }
+
+    .health-kpi-value {
+        color: #172033;
+        font-size: 1.65rem;
+        line-height: 1.15;
+        font-weight: 750;
+        margin-bottom: 0.2rem;
+    }
+
+    .health-kpi-note {
+        color: #89919e;
+        font-size: 0.8rem;
+        margin-bottom: 0;
+    }
+
+    .health-panel {
+        height: 100%;
+        padding: 1.2rem;
+    }
+
+    .health-panel-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .health-panel-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #202938;
+        margin-bottom: 0.2rem;
+    }
+
+    .health-panel-description {
+        color: #7b8492;
+        font-size: 0.82rem;
+        margin-bottom: 0;
+    }
+
+    .health-chart-wrapper {
+        position: relative;
+        min-height: 340px;
+    }
+
+    .regional-health-card {
+        height: 100%;
+        padding: 1.2rem;
+        border-top-width: 4px;
+        transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .regional-health-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.75rem 1.6rem rgba(15, 23, 42, 0.09);
+    }
+
+    .regional-health-card.status-saudavel { border-top-color: var(--health-success); }
+    .regional-health-card.status-atencao { border-top-color: var(--health-warning); }
+    .regional-health-card.status-critico,
+    .regional-health-card.status-ruptura { border-top-color: var(--health-danger); }
+    .regional-health-card.status-sem_dados,
+    .regional-health-card.status-sem_parametro { border-top-color: var(--health-muted); }
+
+    .regional-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.1rem;
+    }
+
+    .regional-company {
+        color: #89919e;
+        font-size: 0.78rem;
+    }
+
+    .regional-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 999px;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .regional-status.status-saudavel { color: #0f6b3e; background: #e5f6ed; }
+    .regional-status.status-atencao { color: #8a5a00; background: #fff4d8; }
+    .regional-status.status-critico,
+    .regional-status.status-ruptura { color: #a61b2b; background: #fde8eb; }
+    .regional-status.status-sem_dados,
+    .regional-status.status-sem_parametro { color: #5f6875; background: #edf0f4; }
+
+    .regional-score {
+        display: flex;
+        align-items: end;
+        gap: 0.35rem;
+        margin: 1rem 0;
+    }
+
+    .regional-score strong {
+        font-size: 2rem;
+        line-height: 1;
+        color: #202938;
+    }
+
+    .regional-score span {
+        color: #8b94a1;
+        font-size: 0.78rem;
+        padding-bottom: 0.18rem;
+    }
+
+    .regional-progress {
+        height: 0.48rem;
+        background: #edf0f4;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .regional-progress-bar {
+        height: 100%;
+        border-radius: inherit;
+    }
+
+    .status-saudavel .regional-progress-bar { background: var(--health-success); }
+    .status-atencao .regional-progress-bar { background: var(--health-warning); }
+    .status-critico .regional-progress-bar,
+    .status-ruptura .regional-progress-bar { background: var(--health-danger); }
+    .status-sem_dados .regional-progress-bar,
+    .status-sem_parametro .regional-progress-bar { background: var(--health-muted); }
+
+    .regional-breakdown {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.45rem;
+        margin-bottom: 1rem;
+    }
+
+    .regional-breakdown-item {
+        text-align: center;
+        background: #f7f8fa;
+        border-radius: 0.7rem;
+        padding: 0.55rem 0.2rem;
+    }
+
+    .regional-breakdown-item strong {
+        display: block;
+        font-size: 0.95rem;
+        color: #263142;
+    }
+
+    .regional-breakdown-item span {
+        color: #8a93a0;
+        font-size: 0.61rem;
+        line-height: 1.1;
+    }
+
+    .critical-table th {
+        color: #697386;
+        font-size: 0.72rem;
+        font-weight: 750;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-top: 0;
+        white-space: nowrap;
+    }
+
+    .critical-table td {
+        vertical-align: middle;
+        color: #354052;
+    }
+
+    .critical-item-name {
+        color: #202938;
+        font-weight: 650;
+    }
+
+    .critical-item-meta {
+        color: #89919e;
+        font-size: 0.75rem;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border-radius: 999px;
+        padding: 0.32rem 0.58rem;
+        font-size: 0.7rem;
+        font-weight: 750;
+    }
+
+    .status-badge--critical { color: #9a5b00; background: #fff0ce; }
+    .status-badge--empty { color: #a61b2b; background: #fde8eb; }
+
+    .health-empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: #7b8492;
+    }
+
+    .health-empty-state i {
+        display: block;
+        font-size: 2.5rem;
+        color: #a4acb8;
+        margin-bottom: 0.75rem;
+    }
+
+    @media (max-width: 991.98px) {
+        .regional-breakdown { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 767.98px) {
+        .insumos-health-page { margin-top: -1rem; }
+        .health-header { padding: 1.25rem; }
+        .regional-breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="insumos-health-page">
+    <div class="container-fluid px-2 px-lg-4">
+
+        <section class="health-header">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <span class="health-eyebrow">
+                        <i class="bi bi-activity"></i>
+                        Monitoramento administrativo
+                    </span>
+
+                    <h1>Saúde do estoque de insumos</h1>
+
+                    <p>
+                        Visão consolidada dos saldos, níveis críticos,
+                        rupturas e valor estimado do estoque por regional.
+                    </p>
+
+                    <div class="health-rule">
+                        <span class="health-rule-item">
+                            <span class="health-rule-dot bg-danger"></span>
+                            Crítico: até 30%
+                        </span>
+                        <span class="health-rule-item">
+                            <span class="health-rule-dot bg-warning"></span>
+                            Atenção: acima de 30% e abaixo de 70%
+                        </span>
+                        <span class="health-rule-item">
+                            <span class="health-rule-dot bg-success"></span>
+                            Saudável: 70% ou mais
+                        </span>
+                    </div>
+                </div>
+
+                <a class="btn btn-light" href="{% url 'insumos:estoque_insumos' %}">
+                    <i class="bi bi-box-seam me-1"></i>
+                    Abrir estoque
+                </a>
+            </div>
+        </section>
+
+        <section class="health-filter-card">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="filtroEmpresa">Empresa</label>
+                    <select class="form-select" id="filtroEmpresa" name="empresa">
+                        <option value="">Todas as empresas</option>
+                        {% for empresa in empresas %}
+                            <option
+                                value="{{ empresa.id }}"
+                                {% if filtro_empresa_id == empresa.id|stringformat:"s" %}selected{% endif %}
+                            >
+                                {{ empresa.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="filtroBase">Regional</label>
+                    <select class="form-select" id="filtroBase" name="base">
+                        <option value="">Todas as regionais</option>
+                        {% for base in bases %}
+                            <option
+                                value="{{ base.id }}"
+                                data-empresa="{{ base.empresa_id }}"
+                                {% if filtro_base_id == base.id|stringformat:"s" %}selected{% endif %}
+                            >
+                                {{ base.nome }} — {{ base.empresa.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <div class="d-grid">
+                        <button class="btn btn-dark" type="submit">
+                            <i class="bi bi-funnel me-1"></i>
+                            Filtrar
+                        </button>
+                    </div>
+                </div>
+
+                {% if filtro_empresa_id or filtro_base_id %}
+                    <div class="col-12">
+                        <a class="small text-decoration-none" href="{% url 'insumos:dashboard_saude_insumos' %}">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Limpar filtros
+                        </a>
+                    </div>
+                {% endif %}
+            </form>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-primary">
+                    <div class="health-kpi-icon"><i class="bi bi-heart-pulse"></i></div>
+                    <div class="health-kpi-label">Saúde geral</div>
+                    <div class="health-kpi-value">
+                        {% if resumo.tem_saude_calculada %}
+                            {{ resumo.saude_geral|floatformat:1 }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <p class="health-kpi-note">Média percentual dos itens classificáveis</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-success">
+                    <div class="health-kpi-icon"><i class="bi bi-building-check"></i></div>
+                    <div class="health-kpi-label">Regionais monitoradas</div>
+                    <div class="health-kpi-value">
+                        {{ resumo.bases_monitoradas }}
+                        <span class="fs-6 text-secondary">/ {{ resumo.total_bases }}</span>
+                    </div>
+                    <p class="health-kpi-note">{{ resumo.bases_sem_dados }} regional(is) sem movimentação</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-danger">
+                    <div class="health-kpi-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="health-kpi-label">Pontos críticos</div>
+                    <div class="health-kpi-value">{{ resumo.criticos|add:resumo.zerados }}</div>
+                    <p class="health-kpi-note">{{ resumo.criticos }} críticos e {{ resumo.zerados }} zerados</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-warning">
+                    <div class="health-kpi-icon"><i class="bi bi-clipboard-data"></i></div>
+                    <div class="health-kpi-label">Solicitações pendentes</div>
+                    <div class="health-kpi-value">{{ resumo.solicitacoes_pendentes }}</div>
+                    <p class="health-kpi-note">Dentro do escopo selecionado</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-info">
+                    <div class="health-kpi-icon"><i class="bi bi-boxes"></i></div>
+                    <div class="health-kpi-label">Itens monitorados</div>
+                    <div class="health-kpi-value">{{ resumo.total_itens }}</div>
+                    <p class="health-kpi-note">Combinações de insumo e regional</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-success">
+                    <div class="health-kpi-icon"><i class="bi bi-check2-circle"></i></div>
+                    <div class="health-kpi-label">Saudáveis</div>
+                    <div class="health-kpi-value">{{ resumo.saudaveis }}</div>
+                    <p class="health-kpi-note">70% ou mais da referência</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-warning">
+                    <div class="health-kpi-icon"><i class="bi bi-cone-striped"></i></div>
+                    <div class="health-kpi-label">Em atenção</div>
+                    <div class="health-kpi-value">{{ resumo.atencao }}</div>
+                    <p class="health-kpi-note">Acima de 30% e abaixo de 70%</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-secondary">
+                    <div class="health-kpi-icon"><i class="bi bi-sliders"></i></div>
+                    <div class="health-kpi-label">Sem parâmetro</div>
+                    <div class="health-kpi-value">{{ resumo.sem_parametro }}</div>
+                    <p class="health-kpi-note">Sem estoque mínimo ou máximo</p>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="health-kpi text-dark">
+                    <div class="health-kpi-icon"><i class="bi bi-cash-stack"></i></div>
+                    <div class="health-kpi-label">Valor estimado</div>
+                    <div class="health-kpi-value fs-4">R$ {{ resumo.valor_estoque|floatformat:2 }}</div>
+                    <p class="health-kpi-note">Saldo positivo × valor médio</p>
+                </div>
+            </div>
+        </section>
+
+        {% if resumo.tem_dados %}
+            <section class="row g-3 mb-4">
+                <div class="col-12 col-xl-8">
+                    <div class="health-panel">
+                        <div class="health-panel-header">
+                            <div>
+                                <h2 class="health-panel-title">Situação por regional</h2>
+                                <p class="health-panel-description">Quantidade de insumos em cada faixa de saúde.</p>
+                            </div>
+                        </div>
+                        <div class="health-chart-wrapper" id="healthRegionalChartWrapper">
+                            <canvas id="healthRegionalChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-4">
+                    <div class="health-panel">
+                        <div class="health-panel-header">
+                            <div>
+                                <h2 class="health-panel-title">Distribuição geral</h2>
+                                <p class="health-panel-description">Composição do estoque monitorado.</p>
+                            </div>
+                        </div>
+                        <div class="health-chart-wrapper">
+                            <canvas id="healthDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Saúde por regional</h2>
+                    <p class="text-secondary small mb-0">Cada cartão representa o saldo consolidado da regional.</p>
+                </div>
+                <span class="text-secondary small">{{ resumo.total_bases }} regional(is) no resultado</span>
+            </div>
+
+            {% if regionais %}
+                <div class="row g-3">
+                    {% for regional in regionais %}
+                        <div class="col-12 col-md-6 col-xxl-4">
+                            <article class="regional-health-card status-{{ regional.situacao.codigo }}">
+                                <header class="d-flex justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <h3 class="regional-title">{{ regional.nome }}</h3>
+                                        <div class="regional-company">{{ regional.empresa }}</div>
+                                    </div>
+                                    <span class="regional-status status-{{ regional.situacao.codigo }}">
+                                        <i class="bi {{ regional.situacao.icone }}"></i>
+                                        {{ regional.situacao.label }}
+                                    </span>
+                                </header>
+
+                                <div class="regional-score">
+                                    {% if regional.tem_saude_calculada %}
+                                        <strong>{{ regional.saude|floatformat:1 }}%</strong>
+                                        <span>de saúde</span>
+                                    {% elif regional.tem_dados %}
+                                        <strong>—</strong>
+                                        <span>sem parâmetros</span>
+                                    {% else %}
+                                        <strong>—</strong>
+                                        <span>sem movimentações</span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="regional-progress">
+                                    <div class="regional-progress-bar" style="width: {{ regional.saude_largura }}%;"></div>
+                                </div>
+
+                                <div class="regional-breakdown">
+                                    <div class="regional-breakdown-item">
+                                        <strong>{{ regional.saudavel }}</strong>
+                                        <span>Saudáveis</span>
+                                    </div>
+                                    <div class="regional-breakdown-item">
+                                        <strong>{{ regional.atencao }}</strong>
+                                        <span>Atenção</span>
+                                    </div>
+                                    <div class="regional-breakdown-item">
+                                        <strong>{{ regional.critico }}</strong>
+                                        <span>Críticos</span>
+                                    </div>
+                                    <div class="regional-breakdown-item">
+                                        <strong>{{ regional.zerado }}</strong>
+                                        <span>Zerados</span>
+                                    </div>
+                                    <div class="regional-breakdown-item">
+                                        <strong>{{ regional.sem_parametro }}</strong>
+                                        <span>Sem parâmetro</span>
+                                    </div>
+                                </div>
+
+                                <footer class="d-flex justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <div class="small text-secondary">Valor estimado</div>
+                                        <strong>R$ {{ regional.valor_estoque|floatformat:2 }}</strong>
+                                    </div>
+                                    <a
+                                        class="btn btn-sm btn-outline-dark"
+                                        href="{% url 'insumos:estoque_insumos' %}?empresa={{ regional.empresa_id }}&base={{ regional.id }}"
+                                    >
+                                        Ver estoque
+                                        <i class="bi bi-arrow-right ms-1"></i>
+                                    </a>
+                                </footer>
+                            </article>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="health-panel health-empty-state">
+                    <i class="bi bi-building-x"></i>
+                    <h3 class="h6 fw-bold">Nenhuma regional encontrada</h3>
+                    <p class="mb-0">Revise os filtros selecionados.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="health-panel">
+            <div class="health-panel-header">
+                <div>
+                    <h2 class="health-panel-title">Insumos que precisam de atenção imediata</h2>
+                    <p class="health-panel-description">Até 15 itens com saldo crítico ou zerado.</p>
+                </div>
+                <span class="badge text-bg-light border">{{ itens_criticos|length }} exibido(s)</span>
+            </div>
+
+            {% if itens_criticos %}
+                <div class="table-responsive">
+                    <table class="table critical-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Situação</th>
+                                <th>Insumo</th>
+                                <th>Regional</th>
+                                <th class="text-end">Saldo</th>
+                                <th class="text-end">Ocupação</th>
+                                <!--th class="text-end">Referência</th-->
+                                <!--th class="text-end">Falta p/ 70%</th-->
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens_criticos %}
+                                <tr>
+                                    <td>
+                                        {% if item.status == "zerado" %}
+                                            <span class="status-badge status-badge--empty">
+                                                <i class="bi bi-x-circle-fill"></i>
+                                                Zerado
+                                            </span>
+                                        {% else %}
+                                            <span class="status-badge status-badge--critical">
+                                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                                Crítico
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="critical-item-name">{{ item.insumo }}</div>
+                                        <div class="critical-item-meta">{{ item.categoria }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ item.base }}</div>
+                                        <div class="critical-item-meta">{{ item.empresa }}</div>
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        {{ item.saldo|floatformat:2 }} {{ item.unidade }}
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        {% if item.tem_percentual %}
+                                            {{ item.percentual|floatformat:1 }}%
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <!--
+                                    <td class="text-end">
+                                        {% if item.tem_referencia %}
+                                            {{ item.referencia|floatformat:2 }}
+                                            {% if item.referencia_inferida %}
+                                                <div class="critical-item-meta">inferida pelo mínimo</div>
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    -->
+                                    <!--
+                                    <td class="text-end text-danger fw-semibold">
+                                        {% if item.tem_deficit %}
+                                            {{ item.deficit|floatformat:2 }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    -->
+                                    <td class="text-end">
+                                        <a
+                                            class="btn btn-sm btn-outline-secondary"
+                                            href="{% url 'insumos:estoque_insumos' %}?empresa={{ item.empresa_id }}&base={{ item.base_id }}"
+                                            title="Abrir estoque da regional"
+                                        >
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="health-empty-state">
+                    <i class="bi bi-check-circle"></i>
+                    <h3 class="h6 fw-bold">Nenhum insumo crítico</h3>
+                    <p class="mb-0">Não existem itens críticos ou zerados no escopo atual.</p>
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+{{ grafico_saude_regionais|json_script:"grafico-saude-regionais" }}
+{{ grafico_distribuicao|json_script:"grafico-distribuicao" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const empresaSelect = document.getElementById("filtroEmpresa");
+    const baseSelect = document.getElementById("filtroBase");
+
+    function atualizarBasesDisponiveis() {
+        if (!empresaSelect || !baseSelect) return;
+
+        const empresaSelecionada = empresaSelect.value;
+        const baseSelecionada = baseSelect.value;
+        let baseAindaDisponivel = !baseSelecionada;
+
+        Array.from(baseSelect.options).forEach(function (option) {
+            if (!option.value) {
+                option.hidden = false;
+                option.disabled = false;
+                return;
+            }
+
+            const pertenceEmpresa = (
+                !empresaSelecionada ||
+                option.dataset.empresa === empresaSelecionada
+            );
+
+            option.hidden = !pertenceEmpresa;
+            option.disabled = !pertenceEmpresa;
+
+            if (pertenceEmpresa && option.value === baseSelecionada) {
+                baseAindaDisponivel = true;
+            }
+        });
+
+        if (!baseAindaDisponivel) {
+            baseSelect.value = "";
+        }
+    }
+
+    if (empresaSelect) {
+        empresaSelect.addEventListener("change", atualizarBasesDisponiveis);
+    }
+
+    atualizarBasesDisponiveis();
+
+    const regionalDataElement = document.getElementById("grafico-saude-regionais");
+    const distributionDataElement = document.getElementById("grafico-distribuicao");
+
+    if (!regionalDataElement || !distributionDataElement || typeof Chart === "undefined") {
+        return;
+    }
+
+    const regionalData = JSON.parse(regionalDataElement.textContent);
+    const distributionData = JSON.parse(distributionDataElement.textContent);
+    const regionalCanvas = document.getElementById("healthRegionalChart");
+
+    if (regionalCanvas && regionalData.labels.length) {
+        const wrapper = document.getElementById("healthRegionalChartWrapper");
+
+        if (wrapper) {
+            wrapper.style.height = `${Math.max(340, regionalData.labels.length * 46)}px`;
+        }
+
+        new Chart(regionalCanvas, {
+            type: "bar",
+            data: {
+                labels: regionalData.labels,
+                datasets: [
+                    {
+                        label: "Saudáveis",
+                        data: regionalData.saudavel,
+                        backgroundColor: "#198754",
+                        borderRadius: 4
+                    },
+                    {
+                        label: "Atenção",
+                        data: regionalData.atencao,
+                        backgroundColor: "#f0ad4e",
+                        borderRadius: 4
+                    },
+                    {
+                        label: "Críticos",
+                        data: regionalData.critico,
+                        backgroundColor: "#dc3545",
+                        borderRadius: 4
+                    },
+                    {
+                        label: "Zerados",
+                        data: regionalData.zerado,
+                        backgroundColor: "#9f1239",
+                        borderRadius: 4
+                    },
+                    {
+                        label: "Sem parâmetro",
+                        data: regionalData.sem_parametro,
+                        backgroundColor: "#6c757d",
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: "y",
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 18
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            footer: function (items) {
+                                const total = items.reduce(function (accumulator, item) {
+                                    return accumulator + Number(item.raw || 0);
+                                }, 0);
+                                return `Total monitorado: ${total}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                        grid: { color: "rgba(100, 116, 139, 0.12)" }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    const distributionCanvas = document.getElementById("healthDistributionChart");
+    const distributionTotal = distributionData.valores.reduce(function (accumulator, value) {
+        return accumulator + Number(value || 0);
+    }, 0);
+
+    if (distributionCanvas && distributionTotal > 0) {
+        new Chart(distributionCanvas, {
+            type: "doughnut",
+            data: {
+                labels: distributionData.labels,
+                datasets: [{
+                    data: distributionData.valores,
+                    backgroundColor: [
+                        "#198754",
+                        "#f0ad4e",
+                        "#dc3545",
+                        "#9f1239",
+                        "#6c757d"
+                    ],
+                    borderColor: "#ffffff",
+                    borderWidth: 3,
+                    hoverOffset: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "67%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 16
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const value = Number(context.raw || 0);
+                                const percentage = (value / distributionTotal * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

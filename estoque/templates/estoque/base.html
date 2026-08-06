@@ -145,6 +145,17 @@
                             </a>
 
                         </li>
+                        {% if perfil.role == "admin" and request.user.username != "jose.barboza" %}
+                        <li>
+                            <a
+                                class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}"
+                                href="{% url 'insumos:dashboard_saude_insumos' %}"
+                            >
+                                <i class="bi bi-heart-pulse"></i>
+                                Saúde dos insumos
+                            </a>
+                        </li>
+                        {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
                         <!--
                         <li>
