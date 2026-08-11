@@ -2,17 +2,16 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from django.conf import settings
-from django.conf.urls.static import static
-from django.templatetags.static import static as static_url
 from django.views.generic import RedirectView
-from django.urls import re_path
-from django.views.static import serve
-import os
+
+from core import health
 
 urlpatterns = [
+    path('health/live/', health.live, name='health_live'),
+    path('health/ready/', health.ready, name='health_ready'),
     path(
         'favicon.ico',
-        RedirectView.as_view(url=static_url('images/favicon.svg'), permanent=False),
+        RedirectView.as_view(url=f'{settings.STATIC_URL}images/favicon.svg', permanent=False),
     ),
     path('admin/', admin.site.urls),
     path('', include('estoque.urls')),
@@ -24,16 +23,7 @@ urlpatterns = [
     path('auditorias/', include('auditorias.urls')),
 ]
 
-urlpatterns += [
-    re_path(
-        r"^media/comunicados/(?P<path>.*)$",
-        serve,
-        {
-            "document_root": os.path.join(
-                settings.MEDIA_ROOT,
-                "comunicados",
-            )
-        },
-        name="servir_arquivo_comunicado",
-    ),
-]
+if settings.DEBUG:
+    from django.conf.urls.static import static
+
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

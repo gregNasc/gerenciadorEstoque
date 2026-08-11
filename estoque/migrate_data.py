@@ -3,19 +3,16 @@ import os
 import django
 
 # Configurar Django
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gerenciadorEstoque.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "estoque_django.settings")
 django.setup()
 
 from estoque.models import Produto, Descricao, HistoricoTransferencia, Sick
 
 # Conectar no PostgreSQL
-conn = psycopg2.connect(
-    dbname="estoque",
-    user="postgres",
-    password="admininventory",
-    host="localhost",
-    port=5432
-)
+legacy_database_url = os.getenv('LEGACY_DATABASE_URL', '').strip()
+if not legacy_database_url:
+    raise RuntimeError('LEGACY_DATABASE_URL deve ser configurada para executar esta migração legada.')
+conn = psycopg2.connect(legacy_database_url)
 cursor = conn.cursor()
 
 # ---------- Migrar descricoes ----------

@@ -1,13 +1,38 @@
 import hashlib
 import hmac
 import json
+import mimetypes
+from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.http import FileResponse, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import ComunicadoEntrega
+from .models import ComunicadoArquivo, ComunicadoEntrega
+
+
+@login_required
+def baixar_arquivo_comunicado(request, arquivo_id):
+    perfil = getattr(request.user, 'perfil', None)
+    empresa_id = perfil.empresa_id if perfil else None
+    escopo = ComunicadoArquivo.objects.select_related('comunicado').filter(
+        Q(comunicado__enviar_para_todos=True)
+        | Q(comunicado__usuarios=request.user)
+        | Q(comunicado__empresa_id=empresa_id)
+    ).distinct()
+    arquivo = get_object_or_404(escopo, pk=arquivo_id)
+    nome = Path(arquivo.arquivo.name).name
+    content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    return FileResponse(
+        arquivo.arquivo.open('rb'),
+        as_attachment=True,
+        filename=nome,
+        content_type=content_type,
+    )
 
 
 def _assinatura_valida(request):

@@ -219,7 +219,7 @@
 
                     <div class="col-md-6 col-xl-4">
 
-                        <a href="{{ arquivo.arquivo.url }}"
+                        <a href="{% url 'estoque:baixar_arquivo_comunicado' arquivo.id %}"
                            target="_blank"
                            class="text-decoration-none">
 

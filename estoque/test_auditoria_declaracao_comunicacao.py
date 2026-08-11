@@ -5,11 +5,14 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from estoque.models import (
     Base,
     Comunicado,
+    ComunicadoArquivo,
     ComunicadoEntrega,
     DeclaracaoCorreios,
     Emprestimo,
@@ -142,3 +145,35 @@ class EstoqueNovasFuncionalidadesTests(TestCase):
         ComunicacaoDispatcher.criar_entregas(comunicado.pk)
         self.assertTrue(comunicado.entregas.filter(canal=ComunicadoEntrega.Canal.SISTEMA).exists())
         self.assertFalse(comunicado.entregas.filter(canal=ComunicadoEntrega.Canal.WHATSAPP).exists())
+
+    @override_settings(MEDIA_ROOT=tempfile.gettempdir())
+    def test_anexo_de_comunicado_exige_autenticacao_e_escopo(self):
+        comunicado = Comunicado.objects.create(
+            titulo='Documento restrito',
+            mensagem='Teste',
+            criado_por=self.user,
+            empresa=self.empresa,
+        )
+        comunicado.usuarios.add(self.user)
+        anexo = ComunicadoArquivo.objects.create(
+            comunicado=comunicado,
+            arquivo=SimpleUploadedFile('restrito.txt', b'conteudo-restrito'),
+        )
+        self.addCleanup(anexo.arquivo.delete, False)
+        url = reverse('estoque:baixar_arquivo_comunicado', args=[anexo.pk])
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+
+        outra_empresa = Empresa.objects.create(nome='Outra empresa')
+        intruso = User.objects.create_user('intruso', password='teste')
+        intruso.perfil.empresa = outra_empresa
+        intruso.perfil.save(update_fields=['empresa'])
+        self.client.force_login(intruso)
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+        self.client.force_login(self.user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b''.join(response.streaming_content), b'conteudo-restrito')
+        self.assertIn('attachment;', response.headers['Content-Disposition'])

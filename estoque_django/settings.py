@@ -12,6 +12,18 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
+
+def env_bool(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in {
+        '1', 'true', 'yes', 'on',
+    }
+
+
+def env_list(name, default=''):
+    return [item.strip() for item in os.getenv(name, default).split(',') if item.strip()]
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,14 +34,22 @@ LOCALE_PATHS = [
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'unsafe-key')
+ENVIRONMENT = os.getenv('DJANGO_ENVIRONMENT', 'development').strip().lower()
+DEBUG = env_bool('DEBUG', ENVIRONMENT == 'development')
 
-# O runserver precisa do modo de desenvolvimento para servir os arquivos
-# encontrados pelos staticfiles. Em produção, defina DEBUG=False no ambiente.
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+SECRET_KEY = os.getenv('SECRET_KEY', '').strip()
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-development-only-key'
+    else:
+        raise ImproperlyConfigured('SECRET_KEY deve ser configurada fora do modo de desenvolvimento.')
 
-ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = env_list(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1,[::1]' if DEBUG else '',
+)
+if not DEBUG and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured('ALLOWED_HOSTS deve ser configurado em produção.')
 
 LOGIN_URL = 'estoque:login'
 LOGIN_REDIRECT_URL = 'estoque:index'
@@ -38,23 +58,37 @@ LOGOUT_REDIRECT_URL = 'estoque:login'
 #Database
 import dj_database_url
 
-DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
+DATABASE_CONN_MAX_AGE = int(os.getenv('DATABASE_CONN_MAX_AGE', '600'))
+DATABASE_HEALTH_CHECKS = env_bool('DATABASE_HEALTH_CHECKS', True)
+DATABASE_SSL_REQUIRED = env_bool('DATABASE_SSL_REQUIRED', not DEBUG)
 
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=DATABASE_CONN_MAX_AGE,
+            conn_health_checks=DATABASE_HEALTH_CHECKS,
+        )
     }
 else:
+    if not DEBUG:
+        raise ImproperlyConfigured('DATABASE_URL deve ser configurada em produção.')
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('POSTGRES_DB', 'estoque_render_dump'),
             'USER': os.getenv('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'admininventory'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
             'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
             'PORT': os.getenv('POSTGRES_PORT', '5432'),
+            'CONN_MAX_AGE': DATABASE_CONN_MAX_AGE,
+            'CONN_HEALTH_CHECKS': DATABASE_HEALTH_CHECKS,
         }
     }
+
+if DATABASE_SSL_REQUIRED and DATABASES['default']['ENGINE'] != 'django.db.backends.sqlite3':
+    DATABASES['default'].setdefault('OPTIONS', {}).setdefault('sslmode', 'require')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -149,14 +183,48 @@ LANGUAGES = [
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT') or BASE_DIR / 'media')
+
+USE_S3 = env_bool('USE_S3', False)
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+            if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
     },
 }
+
+if USE_S3:
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '').strip()
+    if not AWS_STORAGE_BUCKET_NAME:
+        raise ImproperlyConfigured('AWS_STORAGE_BUCKET_NAME deve ser configurado quando USE_S3=True.')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'sa-east-1')
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL') or None
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN') or None
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = True
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_OBJECT_PARAMETERS = {'ServerSideEncryption': 'AES256'}
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': AWS_STORAGE_BUCKET_NAME,
+            'region_name': AWS_S3_REGION_NAME,
+            'endpoint_url': AWS_S3_ENDPOINT_URL,
+            'custom_domain': AWS_S3_CUSTOM_DOMAIN,
+            'default_acl': None,
+            'querystring_auth': True,
+            'file_overwrite': False,
+            'object_parameters': AWS_S3_OBJECT_PARAMETERS,
+        },
+    }
+else:
+    STORAGES['default'] = {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -263,12 +331,16 @@ LOGGING = {
 #CSRF_COOKIE_HTTPONLY = False
 #CSRF_USE_SESSIONS = False
 #CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_TRUSTED_ORIGINS = [
-    "https://gerenciadorestoque.onrender.com",
-]
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', not DEBUG)
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
 EMAIL_BACKEND = os.getenv(
     'EMAIL_BACKEND',
@@ -287,10 +359,3 @@ DEFAULT_FROM_EMAIL = os.getenv(
     'DEFAULT_FROM_EMAIL',
     EMAIL_HOST_USER or 'nao-responda@inventory.local',
 )
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = '/var/data/media'
-
-import os
-
-os.makedirs(MEDIA_ROOT, exist_ok=True)

@@ -520,3 +520,6 @@ O ambiente atual atende plenamente às necessidades da Fase 1 e início da Fase 
 A migração para AWS será realizada de forma gradual, preservando a disponibilidade do sistema e preparando a plataforma para novos módulos, integrações e crescimento operacional.
 
 Toda evolução deverá priorizar simplicidade, confiabilidade e facilidade de manutenção.
+
+Para a configuração executável, health checks, homologação e rollback da
+migração planejada, consulte [Preparação do Django para AWS](aws_readiness.md).

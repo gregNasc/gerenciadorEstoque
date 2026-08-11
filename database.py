@@ -1,14 +1,15 @@
 import psycopg2
 import json
+import os
 from datetime import datetime
 
 # ---------- CONFIGURAÇÃO DO POSTGRESQL ----------
 DB_PARAMS = {
-    'dbname': 'estoque',
-    'user': 'postgres',
-    'password': 'admininventory',
-    'host': 'localhost',
-    'port': 5432
+    'dbname': os.getenv('LEGACY_POSTGRES_DB', 'estoque'),
+    'user': os.getenv('LEGACY_POSTGRES_USER', 'postgres'),
+    'password': os.getenv('LEGACY_POSTGRES_PASSWORD', ''),
+    'host': os.getenv('LEGACY_POSTGRES_HOST', 'localhost'),
+    'port': int(os.getenv('LEGACY_POSTGRES_PORT', '5432')),
 }
 
 def conectar():
