@@ -1,7 +1,10 @@
+from asgiref.sync import async_to_sync
+from channels.routing import URLRouter
+from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -17,6 +20,7 @@ from chamados.models import (
     PendenciaVinculoLider,
 )
 from chamados.policies import ChamadoAccessPolicy, GruposChamados
+from chamados.routing import websocket_urlpatterns
 from chamados.services import ChamadoService
 from estoque.models import Base, Comunicado, Empresa, Equipamento, Perfil, Produto, Sick
 from insumos.models import Cliente, Inventario
@@ -322,3 +326,64 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(resultado, self.solicitante)
         self.assertEqual(self.inventario.lider_usuario, self.solicitante)
         self.assertTrue(self.inventario.historico_vinculos_lider.exists())
+
+
+class ChamadoWebSocketTests(TransactionTestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa WebSocket')
+        self.base = Base.objects.create(empresa=self.empresa, nome='Base WebSocket')
+        self.outra_base = Base.objects.create(empresa=self.empresa, nome='Base Sem Acesso')
+        self.usuario = User.objects.create_user('usuario_ws', password='SenhaForte123!')
+        self.usuario.perfil.empresa = self.empresa
+        self.usuario.perfil.role = Perfil.Role.OPERADOR
+        self.usuario.perfil.save()
+        self.usuario.perfil.regionais.add(self.base)
+        self.intruso = User.objects.create_user('intruso_ws', password='SenhaForte123!')
+        self.intruso.perfil.empresa = self.empresa
+        self.intruso.perfil.role = Perfil.Role.OPERADOR
+        self.intruso.perfil.save()
+        self.intruso.perfil.regionais.add(self.outra_base)
+        cliente = Cliente.objects.create(sigla='WSC', nome='Cliente WebSocket')
+        inventario = Inventario.objects.create(
+            cliente=cliente, loja='Loja WebSocket', base=self.base,
+            data_inicio=timezone.localdate(), criado_por=self.usuario,
+            lider='Usuário WS', lider_usuario=self.usuario,
+        )
+        categoria = CategoriaChamado.objects.get(nome='OUTRO')
+        self.chamado = ChamadoService.abrir(
+            usuario=self.usuario, base=self.base, inventario=inventario,
+            equipamento=None, categoria=categoria, loja='Loja WebSocket',
+            lider='Usuário WS', titulo='Teste de chat',
+            descricao='Validar conversa em tempo real.',
+            prioridade=Chamado.Prioridade.NORMAL,
+        )
+
+    def test_chat_e_vinculado_ao_chamado_e_respeita_acesso(self):
+        async def cenario():
+            aplicacao = URLRouter(websocket_urlpatterns)
+            autorizado = WebsocketCommunicator(
+                aplicacao, f'/ws/chamados/{self.chamado.pk}/'
+            )
+            autorizado.scope['user'] = self.usuario
+            conectado, _ = await autorizado.connect()
+            self.assertTrue(conectado)
+            await autorizado.send_json_to({'tipo': 'mensagem', 'texto': 'Olá pelo chat'})
+            resposta = await autorizado.receive_json_from(timeout=3)
+            self.assertEqual(resposta['tipo'], 'mensagem')
+            self.assertEqual(resposta['item']['texto'], 'OLÁ PELO CHAT')
+            await autorizado.disconnect()
+
+            intruso = WebsocketCommunicator(
+                aplicacao, f'/ws/chamados/{self.chamado.pk}/'
+            )
+            intruso.scope['user'] = self.intruso
+            conectado, codigo = await intruso.connect()
+            self.assertFalse(conectado)
+            self.assertEqual(codigo, 4403)
+
+        async_to_sync(cenario)()
+        self.assertTrue(
+            ChamadoMensagem.objects.filter(
+                chamado=self.chamado, autor=self.usuario, texto='OLÁ PELO CHAT'
+            ).exists()
+        )

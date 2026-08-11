@@ -1,5 +1,14 @@
 {% extends 'estoque/base.html' %}
 {% block title %}{{ chamado.protocolo }}{% endblock %}
+{% block extra_css %}
+<style>
+  .chamado-chat { min-height: 28rem; }
+  .chamado-chat__mensagens { max-height: 34rem; overflow-y: auto; background: #f6f8fb; }
+  .chamado-chat__item { max-width: 88%; }
+  .chamado-chat__item--proprio { margin-left: auto; border-color: var(--bs-primary-border-subtle); background: var(--bs-primary-bg-subtle); }
+  .chamado-chat__item--interno { border-color: var(--bs-warning-border-subtle); background: var(--bs-warning-bg-subtle); }
+</style>
+{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
   <div><div class="text-secondary">{{ chamado.protocolo }}</div><h1 class="h3 mb-1">{{ chamado.titulo }}</h1><div>{{ chamado.base.nome }}{% if chamado.loja %} · Loja {{ chamado.loja }}{% endif %}</div></div>
@@ -8,9 +17,21 @@
 <div class="row g-3">
   <div class="col-xl-8">
     <div class="card mb-3"><div class="card-body"><div class="d-flex flex-wrap gap-2 mb-3"><span class="badge text-bg-dark">{{ chamado.get_status_display }}</span><span class="badge text-bg-secondary">{{ chamado.get_prioridade_display }}</span>{% if chamado.sla_vencido %}<span class="badge text-bg-danger">SLA vencido</span>{% endif %}</div><p class="mb-0" style="white-space:pre-wrap">{{ chamado.descricao }}</p></div></div>
-    <h2 class="h5">Conversas e registros</h2>
-    {% for item in mensagens_chamado %}<div class="card mb-2 {% if item.nota_interna %}border-warning{% endif %}"><div class="card-body"><div class="d-flex justify-content-between"><strong>{{ item.autor.get_full_name|default:item.autor.username }}</strong><small class="text-secondary">{{ item.criado_em|date:'d/m/Y H:i' }}</small></div>{% if item.nota_interna %}<span class="badge text-bg-warning mb-2">Nota interna</span>{% endif %}<div style="white-space:pre-wrap">{{ item.texto }}</div>{% for anexo in item.anexos.all %}<a class="btn btn-sm btn-outline-secondary mt-2" href="{% url 'chamados:baixar_anexo' anexo.pk %}"><i class="bi bi-paperclip"></i> {{ anexo.nome_original }}</a>{% endfor %}</div></div>{% empty %}<div class="text-secondary mb-3">Ainda não há mensagens.</div>{% endfor %}
-    {% if pode_interagir %}<form class="card card-body" method="post" enctype="multipart/form-data" action="{% url 'chamados:mensagem' chamado.pk %}">{% csrf_token %}<label class="form-label">Nova mensagem</label>{{ mensagem_form.texto }}<div class="row g-2 mt-1"><div class="col-md-8">{{ mensagem_form.anexo }}</div>{% if pode_atender %}<div class="col-md-4 form-check pt-2">{{ mensagem_form.nota_interna }} <label class="form-check-label" for="{{ mensagem_form.nota_interna.id_for_label }}">Nota interna</label></div>{% endif %}</div><div class="text-end mt-2"><button class="btn btn-primary">Enviar</button></div></form>{% endif %}
+    <section class="card chamado-chat" aria-labelledby="titulo-chat-chamado">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div><h2 class="h5 mb-0" id="titulo-chat-chamado"><i class="bi bi-chat-dots"></i> Chat do chamado</h2><small class="text-secondary">Conversa vinculada a {{ chamado.protocolo }}.</small></div>
+        <span id="chat-status" class="badge text-bg-secondary">Conectando</span>
+      </div>
+      <div id="chat-mensagens" class="card-body chamado-chat__mensagens" aria-live="polite">
+        <div id="chat-vazio" class="text-secondary text-center py-5 {% if mensagens_chamado %}d-none{% endif %}">Ainda não há mensagens.</div>
+        {% for item in mensagens_chamado %}
+          <article class="card chamado-chat__item mb-2 {% if item.autor_id == request.user.id %}chamado-chat__item--proprio{% endif %} {% if item.nota_interna %}chamado-chat__item--interno{% endif %}" data-mensagem-id="{{ item.pk }}">
+            <div class="card-body py-2"><div class="d-flex justify-content-between gap-3"><strong>{{ item.autor.get_full_name|default:item.autor.username }}</strong><small class="text-secondary text-nowrap">{{ item.criado_em|date:'d/m/Y H:i' }}</small></div>{% if item.nota_interna %}<span class="badge text-bg-warning mb-2">Nota interna</span>{% endif %}<div style="white-space:pre-wrap">{{ item.texto }}</div>{% for anexo in item.anexos.all %}<a class="btn btn-sm btn-outline-secondary mt-2" href="{% url 'chamados:baixar_anexo' anexo.pk %}"><i class="bi bi-paperclip"></i> {{ anexo.nome_original }}</a>{% endfor %}</div>
+          </article>
+        {% endfor %}
+      </div>
+      {% if pode_interagir %}<form id="chat-form" class="card-footer" method="post" enctype="multipart/form-data" action="{% url 'chamados:mensagem' chamado.pk %}" data-ws-path="/ws/chamados/{{ chamado.pk }}/" data-user-id="{{ request.user.id }}">{% csrf_token %}<label class="form-label" for="{{ mensagem_form.texto.id_for_label }}">Nova mensagem</label>{{ mensagem_form.texto }}<div class="row g-2 mt-1"><div class="col-md-8">{{ mensagem_form.anexo }}</div>{% if pode_atender %}<div class="col-md-4 form-check pt-2">{{ mensagem_form.nota_interna }} <label class="form-check-label" for="{{ mensagem_form.nota_interna.id_for_label }}">Nota interna</label></div>{% endif %}</div><div class="d-flex justify-content-between align-items-center mt-2"><small class="text-secondary">Com anexo, o envio seguro usa o formulário normal.</small><button class="btn btn-primary"><i class="bi bi-send"></i> Enviar</button></div></form>{% endif %}
+    </section>
   </div>
   <div class="col-xl-4">
     <div class="card mb-3"><div class="card-header fw-semibold">Informações</div><div class="card-body"><dl class="row mb-0"><dt class="col-5">Inventário</dt><dd class="col-7">{{ chamado.inventario|default:'—' }}</dd><dt class="col-5">Equipamento</dt><dd class="col-7">{{ chamado.equipamento|default:'—' }}</dd><dt class="col-5">Categoria</dt><dd class="col-7">{{ chamado.categoria.nome }}</dd><dt class="col-5">Aberto por</dt><dd class="col-7">{{ chamado.aberto_por.get_full_name|default:chamado.aberto_por.username }}</dd><dt class="col-5">Atendente</dt><dd class="col-7">{% if chamado.atendente %}{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}{% else %}—{% endif %}</dd><dt class="col-5">Abertura</dt><dd class="col-7">{{ chamado.aberto_em|date:'d/m/Y H:i' }}</dd><dt class="col-5">Prazo SLA</dt><dd class="col-7">{{ chamado.prazo_sla_em|date:'d/m/Y H:i'|default:'—' }}</dd><dt class="col-5">Líder</dt><dd class="col-7">{{ chamado.lider|default:'—' }}</dd><dt class="col-5">SICK</dt><dd class="col-7">{% if chamado.sick %}#{{ chamado.sick.pk }}{% else %}—{% endif %}</dd></dl></div></div>
@@ -23,4 +44,84 @@
     {% if ordens %}<div class="card"><div class="card-header fw-semibold">Ordens de serviço vinculadas</div><div class="list-group list-group-flush">{% for ordem in ordens %}<a class="list-group-item list-group-item-action" href="{% url 'ordens_servico:detalhe' ordem.pk %}">{{ ordem.numero }} · {{ ordem.get_status_display }}</a>{% endfor %}</div></div>{% endif %}
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('chat-form');
+  const lista = document.getElementById('chat-mensagens');
+  const status = document.getElementById('chat-status');
+  if (!form || !lista || !window.WebSocket) return;
+
+  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const socket = new WebSocket(`${scheme}://${window.location.host}${form.dataset.wsPath}`);
+  const userId = Number(form.dataset.userId);
+  const texto = form.querySelector('[name="texto"]');
+  const anexo = form.querySelector('[name="anexo"]');
+  const notaInterna = form.querySelector('[name="nota_interna"]');
+
+  function mudarStatus(rotulo, classe) {
+    status.textContent = rotulo;
+    status.className = `badge ${classe}`;
+  }
+  function rolar() { lista.scrollTop = lista.scrollHeight; }
+  function adicionar(item) {
+    if (lista.querySelector(`[data-mensagem-id="${item.id}"]`)) return;
+    document.getElementById('chat-vazio')?.classList.add('d-none');
+    const artigo = document.createElement('article');
+    artigo.dataset.mensagemId = item.id;
+    artigo.className = 'card chamado-chat__item mb-2';
+    if (Number(item.autor_id) === userId) artigo.classList.add('chamado-chat__item--proprio');
+    if (item.nota_interna) artigo.classList.add('chamado-chat__item--interno');
+    const corpo = document.createElement('div');
+    corpo.className = 'card-body py-2';
+    const cabecalho = document.createElement('div');
+    cabecalho.className = 'd-flex justify-content-between gap-3';
+    const autor = document.createElement('strong');
+    autor.textContent = item.autor;
+    const data = document.createElement('small');
+    data.className = 'text-secondary text-nowrap';
+    data.textContent = item.criado_em;
+    cabecalho.append(autor, data);
+    corpo.appendChild(cabecalho);
+    if (item.nota_interna) {
+      const badge = document.createElement('span');
+      badge.className = 'badge text-bg-warning mb-2';
+      badge.textContent = 'Nota interna';
+      corpo.appendChild(badge);
+    }
+    const mensagem = document.createElement('div');
+    mensagem.style.whiteSpace = 'pre-wrap';
+    mensagem.textContent = item.texto;
+    corpo.appendChild(mensagem);
+    artigo.appendChild(corpo);
+    lista.appendChild(artigo);
+    rolar();
+  }
+
+  socket.addEventListener('open', () => mudarStatus('Online', 'text-bg-success'));
+  socket.addEventListener('close', () => mudarStatus('Modo formulário', 'text-bg-secondary'));
+  socket.addEventListener('error', () => mudarStatus('Modo formulário', 'text-bg-secondary'));
+  socket.addEventListener('message', function (event) {
+    const payload = JSON.parse(event.data);
+    if (payload.tipo === 'mensagem') adicionar(payload.item);
+    if (payload.tipo === 'erro') mudarStatus(payload.mensagem, 'text-bg-danger');
+  });
+  form.addEventListener('submit', function (event) {
+    if (socket.readyState !== WebSocket.OPEN || (anexo && anexo.files.length)) return;
+    event.preventDefault();
+    const valor = texto.value.trim();
+    if (!valor) return;
+    socket.send(JSON.stringify({tipo: 'mensagem', texto: valor, nota_interna: Boolean(notaInterna?.checked)}));
+    texto.value = '';
+  });
+  texto.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      form.requestSubmit();
+    }
+  });
+  rolar();
+});
+</script>
 {% endblock %}

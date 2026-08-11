@@ -95,6 +95,7 @@ if DATABASE_SSL_REQUIRED and DATABASES['default']['ENGINE'] != 'django.db.backen
     DATABASES['default'].setdefault('OPTIONS', {}).setdefault('sslmode', 'require')
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -148,6 +149,22 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'estoque_django.wsgi.application'
+ASGI_APPLICATION = 'estoque_django.asgi.application'
+
+CHANNEL_REDIS_URL = os.getenv('CHANNEL_REDIS_URL', '').strip()
+if CHANNEL_REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [CHANNEL_REDIS_URL]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
