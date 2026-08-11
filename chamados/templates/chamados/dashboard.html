@@ -1,0 +1,14 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Dashboard de chamados{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h3 mb-1">Dashboard de chamados</h1><p class="text-secondary mb-0">Indicadores operacionais no seu escopo de acesso.</p></div><a class="btn btn-outline-secondary" href="{% url 'chamados:lista' %}">Ver chamados</a></div>
+<div class="row g-3 mb-3"><div class="col-md-3"><div class="card card-body"><div class="text-secondary">Total</div><div class="display-6">{{ total }}</div></div></div><div class="col-md-3"><div class="card card-body"><div class="text-secondary">Em aberto</div><div class="display-6 text-primary">{{ abertos }}</div></div></div><div class="col-md-3"><div class="card card-body"><div class="text-secondary">Resolvidos</div><div class="display-6 text-success">{{ resolvidos }}</div></div></div><div class="col-md-3"><div class="card card-body"><div class="text-secondary">SLA vencido</div><div class="display-6 text-danger">{{ sla_vencido }}</div></div></div></div>
+<div class="row g-3"><div class="col-lg-4"><div class="card card-body"><h2 class="h6">Por status</h2><div style="height:300px"><canvas id="statusChart"></canvas></div></div></div><div class="col-lg-4"><div class="card card-body"><h2 class="h6">Por categoria</h2><div style="height:300px"><canvas id="categoriaChart"></canvas></div></div></div><div class="col-lg-4"><div class="card card-body"><h2 class="h6">Por base</h2><div style="height:300px"><canvas id="baseChart"></canvas></div></div></div></div>
+{{ por_status|json_script:'por-status' }}{{ por_categoria|json_script:'por-categoria' }}{{ por_base|json_script:'por-base' }}
+{% endblock %}
+{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script>
+function dados(id,label){const rows=JSON.parse(document.getElementById(id).textContent);return {labels:rows.map(x=>x[label]||'NÃO INFORMADO'),datasets:[{data:rows.map(x=>x.total),backgroundColor:['#2563eb','#16a34a','#f59e0b','#dc2626','#7c3aed','#0891b2','#64748b','#db2777'],borderRadius:5}]};}
+new Chart(document.getElementById('statusChart'),{type:'doughnut',data:dados('por-status','status'),options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+new Chart(document.getElementById('categoriaChart'),{type:'bar',data:dados('por-categoria','categoria__nome'),options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+new Chart(document.getElementById('baseChart'),{type:'bar',data:dados('por-base','base__nome'),options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
+</script>{% endblock %}

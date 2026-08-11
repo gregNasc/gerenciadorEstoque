@@ -22,6 +22,8 @@ urlpatterns = [
     path('integracao/', include('integracao.urls')),
     path('auditorias/', include('auditorias.urls')),
     path('ordens-servico/', include('ordens_servico.urls')),
+    path('compras/', include('compras.urls')),
+    path('chamados/', include('chamados.urls')),
 ]
 
 if settings.DEBUG:

@@ -67,7 +67,7 @@ def lista_solicitacoes(request):
         'totais': {item['status']: item['total'] for item in totais},
         'status_choices': SolicitacaoInsumo.STATUS,
         'pode_decidir': _pode_decidir(request.user),
-        'pode_solicitar': request.user.perfil.is_admin or request.user.perfil.is_gestor,
+        'pode_solicitar': request.user.perfil.is_gestor,
         'pode_ver_detalhes_administrativos': (
             _pode_ver_detalhes_administrativos(request.user)
         ),
@@ -78,7 +78,7 @@ def lista_solicitacoes(request):
 
 @login_required
 def criar_solicitacao(request):
-    if not (request.user.perfil.is_admin or request.user.perfil.is_gestor):
+    if not request.user.perfil.is_gestor:
         raise PermissionDenied
 
     form = SolicitacaoInsumoForm(request.POST or None, user=request.user)

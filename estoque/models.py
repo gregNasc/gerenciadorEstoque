@@ -241,12 +241,34 @@ class Produto(models.Model):
     fabricante = models.CharField(max_length=100)
     modelo = models.CharField(max_length=100)
     categoria = models.CharField(max_length=50, choices=CATEGORIAS, db_index=True)
+    nome_resumido = models.CharField(max_length=120, blank=True)
+    sku_fabricante = models.CharField(max_length=100, blank=True, db_index=True)
+    subcategoria = models.CharField(max_length=100, blank=True)
+    unidade_medida = models.CharField(max_length=20, default='UN')
+    quantidade_embalagem = models.DecimalField(max_digits=12, decimal_places=4, default=1)
+    especificacoes_tecnicas = models.JSONField(default=dict, blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.PROTECT, related_name='produtos_criados'
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.descricao
 
 # ---------------- EQUIPAMENTO ----------------
 class Equipamento(models.Model):
+    class OrigemValor(models.TextChoices):
+        DOCUMENTO_COMPRA = 'DOCUMENTO_COMPRA', _('Documento de compra')
+        INFORMADO_COMPRAS = 'INFORMADO_COMPRAS', _('Informado por Compras')
+        ESTIMATIVA_MERCADO = 'ESTIMATIVA_MERCADO', _('Estimativa de mercado')
+        LEGADO_SEM_DOCUMENTO = 'LEGADO_SEM_DOCUMENTO', _('Legado sem documento')
+        SEM_PRECO_VALIDADO = 'SEM_PRECO_VALIDADO', _('Sem preço validado')
+
+    class CondicaoValor(models.TextChoices):
+        NOVO = 'NOVO', _('Novo')
+        USADO = 'USADO', _('Usado')
+        RECONDICIONADO = 'RECONDICIONADO', _('Recondicionado')
     class Finalidade(models.TextChoices):
         OPERACIONAL = 'OPERACIONAL', _('Operacional')
         ADMINISTRATIVO = 'ADMINISTRATIVO', _('Administrativo')
@@ -281,7 +303,27 @@ class Equipamento(models.Model):
         default=Finalidade.OPERACIONAL,
         db_index=True,
     )
-    data_aquisicao = models.DateField(auto_now_add=True)
+    data_aquisicao = models.DateField(default=timezone.localdate)
+    fornecedor = models.ForeignKey(
+        'insumos.FornecedorInsumo', null=True, blank=True, on_delete=models.PROTECT,
+        related_name='equipamentos_fornecidos',
+    )
+    custo_aquisicao = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    preco_referencia = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    origem_valor = models.CharField(
+        max_length=30, choices=OrigemValor.choices, default=OrigemValor.SEM_PRECO_VALIDADO,
+        db_index=True,
+    )
+    condicao_valor = models.CharField(
+        max_length=20, choices=CondicaoValor.choices, default=CondicaoValor.NOVO,
+    )
+    documento_compra = models.CharField(max_length=120, blank=True)
+    garantia_ate = models.DateField(null=True, blank=True)
+    valor_validado_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.PROTECT,
+        related_name='equipamentos_valor_validado',
+    )
+    valor_validado_em = models.DateTimeField(null=True, blank=True)
     foto = models.ImageField(upload_to='equipamentos/', null=True, blank=True)
     data_cadastro = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)

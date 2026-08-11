@@ -41,6 +41,8 @@ from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from estoque.policies.compras import ComprasAccessPolicy
 
 @login_required
 @role_required('admin', 'gestor', 'operador')
@@ -315,6 +317,8 @@ def lista_insumos(request):
 
 @login_required
 def cadastrar_insumo(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissao para registrar entradas de insumos.')
 
     if request.method == 'POST':
 
@@ -390,6 +394,8 @@ def get_lotes_tags_disponiveis(request):
 
 @login_required
 def editar_insumo(request, pk):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissao para editar insumos.')
 
     insumo = get_object_or_404(Insumo, pk=pk)
 

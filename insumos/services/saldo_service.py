@@ -79,7 +79,8 @@ class SaldoInsumoService:
     @staticmethod
     def aplicar_saida(registro, quantidade):
         quantidade = Decimal(str(quantidade))
-        if registro.saldo < quantidade:
-            raise ValueError(f'Estoque insuficiente. Saldo atual: {registro.saldo}')
+        disponivel = registro.saldo - registro.saldo_reservado
+        if disponivel < quantidade:
+            raise ValueError(f'Estoque disponível insuficiente. Saldo disponível: {disponivel}')
         registro.saldo -= quantidade
         registro.save(update_fields=['saldo', 'recalculado_em'])

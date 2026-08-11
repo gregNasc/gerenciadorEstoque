@@ -11,6 +11,7 @@ from estoque.forms import EquipamentoForm
 from estoque.models import Base, Comunicado, Empresa, Equipamento, Historico, Perfil, Produto, Sick
 from estoque.services.sick_service import SickService
 from estoque.policies.compras import GruposCorporativos
+from insumos.constants import GruposInsumos
 
 
 class EquipamentosSickBaseTests(TestCase):
@@ -27,6 +28,10 @@ class EquipamentosSickBaseTests(TestCase):
         self.admin_inativo = self._usuario('admin_inativo_sick', Perfil.Role.ADMIN, ativo=False)
         self.gestor = self._usuario('gestor_sick', Perfil.Role.GESTOR, self.base)
         self.operador = self._usuario('operador_sick', Perfil.Role.OPERADOR, self.base)
+        grupo_matriz, _ = Group.objects.get_or_create(
+            name=GruposCorporativos.SICK_MANUTENCAO,
+        )
+        self.admin.groups.add(grupo_matriz)
         self.equipamento = Equipamento.objects.create(
             produto=self.produto, numero_serie='SERIE-SICK-1', patrimonio='PAT-SICK-1',
             regional=self.base, codigo='EQP-SICK-1', status='ATIVO',
@@ -192,11 +197,17 @@ class FinalidadeEquipamentoTests(EquipamentosSickBaseTests):
 
 class ContextoBaseTests(EquipamentosSickBaseTests):
     def test_usuario_com_uma_base_recebe_contexto_automatico(self):
+        self.gestor.groups.add(Group.objects.get_or_create(name=GruposInsumos.COMPRAS)[0])
         self.client.force_login(self.gestor)
         response = self.client.get(reverse('estoque:cadastrar_equipamento'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['base_selecionada'], self.base)
         self.assertTrue(response.context['form'].fields['regional'].disabled)
+
+    def test_gestor_sem_compras_nao_acessa_cadastro_de_equipamento(self):
+        self.client.force_login(self.gestor)
+        response = self.client.get(reverse('estoque:cadastrar_equipamento'))
+        self.assertEqual(response.status_code, 403)
 
     def test_formulario_rejeita_base_fora_das_regionais(self):
         form = EquipamentoForm({
@@ -338,7 +349,8 @@ class FluxoSickTests(EquipamentosSickBaseTests):
         self.assertFalse(SickService.filtrar_historicos_visiveis(self.admin, historicos_sick).exists())
         comunicado_envio = Comunicado.objects.filter(dados__sick_id=sick.pk).latest('pk')
         self.assertTrue(comunicado_envio.usuarios.filter(pk=self.operador.pk).exists())
-        self.assertFalse(comunicado_envio.usuarios.filter(pk=self.admin.pk).exists())
+        self.assertTrue(comunicado_envio.usuarios.filter(pk=self.admin.pk).exists())
+        self.assertTrue(comunicado_envio.usuarios.filter(pk=self.admin2.pk).exists())
         self.assertFalse(comunicado_envio.usuarios.filter(pk=rafael.pk).exists())
         with self.assertRaises(PermissionDenied):
             SickService.confirmar_retorno(sick_id=sick.pk, usuario=self.admin)

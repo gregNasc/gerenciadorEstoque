@@ -103,6 +103,8 @@ INSTALLED_APPS = [
     'insumos',
     'integracao.apps.IntegracaoConfig',
     'ordens_servico.apps.OrdensServicoConfig',
+    'compras.apps.ComprasConfig',
+    'chamados.apps.ChamadosConfig',
 ]
 
 MIDDLEWARE = [

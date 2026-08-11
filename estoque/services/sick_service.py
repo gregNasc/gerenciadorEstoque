@@ -1,4 +1,5 @@
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
 from django.urls import reverse
@@ -20,12 +21,13 @@ class ComunicadoSickService:
         terceirizada = sick.tipo_destino == Sick.TipoDestino.TERCEIRIZADA
         destinatarios = ComunicadoService.usuarios_por_bases(
             [base_origem],
-            incluir_admins=not terceirizada,
+            incluir_admins=True,
         )
-        if terceirizada:
-            destinatarios = destinatarios.exclude(
-                perfil__role='admin',
-            ).exclude(groups__name=GruposCorporativos.SICK_MANUTENCAO)
+        if not terceirizada:
+            destinatarios = User.objects.filter(is_active=True).filter(
+                Q(pk__in=destinatarios.values('pk'))
+                | Q(groups__name=GruposCorporativos.SICK_MANUTENCAO)
+            ).distinct()
         nome_usuario = usuario.get_full_name() or usuario.get_username()
         dados = {
             'sick_id': sick.pk,
@@ -56,18 +58,17 @@ class ComunicadoSickService:
             mensagem += f'Observação: {observacao}\n'
         mensagem += f'Link: {url}'
 
-        comunicado = Comunicado.objects.create(
+        return ComunicadoService.criar_acao(
             titulo=acao,
             mensagem=mensagem,
             tipo='MANUTENCAO',
-            criado_por=usuario,
+            usuario=usuario,
             empresa=equipamento.regional.empresa,
+            usuarios=destinatarios,
             permitir_limpar=False,
             dados=dados,
             url=url,
         )
-        comunicado.usuarios.set(destinatarios)
-        return comunicado
 
 
 class SickService:
@@ -91,7 +92,7 @@ class SickService:
     def visiveis_para(cls, usuario, queryset=None):
         queryset = queryset if queryset is not None else Sick.objects.all()
         perfil = cls._perfil(usuario)
-        if perfil.is_admin or usuario.groups.filter(
+        if usuario.groups.filter(
             name=GruposCorporativos.SICK_MANUTENCAO,
         ).exists():
             return queryset.exclude(tipo_destino=Sick.TipoDestino.TERCEIRIZADA)
@@ -133,10 +134,14 @@ class SickService:
     def _validar_acesso_sick(cls, usuario, sick):
         if sick.tipo_destino != Sick.TipoDestino.TERCEIRIZADA:
             perfil = cls._perfil(usuario)
-            if perfil.is_admin or usuario.groups.filter(
+            if usuario.groups.filter(
                 name=GruposCorporativos.SICK_MANUTENCAO,
             ).exists():
                 return perfil
+            if perfil.is_admin and sick.tipo_destino == Sick.TipoDestino.MATRIZ:
+                raise PermissionDenied(
+                    'A manutencao na matriz e restrita aos tecnicos autorizados.'
+                )
             return cls._validar_acesso_base(usuario, sick.equipamento)
 
         perfil = cls._perfil(usuario)
@@ -156,6 +161,12 @@ class SickService:
     @classmethod
     def _validar_permissao(cls, usuario, equipamento, *, tipo, permissao=None):
         perfil = cls._perfil(usuario)
+        if tipo == 'manutencao' and not usuario.groups.filter(
+            name=GruposCorporativos.SICK_MANUTENCAO,
+        ).exists():
+            raise PermissionDenied(
+                'A manutencao na matriz e restrita a rafael.ribeiro e jose.barboza.'
+            )
         if perfil.is_admin:
             return
         if tipo == 'manutencao':

@@ -7,3 +7,6 @@ class EstoqueConfig(AppConfig):
 
     def ready(self):
         import estoque.signals
+        from estoque.text_normalization import instalar_normalizacao_caixa_alta
+
+        instalar_normalizacao_caixa_alta()

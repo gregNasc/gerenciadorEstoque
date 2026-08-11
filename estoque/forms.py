@@ -68,7 +68,11 @@ DeclaracaoCorreiosItemFormSet = forms.inlineformset_factory(
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
-        fields = ['codigo', 'descricao', 'fabricante', 'modelo']
+        fields = [
+            'codigo', 'descricao', 'nome_resumido', 'fabricante', 'modelo',
+            'sku_fabricante', 'categoria', 'subcategoria', 'unidade_medida',
+            'quantidade_embalagem', 'especificacoes_tecnicas', 'ativo',
+        ]
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control'}),
             'descricao': forms.TextInput(attrs={'class': 'form-control'}),
@@ -107,7 +111,15 @@ class EquipamentoForm(forms.ModelForm):
             'regional',
             'finalidade',
             'responsavel',
-            'foto'
+            'foto',
+            'data_aquisicao',
+            'fornecedor',
+            'custo_aquisicao',
+            'preco_referencia',
+            'origem_valor',
+            'condicao_valor',
+            'documento_compra',
+            'garantia_ate',
         ]
         widgets = {
             'produto': forms.Select(attrs={'class': 'form-control'}),
@@ -116,6 +128,8 @@ class EquipamentoForm(forms.ModelForm):
             'regional': forms.Select(attrs={'class': 'form-control'}),
             'finalidade': forms.Select(attrs={'class': 'form-control'}),
             'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
+            'data_aquisicao': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'garantia_ate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
 
     def __init__(self, *args, user=None, base_selecionada=None, **kwargs):
@@ -141,8 +155,11 @@ class EquipamentoForm(forms.ModelForm):
             perfil = getattr(user, 'perfil', None)
 
             if perfil:
+                from estoque.policies.compras import ComprasAccessPolicy
                 if perfil.is_admin:
                     self.fields['regional'].queryset = Base.objects.all()
+                elif perfil.is_compras_insumos:
+                    self.fields['regional'].queryset = ComprasAccessPolicy.bases(user)
                 else:
                     regionais = perfil.regionais.all()
 

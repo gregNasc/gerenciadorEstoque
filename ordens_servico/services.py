@@ -246,6 +246,55 @@ class OrdemServicoService:
         return ordem
 
     @classmethod
+    @transaction.atomic
+    def para_remessa_compra(cls, remessa, usuario):
+        ordem = OrdemServico.objects.filter(
+            chamado_referencia=remessa.protocolo,
+            tipo=OrdemServico.Tipo.INSUMO,
+        ).first()
+        if not ordem:
+            ordem = cls.criar(
+                empresa=remessa.empresa,
+                tipo=OrdemServico.Tipo.INSUMO,
+                solicitante=usuario,
+                motivo=f'Remessa {remessa.protocolo}',
+                descricao=remessa.observacao,
+                base_responsavel=remessa.base_origem or remessa.base_destino,
+                base_origem=remessa.base_origem,
+                base_destino=remessa.base_destino,
+                chamado_referencia=remessa.protocolo,
+            )
+        existentes = set(
+            ordem.linhas.values_list('dados_snapshot__item_remessa_id', flat=True)
+        )
+        for item in remessa.itens.select_related('insumo', 'equipamento__produto'):
+            if item.pk in existentes:
+                continue
+            if item.equipamento_id:
+                linha = cls._linha_equipamento(ordem, item.equipamento)
+                linha.destino = remessa.base_destino.nome
+                linha.dados_snapshot.update({'item_remessa_id': item.pk})
+                linha.save(update_fields=['destino', 'dados_snapshot'])
+            else:
+                OrdemServicoLinha.objects.create(
+                    ordem=ordem,
+                    natureza=OrdemServicoLinha.Natureza.INSUMO_TRANSFERIDO,
+                    insumo=item.insumo,
+                    descricao=item.insumo.descricao,
+                    unidade=item.insumo.unidade_medida,
+                    quantidade=item.quantidade_prevista,
+                    origem=remessa.base_origem.nome if remessa.base_origem else 'Fornecedor',
+                    destino=remessa.base_destino.nome,
+                    custo_unitario_historico=item.custo_unitario_snapshot,
+                    dados_snapshot={
+                        'item_remessa_id': item.pk,
+                        'remessa_id': remessa.pk,
+                        'insumo_id': item.insumo_id,
+                    },
+                )
+        return ordem
+
+    @classmethod
     def hash_documento(cls, ordem):
         payload = {
             'numero': ordem.numero,

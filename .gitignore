@@ -21,6 +21,13 @@ backups/
 dumps/
 exports/
 test_databases/
+uploads/
+chamados.xlsx
+test*.xlsx
+test*.csv
+backup*.tar.gz
+backup*.zip
+backup*.7z
 
 # Static / media
 media/

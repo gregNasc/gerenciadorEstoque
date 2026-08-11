@@ -1,0 +1,22 @@
+{% extends 'estoque/base.html' %}
+{% block title %}{{ chamado.protocolo }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div><div class="text-secondary">{{ chamado.protocolo }}</div><h1 class="h3 mb-1">{{ chamado.titulo }}</h1><div>{{ chamado.base.nome }}{% if chamado.loja %} · Loja {{ chamado.loja }}{% endif %}</div></div>
+  <div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{% url 'chamados:lista' %}">Voltar</a>{% if pode_atender and not chamado.atendente_id %}<form method="post" action="{% url 'chamados:assumir' chamado.pk %}">{% csrf_token %}<button class="btn btn-primary">Assumir atendimento</button></form>{% endif %}</div>
+</div>
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="card mb-3"><div class="card-body"><div class="d-flex flex-wrap gap-2 mb-3"><span class="badge text-bg-dark">{{ chamado.get_status_display }}</span><span class="badge text-bg-secondary">{{ chamado.get_prioridade_display }}</span>{% if chamado.sla_vencido %}<span class="badge text-bg-danger">SLA vencido</span>{% endif %}</div><p class="mb-0" style="white-space:pre-wrap">{{ chamado.descricao }}</p></div></div>
+    <h2 class="h5">Conversas e registros</h2>
+    {% for item in mensagens_chamado %}<div class="card mb-2 {% if item.nota_interna %}border-warning{% endif %}"><div class="card-body"><div class="d-flex justify-content-between"><strong>{{ item.autor.get_full_name|default:item.autor.username }}</strong><small class="text-secondary">{{ item.criado_em|date:'d/m/Y H:i' }}</small></div>{% if item.nota_interna %}<span class="badge text-bg-warning mb-2">Nota interna</span>{% endif %}<div style="white-space:pre-wrap">{{ item.texto }}</div>{% for anexo in item.anexos.all %}<a class="btn btn-sm btn-outline-secondary mt-2" href="{% url 'chamados:baixar_anexo' anexo.pk %}"><i class="bi bi-paperclip"></i> {{ anexo.nome_original }}</a>{% endfor %}</div></div>{% empty %}<div class="text-secondary mb-3">Ainda não há mensagens.</div>{% endfor %}
+    {% if pode_interagir %}<form class="card card-body" method="post" enctype="multipart/form-data" action="{% url 'chamados:mensagem' chamado.pk %}">{% csrf_token %}<label class="form-label">Nova mensagem</label>{{ mensagem_form.texto }}<div class="row g-2 mt-1"><div class="col-md-8">{{ mensagem_form.anexo }}</div>{% if pode_atender %}<div class="col-md-4 form-check pt-2">{{ mensagem_form.nota_interna }} <label class="form-check-label" for="{{ mensagem_form.nota_interna.id_for_label }}">Nota interna</label></div>{% endif %}</div><div class="text-end mt-2"><button class="btn btn-primary">Enviar</button></div></form>{% endif %}
+  </div>
+  <div class="col-xl-4">
+    <div class="card mb-3"><div class="card-header fw-semibold">Informações</div><div class="card-body"><dl class="row mb-0"><dt class="col-5">Categoria</dt><dd class="col-7">{{ chamado.categoria.nome }}</dd><dt class="col-5">Aberto por</dt><dd class="col-7">{{ chamado.aberto_por.get_full_name|default:chamado.aberto_por.username }}</dd><dt class="col-5">Atendente</dt><dd class="col-7">{% if chamado.atendente %}{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}{% else %}—{% endif %}</dd><dt class="col-5">Abertura</dt><dd class="col-7">{{ chamado.aberto_em|date:'d/m/Y H:i' }}</dd><dt class="col-5">Prazo SLA</dt><dd class="col-7">{{ chamado.prazo_sla_em|date:'d/m/Y H:i'|default:'—' }}</dd><dt class="col-5">Líder</dt><dd class="col-7">{{ chamado.lider|default:'—' }}</dd></dl></div></div>
+    {% if status_permitidos %}<form class="card card-body mb-3" method="post" action="{% url 'chamados:alterar_status' chamado.pk %}">{% csrf_token %}<h2 class="h6">Alterar status</h2><div class="mb-2">{{ status_form.status }}</div><div class="mb-2"><label class="form-label">Resolução / justificativa</label>{{ status_form.resolucao }}</div><button class="btn btn-dark">Atualizar</button></form>{% endif %}
+    {% if chamado.resolucao %}<div class="card mb-3"><div class="card-header fw-semibold">Resolução</div><div class="card-body" style="white-space:pre-wrap">{{ chamado.resolucao }}</div></div>{% endif %}
+    {% if ordens %}<div class="card"><div class="card-header fw-semibold">Ordens de serviço vinculadas</div><div class="list-group list-group-flush">{% for ordem in ordens %}<a class="list-group-item list-group-item-action" href="{% url 'ordens_servico:detalhe' ordem.pk %}">{{ ordem.numero }} · {{ ordem.get_status_display }}</a>{% endfor %}</div></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

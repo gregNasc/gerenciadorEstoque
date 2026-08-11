@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 class CategoriaInsumo(models.Model):
@@ -87,6 +87,14 @@ class FornecedorInsumo(models.Model):
     contato = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True)
     telefone = models.CharField(max_length=30, blank=True)
+    nome_fantasia = models.CharField(max_length=160, blank=True)
+    contato_financeiro = models.CharField(max_length=160, blank=True)
+    contato_suporte = models.CharField(max_length=160, blank=True)
+    email_financeiro = models.EmailField(blank=True)
+    email_suporte = models.EmailField(blank=True)
+    canais_alternativos = models.TextField(blank=True)
+    condicoes_pagamento = models.TextField(blank=True)
+    politica_frete = models.TextField(blank=True)
     prazo_entrega_dias = models.PositiveIntegerField(null=True, blank=True)
     observacao = models.TextField(blank=True)
     ativo = models.BooleanField(default=True)
@@ -291,6 +299,7 @@ class SaldoInsumoBase(models.Model):
         related_name='saldos_por_base',
     )
     saldo = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    saldo_reservado = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
     custo_medio = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal('0'))
     ultima_entrada_em = models.DateTimeField(null=True, blank=True)
     recalculado_em = models.DateTimeField(auto_now=True)
@@ -310,6 +319,14 @@ class SaldoInsumoBase(models.Model):
                 condition=Q(custo_medio__gte=0),
                 name='custo_medio_insumo_base_nao_negativo',
             ),
+            models.CheckConstraint(
+                condition=Q(saldo_reservado__gte=0),
+                name='saldo_insumo_reservado_nao_negativo',
+            ),
+            models.CheckConstraint(
+                condition=Q(saldo_reservado__lte=F('saldo')),
+                name='saldo_insumo_reservado_ate_saldo',
+            ),
         ]
         indexes = [
             models.Index(fields=['base', 'saldo']),
@@ -320,8 +337,31 @@ class SaldoInsumoBase(models.Model):
     def valor_total(self):
         return self.saldo * self.custo_medio
 
+    @property
+    def saldo_disponivel(self):
+        return self.saldo - self.saldo_reservado
+
     def __str__(self):
         return f'{self.base} - {self.insumo}: {self.saldo}'
+
+
+class HistoricoCadastroInsumo(models.Model):
+    insumo = models.ForeignKey(
+        Insumo, on_delete=models.PROTECT, related_name='historico_cadastro'
+    )
+    campo = models.CharField(max_length=60, db_index=True)
+    valor_anterior = models.TextField(blank=True)
+    valor_novo = models.TextField(blank=True)
+    motivo = models.TextField()
+    origem = models.CharField(max_length=80, blank=True, db_index=True)
+    alterado_por = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.PROTECT,
+        related_name='alteracoes_cadastro_insumo',
+    )
+    alterado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-alterado_em', '-id']
 
 class Cliente(models.Model):
 

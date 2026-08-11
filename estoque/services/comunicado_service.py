@@ -89,15 +89,32 @@ class ComunicadoService:
             if empresa:
                 destinatarios = destinatarios.filter(perfil__empresa=empresa)
             comunicado.usuarios.set(destinatarios.distinct())
-        elif usuarios is not None:
-            comunicado.usuarios.set(usuarios)
-        elif bases is not None:
-            comunicado.usuarios.set(
-                ComunicadoService.usuarios_por_bases(
-                    bases,
-                    incluir_admins=incluir_admins,
-                    excluir_usuario=usuario,
+        else:
+            # Toda acao notifica autor, envolvidos e administradores. Essa
+            # relacao alimenta o badge de comunicados nao lidos do menu.
+            destinatarios_ids = {usuario.pk}
+            destinatarios_ids.update(
+                User.objects.filter(
+                    is_active=True,
+                    perfil__role='admin',
+                ).values_list('pk', flat=True)
+            )
+            if usuarios is not None:
+                if hasattr(usuarios, 'values_list'):
+                    destinatarios_ids.update(usuarios.values_list('pk', flat=True))
+                else:
+                    destinatarios_ids.update(
+                        item.pk for item in usuarios if item is not None
+                    )
+            if bases is not None:
+                destinatarios_ids.update(
+                    ComunicadoService.usuarios_por_bases(
+                        bases,
+                        incluir_admins=incluir_admins,
+                    ).values_list('pk', flat=True)
                 )
+            comunicado.usuarios.set(
+                User.objects.filter(is_active=True, pk__in=destinatarios_ids)
             )
 
         transaction.on_commit(
@@ -232,8 +249,8 @@ class ComunicadoService:
         data_referencia = data_referencia or timezone.localdate()
         data_previsao = data_referencia + timedelta(days=1)
         destinatarios = User.objects.filter(is_active=True).filter(
-            Q(perfil__role='admin') |
-            Q(groups__name=GruposCorporativos.SICK_MANUTENCAO)
+            Q(perfil__role='admin')
+            | Q(groups__name=GruposCorporativos.SICK_MANUTENCAO)
         ).distinct()
         if not destinatarios.exists():
             return []
@@ -241,8 +258,6 @@ class ComunicadoService:
         criador = destinatarios.filter(
             groups__name=GruposCorporativos.SICK_MANUTENCAO,
         ).first()
-        if criador is None:
-            criador = destinatarios.filter(perfil__role='admin').first()
 
         comunicados = []
         manutencoes = (

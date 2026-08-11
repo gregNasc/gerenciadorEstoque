@@ -57,6 +57,7 @@ from collections import defaultdict
 from .services.estoque_service import get_estoque_por_produto
 from django.contrib.auth import authenticate
 from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
+from estoque.policies.compras import ComprasAccessPolicy
 
 
 def _normalizar_nome_base(valor):
@@ -675,6 +676,19 @@ def cadastrar_usuario(request):
                 messages.success(request, f"Usuário '{username}' criado com sucesso!")
                 return redirect('estoque:cadastrar_usuario')
 
+                ComunicadoService.criar_acao(
+                    titulo=f'Solicitacao de equipamentos #{solicitacao.pk}',
+                    mensagem=(
+                        f'{request.user.get_username()} solicitou equipamentos para '
+                        f'{regional.nome}. Motivo: {motivo}'
+                    ),
+                    usuario=request.user,
+                    bases=[regional],
+                    empresa=regional.empresa,
+                    dados={'solicitacao_id': solicitacao.pk, 'acao': 'CRIADA'},
+                    url=reverse('estoque:caixa_solicitacoes'),
+                )
+
         except Exception as e:
             messages.error(request, f"Erro ao criar usuário: {str(e)}")
             return redirect('estoque:cadastrar_usuario')
@@ -939,8 +953,9 @@ def verificar_consistencia_api(request):
 
 # ----------------- CADASTRAR PRODUTO -----------------
 @login_required
-@role_required('admin', 'gestor', 'operador')
 def cadastrar_equipamento_view(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissao para cadastrar equipamentos.')
     base_selecionada = _base_contexto_usuario(request)
     if request.method == 'POST':
         form = EquipamentoForm(
@@ -948,14 +963,28 @@ def cadastrar_equipamento_view(request):
             base_selecionada=base_selecionada,
         )
         if form.is_valid():
-            equipamento = form.save()
-            print("FOTO:", equipamento.foto)
-            print("URL:", equipamento.foto.url if equipamento.foto else "SEM FOTO")
+            equipamento = form.save(commit=False)
+            if equipamento.custo_aquisicao is not None or equipamento.preco_referencia is not None:
+                equipamento.valor_validado_por = request.user
+                equipamento.valor_validado_em = timezone.now()
+            equipamento.save()
             Historico.objects.create(
                 equipamento=equipamento,
                 tipo_acao='CRIACAO',
                 usuario=request.user,
                 detalhes={'mensagem': 'Equipamento cadastrado'}
+            )
+            ComunicadoService.criar_acao(
+                titulo=f'Equipamento {equipamento.codigo} cadastrado',
+                mensagem=(
+                    f'{request.user.get_username()} cadastrou o equipamento '
+                    f'{equipamento.patrimonio} na base {equipamento.regional.nome}.'
+                ),
+                usuario=request.user,
+                bases=[equipamento.regional],
+                empresa=equipamento.regional.empresa,
+                dados={'equipamento_id': equipamento.pk, 'acao': 'CADASTRADO'},
+                url=reverse('estoque:estoque'),
             )
 
             messages.success(request, "Equipamento cadastrado com sucesso.")
@@ -3930,7 +3959,7 @@ def pode_transferir(equipamento):
     return True, None
 
 @login_required
-@role_required('admin', 'gestor')
+@role_required('gestor')
 def criar_solicitacao(request):
 
     perfil = request.user.perfil
@@ -4289,6 +4318,10 @@ def recusar_solicitacao(request, solicitacao_id):
     comunicado.usuarios.add(
         solicitacao.criado_por
     )
+    comunicado.usuarios.add(*User.objects.filter(
+        is_active=True,
+        perfil__role='admin',
+    ))
 
     messages.success(
         request,

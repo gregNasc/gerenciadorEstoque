@@ -139,13 +139,29 @@ def notificacoes_context(request):
             emprestimos_confirmacao
     )
 
+    # ---------------- CHAMADOS ----------------
+
+    from chamados.models import Chamado
+    from chamados.policies import ChamadoAccessPolicy
+
+    chamados_pendentes = (
+        ChamadoAccessPolicy.queryset(request.user)
+        .exclude(status__in=[
+            Chamado.Status.RESOLVIDO,
+            Chamado.Status.FECHADO,
+            Chamado.Status.CANCELADO,
+        ])
+        .count()
+    )
+
     # ---------------- TOTAL MENU ----------------
 
     notificacoes_pendentes = (
             solicitacoes_pendentes +
             separacoes_pendentes +
             transferencias_pendentes +
-            emprestimos_pendentes
+            emprestimos_pendentes +
+            chamados_pendentes
     )
 
     return {
@@ -160,10 +176,12 @@ def notificacoes_context(request):
         'emprestimos_devolucao': emprestimos_devolucao,
         'emprestimos_confirmacao': emprestimos_confirmacao,
         'emprestimos_pendentes': emprestimos_pendentes,
+        'chamados_pendentes': chamados_pendentes,
     }
 
 def permissoes_especiais(request):
     if request.user.is_authenticated:
+        from chamados.policies import ChamadoAccessPolicy
         compras_restrito = ComprasAccessPolicy.restrito(request.user)
         perfil = request.user.perfil
         return {
@@ -175,6 +193,10 @@ def permissoes_especiais(request):
                 ComprasAccessPolicy.pode_editar_precos(request.user),
             'pode_gerenciar_fornecedores':
                 ComprasAccessPolicy.pode_gerenciar_fornecedores(request.user),
+            'pode_gerenciar_catalogo':
+                ComprasAccessPolicy.pode_gerenciar_catalogo(request.user),
+            'pode_criar_remessa_compra':
+                ComprasAccessPolicy.pode_criar_remessa(request.user),
             'compras_restrito': compras_restrito,
             'pode_visualizar_saude_estoque': bool(
                 not compras_restrito
@@ -184,6 +206,7 @@ def permissoes_especiais(request):
                     or perfil.is_executivo_insumos
                 )
             ),
+            'pode_atender_chamados': ChamadoAccessPolicy.pode_atender(request.user),
         }
 
     return {
@@ -191,6 +214,9 @@ def permissoes_especiais(request):
         'pode_visualizar_valores': False,
         'pode_editar_precos': False,
         'pode_gerenciar_fornecedores': False,
+        'pode_gerenciar_catalogo': False,
+        'pode_criar_remessa_compra': False,
         'compras_restrito': False,
         'pode_visualizar_saude_estoque': False,
+        'pode_atender_chamados': False,
     }

@@ -20,7 +20,4 @@ def pode_enviar_comunicados(user):
 
 
 def pode_realizar_manutencao_sick(user):
-    return (
-        user.perfil.is_admin or
-        _no_grupo(user, GruposCorporativos.SICK_MANUTENCAO)
-    )
+    return _no_grupo(user, GruposCorporativos.SICK_MANUTENCAO)

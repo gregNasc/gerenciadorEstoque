@@ -102,7 +102,7 @@ class MovimentacaoService:
         if quantidade <= 0:
             raise ValueError('A quantidade de saída deve ser positiva.')
         saldo_base = SaldoInsumoService.bloquear(base, insumo)
-        saldo = saldo_base.saldo
+        saldo = saldo_base.saldo - saldo_base.saldo_reservado
 
         if saldo < quantidade:
 
@@ -180,7 +180,7 @@ class MovimentacaoService:
         if quantidade <= 0:
             raise ValueError('A quantidade perdida deve ser positiva.')
         saldo_base = SaldoInsumoService.bloquear(base, insumo)
-        saldo = saldo_base.saldo
+        saldo = saldo_base.saldo - saldo_base.saldo_reservado
 
         if saldo < quantidade:
 
