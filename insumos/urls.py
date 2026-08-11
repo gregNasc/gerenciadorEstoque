@@ -9,6 +9,7 @@ from insumos.views.api import insumos_por_categoria
 from insumos.views import custos
 from insumos.views import solicitacoes
 from insumos.views.dashboard_saude import dashboard_saude_insumos
+from insumos.views.saude_estoque import dashboard_saude_equipamentos, dashboard_saude_geral
 
 app_name = 'insumos'
 
@@ -18,6 +19,8 @@ urlpatterns = [
     path('dashboard/planejamento/', dashboard_planejamento, name='dashboard_planejamento'),
     path('dashboard/financeiro/', dashboard_financeiro, name='dashboard_financeiro'),
     path('dashboard/saude-insumos/', dashboard_saude_insumos, name='dashboard_saude_insumos'),
+    path('dashboard/saude-equipamentos/', dashboard_saude_equipamentos, name='dashboard_saude_equipamentos'),
+    path('dashboard/saude-geral/', dashboard_saude_geral, name='dashboard_saude_geral'),
     path('custos/', custos.dashboard_custos, name='dashboard_custos'),
     path('custos/precos/', custos.precos_insumos, name='precos_insumos'),
     path('custos/fornecedores/', custos.fornecedores_insumos, name='fornecedores_insumos'),

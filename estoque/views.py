@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 from collections import defaultdict
 from .services.estoque_service import get_estoque_por_produto
 from django.contrib.auth import authenticate
+from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
 
 
 def _normalizar_nome_base(valor):
@@ -95,6 +96,20 @@ def _base_contexto_usuario(request):
     return base
 
 
+def _base_em_auditoria(base_id):
+    return VisibilidadeEstoqueAuditoriaService.base_bloqueada(base_id)
+
+
+def _resposta_base_em_auditoria():
+    return JsonResponse(
+        {
+            'erro': VisibilidadeEstoqueAuditoriaService.MENSAGEM,
+            'codigo': 'estoque_oculto_auditoria',
+        },
+        status=423,
+    )
+
+
 # ----------------- DASHBOARD -----------------
 @login_required
 #@cache_page(60 * 5)
@@ -109,6 +124,9 @@ def index(request):
     categoria = request.GET.get('categoria')
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
+    estoque_oculto_auditoria = bool(
+        regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
+    )
     inventory_id = request.GET.get('inventory')
     finalidade = request.GET.get('finalidade', '').strip().upper()
 
@@ -340,11 +358,14 @@ def index(request):
         'filtro_inventory_id': inventory_id,
         'filtro_finalidade': finalidade,
         'finalidade_choices': Equipamento.Finalidade.choices,
+        'estoque_oculto_auditoria': estoque_oculto_auditoria,
+        'mensagem_auditoria': VisibilidadeEstoqueAuditoriaService.MENSAGEM,
     }
 
     return render(request, 'estoque/index.html', context)
 
 @login_required
+@role_required('admin', 'gestor')
 def assistente_operacional(request):
     resultado = None
     pergunta = ''
@@ -445,6 +466,9 @@ def api_kpis_json(request):
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
 
+    if regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id):
+        return _resposta_base_em_auditoria()
+
     if produto_id and produto_id.isdigit():
         equipamentos = equipamentos.filter(produto_id=produto_id)
     if regional_id and regional_id.isdigit():
@@ -470,6 +494,9 @@ def detalhes_regional_api(request, regional_id):
     if not perfil.is_admin:
         if not perfil.regionais.filter(id=regional_id).exists():
             return JsonResponse({'erro': 'Acesso negado.'}, status=403)
+
+    if _base_em_auditoria(regional_id):
+        return _resposta_base_em_auditoria()
 
     equipamentos = secure_queryset(
         Equipamento.objects.select_related('regional', 'produto'),
@@ -969,6 +996,9 @@ def estoque_view(request):
     )
 
     regional_id = request.GET.get('regional')
+    estoque_oculto_auditoria = bool(
+        regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
+    )
 
     if regional_id and regional_id.isdigit():
 
@@ -1094,6 +1124,8 @@ def estoque_view(request):
             'categorias_estoque': categorias_estoque,
             'regionais': regionais,
             'regional_selecionada': regional_id,
+            'estoque_oculto_auditoria': estoque_oculto_auditoria,
+            'mensagem_auditoria': VisibilidadeEstoqueAuditoriaService.MENSAGEM,
             'kpis_estoque': {
                 'total': total_estoque,
                 'ativos': ativos_estoque,
@@ -1115,6 +1147,10 @@ def detalhes_produto_view(request, produto_id, regional_id):
 
     regional = get_object_or_404(Base, id=regional_id)
     produto = get_object_or_404(Produto, id=produto_id)
+
+    if _base_em_auditoria(regional_id):
+        messages.warning(request, VisibilidadeEstoqueAuditoriaService.MENSAGEM)
+        return redirect(f"{reverse('estoque:estoque')}?regional={regional_id}")
 
     base_qs = secure_queryset(
         Equipamento.objects.select_related('regional', 'produto'),
@@ -1178,6 +1214,9 @@ def detalhes_produto(request, produto_id):
 
     perfil = request.user.perfil
     regional_id = request.GET.get('regional')
+
+    if regional_id and str(regional_id).isdigit() and _base_em_auditoria(regional_id):
+        return _resposta_base_em_auditoria()
 
     qs = secure_queryset(
         Equipamento.objects.filter(produto_id=produto_id),
@@ -1764,7 +1803,7 @@ def sick_view(request):
             (perfil.is_gestor or perfil.is_operador)
         )
         sick.pode_confirmar_recebimento = (
-            perfil.is_admin or request.user.username == 'rafael.ribeiro'
+            perfil.is_admin or usuario_manutencao
         )
         sick.historico_completo = sick.equipamento.historico_sick_prefetch
         eventos_por_sick = {}
@@ -4711,6 +4750,9 @@ def equipamentos_por_regional(request, produto_id, regional_id):
     if not perfil.is_admin and not perfil.regionais.filter(id=regional_id).exists():
         return JsonResponse({'erro': 'Acesso negado a esta regional'}, status=403)
 
+    if _base_em_auditoria(regional_id):
+        return _resposta_base_em_auditoria()
+
     sicks_visiveis = SickService.visiveis_para(
         request.user,
         Sick.objects.order_by('-data_ocorrencia'),
@@ -5538,12 +5580,16 @@ def checklist_view(request):
     }
     return render(request, 'estoque/checklist.html', context)
 
+@login_required
 def get_equipamentos_disponiveis(request):
     regional_id = request.GET.get('regional')
     categoria = request.GET.get('categoria')
 
     if not regional_id or not categoria:
         return JsonResponse({'results': []})
+
+    if str(regional_id).isdigit() and _base_em_auditoria(regional_id):
+        return _resposta_base_em_auditoria()
 
     if not request.user.perfil.is_admin:
         regionais_ids = request.user.perfil.bases_checklist_ids

@@ -160,6 +160,30 @@ class AssistenteOperacionalService:
 
         interpretacao = cls.interpretar(user, pergunta, contexto=contexto)
 
+        intencoes_com_estoque_equipamentos = {
+            'capacidade_coletores',
+            'capacidade_equipamentos',
+            'equipamentos_categoria',
+            'equipamentos',
+            'indicadores',
+        }
+        if (
+            interpretacao.base
+            and interpretacao.intencao in intencoes_com_estoque_equipamentos
+        ):
+            from auditorias.services.visibilidade_estoque_service import (
+                VisibilidadeEstoqueAuditoriaService,
+            )
+            if VisibilidadeEstoqueAuditoriaService.base_bloqueada(interpretacao.base.pk):
+                resposta = cls._resposta(
+                    'auditoria',
+                    VisibilidadeEstoqueAuditoriaService.MENSAGEM,
+                )
+                resposta['interpretacao'] = cls._resumo_interpretacao(interpretacao)
+                resposta['contexto'] = cls._contexto_interpretacao(interpretacao)
+                resposta['acoes'] = []
+                return resposta
+
         roteadores = {
             'portal_tempo_real': cls._portal_tempo_real,
             'planejamento': cls._planejamento,

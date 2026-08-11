@@ -77,6 +77,16 @@ class Perfil(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True, related_name="perfis")
     regionais = models.ManyToManyField(Base, blank=True, related_name="perfis")
     bases_checklist = models.ManyToManyField(Base, blank=True, related_name="perfis_checklist")
+    empresas_escopo_compras = models.ManyToManyField(
+        Empresa,
+        blank=True,
+        related_name='perfis_compras',
+    )
+    bases_escopo_compras = models.ManyToManyField(
+        Base,
+        blank=True,
+        related_name='perfis_compras',
+    )
     role = models.CharField(max_length=10, choices=Role.choices)
     telefone = models.CharField(max_length=20, blank=True, default="")
     telefone_alternativo = models.CharField(max_length=20, blank=True, default="")

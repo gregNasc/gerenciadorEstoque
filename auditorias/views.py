@@ -180,8 +180,11 @@ def base_enviar(request, auditoria_base_id):
         messages.error(request, 'Confirme a conclusão antes de enviar a auditoria.')
         return redirect('auditorias:coleta', auditoria_base_id=auditoria.pk)
     try:
-        EncerramentoService.enviar(auditoria, request.user)
-        messages.success(request, 'Auditoria enviada para análise.')
+        resultado = EncerramentoService.enviar(auditoria, request.user)
+        if resultado.status == AuditoriaBase.Status.FINALIZADA:
+            messages.success(request, 'Auditoria finalizada antes do prazo, sem divergências pendentes.')
+        else:
+            messages.success(request, 'Auditoria enviada para análise.')
     except ValidationError as exc:
         messages.error(request, ' '.join(exc.messages))
     return redirect(destino, auditoria_base_id=auditoria.pk)
@@ -302,6 +305,17 @@ def divergencia_detalhe(request, divergencia_id):
         'pode_responder': em_correcao and prazo_ativo and not usuario_e_admin(request.user),
         'em_correcao': em_correcao,
         'prazo_ativo': prazo_ativo,
+        'admin': usuario_e_admin(request.user),
+        'pode_inativar': bool(
+            usuario_e_admin(request.user)
+            and divergencia.tipo == AuditoriaDivergencia.Tipo.NAO_LOCALIZADO
+            and divergencia.equipamento_id
+            and divergencia.status in (
+                AuditoriaDivergencia.Status.ABERTA,
+                AuditoriaDivergencia.Status.EM_ANALISE,
+            )
+            and not hasattr(divergencia, 'resolucao')
+        ),
         'form_resposta': RespostaDivergenciaForm(
             initial={'justificativa_base': divergencia.justificativa_base}
         ),
@@ -311,6 +325,23 @@ def divergencia_detalhe(request, divergencia_id):
             excluir_base=divergencia.base_encontrada,
         ),
     })
+
+
+@login_required
+@require_POST
+def divergencia_inativar(request, divergencia_id):
+    divergencia = get_object_or_404(divergencias_visiveis(request.user), pk=divergencia_id)
+    exigir_admin(request.user)
+    try:
+        ApuracaoService.inativar_nao_localizado(
+            divergencia,
+            request.user,
+            request.POST.get('justificativa', ''),
+        )
+        messages.success(request, 'Equipamento inativado e divergência resolvida com rastreabilidade.')
+    except ValidationError as exc:
+        messages.error(request, ' '.join(exc.messages))
+    return redirect('auditorias:divergencia_detalhe', divergencia_id=divergencia.pk)
 
 
 @login_required

@@ -21,6 +21,7 @@ urlpatterns = [
     path('divergencias/<int:divergencia_id>/manter/', views.divergencia_manter, name='divergencia_manter'),
     path('divergencias/<int:divergencia_id>/transferir/', views.divergencia_transferir, name='divergencia_transferir'),
     path('divergencias/<int:divergencia_id>/responder/', views.divergencia_responder, name='divergencia_responder'),
+    path('divergencias/<int:divergencia_id>/inativar/', views.divergencia_inativar, name='divergencia_inativar'),
     path('bases/<int:auditoria_base_id>/relatorio.<str:formato>', views.relatorio_base, name='relatorio_base'),
     path('<int:campanha_id>/relatorio.<str:formato>', views.relatorio_campanha, name='relatorio_campanha'),
 ]

@@ -1,12 +1,12 @@
 from decimal import Decimal
 
-from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
 from django.shortcuts import render
 
-from estoque.decorators import role_required
 from estoque.models import Base, Empresa
 from insumos.models import MovimentacaoInsumo, SolicitacaoInsumo
+from estoque.policies.compras import ComprasAccessPolicy
+from insumos.views.saude_estoque import saude_estoque_required
 
 
 ZERO = Decimal("0")
@@ -200,15 +200,10 @@ def _prioridade_item_critico(item):
     )
 
 
-@login_required
-@role_required("admin")
+@saude_estoque_required
 def dashboard_saude_insumos(request):
-    if request.user.username == "jose.barboza":
-        messages.error(
-            request,
-            "Você não possui permissão para acessar o dashboard de saúde dos insumos."
-        )
-        return redirect("insumos:estoque_insumos")
+    if ComprasAccessPolicy.restrito(request.user):
+        raise PermissionDenied('Sem permissão para visualizar a saúde do estoque.')
     empresa_id = (request.GET.get("empresa") or "").strip()
     base_id = (request.GET.get("base") or "").strip()
 

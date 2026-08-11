@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core import mail
 from django.test import TestCase, override_settings
@@ -10,6 +10,7 @@ from django.urls import reverse
 from estoque.forms import EquipamentoForm
 from estoque.models import Base, Comunicado, Empresa, Equipamento, Historico, Perfil, Produto, Sick
 from estoque.services.sick_service import SickService
+from estoque.policies.compras import GruposCorporativos
 
 
 class EquipamentosSickBaseTests(TestCase):
@@ -450,16 +451,18 @@ class FluxoSickTests(EquipamentosSickBaseTests):
         self.assertContains(response, 'hist-{}-identificado'.format(sick.pk))
         self.assertContains(response, 'hist-{}-final'.format(sick.pk))
 
-    def test_base_envia_e_rafael_recebe_sem_vinculo_regional(self):
-        rafael = User.objects.create_user(username='rafael.ribeiro', password='senha-forte')
-        rafael.perfil.role = Perfil.Role.OPERADOR
-        rafael.perfil.empresa = None
-        rafael.perfil.save()
+    def test_base_envia_e_manutencao_recebe_sem_vinculo_regional(self):
+        manutencao = User.objects.create_user(username='tecnico.manutencao', password='senha-forte')
+        manutencao.perfil.role = Perfil.Role.OPERADOR
+        manutencao.perfil.empresa = None
+        manutencao.perfil.save()
+        grupo, _ = Group.objects.get_or_create(name=GruposCorporativos.SICK_MANUTENCAO)
+        manutencao.groups.add(grupo)
         sick = self._abrir(usuario=self.gestor)
         SickService.enviar_para_manutencao(
             sick_id=sick.pk, usuario=self.gestor, destino='Central',
         )
-        SickService.confirmar_recebimento(sick_id=sick.pk, usuario=rafael)
+        SickService.confirmar_recebimento(sick_id=sick.pk, usuario=manutencao)
         sick.refresh_from_db()
         self.assertEqual(sick.etapa, Sick.Etapa.RECEBIDO)
 

@@ -14,6 +14,7 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from estoque.models import Base
+from estoque.policies.compras import ComprasAccessPolicy
 
 from insumos.forms import FornecedorInsumoForm, PrecoFornecedorInsumoForm
 from insumos.models import (
@@ -31,8 +32,7 @@ from insumos.services.preco_online_service import PrecoOnlineErro, PrecoOnlineSe
 
 
 def _pode_editar(user):
-    perfil = getattr(user, 'perfil', None)
-    return bool(perfil and (perfil.is_admin or perfil.is_compras_insumos))
+    return ComprasAccessPolicy.pode_editar_precos(user)
 
 
 def _periodo_padrao(request):

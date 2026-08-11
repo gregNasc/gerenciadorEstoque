@@ -1,12 +1,22 @@
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum
-from insumos.models import (MovimentacaoInsumo, HistoricoInsumo, Insumo,)
+from insumos.models import HistoricoInsumo, MovimentacaoInsumo, SaldoInsumoBase
+from insumos.services.saldo_service import SaldoInsumoService
 
 class MovimentacaoService:
 
     @staticmethod
+    def _emitir_ordem_servico(movimentacao, usuario):
+        from ordens_servico.services import OrdemServicoService
+        OrdemServicoService.para_movimentacao_insumo(movimentacao, usuario)
+
+    @staticmethod
     def saldo(base, insumo):
+
+        materializado = SaldoInsumoBase.objects.filter(base=base, insumo=insumo).first()
+        if materializado:
+            return materializado.saldo
 
         entradas = (
             MovimentacaoInsumo.objects
@@ -40,17 +50,11 @@ class MovimentacaoService:
 
         quantidade = Decimal(str(quantidade))
         valor_unitario = Decimal(str(valor_unitario))
-        saldo_anterior = MovimentacaoService.saldo(base, insumo)
-        custo_anterior = insumo.valor_medio
-        saldo_final = saldo_anterior + quantidade
-
-        if saldo_final > 0:
-
-            novo_custo = ((saldo_anterior * custo_anterior)+(quantidade * valor_unitario)) / saldo_final
-
-        else:
-
-            novo_custo = valor_unitario
+        if quantidade <= 0:
+            raise ValueError('A quantidade de entrada deve ser positiva.')
+        if valor_unitario < 0:
+            raise ValueError('O valor unitário não pode ser negativo.')
+        saldo_base = SaldoInsumoService.bloquear(base, insumo)
 
         movimentacao = MovimentacaoInsumo.objects.create(
             base=base,
@@ -63,9 +67,11 @@ class MovimentacaoService:
             observacao=observacao,
         )
 
-        insumo.valor_medio = novo_custo
-        insumo.save(
-            update_fields=['valor_medio']
+        SaldoInsumoService.aplicar_entrada(
+            saldo_base,
+            quantidade,
+            valor_unitario,
+            quando=movimentacao.criado_em,
         )
         HistoricoInsumo.objects.create(
 
@@ -84,6 +90,8 @@ class MovimentacaoService:
             }
         )
 
+        MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
+
         return movimentacao
 
     @staticmethod
@@ -91,7 +99,10 @@ class MovimentacaoService:
     def saida(*, base, insumo, quantidade, usuario, observacao='', solicitacao=None,):
 
         quantidade = Decimal(str(quantidade))
-        saldo = MovimentacaoService.saldo(base, insumo)
+        if quantidade <= 0:
+            raise ValueError('A quantidade de saída deve ser positiva.')
+        saldo_base = SaldoInsumoService.bloquear(base, insumo)
+        saldo = saldo_base.saldo
 
         if saldo < quantidade:
 
@@ -105,11 +116,13 @@ class MovimentacaoService:
             insumo=insumo,
             tipo='SAIDA',
             quantidade=quantidade,
-            valor_unitario=insumo.valor_medio,
+            valor_unitario=saldo_base.custo_medio,
             solicitacao=solicitacao,
             usuario=usuario,
             observacao=observacao,
         )
+
+        SaldoInsumoService.aplicar_saida(saldo_base, quantidade)
 
         HistoricoInsumo.objects.create(
             tipo='MOVIMENTACAO',
@@ -126,6 +139,8 @@ class MovimentacaoService:
             }
         )
 
+        MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
+
         return movimentacao
 
     @staticmethod
@@ -133,15 +148,27 @@ class MovimentacaoService:
     def devolucao(*, base, insumo, quantidade, usuario, observacao='',):
 
         quantidade = Decimal(str(quantidade))
+        if quantidade <= 0:
+            raise ValueError('A quantidade devolvida deve ser positiva.')
+        saldo_base = SaldoInsumoService.bloquear(base, insumo)
         movimentacao = MovimentacaoInsumo.objects.create(
             base=base,
             insumo=insumo,
             tipo='DEVOLUCAO',
             quantidade=quantidade,
-            valor_unitario=insumo.valor_medio,
+            valor_unitario=saldo_base.custo_medio,
             usuario=usuario,
             observacao=observacao,
         )
+
+        SaldoInsumoService.aplicar_entrada(
+            saldo_base,
+            quantidade,
+            saldo_base.custo_medio,
+            quando=movimentacao.criado_em,
+        )
+
+        MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
 
         return movimentacao
 
@@ -150,7 +177,10 @@ class MovimentacaoService:
     def perda(*, base, insumo, quantidade, usuario, observacao='',):
 
         quantidade = Decimal(str(quantidade))
-        saldo = MovimentacaoService.saldo(base, insumo)
+        if quantidade <= 0:
+            raise ValueError('A quantidade perdida deve ser positiva.')
+        saldo_base = SaldoInsumoService.bloquear(base, insumo)
+        saldo = saldo_base.saldo
 
         if saldo < quantidade:
 
@@ -161,10 +191,14 @@ class MovimentacaoService:
             insumo=insumo,
             tipo='PERDA',
             quantidade=quantidade,
-            valor_unitario=insumo.valor_medio,
+            valor_unitario=saldo_base.custo_medio,
             usuario=usuario,
             observacao=observacao,
         )
+
+        SaldoInsumoService.aplicar_saida(saldo_base, quantidade)
+
+        MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
 
         return movimentacao
 
@@ -173,8 +207,14 @@ class MovimentacaoService:
     def ajuste(*, base, insumo, saldo_real, usuario, observacao='',):
 
         saldo_real = Decimal(str(saldo_real))
-        saldo_sistema = MovimentacaoService.saldo(base, insumo)
+        if saldo_real < 0:
+            raise ValueError('O saldo real não pode ser negativo.')
+        saldo_base = SaldoInsumoService.bloquear(base, insumo)
+        saldo_sistema = saldo_base.saldo
         diferenca = saldo_real - saldo_sistema
+
+        if diferenca == 0:
+            return None
 
         if diferenca < 0 and saldo_sistema < abs(diferenca):
             raise ValueError(
@@ -191,7 +231,7 @@ class MovimentacaoService:
             insumo=insumo,
             tipo=tipo,
             quantidade=abs(diferenca),
-            valor_unitario=insumo.valor_medio,
+            valor_unitario=saldo_base.custo_medio,
             usuario=usuario,
             observacao=(
                 f'{observacao}\n'
@@ -199,6 +239,16 @@ class MovimentacaoService:
                 f'Saldo real: {saldo_real}'
             ),
         )
+
+        if diferenca > 0:
+            SaldoInsumoService.aplicar_entrada(
+                saldo_base,
+                diferenca,
+                saldo_base.custo_medio,
+                quando=movimentacao.criado_em,
+            )
+        elif diferenca < 0:
+            SaldoInsumoService.aplicar_saida(saldo_base, abs(diferenca))
 
         HistoricoInsumo.objects.create(
             tipo='MOVIMENTACAO',
@@ -219,5 +269,7 @@ class MovimentacaoService:
                 'tipo_ajuste': tipo,
             }
         )
+
+        MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
 
         return movimentacao

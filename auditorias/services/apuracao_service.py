@@ -114,55 +114,18 @@ class ApuracaoService:
         ):
             raise ValidationError('A auditoria precisa estar enviada para validação.')
 
-        agora = timezone.now()
-        divergencias_ausentes = list(
-            auditoria.divergencias.select_for_update(of=('self',)).select_related('equipamento').filter(
-                tipo=AuditoriaDivergencia.Tipo.NAO_LOCALIZADO,
-            ).exclude(
-                status__in=[
-                    AuditoriaDivergencia.Status.RESOLVIDA,
-                    AuditoriaDivergencia.Status.CANCELADA,
-                ]
-            )
+        pendentes = auditoria.divergencias.select_for_update(of=('self',)).exclude(
+            status__in=[
+                AuditoriaDivergencia.Status.RESOLVIDA,
+                AuditoriaDivergencia.Status.CANCELADA,
+            ]
         )
-        inativados = 0
-        for divergencia in divergencias_ausentes:
-            if not divergencia.equipamento_id:
-                continue
-            equipamento = Equipamento.objects.select_for_update().get(pk=divergencia.equipamento_id)
-            status_anterior = equipamento.status
-            if equipamento.status != 'INATIVO':
-                equipamento.status = 'INATIVO'
-                equipamento.save(update_fields=['status'])
-                inativados += 1
-                Historico.objects.create(
-                    equipamento=equipamento,
-                    tipo_acao='AUDITORIA_REGULARIZADA',
-                    usuario=usuario,
-                    detalhes={
-                        'acao': 'INATIVADO_NA_VALIDACAO',
-                        'auditoria_base_id': auditoria.pk,
-                        'divergencia_id': divergencia.pk,
-                        'status_anterior': status_anterior,
-                        'status_novo': 'INATIVO',
-                        'base_mantida_id': equipamento.regional_id,
-                    },
-                )
-            AuditoriaResolucao.objects.get_or_create(
-                divergencia=divergencia,
-                defaults={
-                    'tipo': AuditoriaResolucao.Tipo.AJUSTE_ADMINISTRATIVO,
-                    'justificativa': 'Equipamento não localizado; inativado na validação do resultado.',
-                    'base_anterior': equipamento.regional,
-                    'nova_base': equipamento.regional,
-                    'resolvida_por': usuario,
-                    'dados': {'status_anterior': status_anterior, 'status_novo': 'INATIVO'},
-                },
+        if pendentes.exists():
+            raise ValidationError(
+                'Resolva ou cancele todas as divergências antes de finalizar a auditoria.'
             )
-            divergencia.status = AuditoriaDivergencia.Status.RESOLVIDA
-            divergencia.resolvida_em = agora
-            divergencia.save(update_fields=['status', 'resolvida_em'])
 
+        agora = timezone.now()
         auditoria.status = AuditoriaBase.Status.FINALIZADA
         auditoria.finalizada_em = agora
         auditoria.finalizada_por = usuario
@@ -173,9 +136,88 @@ class ApuracaoService:
             usuario=usuario,
             dados={
                 'fonte_de_verdade': True,
-                'equipamentos_nao_localizados': len(divergencias_ausentes),
-                'equipamentos_inativados': inativados,
+                'divergencias_resolvidas': auditoria.divergencias.filter(
+                    status=AuditoriaDivergencia.Status.RESOLVIDA,
+                ).count(),
+                'divergencias_canceladas': auditoria.divergencias.filter(
+                    status=AuditoriaDivergencia.Status.CANCELADA,
+                ).count(),
             },
         )
         transaction.on_commit(lambda: ComunicadoService.auditoria_finalizada(auditoria, usuario))
         return auditoria
+
+    @staticmethod
+    @transaction.atomic
+    def inativar_nao_localizado(divergencia, usuario, justificativa):
+        exigir_admin(usuario)
+        justificativa = str(justificativa or '').strip()
+        if not justificativa:
+            raise ValidationError('Informe a justificativa da inativação.')
+
+        divergencia = AuditoriaDivergencia.objects.select_for_update(of=('self',)).select_related(
+            'auditoria_base__campanha__empresa', 'equipamento__regional'
+        ).get(pk=divergencia.pk)
+        if divergencia.tipo != AuditoriaDivergencia.Tipo.NAO_LOCALIZADO:
+            raise ValidationError('Somente itens não localizados podem ser inativados por esta ação.')
+        if divergencia.status not in (
+            AuditoriaDivergencia.Status.ABERTA,
+            AuditoriaDivergencia.Status.EM_ANALISE,
+        ):
+            raise ValidationError('A divergência não está aberta para regularização.')
+        if not divergencia.equipamento_id:
+            raise ValidationError('A divergência não possui equipamento vinculado.')
+        if hasattr(divergencia, 'resolucao'):
+            raise ValidationError('Esta divergência já possui uma resolução.')
+
+        equipamento = Equipamento.objects.select_for_update().select_related('regional__empresa').get(
+            pk=divergencia.equipamento_id
+        )
+        if equipamento.regional.empresa_id != divergencia.auditoria_base.campanha.empresa_id:
+            raise ValidationError('O equipamento não pertence à empresa auditada.')
+        status_anterior = equipamento.status
+        equipamento.status = 'INATIVO'
+        equipamento.save(update_fields=['status'])
+        agora = timezone.now()
+        dados = {
+            'acao': 'INATIVADO_EXPLICITAMENTE',
+            'auditoria_base_id': divergencia.auditoria_base_id,
+            'divergencia_id': divergencia.pk,
+            'status_anterior': status_anterior,
+            'status_novo': 'INATIVO',
+            'base_mantida_id': equipamento.regional_id,
+            'justificativa': justificativa,
+        }
+        resolucao = AuditoriaResolucao.objects.create(
+            divergencia=divergencia,
+            tipo=AuditoriaResolucao.Tipo.AJUSTE_ADMINISTRATIVO,
+            justificativa=justificativa,
+            base_anterior=equipamento.regional,
+            nova_base=equipamento.regional,
+            resolvida_por=usuario,
+            dados=dados,
+        )
+        Historico.objects.create(
+            equipamento=equipamento,
+            tipo_acao='AUDITORIA_REGULARIZADA',
+            usuario=usuario,
+            detalhes=dados,
+        )
+        divergencia.status = AuditoriaDivergencia.Status.RESOLVIDA
+        divergencia.resolvida_em = agora
+        divergencia.save(update_fields=['status', 'resolvida_em'])
+        AuditoriaEvento.objects.create(
+            auditoria_base=divergencia.auditoria_base,
+            divergencia=divergencia,
+            tipo='EQUIPAMENTO_INATIVADO_POR_AUDITORIA',
+            usuario=usuario,
+            dados=dados,
+        )
+        transaction.on_commit(lambda: ComunicadoService.status_equipamento(
+            equipamento,
+            status_anterior,
+            'INATIVO',
+            usuario,
+            motivo=justificativa,
+        ))
+        return resolucao

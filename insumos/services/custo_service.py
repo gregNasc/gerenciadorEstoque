@@ -3,7 +3,9 @@ from decimal import Decimal
 from django.db.models import Case, Count, DecimalField, F, Sum, Value, When
 from django.db.models.functions import TruncMonth
 
-from insumos.models import ConsumoInsumo, MovimentacaoInsumo
+from estoque.policies.compras import ComprasAccessPolicy
+from insumos.models import ConsumoInsumo, MovimentacaoInsumo, SaldoInsumoBase
+from insumos.services.saldo_service import SaldoInsumoService
 
 
 class CustoInsumoService:
@@ -12,21 +14,25 @@ class CustoInsumoService:
 
     @staticmethod
     def pode_visualizar(user):
+        return ComprasAccessPolicy.pode_visualizar_valores(user)
+
+    @staticmethod
+    def _aplicar_escopo_compras(queryset, user, campo_base):
         perfil = getattr(user, 'perfil', None)
-        return bool(perfil and (
-            perfil.is_admin or
-            perfil.is_compras_insumos or
-            perfil.is_financeiro_insumos or
-            perfil.is_executivo_insumos
-        ))
+        if perfil and perfil.is_compras_insumos and not perfil.is_admin:
+            return queryset.filter(**{
+                f'{campo_base}__in': ComprasAccessPolicy.bases(user),
+            })
+        return queryset
 
     @classmethod
     def queryset(cls, user):
         if not cls.pode_visualizar(user):
             return ConsumoInsumo.objects.none()
-        return ConsumoInsumo.objects.select_related(
+        queryset = ConsumoInsumo.objects.select_related(
             'inventario__cliente', 'inventario__base', 'insumo__categoria'
         )
+        return cls._aplicar_escopo_compras(queryset, user, 'inventario__base')
 
     @classmethod
     def filtrar(
@@ -162,26 +168,27 @@ class CustoInsumoService:
         if not cls.pode_visualizar(user):
             return Decimal('0')
         queryset = MovimentacaoInsumo.objects.all()
+        queryset = cls._aplicar_escopo_compras(queryset, user, 'base')
         if bases is not None:
             queryset = queryset.filter(base__in=bases)
-        movimentos = (
-            queryset.values('insumo_id', 'insumo__valor_medio')
-            .annotate(
-                entradas=Sum(Case(
-                    When(tipo__in=cls.ENTRADAS, then=F('quantidade')),
-                    default=Value(Decimal('0')),
-                    output_field=DecimalField(max_digits=14, decimal_places=2),
-                )),
-                saidas=Sum(Case(
-                    When(tipo__in=cls.SAIDAS, then=F('quantidade')),
-                    default=Value(Decimal('0')),
-                    output_field=DecimalField(max_digits=14, decimal_places=2),
-                )),
+
+        pares = list(queryset.values_list('base_id', 'insumo_id').distinct())
+        saldos = {
+            (saldo.base_id, saldo.insumo_id): saldo
+            for saldo in SaldoInsumoBase.objects.filter(
+                base_id__in={base_id for base_id, _ in pares},
+                insumo_id__in={insumo_id for _, insumo_id in pares},
             )
-        )
+        }
         total = Decimal('0')
-        for item in movimentos:
-            saldo = (item['entradas'] or Decimal('0')) - (item['saidas'] or Decimal('0'))
+        for base_id, insumo_id in pares:
+            materializado = saldos.get((base_id, insumo_id))
+            if materializado:
+                saldo, custo = materializado.saldo, materializado.custo_medio
+            else:
+                saldo, custo, _ = SaldoInsumoService.calcular(
+                    queryset.filter(base_id=base_id, insumo_id=insumo_id)
+                )
             if saldo > 0:
-                total += saldo * (item['insumo__valor_medio'] or Decimal('0'))
+                total += saldo * custo
         return total

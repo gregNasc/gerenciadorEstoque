@@ -51,19 +51,43 @@ class EncerramentoService:
         agora = timezone.now()
         auditoria.enviada_em = agora
         auditoria.enviada_por = usuario
-        auditoria.status = AuditoriaBase.Status.ENVIADA
-        auditoria.save(update_fields=['enviada_em', 'enviada_por', 'status'])
+        pendentes = auditoria.divergencias.exclude(
+            status__in=[
+                AuditoriaDivergencia.Status.RESOLVIDA,
+                AuditoriaDivergencia.Status.CANCELADA,
+            ]
+        ).exists()
+        finalizada_no_prazo = not pendentes and agora <= auditoria.fim_em
+        if finalizada_no_prazo:
+            auditoria.status = AuditoriaBase.Status.FINALIZADA
+            auditoria.finalizada_em = agora
+            auditoria.finalizada_por = usuario
+            campos = [
+                'enviada_em', 'enviada_por', 'status',
+                'finalizada_em', 'finalizada_por',
+            ]
+        else:
+            auditoria.status = AuditoriaBase.Status.ENVIADA
+            campos = ['enviada_em', 'enviada_por', 'status']
+        auditoria.save(update_fields=campos)
         AuditoriaEvento.objects.create(
             auditoria_base=auditoria,
-            tipo='AUDITORIA_ENVIADA',
+            tipo=(
+                'AUDITORIA_FINALIZADA_SEM_DIVERGENCIAS'
+                if finalizada_no_prazo else 'AUDITORIA_ENVIADA'
+            ),
             usuario=usuario,
             dados={
                 'divergencias': auditoria.divergencias.count(),
                 'status': auditoria.status,
+                'finalizada_antes_do_prazo': finalizada_no_prazo,
             },
         )
         from estoque.services.comunicado_service import ComunicadoService
-        transaction.on_commit(lambda: ComunicadoService.auditoria_enviada(auditoria, usuario))
+        if finalizada_no_prazo:
+            transaction.on_commit(lambda: ComunicadoService.auditoria_finalizada(auditoria, usuario))
+        else:
+            transaction.on_commit(lambda: ComunicadoService.auditoria_enviada(auditoria, usuario))
         return auditoria
 
     @staticmethod

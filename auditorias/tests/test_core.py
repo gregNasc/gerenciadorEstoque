@@ -18,6 +18,9 @@ from auditorias.services.leitura_service import LeituraService
 from auditorias.services.regularizacao_service import RegularizacaoService
 from auditorias.services.relatorio_service import RelatorioService
 from auditorias.services.snapshot_service import SnapshotService
+from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
+from estoque.security import secure_queryset
+from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 
 
 class AuditoriaFixtureMixin:
@@ -84,6 +87,66 @@ class AuditoriaModelTests(AuditoriaFixtureMixin, TestCase):
             self.auditoria.full_clean()
 
 
+class VisibilidadeEstoqueEmAuditoriaTests(AuditoriaFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.admin.perfil.role = 'admin'
+        self.admin.perfil.save()
+        self.equipamento_auditado = self.equipamento(sufixo='AUD')
+        self.equipamento_visivel = self.equipamento(base=self.outra_base, sufixo='LIVRE')
+        self.user.perfil.regionais.add(self.outra_base)
+
+    def test_queryset_seguro_oculta_base_auditada_inclusive_para_admin(self):
+        for usuario in (self.user, self.admin):
+            ids = set(secure_queryset(Equipamento.objects.all(), usuario).values_list('pk', flat=True))
+            self.assertNotIn(self.equipamento_auditado.pk, ids)
+            self.assertIn(self.equipamento_visivel.pk, ids)
+
+    def test_tela_mostra_aviso_sem_expor_identificadores(self):
+        self.client.force_login(self.user)
+        resposta = self.client.get('/estoque/', {'regional': self.base.pk})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, VisibilidadeEstoqueAuditoriaService.MENSAGEM)
+        self.assertNotContains(resposta, self.equipamento_auditado.numero_serie)
+        self.assertNotContains(resposta, self.equipamento_auditado.patrimonio)
+
+    def test_apis_diretas_retornam_bloqueio_sem_dados(self):
+        self.client.force_login(self.user)
+        urls = [
+            f'/estoque/detalhes-regional/{self.base.pk}/',
+            f'/equipamentos-por-regional/{self.produto.pk}/{self.base.pk}/',
+            f'/detalhes-produto/{self.produto.pk}/?regional={self.base.pk}',
+            f'/api/equipamentos-disponiveis/?regional={self.base.pk}&categoria=Coletores',
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                resposta = self.client.get(url)
+                self.assertEqual(resposta.status_code, 423)
+                self.assertEqual(resposta.json()['codigo'], 'estoque_oculto_auditoria')
+                self.assertNotContains(resposta, self.equipamento_auditado.numero_serie, status_code=423)
+
+    def test_fora_da_janela_estoque_volta_a_ser_visivel(self):
+        agora = timezone.now()
+        self.auditoria.inicio_em = agora + timedelta(hours=1)
+        self.auditoria.fim_em = agora + timedelta(hours=2)
+        self.auditoria.save(update_fields=['inicio_em', 'fim_em'])
+        ids = set(secure_queryset(Equipamento.objects.all(), self.user).values_list('pk', flat=True))
+        self.assertIn(self.equipamento_auditado.pk, ids)
+
+    def test_fluxo_de_coleta_continua_acessivel(self):
+        self.client.force_login(self.user)
+        resposta = self.client.get(f'/auditorias/bases/{self.auditoria.pk}/coleta/')
+        self.assertEqual(resposta.status_code, 200)
+
+    def test_tory_informa_bloqueio_sem_expor_estoque(self):
+        resposta = AssistenteOperacionalService.responder(
+            self.user,
+            f'Quantos equipamentos existem na base {self.base.nome}?',
+        )
+        self.assertEqual(resposta['resposta'], VisibilidadeEstoqueAuditoriaService.MENSAGEM)
+        self.assertNotIn(self.equipamento_auditado.numero_serie, resposta['resposta'])
+
+
 class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
     def test_tela_de_coleta_renderiza_com_csrf(self):
         self.client.force_login(self.user)
@@ -134,6 +197,24 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
             self.auditoria.divergencias.filter(tipo=AuditoriaDivergencia.Tipo.NAO_LOCALIZADO).count(),
             1,
         )
+
+    def test_conclusao_sem_divergencias_antes_do_prazo_finaliza_imediatamente(self):
+        equipamento = self.equipamento(sufixo='OK')
+        SnapshotService.criar_snapshot(self.auditoria, self.user)
+        LeituraService.registrar(
+            auditoria_base=self.auditoria,
+            valor=equipamento.patrimonio,
+            usuario=self.user,
+        )
+
+        resultado = EncerramentoService.enviar(self.auditoria, self.user)
+
+        self.assertEqual(resultado.status, AuditoriaBase.Status.FINALIZADA)
+        self.assertIsNotNone(resultado.finalizada_em)
+        self.assertEqual(resultado.finalizada_por, self.user)
+        self.assertTrue(resultado.eventos.filter(
+            tipo='AUDITORIA_FINALIZADA_SEM_DIVERGENCIAS'
+        ).exists())
 
     def test_reabrir_antes_da_validacao_preserva_leituras(self):
         equipamento = self.equipamento()
@@ -300,7 +381,7 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
         self.assertContains(resposta, 'Status atual')
         self.assertContains(resposta, '← Voltar')
 
-    def test_coleta_e_resultado_sao_cegos_para_gestor_ate_finalizacao(self):
+    def test_coleta_e_cega_e_resultado_limpo_finaliza_antes_do_prazo(self):
         esperado = self.equipamento()
         SnapshotService.criar_snapshot(self.auditoria, self.user)
 
@@ -333,33 +414,19 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
             f'/auditorias/bases/{self.auditoria.pk}/coleta/',
         )
         resposta = self.client.get(f'/auditorias/bases/{self.auditoria.pk}/coleta/')
-        self.assertContains(resposta, 'A coleta foi enviada e está em apuração pelo administrador.')
+        self.assertContains(resposta, 'O resultado final foi validado e está disponível.')
+        self.auditoria.refresh_from_db()
+        self.assertEqual(self.auditoria.status, AuditoriaBase.Status.FINALIZADA)
         self.assertEqual(
-            self.client.get(f'/auditorias/bases/{self.auditoria.pk}/divergencias/').status_code,
-            403,
+            self.client.get(f'/auditorias/bases/{self.auditoria.pk}/divergencias/').status_code, 200,
         )
         self.assertEqual(
-            self.client.get(f'/auditorias/bases/{self.auditoria.pk}/relatorio.xlsx').status_code,
-            403,
+            self.client.get(f'/auditorias/bases/{self.auditoria.pk}/relatorio.xlsx').status_code, 200,
         )
 
         self.client.force_login(self.admin)
         resposta = self.client.get(f'/auditorias/bases/{self.auditoria.pk}/coleta/')
         self.assertContains(resposta, esperado.patrimonio)
-        self.client.post(
-            f'/auditorias/bases/{self.auditoria.pk}/finalizar/',
-            {'confirmar_validacao': '1'},
-        )
-
-        self.client.force_login(self.user)
-        self.assertEqual(
-            self.client.get(f'/auditorias/bases/{self.auditoria.pk}/divergencias/').status_code,
-            200,
-        )
-        self.assertEqual(
-            self.client.get(f'/auditorias/bases/{self.auditoria.pk}/relatorio.xlsx').status_code,
-            200,
-        )
 
     def test_resultado_legado_sem_finalizacao_admin_permanece_oculto(self):
         self.equipamento()
@@ -414,7 +481,7 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
         self.assertEqual(divergencia.respondida_por, self.user)
         self.assertIn('busca no depósito', divergencia.justificativa_base)
 
-    def test_validacao_inativa_nao_localizado_na_mesma_base_e_libera_relatorio_final(self):
+    def test_inativacao_explicita_resolve_nao_localizado_e_libera_finalizacao(self):
         equipamento = self.equipamento()
         SnapshotService.criar_snapshot(self.auditoria, self.user)
         EncerramentoService.enviar(self.auditoria, self.user)
@@ -428,20 +495,31 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
             404,
         )
 
-        resposta = self.client.post(
-            f'/auditorias/bases/{self.auditoria.pk}/finalizar/',
-            {'confirmar_validacao': '1'},
+        divergencia = self.auditoria.divergencias.get(tipo=AuditoriaDivergencia.Tipo.NAO_LOCALIZADO)
+        with self.assertRaises(ValidationError):
+            ApuracaoService.validar_resultado(self.auditoria, self.admin)
+        equipamento.refresh_from_db()
+        self.assertEqual(equipamento.status, 'ATIVO')
+
+        ApuracaoService.inativar_nao_localizado(
+            divergencia,
+            self.admin,
+            'Busca concluída sem localizar o equipamento.',
         )
-        self.assertEqual(resposta.status_code, 302)
+        ApuracaoService.validar_resultado(self.auditoria, self.admin)
+
         equipamento.refresh_from_db()
         self.auditoria.refresh_from_db()
-        divergencia = self.auditoria.divergencias.get(tipo=AuditoriaDivergencia.Tipo.NAO_LOCALIZADO)
+        divergencia.refresh_from_db()
         self.assertEqual(equipamento.status, 'INATIVO')
         self.assertEqual(equipamento.regional, self.base)
         self.assertEqual(self.auditoria.status, AuditoriaBase.Status.FINALIZADA)
         self.assertIsNotNone(self.auditoria.finalizada_em)
         self.assertEqual(divergencia.status, AuditoriaDivergencia.Status.RESOLVIDA)
         self.assertTrue(hasattr(divergencia, 'resolucao'))
+        self.assertTrue(divergencia.eventos.filter(
+            tipo='EQUIPAMENTO_INATIVADO_POR_AUDITORIA'
+        ).exists())
 
         self.client.force_login(self.user)
         final = self.client.get(f'/auditorias/bases/{self.auditoria.pk}/relatorio.xlsx')

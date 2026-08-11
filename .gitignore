@@ -9,8 +9,18 @@ __pycache__/
 .env
 
 # Database local
+*.sqlite
 *.sqlite3
+*.db
+*.sql
+*.dump
+*.bak
+*.bkp
+*.backup
 backups/
+dumps/
+exports/
+test_databases/
 
 # Static / media
 media/

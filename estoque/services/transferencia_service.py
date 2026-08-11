@@ -108,4 +108,6 @@ class TransferenciaService:
         transaction.on_commit(
             lambda: ComunicadoService.auditoria_transferencia_criada(divergencia, transferencia, usuario)
         )
+        from ordens_servico.services import OrdemServicoService
+        OrdemServicoService.para_transferencia(transferencia, usuario)
         return transferencia

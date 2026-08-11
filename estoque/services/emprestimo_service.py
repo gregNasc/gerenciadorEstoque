@@ -63,6 +63,9 @@ class EmprestimoService:
             emprestimo
         )
 
+        from ordens_servico.services import OrdemServicoService
+        OrdemServicoService.para_emprestimo(emprestimo, user)
+
         return emprestimo
 
     @staticmethod
@@ -95,6 +98,8 @@ class EmprestimoService:
         emprestimo.save(update_fields=['status'])
 
         ComunicadoService.emp_item_reservado(emprestimo)
+        from ordens_servico.services import OrdemServicoService
+        OrdemServicoService.para_emprestimo(emprestimo, emprestimo.solicitado_por)
 
     @staticmethod
     @transaction.atomic
@@ -113,6 +118,13 @@ class EmprestimoService:
             item.save()
 
         ComunicadoService.emp_enviado(emprestimo)
+        from ordens_servico.models import OrdemServico
+        from ordens_servico.services import OrdemServicoService
+        ordem = OrdemServicoService.para_emprestimo(emprestimo, emprestimo.solicitado_por)
+        OrdemServicoService.registrar_transicao(
+            ordem, status=OrdemServico.Status.EM_EXECUCAO,
+            usuario=emprestimo.solicitado_por, evento='EMPRESTIMO_ENVIADO',
+        )
 
     @staticmethod
     @transaction.atomic
@@ -141,6 +153,13 @@ class EmprestimoService:
 
         NotificacaoService.emprestimo_recebido(
             emprestimo
+        )
+        from ordens_servico.models import OrdemServico
+        from ordens_servico.services import OrdemServicoService
+        ordem = OrdemServicoService.para_emprestimo(emprestimo, usuario)
+        OrdemServicoService.registrar_transicao(
+            ordem, status=OrdemServico.Status.EM_EXECUCAO,
+            usuario=usuario, evento='EMPRESTIMO_RECEBIDO',
         )
 
     @staticmethod
@@ -174,6 +193,13 @@ class EmprestimoService:
         )
         NotificacaoService.emprestimo_devolucao_pendente(
             emprestimo
+        )
+        from ordens_servico.models import OrdemServico
+        from ordens_servico.services import OrdemServicoService
+        ordem = OrdemServicoService.para_emprestimo(emprestimo, usuario)
+        OrdemServicoService.registrar_transicao(
+            ordem, status=OrdemServico.Status.AGUARDANDO_CONFIRMACAO,
+            usuario=usuario, evento='EMPRESTIMO_DEVOLUCAO_ENVIADA',
         )
 
     @staticmethod
@@ -235,3 +261,18 @@ class EmprestimoService:
                 emprestimo,
                 usuario,
             )
+        from ordens_servico.models import OrdemServico
+        from ordens_servico.services import OrdemServicoService
+        ordem = OrdemServicoService.para_emprestimo(emprestimo, usuario)
+        OrdemServicoService.registrar_transicao(
+            ordem,
+            status=(
+                OrdemServico.Status.EM_EXECUCAO
+                if possui_pendencias else OrdemServico.Status.CONCLUIDA
+            ),
+            usuario=usuario,
+            evento=(
+                'EMPRESTIMO_DIVERGENCIA_DEVOLUCAO'
+                if possui_pendencias else 'EMPRESTIMO_FINALIZADO'
+            ),
+        )

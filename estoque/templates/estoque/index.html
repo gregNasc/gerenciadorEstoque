@@ -5,6 +5,12 @@
 {% block content %}
 <div class="container-fluid px-4">
 
+    {% if estoque_oculto_auditoria %}
+    <div class="alert alert-warning border-warning" role="alert" data-testid="auditoria-estoque-oculto">
+        <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>{{ mensagem_auditoria }}
+    </div>
+    {% endif %}
+
     <!-- Título -->
     <div class="border-bottom pb-3 mb-4">
         <h1 class="h3 mb-0 fw-semibold">{% trans "Dashboard de Ativos" %}</h1>

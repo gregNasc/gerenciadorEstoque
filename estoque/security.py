@@ -13,9 +13,22 @@ def validar_empresa_objeto(obj, empresa):
     return obj
 
 def secure_queryset(qs, user, campo_empresa='regional__empresa', campo_regional='regional'):
+    from estoque.models import Equipamento
+
     perfil = getattr(user, 'perfil', None)
     if not perfil:
         return qs.none()
+
+    # A auditoria usa snapshots próprios. Consultas comuns nunca devem revelar o
+    # estoque vivo de uma base dentro da janela ativa, nem mesmo a administradores.
+    if qs.model is Equipamento:
+        from auditorias.services.visibilidade_estoque_service import (
+            VisibilidadeEstoqueAuditoriaService,
+        )
+        qs = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
+            qs,
+            campo_base=f'{campo_regional}_id',
+        )
 
     if perfil.is_admin:
         return qs

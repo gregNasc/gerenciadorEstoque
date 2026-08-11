@@ -270,7 +270,58 @@ class MovimentacaoInsumo(models.Model):
             ('realizar_devolucao', 'Pode registrar devoluções'),
             ('realizar_perda', 'Pode registrar perdas'),
             ('realizar_ajuste', 'Pode realizar ajustes'),
+            ('visualizar_valores_estoque', 'Pode visualizar valores do estoque'),
+            ('gerenciar_fornecedores', 'Pode gerenciar fornecedores'),
+            ('gerenciar_precos', 'Pode gerenciar preços'),
+            ('gerenciar_aquisicoes', 'Pode gerenciar aquisições'),
+            ('criar_remessa_compra', 'Pode criar remessa de compra'),
+            ('confirmar_remessa_compra', 'Pode confirmar remessa de compra'),
         ]
+
+
+class SaldoInsumoBase(models.Model):
+    base = models.ForeignKey(
+        'estoque.Base',
+        on_delete=models.PROTECT,
+        related_name='saldos_insumos',
+    )
+    insumo = models.ForeignKey(
+        Insumo,
+        on_delete=models.PROTECT,
+        related_name='saldos_por_base',
+    )
+    saldo = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    custo_medio = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal('0'))
+    ultima_entrada_em = models.DateTimeField(null=True, blank=True)
+    recalculado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['base__nome', 'insumo__descricao']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['base', 'insumo'],
+                name='saldo_insumo_base_unico',
+            ),
+            models.CheckConstraint(
+                condition=Q(saldo__gte=0),
+                name='saldo_insumo_base_nao_negativo',
+            ),
+            models.CheckConstraint(
+                condition=Q(custo_medio__gte=0),
+                name='custo_medio_insumo_base_nao_negativo',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['base', 'saldo']),
+            models.Index(fields=['insumo', 'saldo']),
+        ]
+
+    @property
+    def valor_total(self):
+        return self.saldo * self.custo_medio
+
+    def __str__(self):
+        return f'{self.base} - {self.insumo}: {self.saldo}'
 
 class Cliente(models.Model):
 

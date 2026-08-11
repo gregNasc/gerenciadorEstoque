@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from estoque.models import Base, Comunicado, Sick
+from estoque.policies.compras import GruposCorporativos
 
 
 class ComunicadoService:
@@ -232,12 +233,14 @@ class ComunicadoService:
         data_previsao = data_referencia + timedelta(days=1)
         destinatarios = User.objects.filter(is_active=True).filter(
             Q(perfil__role='admin') |
-            Q(username='rafael.ribeiro')
+            Q(groups__name=GruposCorporativos.SICK_MANUTENCAO)
         ).distinct()
         if not destinatarios.exists():
             return []
 
-        criador = destinatarios.filter(username='rafael.ribeiro').first()
+        criador = destinatarios.filter(
+            groups__name=GruposCorporativos.SICK_MANUTENCAO,
+        ).first()
         if criador is None:
             criador = destinatarios.filter(perfil__role='admin').first()
 

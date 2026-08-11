@@ -145,93 +145,84 @@
                             </a>
 
                         </li>
-                        {% if perfil.role == "admin" and request.user.username != "jose.barboza" %}
-                        <li>
-                            <a
-                                class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}"
-                                href="{% url 'insumos:dashboard_saude_insumos' %}"
-                            >
-                                <i class="bi bi-heart-pulse"></i>
-                                Saúde dos insumos
-                            </a>
-                        </li>
+                        {% if pode_visualizar_saude_estoque %}
+                        <li><h6 class="dropdown-header"><i class="bi bi-heart-pulse me-1"></i> Saúde do Estoque</h6></li>
+                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_insumos' %}"><i class="bi bi-box me-2"></i>Insumos</a></li>
+                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_equipamentos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_equipamentos' %}"><i class="bi bi-pc-display me-2"></i>Equipamentos</a></li>
+                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_geral' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_geral' %}"><i class="bi bi-speedometer2 me-2"></i>Geral</a></li>
                         {% endif %}
-                        {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
-                        <!--
+                        {% if pode_visualizar_valores %}
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_custos' %}">
                                 <i class="bi bi-bar-chart-line"></i>
                                 {% trans "Custos de insumos" %}
                             </a>
                         </li>
-                        -->
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:precos_insumos' %}">
                                 <i class="bi bi-tags"></i>
                                 {% trans "Preços unitários" %}
                             </a>
-                        </li-->
-                        <!--li>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:fornecedores_insumos' %}">
                                 <i class="bi bi-building"></i>
                                 {% trans "Fornecedores" %}
                             </a>
-                        </li-->
-                        <!--li>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:pesquisa_precos_online' %}">
                                 <i class="bi bi-search"></i>
                                 {% trans "Pesquisa de preços" %}
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
                                 <i class="bi bi-calendar-range"></i>
                                 Planejamento
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
-                        {% if perfil.role == 'admin' or perfil.is_financeiro_insumos or perfil.is_executivo_insumos %}
-                        <!--li>
+                        {% if pode_visualizar_valores and perfil.role == 'admin' or pode_visualizar_valores and perfil.is_financeiro_insumos or pode_visualizar_valores and perfil.is_executivo_insumos %}
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_financeiro' %}">
                                 <i class="bi bi-cash-coin"></i>
                                 Financeiro
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos %}
-                        <!--li>
+                        <li>
                             <hr class="dropdown-divider">
-                        </li-->
-                        <!--
+                        </li>
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:lista_inventarios' %}">
                                 <i class="bi bi-list-ul"></i>
                                 Inventários
                             </a>
                         </li>
-                        -->
                         {% endif %}
                         {% if perms.integracao.gerenciar_mapeamentos_planning %}
-                        <!--li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'integracao:planning_mappings' %}">
                                 <i class="bi bi-diagram-3"></i>
                                 Mapeamentos Planning
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
 
-                          {% if perfil.role == 'admin' %}
-                        <!--li>
+                        {% if perfil.role == 'admin' and request.user.is_staff and not compras_restrito %}
+                        <li>
                             <hr class="dropdown-divider">
-                        </li-->
-                        <!--li>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="{% url 'insumos:importar_excel' %}">
                                 <i class="bi bi-file-earmark-excel"></i>
                                 {% trans "Importar Excel" %}
                             </a>
-                        </li-->
+                        </li>
                         {% endif %}
 
                     </ul>
@@ -281,13 +272,22 @@
             {% endif %}
 
                 <!-- ASSISTENTE -->
-                <!--li class="nav-item">
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <li class="nav-item">
                     <a class="nav-link {% if url_name == 'assistente_operacional' %}active{% endif %}"
                        href="{% url 'estoque:assistente_operacional' %}">
                         <i class="bi bi-stars"></i>
                         {% trans "Assistente" %}
                     </a>
-                </li-->
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.namespace == 'ordens_servico' %}active{% endif %}"
+                       href="{% url 'ordens_servico:lista' %}">
+                        <i class="bi bi-file-earmark-text"></i>
+                        {% trans "O.S." %}
+                    </a>
+                </li>
+                {% endif %}
 
                 <!-- COMUNICADOS -->
                 <li class="nav-item dropdown">
@@ -356,14 +356,7 @@
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item dropdown">
 
-                    <a class="nav-link dropdown-toggle
-                        {% if 'transferencia' in url_name
-                           or 'emprestimo' in url_name
-                           or url_name == 'caixa_solicitacoes'
-                           or url_name == 'caixa_separacao'
-                           or url_name == 'caixa_transferencias' %}
-                           active
-                        {% endif %}"
+                    <a class="nav-link dropdown-toggle {% if 'transferencia' in url_name or 'emprestimo' in url_name or url_name == 'caixa_solicitacoes' or url_name == 'caixa_separacao' or url_name == 'caixa_transferencias' %}active{% endif %}"
                        href="#"
                        id="transferenciasDropdown"
                        role="button"
@@ -508,6 +501,7 @@
                     </ul>
 
                 </li>
+                {% endif %}
 
                 <!-- SICK -->
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.role == 'operador' or pode_realizar_manutencao_sick %}

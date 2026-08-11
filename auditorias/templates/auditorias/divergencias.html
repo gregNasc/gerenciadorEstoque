@@ -41,9 +41,9 @@
       {% if pode_validar %}
         <div class="col-lg-6"><div class="card border-success shadow-sm h-100"><div class="card-body">
           <h5 class="card-title">{% trans "Validar resultado" %}</h5>
-          <p>{% trans "Confirma a apuração como fonte de verdade. Equipamentos não localizados serão marcados como inativos, sem mudar de base." %}</p>
+          <p>{% trans "Confirma a apuração como fonte de verdade. Todas as divergências precisam estar resolvidas ou canceladas; nenhum equipamento será alterado automaticamente." %}</p>
           <form method="post" action="{% url 'auditorias:base_finalizar' auditoria.id %}">{% csrf_token %}
-            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" value="1" name="confirmar_validacao" id="confirmar-validacao" required><label class="form-check-label" for="confirmar-validacao">{% trans "Confirmo a validação e a inativação dos itens não localizados." %}</label></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" value="1" name="confirmar_validacao" id="confirmar-validacao" required><label class="form-check-label" for="confirmar-validacao">{% trans "Confirmo que todas as divergências foram tratadas e desejo finalizar." %}</label></div>
             <button class="btn btn-success">{% trans "Validar resultado" %}</button>
           </form>
         </div></div></div>

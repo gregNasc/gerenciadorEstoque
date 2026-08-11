@@ -166,6 +166,9 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
         ),
     )
 
+    from ordens_servico.services import OrdemServicoService
+    OrdemServicoService.para_transferencia(transferencia, solicitado_por)
+
     return transferencia
 
 @transaction.atomic
@@ -259,6 +262,17 @@ def enviar_transferencia(transferencia, user, codigo_rastreio=''):
             f'Equipamentos enviados de {transferencia.regional_origem.nome} '
             f'para {transferencia.regional_destino.nome}.'
         ),
+    )
+
+    from ordens_servico.models import OrdemServico
+    from ordens_servico.services import OrdemServicoService
+    ordem = OrdemServicoService.para_transferencia(transferencia, user)
+    OrdemServicoService.registrar_transicao(
+        ordem,
+        status=OrdemServico.Status.EM_EXECUCAO,
+        usuario=user,
+        evento='TRANSFERENCIA_ENVIADA',
+        dados={'codigo_rastreio': transferencia.codigo_rastreio},
     )
 
     return transferencia
@@ -361,6 +375,16 @@ def receber_transferencia(transferencia, user):
         ),
     )
 
+    from ordens_servico.models import OrdemServico
+    from ordens_servico.services import OrdemServicoService
+    ordem = OrdemServicoService.para_transferencia(transferencia, user)
+    OrdemServicoService.registrar_transicao(
+        ordem,
+        status=OrdemServico.Status.CONCLUIDA,
+        usuario=user,
+        evento='TRANSFERENCIA_RECEBIDA',
+    )
+
     return transferencia
 
 @transaction.atomic
@@ -423,6 +447,16 @@ def cancelar_transferencia(transferencia, user):
             f'equipamentos foram liberados.'
         ),
         tipo='URGENTE',
+    )
+
+    from ordens_servico.models import OrdemServico
+    from ordens_servico.services import OrdemServicoService
+    ordem = OrdemServicoService.para_transferencia(transferencia, user)
+    OrdemServicoService.registrar_transicao(
+        ordem,
+        status=OrdemServico.Status.CANCELADA,
+        usuario=user,
+        evento='TRANSFERENCIA_CANCELADA',
     )
 
     return transferencia

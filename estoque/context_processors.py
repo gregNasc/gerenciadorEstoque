@@ -1,6 +1,7 @@
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from estoque.permissions import pode_realizar_manutencao_sick
+from estoque.policies.compras import ComprasAccessPolicy
 from estoque.services.comunicado_service import ComunicadoService
 from .models import (
     Comunicado,
@@ -163,11 +164,33 @@ def notificacoes_context(request):
 
 def permissoes_especiais(request):
     if request.user.is_authenticated:
+        compras_restrito = ComprasAccessPolicy.restrito(request.user)
+        perfil = request.user.perfil
         return {
             'pode_realizar_manutencao_sick':
-                pode_realizar_manutencao_sick(request.user)
+                pode_realizar_manutencao_sick(request.user),
+            'pode_visualizar_valores':
+                ComprasAccessPolicy.pode_visualizar_valores(request.user),
+            'pode_editar_precos':
+                ComprasAccessPolicy.pode_editar_precos(request.user),
+            'pode_gerenciar_fornecedores':
+                ComprasAccessPolicy.pode_gerenciar_fornecedores(request.user),
+            'compras_restrito': compras_restrito,
+            'pode_visualizar_saude_estoque': bool(
+                not compras_restrito
+                and (
+                    request.user.is_superuser
+                    or perfil.is_admin
+                    or perfil.is_executivo_insumos
+                )
+            ),
         }
 
     return {
-        'pode_realizar_manutencao_sick': False
+        'pode_realizar_manutencao_sick': False,
+        'pode_visualizar_valores': False,
+        'pode_editar_precos': False,
+        'pode_gerenciar_fornecedores': False,
+        'compras_restrito': False,
+        'pode_visualizar_saude_estoque': False,
     }

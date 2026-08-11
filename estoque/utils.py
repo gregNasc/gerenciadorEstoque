@@ -25,11 +25,16 @@ def get_object_empresa_or_404(model, request, campo_empresa='empresa', **kwargs)
     return get_object_or_404(model, **kwargs)
 
 def qs_equipamentos(request):
-    return filtrar_por_empresa(
+    from auditorias.services.visibilidade_estoque_service import (
+        VisibilidadeEstoqueAuditoriaService,
+    )
+
+    queryset = filtrar_por_empresa(
         Equipamento.objects.select_related('produto', 'regional'),
         request,
         campo_empresa='regional__empresa'
     )
+    return VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(queryset)
 
 def qs_historico(request):
     qs = Historico.objects.select_related(

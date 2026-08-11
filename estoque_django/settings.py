@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     'core',
     'insumos',
     'integracao.apps.IntegracaoConfig',
+    'ordens_servico.apps.OrdensServicoConfig',
 ]
 
 MIDDLEWARE = [

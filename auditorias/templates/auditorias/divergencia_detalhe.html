@@ -37,5 +37,15 @@
   {% else %}
     {% if not divergencia.auditoria_base.finalizada_em and not em_correcao %}<div class="alert alert-info">{% trans "Esta divergência ainda está em apuração administrativa." %}</div>{% endif %}
   {% endif %}
+  {% if pode_inativar %}
+    <form class="card card-body border-danger shadow-sm mt-3" method="post" action="{% url 'auditorias:divergencia_inativar' divergencia.id %}">
+      {% csrf_token %}
+      <h4>{% trans "Inativar equipamento não localizado" %}</h4>
+      <p class="text-muted">{% trans "A inativação é explícita, mantém a base atual e fica registrada no histórico." %}</p>
+      <label class="form-label" for="justificativa-inativacao">{% trans "Justificativa" %}</label>
+      <textarea class="form-control mb-3" id="justificativa-inativacao" name="justificativa" required></textarea>
+      <button class="btn btn-danger">{% trans "Confirmar inativação" %}</button>
+    </form>
+  {% endif %}
 </div>
 {% endblock %}

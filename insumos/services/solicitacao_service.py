@@ -91,6 +91,8 @@ class SolicitacaoService:
             'status', 'em_compra_por', 'em_compra_em', 'observacao_aprovacao',
         ])
         ComunicadoService.solicitacao_insumo_decidida(solicitacao, usuario)
+        from ordens_servico.services import OrdemServicoService
+        OrdemServicoService.para_solicitacao_insumo(solicitacao, usuario)
         return solicitacao
 
     @staticmethod
@@ -117,4 +119,14 @@ class SolicitacaoService:
         ])
         solicitacao.itens.update(quantidade_atendida=F('quantidade'))
         ComunicadoService.solicitacao_insumo_decidida(solicitacao, usuario)
+        from ordens_servico.models import OrdemServico
+        from ordens_servico.services import OrdemServicoService
+        ordem = OrdemServicoService.para_solicitacao_insumo(solicitacao, usuario)
+        OrdemServicoService.registrar_transicao(
+            ordem,
+            status=OrdemServico.Status.CONCLUIDA,
+            usuario=usuario,
+            evento='SOLICITACAO_INSUMO_FINALIZADA',
+            dados={'protocolo': solicitacao.protocolo},
+        )
         return solicitacao

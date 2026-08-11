@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from estoque.models import Comunicado, Equipamento, Historico, Sick
+from estoque.policies.compras import GruposCorporativos
 from estoque.services.comunicado_service import ComunicadoService
 
 
@@ -24,7 +25,7 @@ class ComunicadoSickService:
         if terceirizada:
             destinatarios = destinatarios.exclude(
                 perfil__role='admin',
-            ).exclude(username='rafael.ribeiro')
+            ).exclude(groups__name=GruposCorporativos.SICK_MANUTENCAO)
         nome_usuario = usuario.get_full_name() or usuario.get_username()
         dados = {
             'sick_id': sick.pk,
@@ -90,7 +91,9 @@ class SickService:
     def visiveis_para(cls, usuario, queryset=None):
         queryset = queryset if queryset is not None else Sick.objects.all()
         perfil = cls._perfil(usuario)
-        if perfil.is_admin or usuario.username == 'rafael.ribeiro':
+        if perfil.is_admin or usuario.groups.filter(
+            name=GruposCorporativos.SICK_MANUTENCAO,
+        ).exists():
             return queryset.exclude(tipo_destino=Sick.TipoDestino.TERCEIRIZADA)
 
         bases = perfil.regionais.all()
@@ -130,12 +133,16 @@ class SickService:
     def _validar_acesso_sick(cls, usuario, sick):
         if sick.tipo_destino != Sick.TipoDestino.TERCEIRIZADA:
             perfil = cls._perfil(usuario)
-            if perfil.is_admin or usuario.username == 'rafael.ribeiro':
+            if perfil.is_admin or usuario.groups.filter(
+                name=GruposCorporativos.SICK_MANUTENCAO,
+            ).exists():
                 return perfil
             return cls._validar_acesso_base(usuario, sick.equipamento)
 
         perfil = cls._perfil(usuario)
-        if perfil.is_admin or usuario.username == 'rafael.ribeiro':
+        if perfil.is_admin or usuario.groups.filter(
+            name=GruposCorporativos.SICK_MANUTENCAO,
+        ).exists():
             raise PermissionDenied('Este SICK terceirizado é restrito à base de origem.')
         base_id = sick.base_origem_id or sick.equipamento.regional_id
         if not (perfil.is_gestor or perfil.is_operador):
@@ -152,7 +159,7 @@ class SickService:
         if perfil.is_admin:
             return
         if tipo == 'manutencao':
-            if usuario.username == 'rafael.ribeiro':
+            if usuario.groups.filter(name=GruposCorporativos.SICK_MANUTENCAO).exists():
                 return
             if permissao == 'receber_equipamento_manutencao':
                 raise PermissionDenied(
@@ -171,7 +178,7 @@ class SickService:
     def _validar_envio_pela_base(cls, usuario, equipamento):
         perfil = cls._validar_acesso_base(usuario, equipamento)
         if (
-            usuario.username == 'rafael.ribeiro' or
+            usuario.groups.filter(name=GruposCorporativos.SICK_MANUTENCAO).exists() or
             not (perfil.is_gestor or perfil.is_operador)
         ):
             raise PermissionDenied(
@@ -257,6 +264,8 @@ class SickService:
             sick=sick, acao='Equipamento marcado como SICK', usuario=usuario,
             etapa_nova=Sick.Etapa.IDENTIFICADO, detalhes=detalhes,
         )
+        from ordens_servico.services import OrdemServicoService
+        OrdemServicoService.para_sick(sick, usuario)
         return sick
 
     @classmethod
@@ -496,4 +505,20 @@ class SickService:
         ComunicadoSickService.notificar_admins(
             sick=sick, acao=titulo, usuario=usuario,
             etapa_anterior=anterior, etapa_nova=sick.etapa, detalhes=detalhes,
+        )
+        from ordens_servico.models import OrdemServico
+        from ordens_servico.services import OrdemServicoService
+        ordem = OrdemServicoService.para_sick(sick, usuario)
+        if sick.etapa == Sick.Etapa.FINALIZADO:
+            status_os = OrdemServico.Status.CONCLUIDA
+        elif sick.etapa == Sick.Etapa.AGUARDANDO_RETORNO:
+            status_os = OrdemServico.Status.AGUARDANDO_CONFIRMACAO
+        else:
+            status_os = OrdemServico.Status.EM_EXECUCAO
+        OrdemServicoService.registrar_transicao(
+            ordem,
+            status=status_os,
+            usuario=usuario,
+            evento=tipo_historico,
+            dados={'etapa_anterior': anterior, 'etapa_nova': sick.etapa, **(detalhes or {})},
         )

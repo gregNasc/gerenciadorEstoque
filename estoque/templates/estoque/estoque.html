@@ -6,6 +6,11 @@
 {% if request.user.is_authenticated %}
 
 <div class="container-fluid px-4">
+    {% if estoque_oculto_auditoria %}
+    <div class="alert alert-warning border-warning mt-3" role="alert" data-testid="auditoria-estoque-oculto">
+        <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>{{ mensagem_auditoria }}
+    </div>
+    {% endif %}
     <div class="card border-0 shadow-sm">
 
         <!-- HEADER -->

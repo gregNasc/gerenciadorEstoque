@@ -24,10 +24,67 @@ from insumos.models import (
     Insumo,
     Inventario,
     MovimentacaoInsumo,
+    SaldoInsumoBase,
     ItemChecklist,
     ItemSolicitacaoInsumo,
     SolicitacaoInsumo,
 )
+from insumos.services.movimentacao_service import MovimentacaoService
+from insumos.services.saldo_service import SaldoInsumoService
+
+
+class SaldoInsumoPorBaseTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa saldo por base')
+        self.base_a = Base.objects.create(nome='BASE A', empresa=self.empresa)
+        self.base_b = Base.objects.create(nome='BASE B', empresa=self.empresa)
+        self.usuario = User.objects.create_user('saldo_por_base')
+        self.categoria = CategoriaInsumo.objects.create(nome='Categoria saldo')
+        self.insumo = Insumo.objects.create(
+            descricao='Material por base',
+            categoria=self.categoria,
+            unidade_medida='UN',
+            valor_medio=Decimal('999.00'),
+        )
+
+    def test_custo_medio_e_independente_por_base_e_nao_altera_referencia_global(self):
+        MovimentacaoService.entrada(
+            base=self.base_a, insumo=self.insumo, quantidade=10,
+            valor_unitario=10, usuario=self.usuario,
+        )
+        MovimentacaoService.entrada(
+            base=self.base_a, insumo=self.insumo, quantidade=10,
+            valor_unitario=20, usuario=self.usuario,
+        )
+        MovimentacaoService.entrada(
+            base=self.base_b, insumo=self.insumo, quantidade=5,
+            valor_unitario=30, usuario=self.usuario,
+        )
+
+        saldo_a = SaldoInsumoBase.objects.get(base=self.base_a, insumo=self.insumo)
+        saldo_b = SaldoInsumoBase.objects.get(base=self.base_b, insumo=self.insumo)
+        self.insumo.refresh_from_db()
+        self.assertEqual(saldo_a.saldo, Decimal('20'))
+        self.assertEqual(saldo_a.custo_medio, Decimal('15'))
+        self.assertEqual(saldo_b.custo_medio, Decimal('30'))
+        self.assertEqual(self.insumo.valor_medio, Decimal('999.00'))
+
+    def test_saida_usa_custo_da_base_e_reconstrucao_e_idempotente(self):
+        MovimentacaoService.entrada(
+            base=self.base_a, insumo=self.insumo, quantidade=10,
+            valor_unitario=12, usuario=self.usuario,
+        )
+        saida = MovimentacaoService.saida(
+            base=self.base_a, insumo=self.insumo, quantidade=3,
+            usuario=self.usuario,
+        )
+        self.assertEqual(saida.valor_unitario, Decimal('12'))
+
+        primeiro = SaldoInsumoService.reconstruir_par(self.base_a, self.insumo)
+        segundo = SaldoInsumoService.reconstruir_par(self.base_a, self.insumo)
+        self.assertEqual(primeiro.pk, segundo.pk)
+        self.assertEqual(segundo.saldo, Decimal('7'))
+        self.assertEqual(segundo.custo_medio, Decimal('12'))
 
 
 class CargaInicialTagsTests(TestCase):

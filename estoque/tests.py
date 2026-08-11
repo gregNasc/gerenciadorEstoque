@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
@@ -17,6 +17,7 @@ from estoque.models import (
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.assistente.response_builder import construir_erro, construir_resposta
 from estoque.services.comunicado_service import ComunicadoService
+from estoque.policies.compras import GruposCorporativos
 from estoque.services.emprestimo_service import EmprestimoService
 from estoque.services.transferencia_services import (
     criar_transferencia,
@@ -898,6 +899,8 @@ class ComunicadoManutencaoTests(TestCase):
             user=self.rafael,
             defaults={'empresa': empresa, 'role': Perfil.Role.OPERADOR},
         )
+        grupo, _ = Group.objects.get_or_create(name=GruposCorporativos.SICK_MANUTENCAO)
+        self.rafael.groups.add(grupo)
         produto = Produto.objects.create(
             codigo='PROD-MANUT', descricao='Coletor em manutenção',
             fabricante='Fabricante', modelo='Modelo', categoria='Coletores',

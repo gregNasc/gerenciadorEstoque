@@ -1,0 +1,9 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Ordens de Serviço{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4"><div><h1 class="h3 mb-1">Ordens de Serviço</h1><p class="text-muted mb-0">Autorização e rastreabilidade das operações.</p></div></div>
+  <form class="card card-body mb-4" method="get"><div class="row g-3"><div class="col-md-5"><label class="form-label">Tipo</label><select name="tipo" class="form-select"><option value="">Todos</option>{% for valor,nome in tipo_choices %}<option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div><div class="col-md-5"><label class="form-label">Status</label><select name="status" class="form-select"><option value="">Todos</option>{% for valor,nome in status_choices %}<option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div><div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100">Filtrar</button></div></div></form>
+  <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Número</th><th>Tipo</th><th>Origem</th><th>Destino</th><th>Status</th><th>Abertura</th></tr></thead><tbody>{% for ordem in ordens %}<tr><td><a href="{% url 'ordens_servico:detalhe' ordem.pk %}">{{ ordem.numero }}</a></td><td>{{ ordem.get_tipo_display }}</td><td>{{ ordem.base_origem|default:'-' }}</td><td>{{ ordem.base_destino|default:'-' }}</td><td><span class="badge bg-secondary">{{ ordem.get_status_display }}</span></td><td>{{ ordem.aberto_em|date:'d/m/Y H:i' }}</td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-5">Nenhuma O.S. no seu escopo.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}
