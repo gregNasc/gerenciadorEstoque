@@ -127,10 +127,14 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertIn('projeção mantém a produtividade individual observada e é linear', resultado['resposta'])
 
     def test_lista_encerramentos_depois_do_horario_sem_presumir_janela(self):
-        resultado = AssistenteOperacionalService.responder(
-            self.usuario,
-            'Quais inventários terminaram depois das 6h neste mês?',
-        )
+        with patch(
+            'estoque.services.assistente_operacional_service.timezone.localdate',
+            return_value=date(2026, 7, 15),
+        ):
+            resultado = AssistenteOperacionalService.responder(
+                self.usuario,
+                'Quais inventários terminaram depois das 6h neste mês?',
+            )
 
         self.assertIn('inventários encerrados depois das 06:00', resultado['resposta'])
         self.assertIn('OXX | 58 | SP TORY', resultado['resposta'])
@@ -547,7 +551,11 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertIn('HOR loja A063', detalhe['resposta'])
         self.assertNotIn('Resumo de inventarios (UF RJ', detalhe['resposta'])
 
-    def test_consultas_cotidianas_reconhecem_cliente_e_ranking_de_custos(self):
+    @patch(
+        'estoque.services.assistente_operacional_service.timezone.localdate',
+        return_value=date(2026, 7, 15),
+    )
+    def test_consultas_cotidianas_reconhecem_cliente_e_ranking_de_custos(self, _localdate):
         cliente_asi = Cliente.objects.create(sigla='ASI', nome='Assaí Atacadista')
         Cliente.objects.create(sigla='POR', nome='Cliente com sigla ambígua')
         base_asi = Base.objects.create(nome='SÃO PAULO', empresa=self.empresa)

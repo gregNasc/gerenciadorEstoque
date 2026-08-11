@@ -138,6 +138,17 @@ class ManualService:
     @classmethod
     def tentar_responder(cls, pergunta):
         texto = cls.normalizar(pergunta)
+        consulta_operacional = bool(
+            re.search(r'\b(equipamento|equipamentos|patrimonio|patrimonios|serial|serie)\b', texto)
+            and re.search(r'\b(status|situacao|etapa|sick|manutencao|transferencia|emprestimo)\b', texto)
+            and not re.search(
+                r'\b(manual|manuais|guia|instrucoes|documentacao|como|configurar|instalar|'
+                r'trocar|limpar|resetar|reiniciar|driver|firmware)\b',
+                texto,
+            )
+        )
+        if consulta_operacional:
+            return None
         item = cls._item_da_pergunta(pergunta)
         pede_driver = any(cls.normalizar(marcador) in texto for marcador in cls.MARCADORES_DRIVER)
         tem_marcador = any(cls.normalizar(marcador) in texto for marcador in cls.MARCADORES)

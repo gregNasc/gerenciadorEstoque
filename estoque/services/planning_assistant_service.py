@@ -227,7 +227,7 @@ class PlanningAssistantService:
             )
         lines.extend([
             "",
-            "Atividades vinculadas não recebem checklist ou execução própria sem vínculo local explícito.",
+            "Por segurança, não presumo que tenham checklist ou execução própria sem vínculo local explícito.",
             "Quer que eu filtre apenas os eventos principais ou detalhe um evento específico?",
             cls._source_line(health),
         ])

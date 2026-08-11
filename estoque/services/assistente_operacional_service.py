@@ -4495,7 +4495,11 @@ class AssistenteOperacionalService:
             return 'highest_headcount'
         if re.search(r'\b(?:somente|apenas)\s+(?:os\s+)?eventos?\s+principais\b', texto):
             return 'list'
-        if re.search(r'\b(estrutura\s+(?:dos|das|de)\s+(?:eventos|atividades)|atividades?\s+vinculadas?)\b', texto):
+        if re.search(
+            r'\b(estrutura\s+(?:dos|das|de)\s+(?:eventos|atividades)|'
+            r'atividades?\s+vinculadas?|eventos?\s+(?:pai\s+e\s+filho|filho\s+e\s+pai))\b',
+            texto,
+        ):
             return 'hierarchy'
         if re.search(r'\b(disponibilidade|suficiente|suficientes|pessoas suficientes|equipe suficiente)\b', texto):
             return 'availability'
