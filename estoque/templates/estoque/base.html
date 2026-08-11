@@ -605,10 +605,10 @@
 
                 <!-- USER -->
                 <li class="nav-item ms-xxl-3">
-                    <span class="nav-link text-light">
+                    <a class="nav-link text-light {% if url_name == 'preferencias_whatsapp' %}active{% endif %}" href="{% url 'estoque:preferencias_whatsapp' %}" title="{% trans 'Preferências de comunicação' %}">
                         <i class="bi bi-person-circle"></i>
                         {{ request.user.username }}
-                    </span>
+                    </a>
                 </li>
 
                 <!-- LOGOUT -->

@@ -12,13 +12,11 @@ class ProviderResult:
 
 
 class WhatsAppProvider(Protocol):
-    def enviar_template(
+    def enviar_payload(
         self,
         *,
         destino: str,
-        template_codigo: str,
-        idioma: str,
-        parametros: dict,
+        payload: dict,
         idempotency_key: str,
     ) -> ProviderResult:
         ...

@@ -130,7 +130,7 @@ class EstoqueNovasFuncionalidadesTests(TestCase):
         self.assertTrue(conteudo.startswith(b'%PDF'))
         self.assertEqual(emitida.hash_arquivo, hashlib.sha256(conteudo).hexdigest())
         self.destino.refresh_from_db()
-        self.assertEqual(self.destino.nome, 'Destino')
+        self.assertEqual(self.destino.nome, 'DESTINO')
         nova = DeclaracaoCorreiosService.substituir(emitida, {}, self.user)
         self.assertEqual(nova.versao, 2)
         emitida.refresh_from_db()

@@ -94,6 +94,7 @@ class Perfil(models.Model):
     whatsapp_ativo = models.BooleanField(default=False)
     whatsapp_consentimento_em = models.DateTimeField(null=True, blank=True)
     whatsapp_consentimento_origem = models.CharField(max_length=100, blank=True)
+    whatsapp_revogado_em = models.DateTimeField(null=True, blank=True)
 
     @property
     def grupos_insumos(self):
@@ -1042,6 +1043,7 @@ class ComunicadoEntrega(models.Model):
     template_codigo = models.CharField(max_length=100, blank=True)
     parametros = models.JSONField(default=dict, blank=True)
     provider_message_id = models.CharField(max_length=255, blank=True, db_index=True)
+    provider_resposta = models.JSONField(default=dict, blank=True)
     idempotency_key = models.UUIDField(default=uuid.uuid4, unique=True)
     tentativas = models.PositiveIntegerField(default=0)
     proxima_tentativa_em = models.DateTimeField(null=True, blank=True, db_index=True)

@@ -86,6 +86,7 @@ urlpatterns = [
     path('comunicados/<int:comunicado_id>/', views.detalhe_comunicado, name='detalhe_comunicado'),
     path('comunicados/arquivos/<int:arquivo_id>/baixar/', comunicacao_views.baixar_arquivo_comunicado, name='baixar_arquivo_comunicado'),
     path('comunicados/ocultar/<int:comunicado_id>/', views.ocultar_comunicado, name='ocultar_comunicado'),
+    path('perfil/comunicacoes/', comunicacao_views.preferencias_whatsapp, name='preferencias_whatsapp'),
 
     # ---------------- EMPRÉSTIMO --------------------
     path('emprestimos/', views.lista_emprestimos, name='lista_emprestimos'),

@@ -48,6 +48,10 @@ ALLOWED_HOSTS = env_list(
     'ALLOWED_HOSTS',
     'localhost,127.0.0.1,[::1]' if DEBUG else '',
 )
+APP_BASE_URL = os.getenv(
+    'APP_BASE_URL',
+    'http://localhost:8000' if DEBUG else '',
+).strip()
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured('ALLOWED_HOSTS deve ser configurado em produção.')
 
@@ -281,6 +285,9 @@ WHATSAPP_DEFAULT_COUNTRY_CODE = os.getenv('WHATSAPP_DEFAULT_COUNTRY_CODE', '55')
 WHATSAPP_TIMEOUT = float(os.getenv('WHATSAPP_TIMEOUT', '10'))
 WHATSAPP_MAX_RETRIES = int(os.getenv('WHATSAPP_MAX_RETRIES', '5'))
 WHATSAPP_RETRY_BASE_SECONDS = int(os.getenv('WHATSAPP_RETRY_BASE_SECONDS', '60'))
+WHATSAPP_PROCESSING_TIMEOUT_SECONDS = int(
+    os.getenv('WHATSAPP_PROCESSING_TIMEOUT_SECONDS', '900')
+)
 
 # Pesquisa manual de preços nos fornecedores utilizados pela empresa.
 ONLINE_PRICE_SEARCH_TIMEOUT = float(os.getenv('ONLINE_PRICE_SEARCH_TIMEOUT', '15'))

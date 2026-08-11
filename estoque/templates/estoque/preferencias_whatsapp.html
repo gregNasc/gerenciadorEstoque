@@ -1,0 +1,21 @@
+{% extends 'estoque/base.html' %}{% load i18n %}
+{% block content %}
+<div class="container py-4" style="max-width: 720px">
+  <h2>{% trans "Preferências de comunicação" %}</h2>
+  <div class="alert alert-info">{% trans "Os comunicados internos permanecem como canal principal. O WhatsApp é opcional." %}</div>
+  <div class="card card-body">
+    {% if perfil.whatsapp_ativo and not perfil.whatsapp_revogado_em %}
+      <p><strong>{% trans "WhatsApp ativo:" %}</strong> {{ numero_mascarado }}</p>
+      <p class="text-muted">{% trans "Consentimento registrado em" %} {{ perfil.whatsapp_consentimento_em }}.</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="revogar"><button class="btn btn-outline-danger">{% trans "Revogar consentimento" %}</button></form>
+    {% else %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="ativar">
+        <label class="form-label" for="numero">{% trans "Número com DDD" %}</label>
+        <input class="form-control mb-3" id="numero" name="numero" type="tel" required placeholder="(14) 99999-9999">
+        <div class="form-check mb-3"><input class="form-check-input" id="consentimento" type="checkbox" required><label class="form-check-label" for="consentimento">{% trans "Autorizo o envio opcional de comunicados operacionais por WhatsApp." %}</label></div>
+        <button class="btn btn-primary">{% trans "Ativar WhatsApp" %}</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,29 +1,40 @@
+import re
+
 import requests
 from django.conf import settings
 
 from .base import ProviderResult
 
 
+def _sanitizar_texto(valor):
+    texto = str(valor or '')[:2000]
+    segredo = settings.WHATSAPP_ACCESS_TOKEN
+    if segredo:
+        texto = texto.replace(segredo, '[REDACTED]')
+    return re.sub(r'Bearer\s+[^\s]+', 'Bearer [REDACTED]', texto, flags=re.IGNORECASE)
+
+
+def _resposta_segura(dados):
+    if not isinstance(dados, dict):
+        return {}
+    erro = dados.get('error') if isinstance(dados.get('error'), dict) else {}
+    return {
+        'error': {
+            chave: _sanitizar_texto(erro.get(chave))
+            for chave in ('message', 'type', 'code', 'error_subcode')
+            if erro.get(chave) not in (None, '')
+        },
+    } if erro else {}
+
+
 class MetaWhatsAppProvider:
-    def enviar_template(self, *, destino, template_codigo, idioma, parametros, idempotency_key):
-        if not settings.WHATSAPP_API_BASE_URL or not settings.WHATSAPP_ACCESS_TOKEN or not settings.WHATSAPP_PHONE_NUMBER_ID:
-            return ProviderResult(sucesso=False, erro='Configuração do provedor incompleta.', repetivel=False)
+    def enviar_payload(self, *, destino, payload, idempotency_key):
+        if not all((settings.WHATSAPP_API_BASE_URL, settings.WHATSAPP_ACCESS_TOKEN, settings.WHATSAPP_PHONE_NUMBER_ID)):
+            return ProviderResult(sucesso=False, erro='CONFIGURAÇÃO DO PROVEDOR INCOMPLETA.', repetivel=False)
+        if not isinstance(payload, dict) or payload.get('type') != 'template':
+            return ProviderResult(sucesso=False, erro='PAYLOAD DO TEMPLATE INVÁLIDO.', repetivel=False)
+        payload = {**payload, 'to': destino}
         url = f'{settings.WHATSAPP_API_BASE_URL.rstrip("/")}/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages'
-        corpo_parametros = [
-            {'type': 'text', 'text': str(valor)}
-            for valor in parametros.values()
-            if valor not in (None, '')
-        ]
-        payload = {
-            'messaging_product': 'whatsapp',
-            'to': destino,
-            'type': 'template',
-            'template': {
-                'name': template_codigo,
-                'language': {'code': idioma or 'pt_BR'},
-                'components': [{'type': 'body', 'parameters': corpo_parametros}],
-            },
-        }
         try:
             resposta = requests.post(
                 url,
@@ -35,21 +46,25 @@ class MetaWhatsAppProvider:
                 },
                 timeout=settings.WHATSAPP_TIMEOUT,
             )
-            dados = resposta.json() if resposta.content else {}
+            try:
+                dados = resposta.json() if resposta.content else {}
+            except ValueError:
+                dados = {}
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            return ProviderResult(sucesso=False, erro=_sanitizar_texto(exc), repetivel=True)
         except requests.RequestException as exc:
-            return ProviderResult(sucesso=False, erro=str(exc), repetivel=True)
-        except ValueError:
-            dados = {}
+            return ProviderResult(sucesso=False, erro=_sanitizar_texto(exc), repetivel=False)
+        seguro = _resposta_segura(dados)
         if 200 <= resposta.status_code < 300:
             mensagens = dados.get('messages') or []
             return ProviderResult(
                 sucesso=True,
                 provider_message_id=mensagens[0].get('id', '') if mensagens else '',
-                resposta=dados,
+                resposta=seguro,
             )
         return ProviderResult(
             sucesso=False,
-            resposta=dados,
-            erro=f'Provedor retornou HTTP {resposta.status_code}.',
+            resposta=seguro,
+            erro=f'PROVEDOR RETORNOU HTTP {resposta.status_code}.',
             repetivel=resposta.status_code == 429 or resposta.status_code >= 500,
         )

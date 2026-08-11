@@ -5,14 +5,18 @@ import mimetypes
 from pathlib import Path
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import ComunicadoArquivo, ComunicadoEntrega
+from .services.comunicacoes.consentimento_service import WhatsAppConsentimentoService
+from .services.comunicacoes.phone import mascarar_whatsapp
 
 
 @login_required
@@ -33,6 +37,34 @@ def baixar_arquivo_comunicado(request, arquivo_id):
         filename=nome,
         content_type=content_type,
     )
+
+
+@login_required
+def preferencias_whatsapp(request):
+    perfil = request.user.perfil
+    if request.method == 'POST':
+        acao = request.POST.get('acao')
+        try:
+            if acao == 'ativar':
+                WhatsAppConsentimentoService.ativar(
+                    perfil,
+                    numero=request.POST.get('numero', ''),
+                    origem='PORTAL_USUARIO',
+                )
+                messages.success(request, 'WhatsApp ativado com consentimento registrado.')
+            elif acao == 'revogar':
+                WhatsAppConsentimentoService.revogar(perfil)
+                messages.success(request, 'Consentimento do WhatsApp revogado.')
+            else:
+                messages.error(request, 'Ação inválida.')
+        except ValidationError as exc:
+            messages.error(request, ' '.join(exc.messages))
+        return redirect('estoque:preferencias_whatsapp')
+    perfil.refresh_from_db()
+    return render(request, 'estoque/preferencias_whatsapp.html', {
+        'perfil': perfil,
+        'numero_mascarado': mascarar_whatsapp(perfil.whatsapp_numero),
+    })
 
 
 def _assinatura_valida(request):
@@ -93,6 +125,11 @@ def whatsapp_webhook(request):
                     ComunicadoEntrega.Status.ENTREGUE: 2,
                     ComunicadoEntrega.Status.LIDA: 3,
                 }
+                if novo == ComunicadoEntrega.Status.FALHA and entrega.status in {
+                    ComunicadoEntrega.Status.ENTREGUE,
+                    ComunicadoEntrega.Status.LIDA,
+                }:
+                    continue
                 if novo != ComunicadoEntrega.Status.FALHA and ordem.get(novo, 0) < ordem.get(entrega.status, 0):
                     continue
                 entrega.status = novo
