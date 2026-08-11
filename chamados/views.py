@@ -10,7 +10,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 
-from chamados.forms import ChamadoForm, ChamadoMensagemForm, ChamadoStatusForm
+from chamados.forms import (
+    ChamadoAvaliacaoForm,
+    ChamadoForm,
+    ChamadoMensagemForm,
+    ChamadoSickForm,
+    ChamadoStatusForm,
+    ChamadoTransferenciaForm,
+)
 from chamados.models import Chamado, ChamadoAnexo
 from chamados.policies import ChamadoAccessPolicy
 from chamados.services import ChamadoService
@@ -58,6 +65,12 @@ def lista(request):
         'status_choices': Chamado.Status.choices,
         'prioridade_choices': Chamado.Prioridade.choices,
         'pode_atender': ChamadoAccessPolicy.pode_atender(request.user),
+        'pode_dashboard': ChamadoAccessPolicy.pode_dashboard(request.user),
+        'pode_exportar': bool(
+            ChamadoAccessPolicy.e_admin(request.user)
+            or request.user.has_perm('chamados.exportar_chamados')
+            or ChamadoAccessPolicy.pode_dashboard(request.user)
+        ),
     })
 
 
@@ -79,8 +92,12 @@ def criar(request):
 def detalhe(request, pk):
     chamado = get_object_or_404(
         ChamadoAccessPolicy.queryset(request.user).select_related(
-            'empresa', 'base', 'categoria', 'inventario__cliente', 'aberto_por', 'atendente'
-        ).prefetch_related('mensagens__autor', 'mensagens__anexos', 'eventos__usuario'),
+            'empresa', 'base', 'categoria', 'inventario__cliente', 'equipamento__produto',
+            'sick', 'aberto_por', 'atendente',
+        ).prefetch_related(
+            'mensagens__autor', 'mensagens__anexos', 'eventos__usuario',
+            'sessoes', 'transferencias_atendente',
+        ),
         pk=pk,
     )
     pode_atender = ChamadoAccessPolicy.pode_atender(request.user)
@@ -95,11 +112,18 @@ def detalhe(request, pk):
         'mensagem_form': ChamadoMensagemForm(),
         'status_form': ChamadoStatusForm(
             status_permitidos=status_permitidos,
-            initial={'resolucao': chamado.resolucao},
+            initial={'resolucao': chamado.resolucao, 'causa_raiz': chamado.causa_raiz},
         ),
+        'avaliacao_form': ChamadoAvaliacaoForm(),
+        'transferencia_form': ChamadoTransferenciaForm(chamado=chamado),
+        'sick_form': ChamadoSickForm(),
         'status_permitidos': status_permitidos,
         'pode_atender': pode_atender,
         'pode_interagir': ChamadoAccessPolicy.pode_interagir(request.user, chamado),
+        'pode_avaliar': chamado.aberto_por_id == request.user.pk and chamado.status == Chamado.Status.AVALIACAO,
+        'pode_transferir': chamado.atendente_id and ChamadoAccessPolicy.pode_transferir(request.user, chamado),
+        'pode_converter_sick': not chamado.sick_id and ChamadoAccessPolicy.pode_converter_sick(request.user, chamado),
+        'metricas': ChamadoService.metricas(chamado),
         'ordens': ordens,
     })
 
@@ -147,13 +171,65 @@ def alterar_status(request, pk):
     if form.is_valid():
         try:
             ChamadoService.alterar_status(
-                chamado, request.user, form.cleaned_data['status'], form.cleaned_data['resolucao']
+                chamado,
+                request.user,
+                form.cleaned_data['status'],
+                form.cleaned_data['resolucao'],
+                form.cleaned_data['causa_raiz'],
             )
             messages.success(request, 'STATUS ATUALIZADO.')
         except (PermissionDenied, ValidationError) as exc:
             messages.error(request, str(exc))
     else:
         messages.error(request, 'VERIFIQUE O STATUS E A RESOLUÇÃO INFORMADOS.')
+    return redirect('chamados:detalhe', pk=pk)
+
+
+@login_required
+@require_POST
+def avaliar(request, pk):
+    chamado = get_object_or_404(ChamadoAccessPolicy.queryset(request.user), pk=pk)
+    form = ChamadoAvaliacaoForm(request.POST)
+    if form.is_valid():
+        try:
+            ChamadoService.avaliar(chamado, request.user, **form.cleaned_data)
+            messages.success(request, 'AVALIAÇÃO REGISTRADA.')
+        except (PermissionDenied, ValidationError) as exc:
+            messages.error(request, str(exc))
+    else:
+        messages.error(request, 'VERIFIQUE A NOTA E A CONFIRMAÇÃO DA SOLUÇÃO.')
+    return redirect('chamados:detalhe', pk=pk)
+
+
+@login_required
+@require_POST
+def transferir(request, pk):
+    chamado = get_object_or_404(ChamadoAccessPolicy.queryset(request.user), pk=pk)
+    form = ChamadoTransferenciaForm(request.POST, chamado=chamado)
+    if form.is_valid():
+        try:
+            ChamadoService.transferir_atendente(chamado, request.user, **form.cleaned_data)
+            messages.success(request, 'ATENDIMENTO TRANSFERIDO.')
+        except (PermissionDenied, ValidationError) as exc:
+            messages.error(request, str(exc))
+    else:
+        messages.error(request, 'VERIFIQUE O NOVO ATENDENTE E O MOTIVO.')
+    return redirect('chamados:detalhe', pk=pk)
+
+
+@login_required
+@require_POST
+def converter_sick(request, pk):
+    chamado = get_object_or_404(ChamadoAccessPolicy.queryset(request.user), pk=pk)
+    form = ChamadoSickForm(request.POST)
+    if form.is_valid():
+        try:
+            ChamadoService.converter_em_sick(chamado, request.user, **form.cleaned_data)
+            messages.success(request, 'SICK CRIADO COM O.S. E RASTREABILIDADE.')
+        except (PermissionDenied, ValidationError) as exc:
+            messages.error(request, str(exc))
+    else:
+        messages.error(request, 'INFORME O DIAGNÓSTICO PARA O SICK.')
     return redirect('chamados:detalhe', pk=pk)
 
 
@@ -169,9 +245,11 @@ def baixar_anexo(request, pk):
 
 @login_required
 def dashboard(request):
+    if not ChamadoAccessPolicy.pode_dashboard(request.user):
+        raise PermissionDenied
     qs = ChamadoAccessPolicy.queryset(request.user)
     agora = timezone.now()
-    terminais = [Chamado.Status.RESOLVIDO, Chamado.Status.FECHADO, Chamado.Status.CANCELADO]
+    terminais = [Chamado.Status.RESOLVIDO, Chamado.Status.AVALIACAO, Chamado.Status.ENCERRADO, Chamado.Status.CANCELADO]
     por_status = list(qs.values('status').annotate(total=Count('id')).order_by('status'))
     por_categoria = list(
         qs.values('categoria__nome').annotate(total=Count('id')).order_by('-total')[:8]
@@ -180,7 +258,7 @@ def dashboard(request):
     return render(request, 'chamados/dashboard.html', {
         'total': qs.count(),
         'abertos': qs.exclude(status__in=terminais).count(),
-        'resolvidos': qs.filter(status__in=[Chamado.Status.RESOLVIDO, Chamado.Status.FECHADO]).count(),
+        'resolvidos': qs.filter(status__in=[Chamado.Status.RESOLVIDO, Chamado.Status.AVALIACAO, Chamado.Status.ENCERRADO]).count(),
         'sla_vencido': qs.filter(prazo_sla_em__lt=agora).exclude(status__in=terminais).count(),
         'por_status': por_status,
         'por_categoria': por_categoria,
@@ -191,8 +269,9 @@ def dashboard(request):
 @login_required
 def exportar(request):
     if not (
-        ChamadoAccessPolicy.pode_atender(request.user)
+        ChamadoAccessPolicy.e_admin(request.user)
         or request.user.has_perm('chamados.exportar_chamados')
+        or ChamadoAccessPolicy.pode_dashboard(request.user)
     ):
         raise PermissionDenied
     qs = _filtrar(

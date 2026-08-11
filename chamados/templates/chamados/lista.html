@@ -4,8 +4,8 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div><h1 class="h3 mb-1">Chamados</h1><p class="text-secondary mb-0">Suporte rastreável por empresa, base e inventário.</p></div>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart"></i> Dashboard</a>
-    {% if pode_atender %}<a class="btn btn-outline-success" href="{% url 'chamados:exportar' %}"><i class="bi bi-file-earmark-excel"></i> Exportar</a>{% endif %}
+    {% if pode_dashboard %}<a class="btn btn-outline-secondary" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart"></i> Dashboard</a>{% endif %}
+    {% if pode_exportar %}<a class="btn btn-outline-success" href="{% url 'chamados:exportar' %}"><i class="bi bi-file-earmark-excel"></i> Exportar</a>{% endif %}
     <a class="btn btn-primary" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-lg"></i> Novo chamado</a>
   </div>
 </div>

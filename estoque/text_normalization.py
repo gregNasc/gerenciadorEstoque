@@ -45,6 +45,8 @@ TECHNICAL_NAME_PARTS = {
 }
 
 TECHNICAL_MODEL_FIELDS = {
+    ('chamados.AliasUsuario', 'alias_normalizado'),
+    ('chamados.PendenciaVinculoLider', 'texto_normalizado'),
     ('chamados.ChamadoAnexo', 'nome_original'),
     ('estoque.ComunicadoEntrega', 'destino'),
     ('estoque.ComunicadoEntrega', 'provedor'),

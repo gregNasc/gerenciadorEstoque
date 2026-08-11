@@ -3,11 +3,24 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from chamados.models import CategoriaChamado, Chamado, ChamadoAnexo, ChamadoMensagem
-from chamados.policies import ChamadoAccessPolicy
+from chamados.lider_service import InventarioLiderService
+from chamados.models import (
+    AliasUsuario,
+    CategoriaChamado,
+    Chamado,
+    ChamadoAnexo,
+    ChamadoEvento,
+    ChamadoMensagem,
+    ChamadoSessaoAtendimento,
+    PendenciaVinculoLider,
+)
+from chamados.policies import ChamadoAccessPolicy, GruposChamados
 from chamados.services import ChamadoService
-from estoque.models import Base, Comunicado, Empresa, Perfil
+from estoque.models import Base, Comunicado, Empresa, Equipamento, Perfil, Produto, Sick
+from insumos.models import Cliente, Inventario
+from ordens_servico.models import OrdemServico
 
 
 class ChamadosIntegracaoTests(TestCase):
@@ -20,6 +33,16 @@ class ChamadosIntegracaoTests(TestCase):
         self.solicitante.perfil.role = Perfil.Role.OPERADOR
         self.solicitante.perfil.save()
         self.solicitante.perfil.regionais.add(self.base)
+        self.cliente = Cliente.objects.create(sigla='CLI', nome='Cliente Teste')
+        self.inventario = Inventario.objects.create(
+            cliente=self.cliente,
+            loja='Loja Centro',
+            base=self.base,
+            data_inicio=timezone.localdate(),
+            criado_por=self.solicitante,
+            lider='Maria Souza',
+            lider_usuario=self.solicitante,
+        )
         self.outro = User.objects.create_user('outro', password='SenhaForte123!')
         self.outro.perfil.empresa = self.empresa
         self.outro.perfil.role = Perfil.Role.OPERADOR
@@ -32,14 +55,28 @@ class ChamadosIntegracaoTests(TestCase):
         self.atendente = User.objects.create_user('atendente', password='SenhaForte123!')
         self.atendente.perfil.empresa = self.empresa
         self.atendente.perfil.regionais.add(self.base)
-        self.atendente.groups.add(Group.objects.get(name=ChamadoAccessPolicy.GRUPO_ATENDIMENTO))
+        self.atendente.perfil.save()
+        self.atendente.groups.add(Group.objects.get(name=GruposChamados.SUPORTE))
+        self.supervisor = User.objects.create_user('supervisor', password='SenhaForte123!')
+        self.supervisor.perfil.empresa = self.empresa
+        self.supervisor.perfil.regionais.add(self.base)
+        self.supervisor.perfil.save()
+        self.supervisor.groups.add(Group.objects.get(name=GruposChamados.SUPERVISOR))
         self.categoria = CategoriaChamado.objects.get(nome='ROUTER NÃO FUNCIONA')
+        self.produto = Produto.objects.create(
+            codigo='RTR-1', descricao='Router', fabricante='Cisco', modelo='R1', categoria='Routers'
+        )
+        self.equipamento = Equipamento.objects.create(
+            produto=self.produto, numero_serie='SER-CH-1', patrimonio='PAT-CH-1',
+            codigo='EQ-CH-1', regional=self.base,
+        )
 
     def abrir(self):
         return ChamadoService.abrir(
             usuario=self.solicitante,
             base=self.base,
-            inventario=None,
+            inventario=self.inventario,
+            equipamento=self.equipamento,
             categoria=self.categoria,
             loja='Loja Centro',
             lider='Maria Souza',
@@ -74,16 +111,15 @@ class ChamadosIntegracaoTests(TestCase):
         mensagem = ChamadoService.adicionar_mensagem(
             chamado, self.atendente, 'Reiniciamos o equipamento e validamos a rede.'
         )
-        ChamadoService.alterar_status(
-            chamado,
-            self.atendente,
-            Chamado.Status.RESOLVIDO,
-            'Equipamento reiniciado e conexão restabelecida.',
+        ChamadoService.resolver(
+            chamado, self.atendente,
+            causa_raiz='Travamento de firmware.',
+            solucao='Equipamento reiniciado e conexão restabelecida.',
         )
         chamado.refresh_from_db()
 
         self.assertEqual(chamado.atendente, self.atendente)
-        self.assertEqual(chamado.status, Chamado.Status.RESOLVIDO)
+        self.assertEqual(chamado.status, Chamado.Status.AVALIACAO)
         self.assertEqual(mensagem.texto, 'REINICIAMOS O EQUIPAMENTO E VALIDAMOS A REDE.')
         self.assertGreaterEqual(chamado.eventos.count(), 4)
 
@@ -130,7 +166,7 @@ class ChamadosIntegracaoTests(TestCase):
         self.abrir()
         self.client.force_login(self.solicitante)
         self.assertEqual(self.client.get(reverse('chamados:lista')).status_code, 200)
-        self.assertEqual(self.client.get(reverse('chamados:dashboard')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('chamados:dashboard')).status_code, 403)
         self.assertEqual(self.client.get(reverse('chamados:exportar')).status_code, 403)
 
         self.client.force_login(self.admin)
@@ -144,25 +180,34 @@ class ChamadosIntegracaoTests(TestCase):
     def test_solicitante_fecha_chamado_resolvido(self):
         chamado = self.abrir()
         ChamadoService.assumir(chamado, self.admin)
-        ChamadoService.alterar_status(
-            chamado, self.admin, Chamado.Status.RESOLVIDO, 'Acesso normalizado.'
+        ChamadoService.resolver(
+            chamado, self.admin,
+            causa_raiz='Credencial expirada.', solucao='Acesso normalizado.',
         )
 
-        ChamadoService.alterar_status(
-            chamado, self.solicitante, Chamado.Status.FECHADO, 'Solução confirmada.'
+        ChamadoService.avaliar(
+            chamado, self.solicitante, nota=5, resolvido=True,
+            comentario='Solução confirmada.',
         )
         chamado.refresh_from_db()
-        self.assertEqual(chamado.status, Chamado.Status.FECHADO)
+        self.assertEqual(chamado.status, Chamado.Status.ENCERRADO)
 
     def test_protocolos_sao_unicos_entre_empresas(self):
         primeiro = self.abrir()
         outra_empresa = Empresa.objects.create(nome='Outra Empresa')
         base = Base.objects.create(empresa=outra_empresa, nome='Base Matriz')
+        cliente = Cliente.objects.create(sigla='EXT', nome='Cliente Externo')
+        inventario = Inventario.objects.create(
+            cliente=cliente, loja='Matriz', base=base,
+            data_inicio=timezone.localdate(), criado_por=self.admin,
+            lider_usuario=self.admin,
+        )
 
         segundo = ChamadoService.abrir(
             usuario=self.admin,
             base=base,
-            inventario=None,
+            inventario=inventario,
+            equipamento=None,
             categoria=self.categoria,
             loja='',
             lider='',
@@ -172,3 +217,108 @@ class ChamadosIntegracaoTests(TestCase):
         )
 
         self.assertNotEqual(primeiro.protocolo, segundo.protocolo)
+
+    def test_abertura_exige_inventario_e_operador_vinculado(self):
+        with self.assertRaises(ValidationError):
+            ChamadoService.abrir(
+                usuario=self.solicitante, base=self.base, inventario=None,
+                equipamento=None, categoria=self.categoria, loja='', lider='',
+                titulo='Sem inventário', descricao='Não pode abrir.',
+                prioridade=Chamado.Prioridade.NORMAL,
+            )
+        self.inventario.lider_usuario = self.outro
+        self.inventario.save(update_fields=['lider_usuario'])
+        with self.assertRaises(PermissionDenied):
+            self.abrir()
+
+    def test_aceite_e_sessoes_nao_permitam_duas_abertas(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        chamado.refresh_from_db()
+        self.assertIsNotNone(chamado.primeira_resposta_em)
+        self.assertIsNotNone(chamado.aceito_em)
+        self.assertEqual(chamado.sessoes.filter(encerrada_em__isnull=True).count(), 1)
+        with self.assertRaises(ValidationError):
+            ChamadoService._abrir_sessao(chamado, self.atendente, self.atendente)
+
+        ChamadoService.alterar_status(
+            chamado, self.atendente, Chamado.Status.AGUARDANDO_TERCEIRO,
+            'Aguardando operadora.',
+        )
+        self.assertFalse(chamado.sessoes.filter(encerrada_em__isnull=True).exists())
+        chamado.refresh_from_db()
+        ChamadoService.alterar_status(
+            chamado, self.atendente, Chamado.Status.EM_ATENDIMENTO,
+        )
+        self.assertEqual(chamado.sessoes.filter(encerrada_em__isnull=True).count(), 1)
+
+    def test_avaliacao_negativa_reabre_e_positiva_encerra_depois_da_correcao(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        ChamadoService.resolver(
+            chamado, self.atendente, causa_raiz='Cabo solto', solucao='Cabo reconectado'
+        )
+        avaliacao = ChamadoService.avaliar(
+            chamado, self.solicitante, nota=1, resolvido=False,
+            comentario='Ainda sem rede.',
+        )
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, Chamado.Status.REABERTO)
+        ChamadoService.alterar_status(chamado, self.atendente, Chamado.Status.EM_ATENDIMENTO)
+        ChamadoService.resolver(
+            chamado, self.atendente, causa_raiz='Porta queimada', solucao='Porta substituída'
+        )
+        segunda = ChamadoService.avaliar(
+            chamado, self.solicitante, nota=5, resolvido=True,
+            comentario='Resolvido.',
+        )
+        chamado.refresh_from_db()
+        self.assertEqual(avaliacao.pk, segunda.pk)
+        self.assertEqual(chamado.status, Chamado.Status.ENCERRADO)
+        self.assertTrue(chamado.eventos.filter(tipo='REABERTURA_AVALIACAO').exists())
+
+    def test_transferencia_fecha_sessao_e_preserva_atendentes(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        transferencia = ChamadoService.transferir_atendente(
+            chamado, self.atendente, atendente_novo=self.supervisor,
+            motivo='Escalonamento técnico.',
+        )
+        chamado.refresh_from_db()
+        self.assertEqual(transferencia.atendente_anterior, self.atendente)
+        self.assertEqual(chamado.atendente, self.supervisor)
+        self.assertEqual(chamado.sessoes.filter(encerrada_em__isnull=True).get().atendente, self.supervisor)
+
+    def test_conversao_sick_gera_sick_os_evento_e_comunicado(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        sick = ChamadoService.converter_em_sick(
+            chamado, self.atendente, diagnostico='Falha elétrica confirmada.'
+        )
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.sick, sick)
+        self.assertTrue(Sick.objects.filter(pk=sick.pk, equipamento=self.equipamento).exists())
+        self.assertTrue(OrdemServico.objects.filter(sick=sick).exists())
+        self.assertTrue(chamado.eventos.filter(tipo='SICK_CRIADO').exists())
+
+    def test_evento_e_imutavel(self):
+        chamado = self.abrir()
+        evento = chamado.eventos.first()
+        evento.descricao = 'Alterado indevidamente'
+        with self.assertRaises(ValidationError):
+            evento.save()
+
+    def test_alias_resolve_lider_e_nome_sem_alias_cria_pendencia(self):
+        self.inventario.lider_usuario = None
+        self.inventario.save(update_fields=['lider_usuario'])
+        resultado = InventarioLiderService.resolver_texto_importado(self.inventario, self.admin)
+        self.assertIsNone(resultado)
+        self.assertTrue(PendenciaVinculoLider.objects.filter(inventario=self.inventario).exists())
+        AliasUsuario.objects.create(usuario=self.solicitante, alias='Maria de Souza')
+        self.inventario.lider = 'Mária de   Souza'
+        self.inventario.save(update_fields=['lider'])
+        resultado = InventarioLiderService.resolver_texto_importado(self.inventario, self.admin)
+        self.inventario.refresh_from_db()
+        self.assertEqual(resultado, self.solicitante)
+        self.assertEqual(self.inventario.lider_usuario, self.solicitante)
+        self.assertTrue(self.inventario.historico_vinculos_lider.exists())

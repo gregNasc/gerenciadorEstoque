@@ -148,7 +148,7 @@ def notificacoes_context(request):
         ChamadoAccessPolicy.queryset(request.user)
         .exclude(status__in=[
             Chamado.Status.RESOLVIDO,
-            Chamado.Status.FECHADO,
+            Chamado.Status.ENCERRADO,
             Chamado.Status.CANCELADO,
         ])
         .count()

@@ -411,6 +411,13 @@ class Inventario(models.Model):
     )
     observacao = models.TextField(blank=True, null=True)
     lider = models.CharField(max_length=100, blank=True, null=True)
+    lider_usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='inventarios_como_lider',
+    )
     ponto_encontro = models.CharField(max_length=200, blank=True, null=True)
     horario_ponto = models.TimeField(blank=True, null=True)
     horario_inicio = models.TimeField(blank=True, null=True)

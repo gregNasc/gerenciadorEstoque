@@ -1,19 +1,40 @@
 from datetime import timedelta
 from pathlib import Path
+import re
+import unicodedata
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
-from estoque.models import Base, Empresa
+from estoque.models import Base, Empresa, Equipamento, Sick
+
+
+MIMES_ANEXO_PERMITIDOS = {
+    'application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'text/plain',
+    'text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+
+def normalizar_alias(valor):
+    texto = unicodedata.normalize('NFKD', valor or '')
+    texto = ''.join(caractere for caractere in texto if not unicodedata.combining(caractere))
+    return re.sub(r'\s+', ' ', texto).strip().casefold()
 
 
 def validar_tamanho_anexo(arquivo):
     limite = 10 * 1024 * 1024
     if arquivo.size > limite:
         raise ValidationError('O ANEXO NÃO PODE ULTRAPASSAR 10 MB.')
+
+
+def validar_mime_anexo(arquivo):
+    content_type = getattr(arquivo, 'content_type', '')
+    if content_type and content_type not in MIMES_ANEXO_PERMITIDOS:
+        raise ValidationError('O TIPO DE CONTEÚDO DO ANEXO NÃO É PERMITIDO.')
 
 
 def caminho_anexo(instance, filename):
@@ -49,6 +70,65 @@ class SequenciaChamado(models.Model):
         ]
 
 
+class AliasUsuario(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='aliases_chamados'
+    )
+    alias = models.CharField(max_length=150)
+    alias_normalizado = models.CharField(max_length=150, unique=True, editable=False)
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['alias_normalizado']
+
+    def save(self, *args, **kwargs):
+        self.alias_normalizado = normalizar_alias(self.alias)
+        return super().save(*args, **kwargs)
+
+
+class PendenciaVinculoLider(models.Model):
+    class Status(models.TextChoices):
+        PENDENTE = 'PENDENTE', 'Pendente'
+        RESOLVIDA = 'RESOLVIDA', 'Resolvida'
+        DESCARTADA = 'DESCARTADA', 'Descartada'
+
+    inventario = models.OneToOneField(
+        'insumos.Inventario', on_delete=models.CASCADE, related_name='pendencia_lider'
+    )
+    texto_importado = models.CharField(max_length=150)
+    texto_normalizado = models.CharField(max_length=150, db_index=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDENTE)
+    resolvida_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+        related_name='pendencias_lider_resolvidas',
+    )
+    resolvida_em = models.DateTimeField(null=True, blank=True)
+    justificativa = models.TextField(blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+
+class InventarioLiderHistorico(models.Model):
+    inventario = models.ForeignKey(
+        'insumos.Inventario', on_delete=models.PROTECT, related_name='historico_vinculos_lider'
+    )
+    lider_anterior = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+'
+    )
+    lider_novo = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+'
+    )
+    texto_original = models.CharField(max_length=150, blank=True)
+    justificativa = models.TextField()
+    alterado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='vinculos_lider_alterados'
+    )
+    alterado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-alterado_em', '-id']
+
+
 class Chamado(models.Model):
     class Prioridade(models.TextChoices):
         BAIXA = 'BAIXA', 'Baixa'
@@ -58,18 +138,25 @@ class Chamado(models.Model):
 
     class Status(models.TextChoices):
         ABERTO = 'ABERTO', 'Aberto'
+        AGUARDANDO_ATENDIMENTO = 'AGUARDANDO_ATENDIMENTO', 'Aguardando atendimento'
         EM_ATENDIMENTO = 'EM_ATENDIMENTO', 'Em atendimento'
-        AGUARDANDO_USUARIO = 'AGUARDANDO_USUARIO', 'Aguardando usuário'
+        AGUARDANDO_SOLICITANTE = 'AGUARDANDO_SOLICITANTE', 'Aguardando solicitante'
+        AGUARDANDO_TERCEIRO = 'AGUARDANDO_TERCEIRO', 'Aguardando terceiro'
         RESOLVIDO = 'RESOLVIDO', 'Resolvido'
-        FECHADO = 'FECHADO', 'Fechado'
+        AVALIACAO = 'AVALIACAO', 'Aguardando avaliação'
+        ENCERRADO = 'ENCERRADO', 'Encerrado'
+        REABERTO = 'REABERTO', 'Reaberto'
         CANCELADO = 'CANCELADO', 'Cancelado'
 
     protocolo = models.CharField(max_length=30, unique=True, editable=False)
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='chamados')
     base = models.ForeignKey(Base, on_delete=models.PROTECT, related_name='chamados')
     inventario = models.ForeignKey(
-        'insumos.Inventario', null=True, blank=True, on_delete=models.SET_NULL,
+        'insumos.Inventario', null=True, blank=True, on_delete=models.PROTECT,
         related_name='chamados',
+    )
+    equipamento = models.ForeignKey(
+        Equipamento, null=True, blank=True, on_delete=models.PROTECT, related_name='chamados'
     )
     categoria = models.ForeignKey(
         CategoriaChamado, on_delete=models.PROTECT, related_name='chamados'
@@ -91,11 +178,17 @@ class Chamado(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
         related_name='chamados_atendidos',
     )
+    sick = models.ForeignKey(
+        Sick, null=True, blank=True, on_delete=models.PROTECT, related_name='chamados_origem'
+    )
     aberto_em = models.DateTimeField(default=timezone.now, db_index=True)
+    primeira_resposta_em = models.DateTimeField(null=True, blank=True)
+    aceito_em = models.DateTimeField(null=True, blank=True)
     iniciado_em = models.DateTimeField(null=True, blank=True)
     prazo_sla_em = models.DateTimeField(null=True, blank=True, db_index=True)
     resolvido_em = models.DateTimeField(null=True, blank=True)
     fechado_em = models.DateTimeField(null=True, blank=True)
+    causa_raiz = models.TextField(blank=True)
     resolucao = models.TextField(blank=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -105,6 +198,10 @@ class Chamado(models.Model):
             ('atender_chamado', 'Pode atender chamados'),
             ('visualizar_todos_chamados', 'Pode visualizar todos os chamados'),
             ('exportar_chamados', 'Pode exportar chamados'),
+            ('supervisionar_chamado', 'Pode supervisionar chamados'),
+            ('visualizar_dashboard_chamado', 'Pode visualizar dashboard de chamados'),
+            ('configurar_chamado', 'Pode configurar chamados e vínculos'),
+            ('converter_chamado_sick', 'Pode converter chamado em SICK'),
         ]
         indexes = [
             models.Index(fields=['empresa', 'status', 'aberto_em']),
@@ -118,8 +215,16 @@ class Chamado(models.Model):
             raise ValidationError({'base': 'A BASE NÃO PERTENCE À EMPRESA INFORMADA.'})
         if self.inventario_id and self.inventario.base_id != self.base_id:
             raise ValidationError({'inventario': 'O INVENTÁRIO NÃO PERTENCE À BASE INFORMADA.'})
-        if self.status in {self.Status.RESOLVIDO, self.Status.FECHADO} and not self.resolucao:
-            raise ValidationError({'resolucao': 'INFORME A RESOLUÇÃO DO CHAMADO.'})
+        if self.equipamento_id and self.equipamento.regional_id != self.base_id:
+            raise ValidationError({'equipamento': 'O EQUIPAMENTO NÃO PERTENCE À BASE INFORMADA.'})
+        if self.status in {self.Status.RESOLVIDO, self.Status.AVALIACAO, self.Status.ENCERRADO}:
+            erros = {}
+            if not self.causa_raiz:
+                erros['causa_raiz'] = 'INFORME A CAUSA RAIZ DO CHAMADO.'
+            if not self.resolucao:
+                erros['resolucao'] = 'INFORME A SOLUÇÃO DO CHAMADO.'
+            if erros:
+                raise ValidationError(erros)
 
     @property
     def duracao(self):
@@ -130,7 +235,10 @@ class Chamado(models.Model):
     def sla_vencido(self):
         return bool(
             self.prazo_sla_em
-            and self.status not in {self.Status.RESOLVIDO, self.Status.FECHADO, self.Status.CANCELADO}
+            and self.status not in {
+                self.Status.RESOLVIDO, self.Status.AVALIACAO,
+                self.Status.ENCERRADO, self.Status.CANCELADO,
+            }
             and timezone.now() > self.prazo_sla_em
         )
 
@@ -167,6 +275,7 @@ class ChamadoAnexo(models.Model):
                 ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'xlsx', 'docx']
             ),
             validar_tamanho_anexo,
+            validar_mime_anexo,
         ],
     )
     nome_original = models.CharField(max_length=255)
@@ -184,3 +293,65 @@ class ChamadoEvento(models.Model):
 
     class Meta:
         ordering = ['-criado_em', '-id']
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError('EVENTOS DE CHAMADO SÃO IMUTÁVEIS.')
+        return super().save(*args, **kwargs)
+
+
+class ChamadoSessaoAtendimento(models.Model):
+    chamado = models.ForeignKey(Chamado, on_delete=models.PROTECT, related_name='sessoes')
+    atendente = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sessoes_chamados'
+    )
+    iniciada_em = models.DateTimeField(default=timezone.now)
+    encerrada_em = models.DateTimeField(null=True, blank=True)
+    motivo_encerramento = models.CharField(max_length=40, blank=True)
+    encerrada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+'
+    )
+
+    class Meta:
+        ordering = ['iniciada_em', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['chamado'],
+                condition=models.Q(encerrada_em__isnull=True),
+                name='chamado_uma_sessao_aberta',
+            ),
+        ]
+
+    def clean(self):
+        if self.encerrada_em and self.encerrada_em < self.iniciada_em:
+            raise ValidationError({'encerrada_em': 'O ENCERRAMENTO NÃO PODE ANTECEDER O INÍCIO.'})
+
+
+class ChamadoTransferenciaAtendente(models.Model):
+    chamado = models.ForeignKey(Chamado, on_delete=models.PROTECT, related_name='transferencias_atendente')
+    atendente_anterior = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+'
+    )
+    atendente_novo = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+'
+    )
+    motivo = models.TextField()
+    transferido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='transferencias_chamado_realizadas',
+    )
+    transferido_em = models.DateTimeField(auto_now_add=True)
+
+
+class ChamadoAvaliacao(models.Model):
+    chamado = models.OneToOneField(Chamado, on_delete=models.PROTECT, related_name='avaliacao')
+    solicitante = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='avaliacoes_chamados'
+    )
+    nota = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    resolvido = models.BooleanField()
+    comentario = models.TextField(blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)

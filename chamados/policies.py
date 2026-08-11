@@ -4,25 +4,66 @@ from chamados.models import Chamado
 from estoque.models import Base
 
 
+class GruposChamados:
+    SUPORTE = 'CHAMADOS_SUPORTE'
+    SUPERVISOR = 'CHAMADOS_SUPERVISOR'
+    DASHBOARD = 'CHAMADOS_DASHBOARD'
+    CONFIGURACAO = 'CHAMADOS_CONFIGURACAO'
+    LEGADO_ATENDIMENTO = 'CHAMADOS_ATENDIMENTO'
+    TODOS = (SUPORTE, SUPERVISOR, DASHBOARD, CONFIGURACAO)
+
+
 class ChamadoAccessPolicy:
-    GRUPO_ATENDIMENTO = 'CHAMADOS_ATENDIMENTO'
+    GRUPO_ATENDIMENTO = GruposChamados.LEGADO_ATENDIMENTO
 
     @staticmethod
     def perfil(user):
         return getattr(user, 'perfil', None)
 
+    @staticmethod
+    def _grupo(user, *nomes):
+        return bool(
+            user and user.is_authenticated
+            and user.groups.filter(name__in=nomes).exists()
+        )
+
+    @classmethod
+    def e_admin(cls, user):
+        perfil = cls.perfil(user)
+        return bool(user and user.is_authenticated and (user.is_superuser or (perfil and perfil.is_admin)))
+
     @classmethod
     def pode_atender(cls, user):
+        return bool(
+            cls.e_admin(user)
+            or user.has_perm('chamados.atender_chamado')
+            or cls._grupo(
+                user, GruposChamados.SUPORTE, GruposChamados.SUPERVISOR,
+                GruposChamados.LEGADO_ATENDIMENTO,
+            )
+        )
+
+    @classmethod
+    def pode_supervisionar(cls, user):
+        return cls.e_admin(user) or cls._grupo(user, GruposChamados.SUPERVISOR)
+
+    @classmethod
+    def pode_dashboard(cls, user):
         perfil = cls.perfil(user)
         return bool(
-            user
-            and user.is_authenticated
-            and (
-                user.is_superuser
-                or (perfil and perfil.is_admin)
-                or user.has_perm('chamados.atender_chamado')
-                or user.groups.filter(name=cls.GRUPO_ATENDIMENTO).exists()
-            )
+            cls.e_admin(user)
+            or (perfil and perfil.is_gestor)
+            or user.has_perm('chamados.visualizar_dashboard_chamado')
+            or user.has_perm('chamados.exportar_chamados')
+            or cls._grupo(user, GruposChamados.DASHBOARD, GruposChamados.SUPERVISOR)
+        )
+
+    @classmethod
+    def pode_configurar(cls, user):
+        return bool(
+            cls.e_admin(user)
+            or user.has_perm('chamados.configurar_chamado')
+            or cls._grupo(user, GruposChamados.CONFIGURACAO)
         )
 
     @classmethod
@@ -30,31 +71,22 @@ class ChamadoAccessPolicy:
         if not user or not user.is_authenticated:
             return Base.objects.none()
         perfil = cls.perfil(user)
-        if user.is_superuser or (perfil and perfil.is_admin):
+        if cls.e_admin(user):
             return Base.objects.all()
         if not perfil:
             return Base.objects.none()
-        filtros = Q(pk__in=perfil.regionais.values('pk')) | Q(pk__in=perfil.bases_escopo_compras.values('pk'))
-        if perfil.empresas_escopo_compras.exists():
-            filtros |= Q(empresa__in=perfil.empresas_escopo_compras.all())
-        return Base.objects.filter(filtros).distinct()
+        return perfil.regionais.all()
 
     @classmethod
     def queryset(cls, user):
         if not user or not user.is_authenticated:
             return Chamado.objects.none()
-        perfil = cls.perfil(user)
-        if user.is_superuser or (perfil and perfil.is_admin):
+        if cls.e_admin(user):
             return Chamado.objects.all()
-        if cls.pode_atender(user) or user.has_perm('chamados.visualizar_todos_chamados'):
-            qs = Chamado.objects.all()
-            if perfil and perfil.empresa_id:
-                qs = qs.filter(empresa_id=perfil.empresa_id)
-            return qs
-        filtros = Q(aberto_por=user)
-        if perfil and perfil.is_gestor:
-            filtros |= Q(base__in=cls.bases(user))
-        return Chamado.objects.filter(filtros).distinct()
+        perfil = cls.perfil(user)
+        if cls.pode_atender(user) or (perfil and perfil.is_gestor):
+            return Chamado.objects.filter(base__in=cls.bases(user)).distinct()
+        return Chamado.objects.filter(aberto_por=user)
 
     @classmethod
     def pode_abrir_na_base(cls, user, base):
@@ -66,4 +98,41 @@ class ChamadoAccessPolicy:
 
     @classmethod
     def pode_interagir(cls, user, chamado):
-        return cls.pode_atender(user) or chamado.aberto_por_id == user.pk
+        return bool(
+            chamado.aberto_por_id == getattr(user, 'pk', None)
+            or chamado.atendente_id == getattr(user, 'pk', None)
+            or cls.pode_supervisionar(user)
+        )
+
+    @classmethod
+    def pode_transferir(cls, user, chamado):
+        return bool(
+            cls.pode_supervisionar(user)
+            or chamado.atendente_id == getattr(user, 'pk', None)
+        )
+
+    @classmethod
+    def atendentes_para(cls, chamado):
+        from django.contrib.auth.models import User
+
+        return User.objects.filter(is_active=True).filter(
+            Q(perfil__role='admin')
+            | Q(groups__name__in=[GruposChamados.SUPORTE, GruposChamados.SUPERVISOR])
+            | Q(user_permissions__codename='atender_chamado')
+        ).filter(
+            Q(perfil__role='admin') | Q(perfil__regionais=chamado.base)
+        ).distinct()
+
+    @classmethod
+    def pode_converter_sick(cls, user, chamado):
+        perfil = cls.perfil(user)
+        return bool(
+            chamado.equipamento_id
+            and cls.pode_ver(user, chamado)
+            and (
+                cls.e_admin(user)
+                or cls.pode_atender(user)
+                or user.has_perm('chamados.converter_chamado_sick')
+                or (perfil and perfil.is_gestor and cls.bases(user).filter(pk=chamado.base_id).exists())
+            )
+        )

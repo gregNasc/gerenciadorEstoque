@@ -1,12 +1,17 @@
+from datetime import timedelta
+
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from chamados.models import (
     Chamado,
     ChamadoAnexo,
+    ChamadoAvaliacao,
     ChamadoEvento,
     ChamadoMensagem,
+    ChamadoSessaoAtendimento,
+    ChamadoTransferenciaAtendente,
     SequenciaChamado,
 )
 from chamados.policies import ChamadoAccessPolicy
@@ -14,35 +19,38 @@ from estoque.services.comunicado_service import ComunicadoService
 
 
 class ChamadoService:
-    TRANSICOES = {
-        Chamado.Status.ABERTO: {Chamado.Status.EM_ATENDIMENTO, Chamado.Status.CANCELADO},
-        Chamado.Status.EM_ATENDIMENTO: {
-            Chamado.Status.AGUARDANDO_USUARIO,
-            Chamado.Status.RESOLVIDO,
-            Chamado.Status.CANCELADO,
-        },
-        Chamado.Status.AGUARDANDO_USUARIO: {
-            Chamado.Status.EM_ATENDIMENTO,
-            Chamado.Status.RESOLVIDO,
-            Chamado.Status.CANCELADO,
-        },
-        Chamado.Status.RESOLVIDO: {Chamado.Status.FECHADO, Chamado.Status.EM_ATENDIMENTO},
-        Chamado.Status.FECHADO: {Chamado.Status.EM_ATENDIMENTO},
-        Chamado.Status.CANCELADO: {Chamado.Status.ABERTO},
+    STATUS_PAUSA = {
+        Chamado.Status.AGUARDANDO_SOLICITANTE,
+        Chamado.Status.AGUARDANDO_TERCEIRO,
     }
+    TERMINAIS = {Chamado.Status.ENCERRADO, Chamado.Status.CANCELADO}
 
     @classmethod
     def status_permitidos(cls, chamado, user):
-        permitidos = set(cls.TRANSICOES.get(chamado.status, set()))
-        if ChamadoAccessPolicy.pode_atender(user):
-            return permitidos
-        if chamado.aberto_por_id != user.pk:
+        if chamado.aberto_por_id == getattr(user, 'pk', None) and not ChamadoAccessPolicy.pode_atender(user):
+            return {Chamado.Status.CANCELADO} if chamado.status in {
+                Chamado.Status.ABERTO, Chamado.Status.AGUARDANDO_ATENDIMENTO,
+            } else set()
+        if chamado.atendente_id != getattr(user, 'pk', None) and not ChamadoAccessPolicy.pode_supervisionar(user):
             return set()
-        return permitidos & {
-            Chamado.Status.FECHADO,
-            Chamado.Status.EM_ATENDIMENTO,
-            Chamado.Status.CANCELADO,
+        mapa = {
+            Chamado.Status.EM_ATENDIMENTO: {
+                Chamado.Status.AGUARDANDO_SOLICITANTE,
+                Chamado.Status.AGUARDANDO_TERCEIRO,
+                Chamado.Status.RESOLVIDO,
+                Chamado.Status.CANCELADO,
+            },
+            Chamado.Status.AGUARDANDO_SOLICITANTE: {
+                Chamado.Status.EM_ATENDIMENTO, Chamado.Status.CANCELADO,
+            },
+            Chamado.Status.AGUARDANDO_TERCEIRO: {
+                Chamado.Status.EM_ATENDIMENTO, Chamado.Status.CANCELADO,
+            },
+            Chamado.Status.REABERTO: {
+                Chamado.Status.EM_ATENDIMENTO, Chamado.Status.CANCELADO,
+            },
         }
+        return mapa.get(chamado.status, set())
 
     @staticmethod
     def _envolvidos(chamado):
@@ -51,11 +59,8 @@ class ChamadoService:
     @staticmethod
     def _evento(chamado, tipo, descricao, usuario, dados=None):
         return ChamadoEvento.objects.create(
-            chamado=chamado,
-            tipo=tipo,
-            descricao=descricao,
-            usuario=usuario,
-            dados=dados or {},
+            chamado=chamado, tipo=tipo, descricao=descricao,
+            usuario=usuario, dados=dados or {},
         )
 
     @staticmethod
@@ -73,11 +78,58 @@ class ChamadoService:
         )
 
     @classmethod
+    def _abrir_sessao(cls, chamado, atendente, usuario):
+        if chamado.sessoes.filter(encerrada_em__isnull=True).exists():
+            raise ValidationError('JÁ EXISTE UMA SESSÃO DE ATENDIMENTO ABERTA.')
+        try:
+            sessao = ChamadoSessaoAtendimento.objects.create(
+                chamado=chamado, atendente=atendente,
+            )
+        except IntegrityError as exc:
+            raise ValidationError('JÁ EXISTE UMA SESSÃO DE ATENDIMENTO ABERTA.') from exc
+        cls._evento(
+            chamado, 'SESSAO_INICIADA', 'SESSÃO DE ATENDIMENTO INICIADA.', usuario,
+            {'sessao_id': sessao.pk, 'atendente_id': atendente.pk},
+        )
+        return sessao
+
+    @classmethod
+    def _fechar_sessao(cls, chamado, usuario, motivo):
+        sessao = chamado.sessoes.select_for_update().filter(encerrada_em__isnull=True).first()
+        if not sessao:
+            return None
+        sessao.encerrada_em = timezone.now()
+        sessao.motivo_encerramento = motivo
+        sessao.encerrada_por = usuario
+        sessao.full_clean()
+        sessao.save(update_fields=['encerrada_em', 'motivo_encerramento', 'encerrada_por'])
+        cls._evento(
+            chamado, 'SESSAO_ENCERRADA', 'SESSÃO DE ATENDIMENTO ENCERRADA.', usuario,
+            {'sessao_id': sessao.pk, 'motivo': motivo},
+        )
+        return sessao
+
+    @classmethod
     @transaction.atomic
     def abrir(cls, *, usuario, **dados):
         base = dados['base']
+        inventario = dados.get('inventario')
+        if not inventario:
+            raise ValidationError({'inventario': 'O INVENTÁRIO É OBRIGATÓRIO PARA ABRIR UM CHAMADO.'})
         if not ChamadoAccessPolicy.pode_abrir_na_base(usuario, base):
             raise PermissionDenied('VOCÊ NÃO POSSUI ACESSO A ESTA BASE.')
+        if inventario.base_id != base.pk:
+            raise ValidationError({'inventario': 'O INVENTÁRIO NÃO PERTENCE À BASE INFORMADA.'})
+        perfil = getattr(usuario, 'perfil', None)
+        if (
+            perfil and perfil.is_operador and not ChamadoAccessPolicy.pode_atender(usuario)
+            and inventario.lider_usuario_id != usuario.pk
+        ):
+            raise PermissionDenied('O INVENTÁRIO NÃO ESTÁ VINCULADO A ESTE OPERADOR.')
+        equipamento = dados.get('equipamento')
+        if equipamento and equipamento.regional_id != base.pk:
+            raise ValidationError({'equipamento': 'O EQUIPAMENTO NÃO PERTENCE À BASE INFORMADA.'})
+
         ano = timezone.localdate().year
         sequencia, _ = SequenciaChamado.objects.select_for_update().get_or_create(
             empresa=base.empresa, ano=ano
@@ -88,42 +140,57 @@ class ChamadoService:
             protocolo=f'CH-{ano}-{base.empresa_id:04d}-{sequencia.ultimo_numero:06d}',
             empresa=base.empresa,
             aberto_por=usuario,
+            status=Chamado.Status.AGUARDANDO_ATENDIMENTO,
             **dados,
         )
         chamado.definir_prazo_sla()
         chamado.full_clean()
         chamado.save()
         cls._evento(chamado, 'ABERTURA', 'CHAMADO ABERTO.', usuario)
+        cls._evento(
+            chamado, 'ENTRADA_FILA', 'CHAMADO ENCAMINHADO À FILA DE ATENDIMENTO.', usuario,
+            {'status': chamado.status},
+        )
         cls._comunicar(
-            chamado,
-            usuario,
-            f'NOVO CHAMADO {chamado.protocolo}',
+            chamado, usuario, f'NOVO CHAMADO {chamado.protocolo}',
             f'{chamado.titulo}\nBASE: {chamado.base.nome}\nPRIORIDADE: {chamado.get_prioridade_display()}',
-            tipo='URGENTE' if chamado.prioridade in {Chamado.Prioridade.ALTA, Chamado.Prioridade.CRITICA} else 'OPERACIONAL',
+            tipo='URGENTE' if chamado.prioridade in {
+                Chamado.Prioridade.ALTA, Chamado.Prioridade.CRITICA,
+            } else 'OPERACIONAL',
         )
         return chamado
 
     @classmethod
     @transaction.atomic
     def assumir(cls, chamado, usuario):
-        chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
+        chamado = Chamado.objects.select_for_update().select_related('base').get(pk=chamado.pk)
         if not ChamadoAccessPolicy.pode_atender(usuario):
             raise PermissionDenied('VOCÊ NÃO PODE ATENDER CHAMADOS.')
-        if chamado.atendente_id and chamado.atendente_id != usuario.pk:
-            perfil = getattr(usuario, 'perfil', None)
-            if not (usuario.is_superuser or (perfil and perfil.is_admin)):
-                raise ValidationError('O CHAMADO JÁ POSSUI OUTRO ATENDENTE.')
-        status_anterior = chamado.status
+        if not ChamadoAccessPolicy.bases(usuario).filter(pk=chamado.base_id).exists() and not ChamadoAccessPolicy.e_admin(usuario):
+            raise PermissionDenied('O CHAMADO ESTÁ FORA DO SEU ESCOPO DE BASES.')
+        if chamado.atendente_id:
+            raise ValidationError('O CHAMADO JÁ POSSUI ATENDENTE.')
+        if chamado.status not in {
+            Chamado.Status.ABERTO, Chamado.Status.AGUARDANDO_ATENDIMENTO,
+            Chamado.Status.REABERTO,
+        }:
+            raise ValidationError('O CHAMADO NÃO ESTÁ DISPONÍVEL PARA ACEITE.')
+        agora = timezone.now()
         chamado.atendente = usuario
-        if chamado.status == Chamado.Status.ABERTO:
-            chamado.status = Chamado.Status.EM_ATENDIMENTO
-            chamado.iniciado_em = timezone.now()
-        chamado.full_clean()
-        chamado.save(update_fields=['atendente', 'status', 'iniciado_em', 'atualizado_em'])
+        chamado.status = Chamado.Status.EM_ATENDIMENTO
+        chamado.aceito_em = agora
+        chamado.iniciado_em = chamado.iniciado_em or agora
+        chamado.primeira_resposta_em = chamado.primeira_resposta_em or agora
+        chamado.save(update_fields=[
+            'atendente', 'status', 'aceito_em', 'iniciado_em',
+            'primeira_resposta_em', 'atualizado_em',
+        ])
+        cls._abrir_sessao(chamado, usuario, usuario)
         cls._evento(
-            chamado, 'ATENDIMENTO', f'CHAMADO ASSUMIDO POR {usuario.get_username()}.', usuario,
-            {'status_anterior': status_anterior, 'status_novo': chamado.status},
+            chamado, 'ATRIBUICAO', f'CHAMADO ASSUMIDO POR {usuario.get_username()}.', usuario,
+            {'atendente_id': usuario.pk, 'status_novo': chamado.status},
         )
+        cls._evento(chamado, 'PRIMEIRA_RESPOSTA', 'PRIMEIRA RESPOSTA REGISTRADA.', usuario)
         cls._comunicar(
             chamado, usuario, f'CHAMADO {chamado.protocolo} EM ATENDIMENTO',
             f'{usuario.get_full_name() or usuario.get_username()} INICIOU O ATENDIMENTO.',
@@ -134,6 +201,8 @@ class ChamadoService:
     @transaction.atomic
     def adicionar_mensagem(cls, chamado, usuario, texto, nota_interna=False, anexo=None):
         chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
+        if chamado.status in cls.TERMINAIS:
+            raise ValidationError('CHAMADO ENCERRADO NÃO ACEITA NOVAS MENSAGENS.')
         if not ChamadoAccessPolicy.pode_interagir(usuario, chamado):
             raise PermissionDenied('VOCÊ NÃO PODE INTERAGIR NESTE CHAMADO.')
         if nota_interna and not ChamadoAccessPolicy.pode_atender(usuario):
@@ -145,24 +214,38 @@ class ChamadoService:
         mensagem.save()
         if anexo:
             registro = ChamadoAnexo(
-                chamado=chamado,
-                mensagem=mensagem,
-                arquivo=anexo,
-                nome_original=anexo.name,
-                enviado_por=usuario,
+                chamado=chamado, mensagem=mensagem, arquivo=anexo,
+                nome_original=anexo.name, enviado_por=usuario,
             )
             registro.full_clean()
             registro.save()
+            cls._evento(
+                chamado, 'ANEXO', 'ANEXO ADICIONADO AO CHAMADO.', usuario,
+                {'anexo_id': registro.pk, 'mensagem_id': mensagem.pk},
+            )
+        if chamado.atendente_id == usuario.pk and not chamado.primeira_resposta_em:
+            chamado.primeira_resposta_em = timezone.now()
+            chamado.save(update_fields=['primeira_resposta_em', 'atualizado_em'])
+            cls._evento(chamado, 'PRIMEIRA_RESPOSTA', 'PRIMEIRA RESPOSTA REGISTRADA.', usuario)
+        if (
+            chamado.status == Chamado.Status.AGUARDANDO_SOLICITANTE
+            and chamado.aberto_por_id == usuario.pk
+        ):
+            chamado.status = Chamado.Status.EM_ATENDIMENTO
+            chamado.save(update_fields=['status', 'atualizado_em'])
+            if chamado.atendente_id:
+                cls._abrir_sessao(chamado, chamado.atendente, usuario)
+            cls._evento(
+                chamado, 'RETORNO_SOLICITANTE', 'SOLICITANTE RESPONDEU AO CHAMADO.', usuario,
+                {'status_novo': chamado.status},
+            )
         cls._evento(
-            chamado,
-            'NOTA_INTERNA' if nota_interna else 'MENSAGEM',
+            chamado, 'NOTA_INTERNA' if nota_interna else 'MENSAGEM',
             'NOTA INTERNA ADICIONADA.' if nota_interna else 'NOVA MENSAGEM NO CHAMADO.',
-            usuario,
+            usuario, {'mensagem_id': mensagem.pk},
         )
         cls._comunicar(
-            chamado,
-            usuario,
-            f'ATUALIZAÇÃO NO CHAMADO {chamado.protocolo}',
+            chamado, usuario, f'ATUALIZAÇÃO NO CHAMADO {chamado.protocolo}',
             'UMA NOTA INTERNA FOI REGISTRADA.' if nota_interna else texto,
             interno=nota_interna,
         )
@@ -170,39 +253,206 @@ class ChamadoService:
 
     @classmethod
     @transaction.atomic
-    def alterar_status(cls, chamado, usuario, status, resolucao=''):
+    def alterar_status(cls, chamado, usuario, status, resolucao='', causa_raiz=''):
         chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
         if status not in cls.status_permitidos(chamado, usuario):
             raise PermissionDenied('TRANSIÇÃO DE STATUS NÃO AUTORIZADA.')
-        status_anterior = chamado.status
-        chamado.status = status
-        agora = timezone.now()
-        if status == Chamado.Status.EM_ATENDIMENTO:
-            chamado.iniciado_em = chamado.iniciado_em or agora
-            chamado.resolvido_em = None
-            chamado.fechado_em = None
         if status == Chamado.Status.RESOLVIDO:
-            chamado.resolvido_em = agora
-            chamado.resolucao = resolucao
-        elif status == Chamado.Status.FECHADO:
-            chamado.fechado_em = agora
-            chamado.resolucao = resolucao or chamado.resolucao
-        elif resolucao:
-            chamado.resolucao = resolucao
-        chamado.full_clean()
+            return cls.resolver(chamado, usuario, causa_raiz=causa_raiz, solucao=resolucao)
+        anterior = chamado.status
+        if status in cls.STATUS_PAUSA:
+            cls._fechar_sessao(chamado, usuario, status)
+        elif status == Chamado.Status.EM_ATENDIMENTO:
+            if not chamado.atendente_id:
+                raise ValidationError('O CHAMADO NÃO POSSUI ATENDENTE.')
+            cls._abrir_sessao(chamado, chamado.atendente, usuario)
+        elif status == Chamado.Status.CANCELADO:
+            cls._fechar_sessao(chamado, usuario, 'CANCELADO')
+            chamado.fechado_em = timezone.now()
+        chamado.status = status
         chamado.save()
         cls._evento(
-            chamado,
-            'STATUS',
-            f'STATUS ALTERADO DE {status_anterior} PARA {status}.',
-            usuario,
-            {'status_anterior': status_anterior, 'status_novo': status},
+            chamado, 'STATUS', f'STATUS ALTERADO DE {anterior} PARA {status}.', usuario,
+            {'status_anterior': anterior, 'status_novo': status, 'justificativa': resolucao},
         )
         cls._comunicar(
-            chamado,
-            usuario,
-            f'CHAMADO {chamado.protocolo}: {chamado.get_status_display()}',
-            chamado.resolucao or f'STATUS ALTERADO PARA {chamado.get_status_display()}.',
+            chamado, usuario, f'CHAMADO {chamado.protocolo}: {chamado.get_status_display()}',
+            resolucao or f'STATUS ALTERADO PARA {chamado.get_status_display()}.',
             tipo='URGENTE' if status == Chamado.Status.CANCELADO else 'OPERACIONAL',
         )
         return chamado
+
+    @classmethod
+    @transaction.atomic
+    def resolver(cls, chamado, usuario, *, causa_raiz, solucao):
+        chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
+        if chamado.atendente_id != usuario.pk and not ChamadoAccessPolicy.pode_supervisionar(usuario):
+            raise PermissionDenied('APENAS O ATENDENTE OU SUPERVISOR PODE RESOLVER O CHAMADO.')
+        if chamado.status not in {
+            Chamado.Status.EM_ATENDIMENTO,
+            Chamado.Status.AGUARDANDO_SOLICITANTE,
+            Chamado.Status.AGUARDANDO_TERCEIRO,
+            Chamado.Status.REABERTO,
+        }:
+            raise ValidationError('O CHAMADO NÃO ESTÁ EM ESTADO DE RESOLUÇÃO.')
+        causa_raiz = (causa_raiz or '').strip()
+        solucao = (solucao or '').strip()
+        if not causa_raiz or not solucao:
+            raise ValidationError('CAUSA RAIZ E SOLUÇÃO SÃO OBRIGATÓRIAS.')
+        cls._fechar_sessao(chamado, usuario, 'RESOLVIDO')
+        agora = timezone.now()
+        anterior = chamado.status
+        chamado.causa_raiz = causa_raiz
+        chamado.resolucao = solucao
+        chamado.resolvido_em = agora
+        chamado.status = Chamado.Status.AVALIACAO
+        chamado.full_clean()
+        chamado.save()
+        cls._evento(
+            chamado, 'CAUSA_E_SOLUCAO', 'CAUSA RAIZ E SOLUÇÃO REGISTRADAS.', usuario,
+            {'causa_raiz': chamado.causa_raiz, 'solucao': chamado.resolucao},
+        )
+        cls._evento(
+            chamado, 'RESOLUCAO', 'CHAMADO RESOLVIDO E ENVIADO PARA AVALIAÇÃO.', usuario,
+            {'status_anterior': anterior, 'status_novo': chamado.status},
+        )
+        cls._comunicar(
+            chamado, usuario, f'AVALIE O CHAMADO {chamado.protocolo}',
+            f'SOLUÇÃO INFORMADA: {chamado.resolucao}',
+        )
+        return chamado
+
+    @classmethod
+    @transaction.atomic
+    def avaliar(cls, chamado, usuario, *, nota, resolvido, comentario=''):
+        chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
+        if chamado.aberto_por_id != usuario.pk:
+            raise PermissionDenied('SOMENTE O SOLICITANTE PODE AVALIAR O CHAMADO.')
+        if chamado.status != Chamado.Status.AVALIACAO:
+            raise ValidationError('O CHAMADO NÃO ESTÁ AGUARDANDO AVALIAÇÃO.')
+        avaliacao = ChamadoAvaliacao.objects.filter(chamado=chamado).first()
+        if avaliacao:
+            avaliacao.nota = nota
+            avaliacao.resolvido = bool(resolvido)
+            avaliacao.comentario = comentario
+            avaliacao.full_clean()
+            avaliacao.save(update_fields=['nota', 'resolvido', 'comentario', 'atualizada_em'])
+        else:
+            avaliacao = ChamadoAvaliacao(
+                chamado=chamado, solicitante=usuario, nota=nota,
+                resolvido=bool(resolvido), comentario=comentario,
+            )
+            avaliacao.full_clean()
+            avaliacao.save()
+        cls._evento(
+            chamado, 'AVALIACAO', 'AVALIAÇÃO DO SOLICITANTE REGISTRADA.', usuario,
+            {'avaliacao_id': avaliacao.pk, 'nota': nota, 'resolvido': bool(resolvido)},
+        )
+        if resolvido:
+            chamado.status = Chamado.Status.ENCERRADO
+            chamado.fechado_em = timezone.now()
+            evento = 'ENCERRAMENTO'
+            mensagem = 'CHAMADO ENCERRADO APÓS AVALIAÇÃO POSITIVA.'
+        else:
+            chamado.status = Chamado.Status.REABERTO
+            chamado.fechado_em = None
+            evento = 'REABERTURA_AVALIACAO'
+            mensagem = 'CHAMADO REABERTO APÓS AVALIAÇÃO NEGATIVA.'
+        chamado.save(update_fields=['status', 'fechado_em', 'atualizado_em'])
+        cls._evento(chamado, evento, mensagem, usuario, {'avaliacao_id': avaliacao.pk})
+        cls._comunicar(
+            chamado, usuario, f'AVALIAÇÃO DO CHAMADO {chamado.protocolo}', mensagem,
+            tipo='URGENTE' if not resolvido else 'OPERACIONAL',
+        )
+        return avaliacao
+
+    @classmethod
+    @transaction.atomic
+    def transferir_atendente(cls, chamado, usuario, *, atendente_novo, motivo):
+        chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
+        if not ChamadoAccessPolicy.pode_transferir(usuario, chamado):
+            raise PermissionDenied('VOCÊ NÃO PODE TRANSFERIR ESTE CHAMADO.')
+        if not motivo.strip():
+            raise ValidationError('INFORME O MOTIVO DA TRANSFERÊNCIA.')
+        if atendente_novo.pk == chamado.atendente_id:
+            raise ValidationError('SELECIONE UM ATENDENTE DIFERENTE.')
+        if not ChamadoAccessPolicy.pode_atender(atendente_novo):
+            raise ValidationError('O DESTINATÁRIO NÃO POSSUI PERFIL DE ATENDIMENTO.')
+        if not ChamadoAccessPolicy.bases(atendente_novo).filter(pk=chamado.base_id).exists() and not ChamadoAccessPolicy.e_admin(atendente_novo):
+            raise ValidationError('O NOVO ATENDENTE NÃO POSSUI ACESSO À BASE.')
+        anterior = chamado.atendente
+        cls._fechar_sessao(chamado, usuario, 'TRANSFERENCIA')
+        transferencia = ChamadoTransferenciaAtendente.objects.create(
+            chamado=chamado, atendente_anterior=anterior, atendente_novo=atendente_novo,
+            motivo=motivo, transferido_por=usuario,
+        )
+        chamado.atendente = atendente_novo
+        chamado.status = Chamado.Status.EM_ATENDIMENTO
+        chamado.save(update_fields=['atendente', 'status', 'atualizado_em'])
+        cls._abrir_sessao(chamado, atendente_novo, usuario)
+        cls._evento(
+            chamado, 'TRANSFERENCIA_ATENDENTE', 'ATENDIMENTO TRANSFERIDO.', usuario,
+            {
+                'transferencia_id': transferencia.pk,
+                'atendente_anterior_id': anterior.pk if anterior else None,
+                'atendente_novo_id': atendente_novo.pk,
+                'motivo': motivo,
+            },
+        )
+        cls._comunicar(
+            chamado, usuario, f'CHAMADO {chamado.protocolo} TRANSFERIDO',
+            f'NOVO ATENDENTE: {atendente_novo.get_full_name() or atendente_novo.get_username()}.',
+        )
+        return transferencia
+
+    @classmethod
+    @transaction.atomic
+    def converter_em_sick(cls, chamado, usuario, *, diagnostico):
+        chamado = Chamado.objects.select_for_update().select_related('equipamento').get(pk=chamado.pk)
+        if not ChamadoAccessPolicy.pode_converter_sick(usuario, chamado):
+            raise PermissionDenied('VOCÊ NÃO PODE CONVERTER ESTE CHAMADO EM SICK.')
+        if chamado.sick_id:
+            raise ValidationError('O CHAMADO JÁ POSSUI SICK VINCULADO.')
+        diagnostico = (diagnostico or '').strip()
+        if not diagnostico:
+            raise ValidationError('INFORME O DIAGNÓSTICO PARA O SICK.')
+        from estoque.services.sick_service import SickService
+
+        sick = SickService.marcar_como_sick(
+            equipamento_id=chamado.equipamento_id,
+            usuario=usuario,
+            categoria='CHAMADO DE SUPORTE',
+            motivo=chamado.titulo,
+            observacao=diagnostico,
+        )
+        chamado.sick = sick
+        chamado.save(update_fields=['sick', 'atualizado_em'])
+        cls._evento(
+            chamado, 'SICK_CRIADO', 'CHAMADO CONVERTIDO EM SICK.', usuario,
+            {'sick_id': sick.pk, 'diagnostico': diagnostico},
+        )
+        cls._comunicar(
+            chamado, usuario, f'SICK CRIADO PELO CHAMADO {chamado.protocolo}',
+            f'EQUIPAMENTO: {chamado.equipamento}. DIAGNÓSTICO: {diagnostico}',
+            tipo='URGENTE',
+        )
+        return sick
+
+    @classmethod
+    def metricas(cls, chamado):
+        agora = timezone.now()
+        fim = chamado.fechado_em or chamado.resolvido_em or agora
+        suporte = timedelta()
+        for sessao in chamado.sessoes.all():
+            suporte += (sessao.encerrada_em or agora) - sessao.iniciada_em
+        return {
+            'espera_primeira_resposta': (
+                chamado.primeira_resposta_em - chamado.aberto_em
+                if chamado.primeira_resposta_em else None
+            ),
+            'tempo_aceite': chamado.aceito_em - chamado.aberto_em if chamado.aceito_em else None,
+            'tempo_resolucao': fim - chamado.aberto_em,
+            'suporte_efetivo': suporte,
+            'transferencias': chamado.transferencias_atendente.count(),
+            'reaberturas': chamado.eventos.filter(tipo__startswith='REABERTURA').count(),
+        }

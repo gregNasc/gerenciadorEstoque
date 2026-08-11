@@ -14,5 +14,8 @@ urlpatterns = [
     path('<int:pk>/assumir/', views.assumir, name='assumir'),
     path('<int:pk>/mensagem/', views.mensagem, name='mensagem'),
     path('<int:pk>/status/', views.alterar_status, name='alterar_status'),
+    path('<int:pk>/avaliar/', views.avaliar, name='avaliar'),
+    path('<int:pk>/transferir/', views.transferir, name='transferir'),
+    path('<int:pk>/converter-sick/', views.converter_sick, name='converter_sick'),
     path('anexos/<int:pk>/baixar/', views.baixar_anexo, name='baixar_anexo'),
 ]
