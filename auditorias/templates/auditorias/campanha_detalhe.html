@@ -1,4 +1,92 @@
 {% extends 'estoque/base.html' %}{% load i18n %}
-{% block content %}<div class="container py-4"><a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:campanha_lista' %}">← {% trans "Voltar" %}</a><div class="d-flex justify-content-between"><div><h2>{{ campanha.nome }}</h2><p>{{ campanha.empresa }} · {{ campanha.get_status_display }}</p></div>{% if pode_editar %}<form method="post" action="{% url 'auditorias:campanha_agendar' campanha.id %}">{% csrf_token %}<button class="btn btn-success">{% trans "Agendar campanha" %}</button></form>{% endif %}</div>
-{% if pode_exportar_campanha %}<div class="mb-3"><a class="btn btn-sm btn-outline-success" href="{% url 'auditorias:relatorio_campanha' campanha.id 'xlsx' %}">XLSX</a></div>{% endif %}<div class="table-responsive"><table class="table"><thead><tr><th>{% trans "Base" %}</th><th>{% trans "Início" %}</th><th>{% trans "Fim" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead><tbody>{% for auditoria in auditorias %}<tr><td>{{ auditoria.base.nome }}</td><td>{{ auditoria.inicio_em }}</td><td>{{ auditoria.fim_em }}</td><td>{% if not pode_exportar_campanha and auditoria.snapshot_criado_em and not auditoria.finalizada_em and auditoria.status != 'EM_ANDAMENTO' and auditoria.status != 'REABERTA' %}{% trans "Em apuração" %}{% else %}{{ auditoria.get_status_display }}{% endif %}</td><td><a href="{% url 'auditorias:coleta' auditoria.id %}">{% trans "Abrir" %}</a></td></tr>{% endfor %}</tbody></table></div>
-{% if pode_editar %}<div class="card card-body"><h4>{% trans "Adicionar base" %}</h4><form method="post">{% csrf_token %}{{ form_base.as_p }}<button class="btn btn-primary">{% trans "Adicionar" %}</button></form></div>{% endif %}</div>{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:campanha_lista' %}">← {% trans "Voltar" %}</a>
+  <div class="d-flex flex-wrap justify-content-between gap-3 align-items-start">
+    <div>
+      <h2>{{ campanha.nome }}</h2>
+      <p>{{ campanha.empresa }} · <span class="badge text-bg-secondary">{{ campanha.get_status_display }}</span></p>
+      {% if campanha.descricao %}<p>{{ campanha.descricao }}</p>{% endif %}
+    </div>
+    {% if pode_editar %}
+      <a class="btn btn-outline-primary" href="{% url 'auditorias:campanha_editar' campanha.id %}">{% trans "Editar campanha" %}</a>
+    {% endif %}
+  </div>
+
+  {% if pode_exportar_campanha or pode_agendar or pode_encerrar %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {% if pode_exportar_campanha %}<a class="btn btn-sm btn-outline-success" href="{% url 'auditorias:relatorio_campanha' campanha.id 'xlsx' %}">XLSX</a>{% endif %}
+    {% if pode_agendar %}<form method="post" action="{% url 'auditorias:campanha_agendar' campanha.id %}">{% csrf_token %}<button class="btn btn-sm btn-success">{% trans "Agendar campanha" %}</button></form>{% endif %}
+    {% if pode_encerrar %}<form method="post" action="{% url 'auditorias:campanha_encerrar' campanha.id %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% trans "Encerrar campanha" %}</button></form>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th>{% trans "Base" %}</th><th>{% trans "Início" %}</th><th>{% trans "Fim" %}</th><th>{% trans "Status" %}</th><th>{% trans "Ações" %}</th></tr></thead>
+      <tbody>
+      {% for auditoria in auditorias %}
+        <tr>
+          <td>{{ auditoria.base.nome }}</td>
+          <td>{{ auditoria.inicio_em }}</td>
+          <td>{{ auditoria.fim_em }}</td>
+          <td>{% if not pode_exportar_campanha and auditoria.snapshot_criado_em and not auditoria.finalizada_em and auditoria.status != 'EM_ANDAMENTO' and auditoria.status != 'REABERTA' %}{% trans "Em apuração" %}{% else %}{{ auditoria.get_status_display }}{% endif %}</td>
+          <td>
+            <a class="btn btn-sm btn-link" href="{% url 'auditorias:coleta' auditoria.id %}">{% trans "Abrir" %}</a>
+            {% if pode_editar %}
+            <details class="d-inline-block">
+              <summary class="btn btn-sm btn-link">{% trans "Administrar" %}</summary>
+              <div class="card card-body mt-2" style="min-width: 320px; position: absolute; z-index: 10;">
+                <form method="post" action="{% url 'auditorias:base_atualizar_periodo' auditoria.id %}">
+                  {% csrf_token %}
+                  <label class="form-label">{% trans "Início" %}</label><input class="form-control mb-2" type="datetime-local" name="inicio_em" value="{{ auditoria.inicio_em|date:'Y-m-d\TH:i' }}" required>
+                  <label class="form-label">{% trans "Fim" %}</label><input class="form-control mb-2" type="datetime-local" name="fim_em" value="{{ auditoria.fim_em|date:'Y-m-d\TH:i' }}" required>
+                  <label class="form-label">{% trans "Justificativa" %}</label><textarea class="form-control mb-2" name="justificativa" rows="2"></textarea>
+                  <button class="btn btn-sm btn-primary">{% trans "Alterar período" %}</button>
+                </form>
+                <hr>
+                <form method="post" action="{% url 'auditorias:base_remover' auditoria.id %}">
+                  {% csrf_token %}
+                  <label class="form-label">{% trans "Justificativa para dispensa" %}</label><textarea class="form-control mb-2" name="justificativa" rows="2"></textarea>
+                  <button class="btn btn-sm btn-outline-danger">{% trans "Remover ou dispensar" %}</button>
+                </form>
+              </div>
+            </details>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="text-muted">{% trans "Nenhuma base incluída." %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pode_adicionar %}
+  <div class="card card-body mb-3">
+    <h4>{% trans "Adicionar bases em lote" %}</h4>
+    <p class="text-muted">{% trans "Todas as bases recebem o mesmo período. Se uma validação falhar, nenhuma inclusão será gravada." %}</p>
+    <form method="post">{% csrf_token %}{{ form_base.as_p }}<button class="btn btn-primary">{% trans "Adicionar bases" %}</button></form>
+  </div>
+  {% endif %}
+
+  {% if pode_cancelar %}
+  <details class="card card-body mb-3">
+    <summary>{% trans "Cancelar campanha" %}</summary>
+    <form method="post" action="{% url 'auditorias:campanha_cancelar' campanha.id %}" class="mt-3">
+      {% csrf_token %}<label class="form-label">{% trans "Justificativa obrigatória" %}</label><textarea class="form-control mb-2" name="justificativa" required></textarea>
+      <button class="btn btn-danger">{% trans "Cancelar sem apagar o histórico" %}</button>
+    </form>
+  </details>
+  {% endif %}
+
+  {% if eventos %}
+  <div class="card card-body">
+    <h4>{% trans "Histórico imutável" %}</h4>
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>{% trans "Data" %}</th><th>{% trans "Evento" %}</th><th>{% trans "Usuário" %}</th><th>{% trans "Dados" %}</th></tr></thead><tbody>
+    {% for evento in eventos %}<tr><td>{{ evento.criado_em }}</td><td>{{ evento.tipo }}</td><td>{{ evento.usuario|default:'SISTEMA' }}</td><td><small>{{ evento.dados }}</small></td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

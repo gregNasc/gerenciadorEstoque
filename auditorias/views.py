@@ -12,8 +12,10 @@ from django.views.decorators.http import require_POST
 from estoque.models import Equipamento
 
 from .forms import (
-    AuditoriaBaseForm,
+    AuditoriaBasesLoteForm,
     CampanhaAuditoriaForm,
+    CampanhaAuditoriaEdicaoForm,
+    PeriodoAuditoriaBaseForm,
     RegularizacaoForm,
     RespostaDivergenciaForm,
     SolicitarCorrecaoForm,
@@ -53,30 +55,73 @@ def campanha_criar(request):
 @login_required
 def campanha_detalhe(request, campanha_id):
     campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
-    form_base = AuditoriaBaseForm(request.POST or None, empresa=campanha.empresa)
+    form_base = AuditoriaBasesLoteForm(
+        request.POST or None,
+        empresa=campanha.empresa,
+        campanha=campanha,
+    )
     if request.method == 'POST':
         exigir_admin(request.user)
         if form_base.is_valid():
             try:
-                auditoria = CampanhaService.adicionar_base(
+                auditorias = CampanhaService.adicionar_bases(
                     campanha=campanha,
                     usuario=request.user,
-                    base=form_base.cleaned_data['base'],
+                    bases=form_base.cleaned_data['bases'],
                     inicio_em=form_base.cleaned_data['inicio_em'],
                     fim_em=form_base.cleaned_data['fim_em'],
+                    observacoes=form_base.cleaned_data['observacoes'],
+                    justificativa=form_base.cleaned_data['justificativa'],
                 )
-                auditoria.observacoes = form_base.cleaned_data['observacoes']
-                auditoria.save(update_fields=['observacoes'])
-                messages.success(request, 'Base adicionada à campanha.')
+                messages.success(request, f'{len(auditorias)} base(s) adicionada(s) à campanha.')
                 return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
             except ValidationError as exc:
                 form_base.add_error(None, exc)
+    admin = usuario_e_admin(request.user)
+    status_aberto = campanha.status not in {
+        CampanhaAuditoria.Status.ENCERRADA,
+        CampanhaAuditoria.Status.CANCELADA,
+    }
     return render(request, 'auditorias/campanha_detalhe.html', {
         'campanha': campanha,
         'auditorias': campanha.auditorias_bases.select_related('base'),
+        'eventos': campanha.eventos.select_related('usuario').order_by('-criado_em', '-id')[:100],
         'form_base': form_base,
-        'pode_editar': usuario_e_admin(request.user) and campanha.status == CampanhaAuditoria.Status.RASCUNHO,
-        'pode_exportar_campanha': usuario_e_admin(request.user),
+        'pode_editar': admin and status_aberto,
+        'pode_adicionar': admin and campanha.status in {
+            CampanhaAuditoria.Status.RASCUNHO,
+            CampanhaAuditoria.Status.AGENDADA,
+            CampanhaAuditoria.Status.EM_ANDAMENTO,
+        },
+        'pode_agendar': admin and campanha.status == CampanhaAuditoria.Status.RASCUNHO,
+        'pode_cancelar': admin and status_aberto,
+        'pode_encerrar': admin and status_aberto,
+        'pode_exportar_campanha': admin,
+    })
+
+
+@login_required
+def campanha_editar(request, campanha_id):
+    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
+    exigir_admin(request.user)
+    form = CampanhaAuditoriaEdicaoForm(request.POST or None, instance=campanha)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            CampanhaService.editar_campanha(
+                campanha,
+                usuario=request.user,
+                justificativa=form.cleaned_data.pop('justificativa', ''),
+                **form.cleaned_data,
+            )
+            messages.success(request, 'Campanha alterada com rastreabilidade.')
+            return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
+        except ValidationError as exc:
+            form.add_error(None, exc)
+    return render(request, 'auditorias/campanha_form.html', {
+        'form': form,
+        'campanha': campanha,
+        'titulo': 'Editar campanha de auditoria',
+        'rotulo_botao': 'Salvar alterações',
     })
 
 
@@ -84,9 +129,84 @@ def campanha_detalhe(request, campanha_id):
 @require_POST
 def campanha_agendar(request, campanha_id):
     campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
-    CampanhaService.agendar(campanha, request.user)
-    messages.success(request, 'Campanha agendada.')
+    try:
+        CampanhaService.agendar(campanha, request.user)
+        messages.success(request, 'Campanha agendada.')
+    except ValidationError as exc:
+        messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
+
+
+@login_required
+@require_POST
+def campanha_cancelar(request, campanha_id):
+    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
+    try:
+        CampanhaService.cancelar_campanha(
+            campanha,
+            request.user,
+            request.POST.get('justificativa', ''),
+        )
+        messages.success(request, 'Campanha cancelada sem excluir o histórico.')
+    except ValidationError as exc:
+        messages.error(request, ' '.join(exc.messages))
+    return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
+
+
+@login_required
+@require_POST
+def campanha_encerrar(request, campanha_id):
+    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
+    try:
+        CampanhaService.encerrar_campanha(campanha, request.user)
+        messages.success(request, 'Campanha encerrada.')
+    except ValidationError as exc:
+        messages.error(request, ' '.join(exc.messages))
+    return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
+
+
+@login_required
+@require_POST
+def base_atualizar_periodo(request, auditoria_base_id):
+    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
+    exigir_admin(request.user)
+    form = PeriodoAuditoriaBaseForm(request.POST)
+    if form.is_valid():
+        try:
+            CampanhaService.atualizar_periodo_base(
+                auditoria,
+                inicio_em=form.cleaned_data['inicio_em'],
+                fim_em=form.cleaned_data['fim_em'],
+                justificativa=form.cleaned_data['justificativa'],
+                usuario=request.user,
+            )
+            messages.success(request, 'Período da base alterado com rastreabilidade.')
+        except ValidationError as exc:
+            messages.error(request, ' '.join(exc.messages))
+    else:
+        messages.error(request, 'Revise as datas e a justificativa informadas.')
+    return redirect('auditorias:campanha_detalhe', campanha_id=auditoria.campanha_id)
+
+
+@login_required
+@require_POST
+def base_remover(request, auditoria_base_id):
+    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
+    exigir_admin(request.user)
+    campanha_id = auditoria.campanha_id
+    try:
+        modo = CampanhaService.remover_base(
+            auditoria,
+            request.user,
+            request.POST.get('justificativa', ''),
+        )
+        if modo == 'EXCLUIDA':
+            messages.success(request, 'Base não iniciada removida da campanha.')
+        else:
+            messages.success(request, 'Base dispensada; dados e histórico foram preservados.')
+    except ValidationError as exc:
+        messages.error(request, ' '.join(exc.messages))
+    return redirect('auditorias:campanha_detalhe', campanha_id=campanha_id)
 
 
 @login_required

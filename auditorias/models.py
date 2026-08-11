@@ -38,6 +38,26 @@ class CampanhaAuditoria(models.Model):
         return self.nome
 
 
+class CampanhaAuditoriaEvento(models.Model):
+    campanha = models.ForeignKey(
+        CampanhaAuditoria, on_delete=models.PROTECT, related_name='eventos'
+    )
+    tipo = models.CharField(max_length=70, db_index=True)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT
+    )
+    dados = models.JSONField(default=dict, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['criado_em', 'id']
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError(_('Eventos de campanha de auditoria são imutáveis.'))
+        return super().save(*args, **kwargs)
+
+
 class AuditoriaBase(models.Model):
     class Status(models.TextChoices):
         NAO_INICIADA = 'NAO_INICIADA', _('Não iniciada')

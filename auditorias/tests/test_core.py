@@ -10,7 +10,12 @@ from django.utils import timezone
 from estoque.models import Base, Empresa, Equipamento, GrupoRegional, Produto
 from estoque.services.transferencia_services import enviar_transferencia, receber_transferencia
 
-from auditorias.models import AuditoriaBase, AuditoriaDivergencia, CampanhaAuditoria
+from auditorias.models import (
+    AuditoriaBase,
+    AuditoriaDivergencia,
+    CampanhaAuditoria,
+    CampanhaAuditoriaEvento,
+)
 from auditorias.services.encerramento_service import EncerramentoService
 from auditorias.services.apuracao_service import ApuracaoService
 from auditorias.services.campanha_service import CampanhaService
@@ -85,6 +90,166 @@ class AuditoriaModelTests(AuditoriaFixtureMixin, TestCase):
         self.auditoria.base = base_externa
         with self.assertRaises(ValidationError):
             self.auditoria.full_clean()
+
+
+class CampanhaMultiBaseTests(AuditoriaFixtureMixin, TestCase):
+    def test_inclusao_em_lote_e_atomica_quando_uma_base_e_invalida(self):
+        outra_empresa = Empresa.objects.create(nome='Empresa externa')
+        base_externa = Base.objects.create(empresa=outra_empresa, nome='Base externa')
+        quantidade_inicial = self.campanha.auditorias_bases.count()
+
+        with self.assertRaises(ValidationError):
+            CampanhaService.adicionar_bases(
+                campanha=self.campanha,
+                bases=[self.outra_base, base_externa],
+                inicio_em=timezone.now() + timedelta(days=1),
+                fim_em=timezone.now() + timedelta(days=2),
+                usuario=self.admin,
+            )
+
+        self.assertEqual(self.campanha.auditorias_bases.count(), quantidade_inicial)
+        self.assertFalse(self.campanha.auditorias_bases.filter(base=self.outra_base).exists())
+
+    def test_inclusao_em_lote_deduplica_selecao_e_ignora_base_ja_existente(self):
+        criadas = CampanhaService.adicionar_bases(
+            campanha=self.campanha,
+            bases=[self.base, self.outra_base, self.outra_base],
+            inicio_em=timezone.now() + timedelta(days=1),
+            fim_em=timezone.now() + timedelta(days=2),
+            usuario=self.admin,
+            observacoes='mesmo período para as bases',
+        )
+
+        self.assertEqual(len(criadas), 1)
+        self.assertEqual(criadas[0].base, self.outra_base)
+        self.assertEqual(criadas[0].observacoes, 'MESMO PERÍODO PARA AS BASES')
+        self.assertTrue(self.campanha.eventos.filter(tipo='BASE_ADICIONADA').exists())
+
+    def test_inclusao_depois_do_inicio_exige_justificativa_e_data_futura(self):
+        self.campanha.status = CampanhaAuditoria.Status.EM_ANDAMENTO
+        self.campanha.save(update_fields=['status'])
+        inicio = timezone.now() + timedelta(days=1)
+        fim = inicio + timedelta(days=1)
+
+        with self.assertRaises(ValidationError):
+            CampanhaService.adicionar_bases(
+                campanha=self.campanha,
+                bases=[self.outra_base],
+                inicio_em=inicio,
+                fim_em=fim,
+                usuario=self.admin,
+            )
+        with self.assertRaises(ValidationError):
+            CampanhaService.adicionar_bases(
+                campanha=self.campanha,
+                bases=[self.outra_base],
+                inicio_em=timezone.now() - timedelta(minutes=1),
+                fim_em=fim,
+                usuario=self.admin,
+                justificativa='Inclusão emergencial',
+            )
+
+        criadas = CampanhaService.adicionar_bases(
+            campanha=self.campanha,
+            bases=[self.outra_base],
+            inicio_em=inicio,
+            fim_em=fim,
+            usuario=self.admin,
+            justificativa='Inclusão emergencial',
+        )
+        self.assertEqual(len(criadas), 1)
+        evento = self.campanha.eventos.get(tipo='BASE_ADICIONADA_APOS_INICIO_DA_CAMPANHA')
+        self.assertEqual(evento.dados['justificativa'], 'INCLUSÃO EMERGENCIAL')
+
+    def test_evento_da_campanha_e_imutavel(self):
+        evento = CampanhaAuditoriaEvento.objects.create(
+            campanha=self.campanha,
+            usuario=self.admin,
+            tipo='TESTE_IMUTAVEL',
+        )
+        evento.tipo = 'ALTERADO'
+        with self.assertRaises(ValidationError):
+            evento.save()
+
+    def test_alteracao_de_periodo_agendado_exige_justificativa(self):
+        inicio = timezone.now() + timedelta(days=3)
+        fim = inicio + timedelta(days=1)
+        with self.assertRaises(ValidationError):
+            CampanhaService.atualizar_periodo_base(
+                self.auditoria,
+                inicio_em=inicio,
+                fim_em=fim,
+                usuario=self.admin,
+            )
+
+        CampanhaService.atualizar_periodo_base(
+            self.auditoria,
+            inicio_em=inicio,
+            fim_em=fim,
+            justificativa='Mudança solicitada pela operação',
+            usuario=self.admin,
+        )
+        self.auditoria.refresh_from_db()
+        self.assertEqual(self.auditoria.inicio_em, inicio)
+        self.assertTrue(self.campanha.eventos.filter(tipo='PERIODO_BASE_ALTERADO').exists())
+
+    def test_remocao_fisica_so_para_base_sem_atividade_e_retorna_rascunho(self):
+        auditoria_id = self.auditoria.pk
+        modo = CampanhaService.remover_base(self.auditoria, self.admin)
+
+        self.assertEqual(modo, 'EXCLUIDA')
+        self.assertFalse(AuditoriaBase.objects.filter(pk=auditoria_id).exists())
+        self.campanha.refresh_from_db()
+        self.assertEqual(self.campanha.status, CampanhaAuditoria.Status.RASCUNHO)
+        tipos = set(self.campanha.eventos.values_list('tipo', flat=True))
+        self.assertIn('BASE_REMOVIDA', tipos)
+        self.assertIn('CAMPANHA_RETORNOU_RASCUNHO', tipos)
+
+    def test_base_com_atividade_e_dispensada_sem_perder_snapshot(self):
+        self.equipamento()
+        SnapshotService.criar_snapshot(self.auditoria, self.user)
+        with self.assertRaises(ValidationError):
+            CampanhaService.remover_base(self.auditoria, self.admin)
+
+        modo = CampanhaService.remover_base(
+            self.auditoria,
+            self.admin,
+            'Base sem equipe disponível',
+        )
+        self.auditoria.refresh_from_db()
+        self.assertEqual(modo, 'DISPENSADA')
+        self.assertEqual(self.auditoria.status, AuditoriaBase.Status.DISPENSADA)
+        self.assertTrue(self.auditoria.snapshot_equipamentos.exists())
+
+    def test_cancelamento_preserva_bases_e_registra_justificativa(self):
+        CampanhaService.cancelar_campanha(
+            self.campanha,
+            self.admin,
+            'Mudança de calendário corporativo',
+        )
+        self.campanha.refresh_from_db()
+        self.assertEqual(self.campanha.status, CampanhaAuditoria.Status.CANCELADA)
+        self.assertTrue(AuditoriaBase.objects.filter(pk=self.auditoria.pk).exists())
+        evento = self.campanha.eventos.get(tipo='CAMPANHA_CANCELADA')
+        self.assertEqual(evento.dados['justificativa'], 'MUDANÇA DE CALENDÁRIO CORPORATIVO')
+
+    def test_rotas_de_mutacao_exigem_post_e_perfil_admin(self):
+        self.client.force_login(self.user)
+        resposta = self.client.post(
+            f'/auditorias/bases/{self.auditoria.pk}/remover/',
+            {'justificativa': 'Tentativa sem permissão'},
+        )
+        self.assertEqual(resposta.status_code, 403)
+        self.assertTrue(AuditoriaBase.objects.filter(pk=self.auditoria.pk).exists())
+
+        self.client.force_login(self.admin)
+        self.assertEqual(
+            self.client.get(f'/auditorias/{self.campanha.pk}/cancelar/').status_code,
+            405,
+        )
+        resposta = self.client.get(f'/auditorias/{self.campanha.pk}/')
+        self.assertContains(resposta, 'Adicionar bases em lote')
+        self.assertContains(resposta, 'Histórico imutável', count=0)
 
 
 class VisibilidadeEstoqueEmAuditoriaTests(AuditoriaFixtureMixin, TestCase):
@@ -466,7 +631,7 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
         self.client.force_login(self.user)
         resposta = self.client.get(f'/auditorias/bases/{self.auditoria.pk}/divergencias/')
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, 'Justificar a ausência')
+        self.assertContains(resposta, 'JUSTIFICAR A AUSÊNCIA')
         self.assertEqual(
             self.client.get(f'/auditorias/bases/{self.auditoria.pk}/relatorio.xlsx').status_code,
             403,
@@ -479,7 +644,7 @@ class FluxoAuditoriaTests(AuditoriaFixtureMixin, TestCase):
         divergencia.refresh_from_db()
         self.assertEqual(divergencia.status, AuditoriaDivergencia.Status.EM_ANALISE)
         self.assertEqual(divergencia.respondida_por, self.user)
-        self.assertIn('busca no depósito', divergencia.justificativa_base)
+        self.assertIn('BUSCA NO DEPÓSITO', divergencia.justificativa_base)
 
     def test_inativacao_explicita_resolve_nao_localizado_e_libera_finalizacao(self):
         equipamento = self.equipamento()

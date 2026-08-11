@@ -1,2 +1,11 @@
 {% extends 'estoque/base.html' %}{% load i18n %}
-{% block content %}<div class="container py-4"><a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:campanha_lista' %}">← {% trans "Voltar" %}</a><h2>{% trans "Nova campanha de auditoria" %}</h2><form method="post" class="card card-body mt-3">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary" type="submit">{% trans "Criar campanha" %}</button></form></div>{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% if campanha %}{% url 'auditorias:campanha_detalhe' campanha.id %}{% else %}{% url 'auditorias:campanha_lista' %}{% endif %}">← {% trans "Voltar" %}</a>
+  <h2>{% if titulo %}{{ titulo }}{% else %}{% trans "Nova campanha de auditoria" %}{% endif %}</h2>
+  <form method="post" class="card card-body mt-3">
+    {% csrf_token %}{{ form.as_p }}
+    <button class="btn btn-primary" type="submit">{% if rotulo_botao %}{{ rotulo_botao }}{% else %}{% trans "Criar campanha" %}{% endif %}</button>
+  </form>
+</div>
+{% endblock %}
