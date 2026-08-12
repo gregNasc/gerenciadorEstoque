@@ -9,7 +9,6 @@ class SyncState(models.TextChoices):
     PRESENT = "PRESENT", "Presente"
     MISSING = "MISSING", "Ausente na fonte"
 
-
 class ExternalSyncModel(models.Model):
     external_id = models.CharField(max_length=128)
     data_source = models.CharField(
@@ -31,7 +30,6 @@ class ExternalSyncModel(models.Model):
     class Meta:
         abstract = True
 
-
 class PlanningRegion(ExternalSyncModel):
     name = models.CharField(max_length=160)
     state = models.CharField(max_length=2, blank=True, default="")
@@ -49,7 +47,6 @@ class PlanningRegion(ExternalSyncModel):
 
     def __str__(self):
         return f"{self.name} ({self.external_id})"
-
 
 class PlanningClient(ExternalSyncModel):
     corporate_name = models.CharField(max_length=255, blank=True, default="")
@@ -70,7 +67,6 @@ class PlanningClient(ExternalSyncModel):
 
     def __str__(self):
         return self.trade_name or self.corporate_name or self.external_id
-
 
 class PlanningStore(ExternalSyncModel):
     client = models.ForeignKey(
@@ -115,7 +111,6 @@ class PlanningStore(ExternalSyncModel):
     def __str__(self):
         return self.code or self.name or self.external_id
 
-
 class PlanningInventoryType(ExternalSyncModel):
     class Kind(models.TextChoices):
         PARENT = "PAI", "PAI"
@@ -138,7 +133,6 @@ class PlanningInventoryType(ExternalSyncModel):
 
     def __str__(self):
         return f"{self.name} ({self.kind})"
-
 
 class PlanningEvent(ExternalSyncModel):
     class MaterializationStatus(models.TextChoices):
@@ -230,12 +224,10 @@ class PlanningEvent(ExternalSyncModel):
     def __str__(self):
         return f"{self.external_id} - {self.planned_at:%Y-%m-%d %H:%M}"
 
-
 class BindingSource(models.TextChoices):
     MANUAL = "MANUAL", "Manual"
     SUGGESTED = "SUGGESTED", "Sugerido"
     RULE = "RULE", "Regra confirmada"
-
 
 class PlanningClientBinding(models.Model):
     planning_client = models.OneToOneField(
@@ -267,7 +259,6 @@ class PlanningClientBinding(models.Model):
     def __str__(self):
         return f"{self.planning_client} → {self.local_client}"
 
-
 class PlanningRegionBinding(models.Model):
     planning_region = models.OneToOneField(
         PlanningRegion,
@@ -297,7 +288,6 @@ class PlanningRegionBinding(models.Model):
 
     def __str__(self):
         return f"{self.planning_region} → {self.local_base}"
-
 
 class PlanningOperationalBaseBinding(models.Model):
     planning_client = models.ForeignKey(
@@ -356,7 +346,6 @@ class PlanningOperationalBaseBinding(models.Model):
             f"→ {self.local_base}"
         )
 
-
 class InventoryPlanningEventBinding(models.Model):
     planning_event = models.OneToOneField(
         PlanningEvent,
@@ -373,7 +362,6 @@ class InventoryPlanningEventBinding(models.Model):
 
     def __str__(self):
         return f"{self.planning_event.external_id} → Inventário #{self.inventory_id}"
-
 
 class InventoryPlanningSyncRun(models.Model):
     class Status(models.TextChoices):

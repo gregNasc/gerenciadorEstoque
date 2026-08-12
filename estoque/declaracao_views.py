@@ -16,11 +16,9 @@ def _perfil(user):
     except ObjectDoesNotExist:
         return None
 
-
 def _bases_operacao(declaracao):
     operacao = declaracao.transferencia or declaracao.emprestimo
     return operacao.regional_origem, operacao.regional_destino
-
 
 def _exigir_acesso_operacao(user, operacao, *, editar=False):
     perfil = _perfil(user)
@@ -32,11 +30,9 @@ def _exigir_acesso_operacao(user, operacao, *, editar=False):
     if not perfil.regionais.filter(pk__in=[base.pk for base in bases]).exists():
         raise PermissionDenied
 
-
 def _exigir_acesso(user, declaracao, *, editar=False):
     operacao = declaracao.transferencia or declaracao.emprestimo
     _exigir_acesso_operacao(user, operacao, editar=editar)
-
 
 def _editar_declaracao(request, declaracao):
     _exigir_acesso(request.user, declaracao, editar=True)
@@ -78,7 +74,6 @@ def _editar_declaracao(request, declaracao):
         ).order_by('-versao'),
     })
 
-
 @login_required
 def declaracao_transferencia(request, transferencia_id):
     transferencia = get_object_or_404(
@@ -91,7 +86,6 @@ def declaracao_transferencia(request, transferencia_id):
         transferencia=transferencia,
     )
     return _editar_declaracao(request, declaracao)
-
 
 @login_required
 def declaracao_emprestimo(request, emprestimo_id):
@@ -106,12 +100,10 @@ def declaracao_emprestimo(request, emprestimo_id):
     )
     return _editar_declaracao(request, declaracao)
 
-
 @login_required
 def declaracao_detalhe(request, declaracao_id):
     declaracao = get_object_or_404(DeclaracaoCorreios, pk=declaracao_id)
     return _editar_declaracao(request, declaracao)
-
 
 @login_required
 @require_POST
@@ -127,7 +119,6 @@ def emitir_declaracao(request, declaracao_id):
     messages.success(request, 'Declaração emitida e preservada com sucesso.')
     return redirect('estoque:baixar_declaracao', declaracao_id=declaracao.pk)
 
-
 @login_required
 def baixar_declaracao(request, declaracao_id):
     declaracao = get_object_or_404(DeclaracaoCorreios, pk=declaracao_id)
@@ -140,7 +131,6 @@ def baixar_declaracao(request, declaracao_id):
         filename=declaracao.arquivo.name.rsplit('/', 1)[-1],
         content_type='application/pdf',
     )
-
 
 @login_required
 @require_POST

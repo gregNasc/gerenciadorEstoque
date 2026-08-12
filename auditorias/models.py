@@ -37,7 +37,6 @@ class CampanhaAuditoria(models.Model):
     def __str__(self):
         return self.nome
 
-
 class CampanhaAuditoriaEvento(models.Model):
     campanha = models.ForeignKey(
         CampanhaAuditoria, on_delete=models.PROTECT, related_name='eventos'
@@ -56,8 +55,6 @@ class CampanhaAuditoriaEvento(models.Model):
         if self.pk:
             raise ValidationError(_('Eventos de campanha de auditoria são imutáveis.'))
         return super().save(*args, **kwargs)
-
-
 class AuditoriaBase(models.Model):
     class Status(models.TextChoices):
         NAO_INICIADA = 'NAO_INICIADA', _('Não iniciada')
@@ -124,7 +121,6 @@ class AuditoriaBase(models.Model):
     def __str__(self):
         return f'{self.campanha} - {self.base}'
 
-
 class AuditoriaSnapshotEquipamento(models.Model):
     auditoria_base = models.ForeignKey(AuditoriaBase, on_delete=models.CASCADE, related_name='snapshot_equipamentos')
     equipamento = models.ForeignKey(Equipamento, on_delete=models.PROTECT, related_name='snapshots_auditoria')
@@ -153,7 +149,6 @@ class AuditoriaSnapshotEquipamento(models.Model):
         if self.pk:
             raise ValidationError(_('O snapshot de auditoria é imutável.'))
         return super().save(*args, **kwargs)
-
 
 class AuditoriaLeitura(models.Model):
     class Identificador(models.TextChoices):
@@ -204,7 +199,6 @@ class AuditoriaLeitura(models.Model):
             models.Index(fields=['auditoria_base', 'valor_normalizado']),
             models.Index(fields=['auditoria_base', 'equipamento', 'cancelada']),
         ]
-
 
 class AuditoriaDivergencia(models.Model):
     class Tipo(models.TextChoices):
@@ -274,7 +268,6 @@ class AuditoriaDivergencia(models.Model):
     def tipo_identificador_informado(self):
         return self.leitura.get_tipo_identificador_display() if self.leitura_id else ''
 
-
 class AuditoriaResolucao(models.Model):
     class Tipo(models.TextChoices):
         MANTER_NA_BASE = 'MANTER_NA_BASE', _('Manter na base atual')
@@ -296,7 +289,6 @@ class AuditoriaResolucao(models.Model):
     )
     resolvida_em = models.DateTimeField(auto_now_add=True)
     dados = models.JSONField(default=dict, blank=True)
-
 
 class AuditoriaEvento(models.Model):
     auditoria_base = models.ForeignKey(AuditoriaBase, on_delete=models.CASCADE, related_name='eventos')

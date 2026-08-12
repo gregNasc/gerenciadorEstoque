@@ -7,7 +7,6 @@ def perfil_do_usuario(usuario):
     except (AttributeError, ObjectDoesNotExist):
         return None
 
-
 def usuario_e_admin(usuario):
     if not usuario or not usuario.is_authenticated:
         return False
@@ -15,7 +14,6 @@ def usuario_e_admin(usuario):
         return True
     perfil = perfil_do_usuario(usuario)
     return bool(perfil and perfil.is_admin)
-
 
 def usuario_tem_acesso_base(usuario, base):
     if usuario_e_admin(usuario):
@@ -27,11 +25,9 @@ def usuario_tem_acesso_base(usuario, base):
         and perfil.regionais.filter(pk=base.pk).exists()
     )
 
-
 def exigir_acesso_base(usuario, base):
     if not usuario_tem_acesso_base(usuario, base):
         raise PermissionDenied('Usuário sem acesso a esta base.')
-
 
 def exigir_admin(usuario):
     if not usuario_e_admin(usuario):

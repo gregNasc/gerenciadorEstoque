@@ -55,7 +55,6 @@ class EquipamentosSickBaseTests(TestCase):
             categoria='HARDWARE', motivo='Não liga', observacao='Falha ao iniciar',
         )
 
-
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
 )
@@ -90,7 +89,6 @@ class RecuperacaoSenhaTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, 'auth-card')
             self.assertNotContains(response, 'Site de administração do Django')
-
 
 class FinalidadeEquipamentoTests(EquipamentosSickBaseTests):
     def test_novo_equipamento_e_operacional_por_padrao(self):
@@ -194,7 +192,6 @@ class FinalidadeEquipamentoTests(EquipamentosSickBaseTests):
         self.assertEqual(response.context['kpis_estoque']['ativos'], 0)
         self.assertEqual(response.context['kpis_estoque']['administrativos'], 1)
 
-
 class ContextoBaseTests(EquipamentosSickBaseTests):
     def test_usuario_com_uma_base_recebe_contexto_automatico(self):
         self.gestor.groups.add(Group.objects.get_or_create(name=GruposInsumos.COMPRAS)[0])
@@ -224,7 +221,6 @@ class ContextoBaseTests(EquipamentosSickBaseTests):
         response = self.client.get(reverse('estoque:cadastrar_equipamento'), {'regional': self.outra_base.pk})
         self.assertEqual(response.context['base_selecionada'], self.outra_base)
         self.assertTrue(response.context['form'].fields['regional'].disabled)
-
 
 class FluxoSickTests(EquipamentosSickBaseTests):
     def _marcar_sick_ajax(self, senha=None):

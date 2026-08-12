@@ -12,12 +12,10 @@ def _escopo_usuario(user):
         return Q(pk__in=[])
     return Q(empresa_id=perfil.empresa_id, auditorias_bases__base__in=perfil.regionais.all())
 
-
 def campanhas_visiveis(user):
     qs = CampanhaAuditoria.objects.select_related('empresa', 'criado_por')
     escopo = _escopo_usuario(user)
     return qs if escopo is None else qs.filter(escopo).distinct()
-
 
 def auditorias_visiveis(user):
     qs = AuditoriaBase.objects.select_related('campanha__empresa', 'base')
@@ -28,7 +26,6 @@ def auditorias_visiveis(user):
         return qs.none()
     return qs.filter(campanha__empresa_id=perfil.empresa_id, base__in=perfil.regionais.all())
 
-
 def divergencias_visiveis(user):
     return AuditoriaDivergencia.objects.filter(
         auditoria_base__in=auditorias_visiveis(user)
@@ -37,17 +34,14 @@ def divergencias_visiveis(user):
         'base_esperada', 'base_encontrada',
     )
 
-
 def equipamentos_esperados(auditoria_base):
     return auditoria_base.snapshot_equipamentos.select_related('equipamento', 'base_esperada')
-
 
 def equipamentos_com_transferencia_aberta():
     from estoque.models import Equipamento
     return Equipamento.objects.filter(
         transferenciaitem__transferencia__status__in=['PENDENTE', 'EM_TRANSITO']
     ).distinct()
-
 
 def emprestimos_vigentes():
     from estoque.models import Emprestimo

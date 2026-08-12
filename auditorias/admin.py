@@ -31,12 +31,10 @@ class CampanhaAuditoriaAdmin(AuditoriaSomenteLeituraAdmin):
     list_display = ('nome', 'empresa', 'status', 'criado_em')
     list_filter = ('status', 'empresa')
 
-
 @admin.register(AuditoriaBase)
 class AuditoriaBaseAdmin(AuditoriaSomenteLeituraAdmin):
     list_display = ('campanha', 'base', 'inicio_em', 'fim_em', 'status')
     list_filter = ('status', 'campanha__empresa')
-
 
 admin.site.register(AuditoriaSnapshotEquipamento, AuditoriaSomenteLeituraAdmin)
 admin.site.register(AuditoriaLeitura, AuditoriaSomenteLeituraAdmin)

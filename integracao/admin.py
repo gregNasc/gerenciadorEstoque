@@ -28,7 +28,6 @@ class PlanningCatalogAdmin(admin.ModelAdmin):
         "external_updated_at",
     )
 
-
 @admin.register(PlanningEvent)
 class PlanningEventAdmin(admin.ModelAdmin):
     list_display = (
@@ -42,7 +41,6 @@ class PlanningEventAdmin(admin.ModelAdmin):
     list_filter = ("status", "materialization_status", "sync_state")
     search_fields = ("external_id", "import_key", "store__code", "store__name")
     readonly_fields = [field.name for field in PlanningEvent._meta.fields]
-
 
 @admin.register(
     PlanningClientBinding,
@@ -60,12 +58,10 @@ class PlanningBindingAdmin(admin.ModelAdmin):
     list_filter = ("source", "is_active")
     readonly_fields = ("confirmed_at",)
 
-
 @admin.register(InventoryPlanningEventBinding)
 class EventBindingAdmin(admin.ModelAdmin):
     list_display = ("planning_event", "inventory", "created_at", "updated_at")
     readonly_fields = ("created_at", "updated_at")
-
 
 @admin.register(InventoryPlanningSyncRun)
 class SyncRunAdmin(admin.ModelAdmin):

@@ -36,7 +36,6 @@ def _pending_parent_events():
         materialization_status=PlanningEvent.MaterializationStatus.PENDING,
     )
 
-
 def _confirm_client(planning_client, local_client, user, source):
     binding, _created = PlanningClientBinding.objects.update_or_create(
         planning_client=planning_client,
@@ -49,7 +48,6 @@ def _confirm_client(planning_client, local_client, user, source):
         },
     )
     return binding
-
 
 def _confirm_operational_base(planning_client, planning_region, local_base, user, source, reason):
     binding, _created = PlanningOperationalBaseBinding.objects.update_or_create(
@@ -66,7 +64,6 @@ def _confirm_operational_base(planning_client, planning_region, local_base, user
     )
     return binding
 
-
 def _confirm_region_fallback(planning_region, local_base, user, source):
     binding, _created = PlanningRegionBinding.objects.update_or_create(
         planning_region=planning_region,
@@ -79,7 +76,6 @@ def _confirm_region_fallback(planning_region, local_base, user, source):
         },
     )
     return binding
-
 
 @login_required
 @permission_required("integracao.gerenciar_mapeamentos_planning", raise_exception=True)

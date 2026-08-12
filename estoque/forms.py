@@ -28,7 +28,6 @@ class DeclaracaoCorreiosForm(forms.ModelForm):
             'observacoes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
 
-
 class DeclaracaoEnderecoForm(forms.Form):
     nome_destinatario = forms.CharField(label=_('Nome'), max_length=150)
     logradouro = forms.CharField(label=_('Logradouro'), max_length=180)
@@ -46,7 +45,6 @@ class DeclaracaoEnderecoForm(forms.Form):
         super().__init__(*args, **kwargs)
         for campo in self.fields.values():
             campo.widget.attrs.setdefault('class', 'form-control')
-
 
 DeclaracaoCorreiosItemFormSet = forms.inlineformset_factory(
     DeclaracaoCorreios,

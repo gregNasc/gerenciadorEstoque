@@ -92,17 +92,35 @@ class SickService:
     def visiveis_para(cls, usuario, queryset=None):
         queryset = queryset if queryset is not None else Sick.objects.all()
         perfil = cls._perfil(usuario)
-        if usuario.groups.filter(
-            name=GruposCorporativos.SICK_MANUTENCAO,
-        ).exists():
-            return queryset.exclude(tipo_destino=Sick.TipoDestino.TERCEIRIZADA)
 
+        # Admin possui visão global e não depende de bases vinculadas.
+        # SICK terceirizado continua restrito à base de origem.
+        if perfil.is_admin:
+            return queryset.exclude(
+                tipo_destino=Sick.TipoDestino.TERCEIRIZADA
+            )
+
+        # Equipe central de manutenção também possui visão global
+        # dos SICKs internos.
+        if usuario.groups.filter(
+                name=GruposCorporativos.SICK_MANUTENCAO,
+        ).exists():
+            return queryset.exclude(
+                tipo_destino=Sick.TipoDestino.TERCEIRIZADA
+            )
+
+        # Gestores e operadores dependem das bases vinculadas.
         bases = perfil.regionais.all()
+
+        if not bases.exists():
+            return queryset.none()
+
         return queryset.filter(
             Q(
                 tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
                 base_origem__in=bases,
-            ) |
+            )
+            |
             Q(
                 ~Q(tipo_destino=Sick.TipoDestino.TERCEIRIZADA),
                 equipamento__regional__in=bases,
@@ -122,13 +140,16 @@ class SickService:
     @classmethod
     def _validar_acesso_base(cls, usuario, equipamento):
         perfil = cls._perfil(usuario)
+
         if perfil.is_admin:
             return perfil
-        if not perfil.regionais.filter(pk=equipamento.regional_id).exists():
-            raise PermissionDenied('Usuário sem acesso à base do equipamento.')
-        if perfil.empresa_id and perfil.empresa_id != equipamento.regional.empresa_id:
-            raise PermissionDenied('Equipamento pertence a outra empresa.')
-        return perfil
+
+        if not perfil.regionais.filter(
+                pk=equipamento.regional_id
+        ).exists():
+            raise PermissionDenied(
+                'Usuário sem acesso à base do equipamento.'
+            )
 
     @classmethod
     def _validar_acesso_sick(cls, usuario, sick):

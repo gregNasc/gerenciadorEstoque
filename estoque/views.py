@@ -51,7 +51,6 @@ from django.urls import reverse
 import re
 import logging
 from uuid import uuid4
-
 logger = logging.getLogger(__name__)
 from collections import defaultdict
 from .services.estoque_service import get_estoque_por_produto
@@ -3465,7 +3464,6 @@ def receber_devolucao_emprestimo(request, emprestimo_id):
 
 
 # ----------------- TRANSFERÊNCIAS -----------------
-
 @login_required
 @role_required('admin', 'gestor')
 def painel_alocacao(request, solicitacao_id):

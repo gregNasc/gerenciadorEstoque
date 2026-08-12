@@ -164,6 +164,7 @@
                                 {% trans "Custos de insumos" %}
                             </a>
                         </li>
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:precos_insumos' %}">
                                 <i class="bi bi-tags"></i>
@@ -176,6 +177,7 @@
                                 {% trans "Fornecedores" %}
                             </a>
                         </li>
+                        -->
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:pesquisa_precos_online' %}">
                                 <i class="bi bi-search"></i>
@@ -184,51 +186,61 @@
                         </li>
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
                                 <i class="bi bi-calendar-range"></i>
                                 Planejamento
                             </a>
                         </li>
+                        -->
                         {% endif %}
                         {% if pode_visualizar_valores and perfil.role == 'admin' or pode_visualizar_valores and perfil.is_financeiro_insumos or pode_visualizar_valores and perfil.is_executivo_insumos %}
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_financeiro' %}">
                                 <i class="bi bi-cash-coin"></i>
                                 Financeiro
                             </a>
                         </li>
+                        -->
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos %}
-                        <li>
+                        <!--li>
                             <hr class="dropdown-divider">
-                        </li>
+                        </li-->
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:lista_inventarios' %}">
                                 <i class="bi bi-list-ul"></i>
                                 Inventários
                             </a>
                         </li>
+                        -->
                         {% endif %}
                         {% if perms.integracao.gerenciar_mapeamentos_planning %}
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'integracao:planning_mappings' %}">
                                 <i class="bi bi-diagram-3"></i>
                                 Mapeamentos Planning
                             </a>
                         </li>
+                        -->
                         {% endif %}
 
                         {% if perfil.role == 'admin' and request.user.is_staff and not compras_restrito %}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
+                        <!--
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:importar_excel' %}">
                                 <i class="bi bi-file-earmark-excel"></i>
                                 {% trans "Importar Excel" %}
                             </a>
                         </li>
+                        -->
                         {% endif %}
 
                     </ul>
@@ -278,6 +290,7 @@
             {% endif %}
 
                 <!-- ASSISTENTE -->
+                <!--
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item">
                     <a class="nav-link {% if url_name == 'assistente_operacional' %}active{% endif %}"
@@ -286,6 +299,7 @@
                         {% trans "Assistente" %}
                     </a>
                 </li>
+                -->
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.namespace == 'ordens_servico' %}active{% endif %}"
                        href="{% url 'ordens_servico:lista' %}">

@@ -13,8 +13,15 @@ class ChamadoForm(forms.ModelForm):
     class Meta:
         model = Chamado
         fields = [
-            'base', 'inventario', 'equipamento', 'categoria', 'loja', 'lider', 'titulo',
-            'descricao', 'prioridade',
+            'base',
+            'inventario',
+            'equipamento',
+            'categoria',
+            'loja',
+            'lider',
+            'titulo',
+            'descricao',
+            'prioridade',
         ]
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 5}),
@@ -22,40 +29,143 @@ class ChamadoForm(forms.ModelForm):
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.user = user
+
+        # BASES PERMITIDAS
         bases = ChamadoAccessPolicy.bases(user)
-        self.fields['base'].queryset = bases.select_related('empresa').order_by('empresa__nome', 'nome')
-        inventarios = Inventario.objects.filter(
-            base__in=bases
+
+        self.fields['base'].queryset = (
+            bases
+            .select_related('empresa')
+            .order_by('empresa__nome', 'nome')
         )
-        perfil = getattr(user, 'perfil', None)
-        if perfil and perfil.is_operador and not ChamadoAccessPolicy.pode_atender(user):
-            inventarios = inventarios.filter(lider_usuario=user)
-        self.fields['inventario'].queryset = inventarios.select_related(
-            'cliente', 'base'
-        ).order_by('-data_inicio', 'loja')[:1000]
+
+        # DESCOBRIR A BASE ATUAL DO FORMULÁRIO
+        base_selecionada = None
+
+        # POST: usuário selecionou uma base
+        if self.is_bound:
+            base_id = self.data.get('base')
+
+            if base_id:
+                try:
+                    base_selecionada = bases.get(pk=base_id)
+                except (ValueError, TypeError, Base.DoesNotExist):
+                    base_selecionada = None
+
+        # Edição de chamado existente
+        elif self.instance and self.instance.pk:
+            if (
+                self.instance.base_id
+                and bases.filter(pk=self.instance.base_id).exists()
+            ):
+                base_selecionada = self.instance.base
+
+        # Caso o usuário possua apenas uma base,
+        # podemos utilizá-la automaticamente.
+        elif bases.count() == 1:
+            base_selecionada = bases.first()
+            self.fields['base'].initial = base_selecionada
+
+        # INVENTÁRIOS
+        inventarios = Inventario.objects.none()
+
+        if base_selecionada:
+            inventarios = Inventario.objects.filter(
+                base=base_selecionada
+            )
+
+            perfil = getattr(user, 'perfil', None)
+
+            if (
+                perfil
+                and perfil.is_operador
+                and not ChamadoAccessPolicy.pode_atender(user)
+            ):
+                inventarios = inventarios.filter(
+                    lider_usuario=user
+                )
+
+        self.fields['inventario'].queryset = (
+            inventarios
+            .select_related('cliente', 'base')
+            .order_by('-data_inicio', 'loja')[:1000]
+        )
+
         self.fields['inventario'].required = True
-        self.fields['equipamento'].queryset = secure_queryset(
-            Equipamento.objects.filter(regional__in=bases).select_related('produto', 'regional'),
-            user,
-        ).order_by('codigo')
-        self.fields['categoria'].queryset = CategoriaChamado.objects.filter(ativo=True)
+
+        # EQUIPAMENTOS
+        equipamentos = Equipamento.objects.none()
+
+        if base_selecionada:
+            equipamentos = secure_queryset(
+                Equipamento.objects.filter(
+                    regional=base_selecionada
+                ).select_related(
+                    'produto',
+                    'regional',
+                ),
+                user,
+            )
+
+        self.fields['equipamento'].queryset = (
+            equipamentos.order_by('codigo')
+        )
+
+        # CATEGORIAS
+        self.fields['categoria'].queryset = (
+            CategoriaChamado.objects
+            .filter(ativo=True)
+        )
+
+        # CSS
         for field in self.fields.values():
-            field.widget.attrs.setdefault('class', 'form-control')
+            field.widget.attrs.setdefault(
+                'class',
+                'form-control'
+            )
 
     def clean(self):
         dados = super().clean()
+
         base = dados.get('base')
         inventario = dados.get('inventario')
-        if base and not ChamadoAccessPolicy.pode_abrir_na_base(self.user, base):
-            self.add_error('base', 'VOCÊ NÃO POSSUI ACESSO A ESTA BASE.')
-        if inventario and base and inventario.base_id != base.pk:
-            self.add_error('inventario', 'O INVENTÁRIO NÃO PERTENCE À BASE SELECIONADA.')
         equipamento = dados.get('equipamento')
-        if equipamento and base and equipamento.regional_id != base.pk:
-            self.add_error('equipamento', 'O EQUIPAMENTO NÃO PERTENCE À BASE SELECIONADA.')
-        return dados
 
+        if (
+            base
+            and not ChamadoAccessPolicy.pode_abrir_na_base(
+                self.user,
+                base,
+            )
+        ):
+            self.add_error(
+                'base',
+                'VOCÊ NÃO POSSUI ACESSO A ESTA BASE.'
+            )
+
+        if (
+            inventario
+            and base
+            and inventario.base_id != base.pk
+        ):
+            self.add_error(
+                'inventario',
+                'O INVENTÁRIO NÃO PERTENCE À BASE SELECIONADA.'
+            )
+
+        if (
+            equipamento
+            and base
+            and equipamento.regional_id != base.pk
+        ):
+            self.add_error(
+                'equipamento',
+                'O EQUIPAMENTO NÃO PERTENCE À BASE SELECIONADA.'
+            )
+
+        return dados
 
 class ChamadoMensagemForm(forms.Form):
     texto = forms.CharField(widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}))

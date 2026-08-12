@@ -19,7 +19,6 @@ from insumos.models import OfertaPrecoOnline, PesquisaPrecoOnline
 class PrecoOnlineErro(Exception):
     pass
 
-
 class _ColetorLinks(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -43,7 +42,6 @@ class _ColetorLinks(HTMLParser):
             self._href = None
             self._texto = []
 
-
 def _decimal_brasileiro(texto):
     correspondencia = re.search(
         r'R\$\s*((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[,.]\d{2}))',
@@ -59,7 +57,6 @@ def _decimal_brasileiro(texto):
         return Decimal(numero)
     except InvalidOperation:
         return None
-
 
 class CatalogoHtmlProvider:
     FLAG_CONFIGURACAO = ''
@@ -182,7 +179,6 @@ class CatalogoHtmlProvider:
             'condicao': 'novo',
         }
 
-
 class GimbaProvider(CatalogoHtmlProvider):
     FLAG_CONFIGURACAO = 'GIMBA_PRICE_SEARCH_ENABLED'
     NOME = 'GIMBA'
@@ -218,7 +214,6 @@ class GimbaProvider(CatalogoHtmlProvider):
                 ))
         return sorted(ofertas, key=lambda oferta: (oferta['preco_total'], oferta['titulo']))[:limite]
 
-
 class FidelityProvider(CatalogoHtmlProvider):
     FLAG_CONFIGURACAO = 'FIDELITY_PRICE_SEARCH_ENABLED'
     NOME = 'FIDELITY'
@@ -253,7 +248,6 @@ class FidelityProvider(CatalogoHtmlProvider):
                     preco=preco,
                 ))
         return sorted(ofertas, key=lambda oferta: (oferta['preco_total'], oferta['titulo']))[:limite]
-
 
 class MercadoLivreProvider:
     NOME = 'MERCADO_LIVRE'
@@ -323,7 +317,6 @@ class MercadoLivreProvider:
                 'condicao': str(item.get('condition') or '')[:30],
             })
         return ofertas
-
 
 class PrecoOnlineService:
     PROVIDERS = (GimbaProvider, FidelityProvider, MercadoLivreProvider)

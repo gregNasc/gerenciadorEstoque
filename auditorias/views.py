@@ -40,7 +40,6 @@ def campanha_lista(request):
         'pode_criar': usuario_e_admin(request.user),
     })
 
-
 @login_required
 def campanha_criar(request):
     exigir_admin(request.user)
@@ -50,7 +49,6 @@ def campanha_criar(request):
         messages.success(request, 'Campanha criada.')
         return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
     return render(request, 'auditorias/campanha_form.html', {'form': form})
-
 
 @login_required
 def campanha_detalhe(request, campanha_id):
@@ -124,7 +122,6 @@ def campanha_editar(request, campanha_id):
         'rotulo_botao': 'Salvar alterações',
     })
 
-
 @login_required
 @require_POST
 def campanha_agendar(request, campanha_id):
@@ -135,7 +132,6 @@ def campanha_agendar(request, campanha_id):
     except ValidationError as exc:
         messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
-
 
 @login_required
 @require_POST
@@ -219,7 +215,6 @@ def base_iniciar(request, auditoria_base_id):
         messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:coleta', auditoria_base_id=auditoria.pk)
 
-
 @login_required
 def coleta(request, auditoria_base_id):
     auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
@@ -255,7 +250,6 @@ def coleta(request, auditoria_base_id):
         'resultado_liberado': resultado_liberado,
     })
 
-
 @login_required
 @require_POST
 def registrar_leitura(request, auditoria_base_id):
@@ -286,7 +280,6 @@ def registrar_leitura(request, auditoria_base_id):
         mensagens = exc.messages if isinstance(exc, ValidationError) else [str(exc)]
         return JsonResponse({'ok': False, 'erros': mensagens}, status=400)
 
-
 @login_required
 @require_POST
 def base_enviar(request, auditoria_base_id):
@@ -308,7 +301,6 @@ def base_enviar(request, auditoria_base_id):
     except ValidationError as exc:
         messages.error(request, ' '.join(exc.messages))
     return redirect(destino, auditoria_base_id=auditoria.pk)
-
 
 @login_required
 def divergencias(request, auditoria_base_id):
@@ -347,7 +339,6 @@ def divergencias(request, auditoria_base_id):
         'pode_baixar_relatorio': admin or bool(auditoria.finalizada_em),
     })
 
-
 @login_required
 @require_POST
 def base_reabrir(request, auditoria_base_id):
@@ -364,7 +355,6 @@ def base_reabrir(request, auditoria_base_id):
     except ValidationError as exc:
         messages.error(request, ' '.join(exc.messages))
         return redirect('auditorias:divergencias', auditoria_base_id=auditoria.pk)
-
 
 @login_required
 @require_POST
@@ -383,7 +373,6 @@ def base_finalizar(request, auditoria_base_id):
     except ValidationError as exc:
         messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:divergencias', auditoria_base_id=auditoria.pk)
-
 
 @login_required
 @require_POST
@@ -405,7 +394,6 @@ def base_solicitar_correcao(request, auditoria_base_id):
     else:
         messages.error(request, 'Revise o prazo e as orientações da solicitação de correção.')
     return redirect('auditorias:divergencias', auditoria_base_id=auditoria.pk)
-
 
 @login_required
 def divergencia_detalhe(request, divergencia_id):
@@ -446,7 +434,6 @@ def divergencia_detalhe(request, divergencia_id):
         ),
     })
 
-
 @login_required
 @require_POST
 def divergencia_inativar(request, divergencia_id):
@@ -481,7 +468,6 @@ def divergencia_responder(request, divergencia_id):
             messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:divergencia_detalhe', divergencia_id=divergencia.pk)
 
-
 @login_required
 @require_POST
 def divergencia_manter(request, divergencia_id):
@@ -498,7 +484,6 @@ def divergencia_manter(request, divergencia_id):
         except ValidationError as exc:
             messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:divergencia_detalhe', divergencia_id=divergencia.pk)
-
 
 @login_required
 @require_POST
@@ -522,7 +507,6 @@ def divergencia_transferir(request, divergencia_id):
             messages.error(request, ' '.join(exc.messages))
     return redirect('auditorias:divergencia_detalhe', divergencia_id=divergencia.pk)
 
-
 @login_required
 def relatorio_base(request, auditoria_base_id, formato):
     if formato != 'xlsx':
@@ -536,7 +520,6 @@ def relatorio_base(request, auditoria_base_id, formato):
     tipo = 'final' if auditoria.finalizada_em else 'parcial'
     resposta['Content-Disposition'] = f'attachment; filename="auditoria-base-{auditoria.pk}-{tipo}.{formato}"'
     return resposta
-
 
 @login_required
 def relatorio_campanha(request, campanha_id, formato):

@@ -18,7 +18,6 @@ class CampanhaAuditoriaForm(forms.ModelForm):
             'instrucoes': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
         }
 
-
 class CampanhaAuditoriaEdicaoForm(CampanhaAuditoriaForm):
     justificativa = forms.CharField(
         label=_('Justificativa da alteração'),
@@ -80,8 +79,6 @@ class AuditoriaBasesLoteForm(forms.Form):
             except ValidationError as exc:
                 self.add_error(None, exc)
         return dados
-
-
 class AuditoriaBaseForm(forms.ModelForm):
     class Meta:
         model = AuditoriaBase
@@ -98,7 +95,6 @@ class AuditoriaBaseForm(forms.ModelForm):
         self.fields['base'].queryset = Base.objects.filter(empresa=empresa) if empresa else Base.objects.none()
         self.fields['inicio_em'].input_formats = ['%Y-%m-%dT%H:%M']
         self.fields['fim_em'].input_formats = ['%Y-%m-%dT%H:%M']
-
 
 class PeriodoAuditoriaBaseForm(forms.Form):
     inicio_em = forms.DateTimeField(
@@ -134,14 +130,11 @@ class PeriodoAuditoriaBaseForm(forms.Form):
             except ValidationError as exc:
                 self.add_error(None, exc)
         return dados
-
-
 class RegularizacaoForm(forms.Form):
     justificativa = forms.CharField(
         label=_('Justificativa'),
         widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
     )
-
 
 class SolicitarCorrecaoForm(forms.Form):
     prazo_correcao_em = forms.DateTimeField(
@@ -157,13 +150,11 @@ class SolicitarCorrecaoForm(forms.Form):
         widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
     )
 
-
 class RespostaDivergenciaForm(forms.Form):
     justificativa_base = forms.CharField(
         label=_('Justificativa ou providência adotada'),
         widget=forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
     )
-
 
 class TransferenciaAuditoriaForm(RegularizacaoForm):
     base_destino = forms.ModelChoiceField(queryset=Base.objects.none(), widget=forms.Select(attrs={'class': 'form-select'}))

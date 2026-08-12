@@ -59,7 +59,6 @@ class ChecklistModalMarkupTests(SimpleTestCase):
             html,
         )
 
-
 class ToryTemposOperacionaisTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa Tory')
@@ -666,7 +665,6 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertIn('resumo de inventários', cliente['resposta'])
         self.assertIn('OXX | 58', cliente['resposta'])
 
-
 class TransferenciaServiceTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa Transferencia')
@@ -780,7 +778,6 @@ class TransferenciaServiceTests(TestCase):
         self.assertContains(response, 'SERIE-DIVERGENTE')
         self.assertContains(response, 'Aguardar conferência da etiqueta física.')
 
-
 class EmprestimoComPendenciaTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa Emprestimo Pendente')
@@ -884,7 +881,6 @@ class EmprestimoComPendenciaTests(TestCase):
         self.assertNotEqual(primeiro.protocolo, segundo.protocolo)
         self.assertLessEqual(len(primeiro.protocolo), 20)
 
-
 class ComunicadoManutencaoTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa manutenção')
@@ -931,7 +927,6 @@ class ComunicadoManutencaoTests(TestCase):
             set(comunicado.usuarios.values_list('username', flat=True)),
             {'admin_manutencao', 'rafael.ribeiro'},
         )
-
 
 class ToryResponseBuilderTests(TestCase):
     def test_converte_resposta_legada_com_tabela_em_componentes(self):
@@ -1029,7 +1024,6 @@ class ToryResponseBuilderTests(TestCase):
         self.assertEqual(resposta['tipo'], 'erro')
         self.assertNotIn('traceback', str(resposta).lower())
 
-
 class ToryInterfaceTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa Interface Tory')
@@ -1111,7 +1105,6 @@ class ToryInterfaceTests(TestCase):
         self.assertContains(response, 'id="tory-question"')
         self.assertContains(response, 'css/tory.css')
         self.assertContains(response, 'js/tory-renderer.js')
-
 
 class ToryEquipamentosOperacionaisTests(TestCase):
     def setUp(self):
@@ -1302,7 +1295,6 @@ class ToryEquipamentosOperacionaisTests(TestCase):
             'Detalhe o equipamento de série SER-ADM-01',
         )
 
-
 class ToryRankingPorBaseTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa Ranking Tory')
@@ -1433,7 +1425,6 @@ class ToryRankingPorBaseTests(TestCase):
         self.assertEqual(resultado['contexto']['intencao'], 'esclarecer_ranking')
         self.assertEqual(resultado['categoria'], 'esclarecimento')
         self.assertIn('não identifiquei com segurança', resultado['resposta'])
-
 
 class ToryIsolamentoBasesTests(TestCase):
     def setUp(self):

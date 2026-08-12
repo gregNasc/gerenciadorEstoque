@@ -78,7 +78,6 @@ def _assinatura_valida(request):
     ).hexdigest()
     return hmac.compare_digest(recebida, esperada)
 
-
 @csrf_exempt
 def whatsapp_webhook(request):
     if request.method == 'GET':

@@ -106,7 +106,6 @@ class CargaInicialTagsTests(TestCase):
             ).exists()
         )
 
-
 class SolicitacaoInsumoFluxoTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa solicitações')
@@ -201,7 +200,6 @@ class SolicitacaoInsumoFluxoTests(TestCase):
         self.assertEqual(resposta.status_code, 403)
         self.assertEqual(solicitacao.status, 'EM_COMPRA')
 
-
 class EstoqueInsumosDesempenhoTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa estoque rápido')
@@ -263,7 +261,6 @@ class EstoqueInsumosDesempenhoTests(TestCase):
         self.critico.estoque_minimo = Decimal('10.01')
         with self.assertRaises(ValidationError):
             self.critico.full_clean()
-
 
 class UltimoChecklistPorLojaTests(TestCase):
     def setUp(self):
@@ -358,7 +355,6 @@ class UltimoChecklistPorLojaTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertIsNone(resposta.json()['dados'])
-
 
 class ChecklistModeloOficialTests(TestCase):
     def setUp(self):
@@ -705,7 +701,6 @@ class ChecklistModeloOficialTests(TestCase):
         self.assertEqual(self.inventario.horario_ponto.strftime('%H:%M'), '06:45')
         self.assertEqual(self.inventario.horario_inicio.strftime('%H:%M'), '07:10')
 
-
 class AcessoCustosInsumosTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa custos')
@@ -788,7 +783,6 @@ class AcessoCustosInsumosTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(self.client.post(url, {}).status_code, 403)
 
-
 class FiltroValorEstoqueCustosTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa filtro estoque')
@@ -834,7 +828,6 @@ class FiltroValorEstoqueCustosTests(TestCase):
         self.assertEqual(todas.context['valor_estoque'], Decimal('300.00'))
         self.assertEqual(apenas_base_a.context['valor_estoque'], Decimal('100.00'))
         self.assertEqual(apenas_base_b.context['valor_estoque'], Decimal('200.00'))
-
 
 class MetricasOperacionaisInventarioTests(TestCase):
     def setUp(self):

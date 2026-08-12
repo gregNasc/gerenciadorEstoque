@@ -26,9 +26,9 @@ def normalizar_alias(valor):
 
 
 def validar_tamanho_anexo(arquivo):
-    limite = 10 * 1024 * 1024
+    limite = 50 * 1024 * 1024
     if arquivo.size > limite:
-        raise ValidationError('O ANEXO NÃO PODE ULTRAPASSAR 10 MB.')
+        raise ValidationError('O ANEXO NÃO PODE ULTRAPASSAR 50 MB.')
 
 
 def validar_mime_anexo(arquivo):

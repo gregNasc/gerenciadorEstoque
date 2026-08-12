@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from django.db.models import Q, Sum
 from django.shortcuts import render
-
 from estoque.models import Base, Empresa
 from insumos.models import MovimentacaoInsumo, SolicitacaoInsumo
 from estoque.policies.compras import ComprasAccessPolicy
@@ -46,7 +45,6 @@ def _obter_referencia_estoque(estoque_minimo, estoque_maximo):
 
     return None, "sem_parametro"
 
-
 def _calcular_percentual_estoque(saldo, referencia_estoque):
     """Calcula a ocupação percentual, limitada entre 0% e 100%."""
     if referencia_estoque is None or referencia_estoque <= ZERO:
@@ -58,7 +56,6 @@ def _calcular_percentual_estoque(saldo, referencia_estoque):
         ZERO,
         min(percentual, CEM),
     )
-
 
 def _classificar_saldo(saldo, estoque_minimo, estoque_maximo):
     """
@@ -111,7 +108,6 @@ def _classificar_saldo(saldo, estoque_minimo, estoque_maximo):
         "origem_referencia": origem_referencia,
     }
 
-
 def _calcular_saude(registro):
     """
     Retorna a média da ocupação dos itens classificáveis.
@@ -128,7 +124,6 @@ def _calcular_saude(registro):
         registro["soma_percentuais"] / quantidade,
         1,
     )
-
 
 def _definir_situacao_regional(registro):
     """
@@ -183,7 +178,6 @@ def _definir_situacao_regional(registro):
         "icone": "bi-check-circle-fill",
     }
 
-
 def _prioridade_item_critico(item):
     """Ordena zerados primeiro e depois os menores percentuais."""
     prioridade_status = 0 if item["status"] == "zerado" else 1
@@ -198,7 +192,6 @@ def _prioridade_item_critico(item):
         item["saldo"],
         item["insumo"].lower(),
     )
-
 
 @saude_estoque_required
 def dashboard_saude_insumos(request):

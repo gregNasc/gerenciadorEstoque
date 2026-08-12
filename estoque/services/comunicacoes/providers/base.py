@@ -10,7 +10,6 @@ class ProviderResult:
     erro: str = ''
     repetivel: bool = True
 
-
 class WhatsAppProvider(Protocol):
     def enviar_payload(
         self,

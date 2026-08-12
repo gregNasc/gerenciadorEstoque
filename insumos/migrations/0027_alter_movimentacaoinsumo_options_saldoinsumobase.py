@@ -6,46 +6,173 @@ from django.db import migrations, models
 
 
 def reconstruir_saldos_historicos(apps, schema_editor):
-    Movimentacao = apps.get_model('insumos', 'MovimentacaoInsumo')
-    Saldo = apps.get_model('insumos', 'SaldoInsumoBase')
-    entradas = {'ENTRADA', 'DEVOLUCAO', 'AJUSTE_ENTRADA'}
-    saidas = {'SAIDA', 'PERDA', 'AJUSTE_SAIDA'}
+    Movimentacao = apps.get_model(
+        'insumos',
+        'MovimentacaoInsumo',
+    )
+    Saldo = apps.get_model(
+        'insumos',
+        'SaldoInsumoBase',
+    )
+    Insumo = apps.get_model(
+        'insumos',
+        'Insumo',
+    )
+
+    entradas = {
+        'ENTRADA',
+        'DEVOLUCAO',
+        'AJUSTE_ENTRADA',
+    }
+
+    saidas = {
+        'SAIDA',
+        'PERDA',
+        'AJUSTE_SAIDA',
+    }
+
     acumulados = {}
 
-    movimentos = Movimentacao.objects.order_by('base_id', 'insumo_id', 'criado_em', 'pk')
+    movimentos = Movimentacao.objects.order_by(
+        'base_id',
+        'insumo_id',
+        'pk',
+    )
+
     for movimento in movimentos.iterator(chunk_size=2000):
-        chave = (movimento.base_id, movimento.insumo_id)
-        saldo, custo, ultima_entrada = acumulados.get(
-            chave,
-            (Decimal('0'), Decimal('0'), None),
+        chave = (
+            movimento.base_id,
+            movimento.insumo_id,
         )
-        quantidade = Decimal(movimento.quantidade)
-        valor = Decimal(movimento.valor_unitario or 0)
+
+        dados = acumulados.setdefault(
+            chave,
+            {
+                'saldo': Decimal('0'),
+                'valor_estoque': Decimal('0'),
+                'ultima_entrada': None,
+            },
+        )
+
+        quantidade = Decimal(
+            movimento.quantidade or 0
+        )
+
+        valor_unitario = Decimal(
+            movimento.valor_unitario or 0
+        )
+
+        if quantidade < 0:
+            raise RuntimeError(
+                'Quantidade histórica negativa encontrada '
+                f'em base={movimento.base_id}, '
+                f'insumo={movimento.insumo_id}, '
+                f'movimentacao={movimento.pk}.'
+            )
+
         if movimento.tipo in entradas:
-            novo_saldo = saldo + quantidade
-            if quantidade > 0 and valor > 0 and novo_saldo > 0:
-                custo = ((saldo * custo) + (quantidade * valor)) / novo_saldo
-            saldo = novo_saldo
-            ultima_entrada = movimento.criado_em
+            dados['saldo'] += quantidade
+
+            dados['valor_estoque'] += (
+                quantidade * valor_unitario
+            )
+
+            if movimento.criado_em:
+                if (
+                    dados['ultima_entrada'] is None
+                    or movimento.criado_em
+                    > dados['ultima_entrada']
+                ):
+                    dados['ultima_entrada'] = (
+                        movimento.criado_em
+                    )
+
         elif movimento.tipo in saidas:
-            saldo -= quantidade
+            dados['saldo'] -= quantidade
+
+            dados['valor_estoque'] -= (
+                quantidade * valor_unitario
+            )
+
+        else:
+            raise RuntimeError(
+                'Tipo de movimentação histórica '
+                f'não reconhecido: {movimento.tipo}. '
+                f'Movimentação={movimento.pk}.'
+            )
+
+    valores_legados = dict(
+        Insumo.objects.values_list(
+            'pk',
+            'valor_medio',
+        )
+    )
+
+    saldos_para_criar = []
+
+    for (
+        base_id,
+        insumo_id,
+    ), dados in acumulados.items():
+
+        saldo = dados['saldo']
+        valor_estoque = dados['valor_estoque']
+
+        # Aqui está a validação importante:
+        # o estado ATUAL nunca pode ser negativo.
         if saldo < 0:
             raise RuntimeError(
-                f'Saldo histórico negativo em base={movimento.base_id}, '
-                f'insumo={movimento.insumo_id}, movimentacao={movimento.pk}.'
+                'Saldo final negativo encontrado durante '
+                'a migração: '
+                f'base={base_id}, '
+                f'insumo={insumo_id}, '
+                f'saldo={saldo}.'
             )
-        acumulados[chave] = (saldo, custo, ultima_entrada)
 
-    Saldo.objects.bulk_create([
-        Saldo(
-            base_id=base_id,
-            insumo_id=insumo_id,
-            saldo=saldo,
-            custo_medio=custo,
-            ultima_entrada_em=ultima_entrada,
+        if saldo == 0:
+            custo_medio = Decimal('0')
+
+        elif valor_estoque > 0:
+            custo_medio = (
+                valor_estoque / saldo
+            )
+
+        else:
+            # Histórico legado sem informação suficiente
+            # de valoração.
+            #
+            # Usa o valor médio global anterior apenas como
+            # valor inicial de compatibilidade.
+            custo_medio = Decimal(
+                valores_legados.get(insumo_id)
+                or 0
+            )
+
+        if custo_medio < 0:
+            raise RuntimeError(
+                'Custo médio negativo encontrado durante '
+                'a migração: '
+                f'base={base_id}, '
+                f'insumo={insumo_id}, '
+                f'custo={custo_medio}.'
+            )
+
+        saldos_para_criar.append(
+            Saldo(
+                base_id=base_id,
+                insumo_id=insumo_id,
+                saldo=saldo,
+                custo_medio=custo_medio,
+                ultima_entrada_em=(
+                    dados['ultima_entrada']
+                ),
+            )
         )
-        for (base_id, insumo_id), (saldo, custo, ultima_entrada) in acumulados.items()
-    ], batch_size=1000)
+
+    Saldo.objects.bulk_create(
+        saldos_para_criar,
+        batch_size=1000,
+    )
 
 
 def remover_saldos_derivados(apps, schema_editor):

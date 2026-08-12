@@ -36,7 +36,6 @@ class Base(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"
 
-
 class EnderecoPostalBase(models.Model):
     base = models.OneToOneField(
         Base,
@@ -586,7 +585,6 @@ class TransferenciaItem(models.Model):
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(max_length=20, default='SELECIONADO')
 
-
 class DeclaracaoCorreios(models.Model):
     class TipoOperacao(models.TextChoices):
         TRANSFERENCIA = 'TRANSFERENCIA', _('Transferência')
@@ -670,7 +668,6 @@ class DeclaracaoCorreios(models.Model):
         )
         if self.tipo_operacao != tipo_esperado:
             raise ValidationError({'tipo_operacao': _('Tipo incompatível com a operação informada.')})
-
 
 class DeclaracaoCorreiosItem(models.Model):
     declaracao = models.ForeignKey(

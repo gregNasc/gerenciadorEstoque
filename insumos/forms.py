@@ -67,7 +67,6 @@ class InsumoForm(forms.ModelForm):
             ),
         }
 
-
 class FornecedorInsumoForm(forms.ModelForm):
     documento = forms.CharField(
         label=_('CNPJ'),
@@ -117,7 +116,6 @@ class FornecedorInsumoForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-
 class PrecoFornecedorInsumoForm(forms.ModelForm):
     aplicar_como_custo = forms.BooleanField(
         required=False,
@@ -152,7 +150,6 @@ class PrecoFornecedorInsumoForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
-
 
 class SolicitacaoInsumoForm(forms.ModelForm):
     class Meta:
