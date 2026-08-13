@@ -1,10 +1,13 @@
 import uuid
 from decimal import Decimal
+from io import BytesIO
 
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import Workbook
 
 from compras.models import (
     Aquisicao,
@@ -157,6 +160,45 @@ class ComprasRemessasTests(TestCase):
         self.assertEqual(HistoricoValorEquipamento.objects.filter(equipamento=equipamento).count(), 2)
         equipamento.refresh_from_db()
         self.assertEqual(equipamento.custo_aquisicao, Decimal('950'))
+
+    def test_importacao_precificacao_ignora_cabecalho_e_atualiza_equipamento(self):
+        equipamento = Equipamento.objects.create(
+            produto=self.produto, numero_serie='SERIE-IMPORTACAO', patrimonio='PAT-IMPORTACAO',
+            regional=self.base, codigo='EQP-IMPORTACAO',
+        )
+        workbook = Workbook()
+        planilha = workbook.active
+        planilha.title = 'PRECIFICACAO'
+        planilha.append([
+            'EQUIPAMENTO_ID', 'REGIONAL', 'CATEGORIA', 'EQUIPAMENTO', 'PATRIMONIO',
+            'NUMERO_SERIE', 'CUSTO_AQUISICAO', 'PRECO_REFERENCIA', 'ORIGEM_VALOR', 'MOTIVO',
+        ])
+        planilha.append([
+            equipamento.pk, self.base.nome, self.produto.categoria, self.produto.descricao,
+            equipamento.patrimonio, equipamento.numero_serie, 800, 900,
+            Equipamento.OrigemValor.INFORMADO_COMPRAS, 'IMPORTAÇÃO DO TEMPLATE',
+        ])
+        conteudo = BytesIO()
+        workbook.save(conteudo)
+        arquivo = SimpleUploadedFile(
+            'template-precificacao-equipamentos.xlsx', conteudo.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+        self.client.force_login(self.admin)
+        resposta = self.client.post(
+            reverse('compras:importar_precificacao_equipamentos'),
+            {'arquivo': arquivo},
+        )
+
+        self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
+        equipamento.refresh_from_db()
+        self.assertEqual(equipamento.custo_aquisicao, Decimal('800'))
+        self.assertEqual(equipamento.preco_referencia, Decimal('900'))
+        self.assertEqual(
+            HistoricoValorEquipamento.objects.filter(equipamento=equipamento).count(),
+            1,
+        )
 
     def test_paginas_financeiras_e_badge_para_admins_e_envolvidos(self):
         self._aquisicao(1)

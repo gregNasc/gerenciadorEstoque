@@ -304,7 +304,8 @@ def importar_precificacao_equipamentos(request):
         return redirect('compras:valores_equipamentos')
     try:
         planilha = load_workbook(form.cleaned_data['arquivo'], read_only=True, data_only=True).active
-        cabecalho = [str(valor or '').strip().upper() for valor in next(planilha.iter_rows(values_only=True))]
+        linhas = planilha.iter_rows(values_only=True)
+        cabecalho = [str(valor or '').strip().upper() for valor in next(linhas)]
         esperadas = ['EQUIPAMENTO_ID', 'CUSTO_AQUISICAO', 'PRECO_REFERENCIA', 'ORIGEM_VALOR', 'MOTIVO']
         if any(coluna not in cabecalho for coluna in esperadas):
             raise ValidationError(_('O cabeçalho da planilha não corresponde ao template oficial.'))
@@ -318,11 +319,23 @@ def importar_precificacao_equipamentos(request):
                 regional__in=ComprasAccessPolicy.bases(request.user)
             )
         with transaction.atomic():
-            for numero, linha in enumerate(planilha.iter_rows(values_only=True), start=2):
+            for numero, linha in enumerate(linhas, start=2):
                 equipamento_id = linha[indices['EQUIPAMENTO_ID']]
                 if not equipamento_id:
                     continue
-                equipamento = equipamentos_permitidos.filter(pk=equipamento_id).first()
+                try:
+                    if isinstance(equipamento_id, bool):
+                        raise ValueError
+                    equipamento_id_convertido = int(equipamento_id)
+                    if isinstance(equipamento_id, float) and not equipamento_id.is_integer():
+                        raise ValueError
+                except (TypeError, ValueError):
+                    raise ValidationError(
+                        _('Linha %(numero)s: EQUIPAMENTO_ID deve ser um número inteiro.') % {
+                            'numero': numero,
+                        }
+                    )
+                equipamento = equipamentos_permitidos.filter(pk=equipamento_id_convertido).first()
                 if not equipamento:
                     raise ValidationError(_(
                         'Linha %(numero)s: equipamento inexistente ou fora do seu escopo autorizado.'
