@@ -1,25 +1,425 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
+
 {% block title %}{% trans "Valores de equipamentos" %}{% endblock %}
-{% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <div><h1 class="h3 mb-1">{% trans "Visao geral de valores dos equipamentos" %}</h1><p class="text-secondary mb-0">{% trans "Patrimonio, cobertura de precificacao e distribuicao por regional e categoria." %}</p></div>
-  {% if pode_editar %}<div class="d-flex gap-2"><a class="btn btn-outline-success" href="{% url 'compras:template_precificacao_equipamentos' %}"><i class="bi bi-file-earmark-excel"></i> {% trans "Baixar template de precificacao" %}</a><a class="btn btn-primary" href="{% url 'compras:criar_produto_catalogo' %}"><i class="bi bi-plus-lg"></i> {% trans "Novo item" %}</a></div>{% endif %}
-</div>
-<div class="alert alert-warning"><i class="bi bi-shield-lock"></i> {% trans "Equipamentos de bases em auditoria permanecem ocultos." %}</div>
-<form method="get" class="card card-body mb-3"><div class="row g-2">
-  <div class="col-md-3"><label class="form-label">{% trans "Regional" %}</label><select class="form-select" name="base"><option value="">{% trans "Todas" %}</option>{% for base in bases %}<option value="{{ base.pk }}" {% if filtros.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
-  <div class="col-md-3"><label class="form-label">{% trans "Categoria" %}</label><select class="form-select" name="categoria"><option value="">{% trans "Todas" %}</option>{% for valor,rotulo in categorias %}<option value="{{ valor }}" {% if filtros.categoria == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
-  <div class="col-md-4"><label class="form-label">{% trans "Equipamento" %}</label><select class="form-select" name="equipamento"><option value="">{% trans "Todos" %}</option>{% for produto in produtos %}<option value="{{ produto.pk }}" {% if filtros.equipamento == produto.pk|stringformat:'s' %}selected{% endif %}>{{ produto.categoria }} · {{ produto.descricao }}</option>{% endfor %}</select></div>
-  <div class="col-md-2 d-grid align-items-end"><button class="btn btn-dark mt-4">{% trans "Filtrar" %}</button></div>
-</div></form>
-<div class="row g-2 mb-3"><div class="col-md-3"><div class="card card-body"><small>{% trans "Total controlado" %}</small><b class="fs-4">R$ {{ total|floatformat:2 }}</b></div></div><div class="col-md-3"><div class="card card-body"><small>{% trans "Sem preco validado" %}</small><b class="fs-4">{{ sem_preco }}</b></div></div><div class="col-md-6"><div class="card card-body py-2"><small>{% trans "Distribuicao operacional" %}</small><div>{% trans "Operacional" %}: R$ {{ categorias_valor.operacional|floatformat:2 }} · {% trans "Administrativo" %}: R$ {{ categorias_valor.administrativo|floatformat:2 }} · SICK: R$ {{ categorias_valor.indisponivel|floatformat:2 }}</div></div></div></div>
-<div class="row g-3 mb-3"><div class="col-lg-4"><div class="card card-body"><h2 class="h6">{% trans "Valor por regional" %}</h2><canvas id="graficoRegionais"></canvas></div></div><div class="col-lg-4"><div class="card card-body"><h2 class="h6">{% trans "Valor por categoria" %}</h2><canvas id="graficoCategorias"></canvas></div></div><div class="col-lg-4"><div class="card card-body"><h2 class="h6">{% trans "Principais equipamentos" %}</h2><canvas id="graficoEquipamentos"></canvas></div></div></div>
-{% if pode_editar %}<details class="card card-body mb-3"><summary class="fw-semibold">{% trans "Importar template preenchido" %}</summary><form class="row g-2 mt-2" method="post" enctype="multipart/form-data" action="{% url 'compras:importar_precificacao_equipamentos' %}">{% csrf_token %}<div class="col-md-9">{{ importacao_form.arquivo }}</div><div class="col-md-3 d-grid"><button class="btn btn-success">{% trans "Importar precos" %}</button></div></form></details>{% endif %}
-<div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>{% trans "Regional" %}</th><th>{% trans "Equipamento" %}</th><th>{% trans "Categoria" %}</th><th>{% trans "Patrimonio" %}</th><th>{% trans "Serie" %}</th><th>{% trans "Status" %}</th><th>{% trans "Aquisicao" %}</th><th>{% trans "Referencia" %}</th><th>{% trans "Origem" %}</th></tr></thead><tbody>{% for e in equipamentos %}<tr><td>{{ e.regional }}</td><td>{{ e.produto }}</td><td>{{ e.produto.get_categoria_display }}</td><td>{{ e.patrimonio }}</td><td>{{ e.numero_serie }}</td><td>{{ e.get_status_display }}</td><td>{% if e.custo_aquisicao != None %}R$ {{ e.custo_aquisicao|floatformat:2 }}{% else %}—{% endif %}</td><td>{% if e.preco_referencia != None %}R$ {{ e.preco_referencia|floatformat:2 }}{% else %}—{% endif %}</td><td>{{ e.get_origem_valor_display }}</td></tr>{% empty %}<tr><td colspan="9" class="text-center text-secondary py-5">{% trans "Nenhum equipamento encontrado." %}</td></tr>{% endfor %}</tbody></table></div></div>
-{{ grafico_regionais|json_script:"dados-regionais" }}{{ grafico_categorias|json_script:"dados-categorias" }}{{ grafico_equipamentos|json_script:"dados-equipamentos" }}
+
+{% block extra_css %}
+<style>
+  .asset-value-page {
+    --av-ink: #0f172a;
+    --av-muted: #64748b;
+    --av-border: #e2e8f0;
+    --av-blue: #2563eb;
+    --av-indigo: #4f46e5;
+    --av-teal: #0f766e;
+    --av-amber: #d97706;
+    background: #f4f7fb;
+    margin: -1.5rem -.75rem 0;
+    min-height: calc(100vh - 80px);
+    padding: 1.5rem;
+    color: var(--av-ink);
+  }
+  .asset-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
+    padding: 1.75rem;
+    color: #fff;
+    background: linear-gradient(125deg, #0f172a 0%, #172554 52%, #1d4ed8 100%);
+    box-shadow: 0 16px 35px rgba(15, 23, 42, .16);
+  }
+  .asset-hero::after {
+    content: "";
+    position: absolute;
+    width: 290px;
+    height: 290px;
+    right: -90px;
+    top: -165px;
+    border: 52px solid rgba(255, 255, 255, .08);
+    border-radius: 50%;
+  }
+  .asset-hero > * { position: relative; z-index: 1; }
+  .hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #bfdbfe;
+  }
+  .asset-hero p { max-width: 720px; color: #dbeafe; }
+  .hero-actions .btn { border-radius: 10px; }
+  .filter-panel, .chart-panel, .inventory-panel, .import-panel {
+    background: #fff;
+    border: 1px solid var(--av-border);
+    border-radius: 16px;
+    box-shadow: 0 5px 20px rgba(15, 23, 42, .05);
+  }
+  .filter-panel { padding: 1rem; }
+  .filter-panel .form-label {
+    color: #475569;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .filter-panel .form-control, .filter-panel .form-select { border-color: #cbd5e1; }
+  .audit-note {
+    display: flex;
+    gap: .7rem;
+    align-items: center;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    padding: .7rem .9rem;
+    font-size: .88rem;
+  }
+  .kpi-card {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    background: #fff;
+    border: 1px solid var(--av-border);
+    border-radius: 16px;
+    padding: 1.15rem;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, .045);
+  }
+  .kpi-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--kpi-color, var(--av-blue));
+  }
+  .kpi-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    color: var(--kpi-color, var(--av-blue));
+    background: color-mix(in srgb, var(--kpi-color, var(--av-blue)) 10%, white);
+    border-radius: 11px;
+    font-size: 1.1rem;
+  }
+  .kpi-label {
+    color: var(--av-muted);
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .kpi-value { font-size: clamp(1.35rem, 2vw, 1.9rem); font-weight: 800; line-height: 1.2; }
+  .kpi-help { color: var(--av-muted); font-size: .78rem; }
+  .allocation-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    background: var(--av-border);
+    border: 1px solid var(--av-border);
+    border-radius: 14px;
+  }
+  .allocation-item { background: #fff; padding: .85rem 1rem; }
+  .allocation-item small { display: block; color: var(--av-muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+  .allocation-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chart-panel { height: 100%; padding: 1.15rem; }
+  .chart-heading { font-weight: 800; font-size: 1rem; margin: 0; }
+  .chart-subtitle { color: var(--av-muted); font-size: .8rem; margin: .2rem 0 0; }
+  .chart-stage { height: 340px; margin-top: 1rem; position: relative; }
+  .chart-empty { height: 100%; display: grid; place-items: center; color: var(--av-muted); text-align: center; }
+  .import-panel { overflow: hidden; }
+  .import-panel summary, .inventory-panel summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .import-panel summary::-webkit-details-marker, .inventory-panel summary::-webkit-details-marker { display: none; }
+  .import-panel[open] summary, .inventory-panel[open] summary { border-bottom: 1px solid var(--av-border); }
+  .details-chevron { transition: transform .2s ease; }
+  details[open] .details-chevron { transform: rotate(180deg); }
+  .inventory-panel { overflow: hidden; }
+  .inventory-panel .table { font-size: .86rem; }
+  .inventory-panel .table thead th { padding: .8rem 1rem; white-space: nowrap; }
+  .inventory-panel .table tbody td { padding: .75rem 1rem; }
+  .equipment-name { min-width: 230px; max-width: 380px; }
+  .equipment-meta { color: var(--av-muted); font-size: .75rem; }
+  .price-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .25rem .5rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #166534;
+    background: #dcfce7;
+  }
+  .price-pill.pending { color: #9a3412; background: #ffedd5; }
+  .pagination .page-link { color: #334155; border-color: var(--av-border); }
+  .pagination .page-item.active .page-link { color: #fff; background: var(--av-blue); border-color: var(--av-blue); }
+  @media (max-width: 991.98px) {
+    .allocation-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chart-stage { height: 300px; }
+  }
+  @media (max-width: 575.98px) {
+    .asset-value-page { padding: 1rem; }
+    .asset-hero { padding: 1.25rem; border-radius: 16px; }
+    .allocation-strip { grid-template-columns: 1fr; }
+  }
+</style>
 {% endblock %}
-{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script>
-function criarGrafico(id, scriptId, campo, cor) { const dados=JSON.parse(document.getElementById(scriptId).textContent); new Chart(document.getElementById(id),{type:'bar',data:{labels:dados.map(i=>i[campo]||'SEM CATEGORIA'),datasets:[{data:dados.map(i=>Number(i.total||0)),backgroundColor:cor}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}}); }
-criarGrafico('graficoRegionais','dados-regionais','regional__nome','#0d6efd'); criarGrafico('graficoCategorias','dados-categorias','produto__categoria','#198754'); criarGrafico('graficoEquipamentos','dados-equipamentos','produto__descricao','#6f42c1');
-</script>{% endblock %}
+
+{% block content %}
+<div class="asset-value-page">
+  <section class="asset-hero mb-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <div>
+        <span class="hero-kicker"><i class="bi bi-graph-up-arrow"></i> {% trans "Inteligencia patrimonial" %}</span>
+        <h1 class="h2 fw-bold mt-2 mb-2">{% trans "Valores dos equipamentos" %}</h1>
+        <p class="mb-0">{% trans "Acompanhe o valor do parque, a cobertura de precificacao e onde o patrimonio esta concentrado." %}</p>
+      </div>
+      {% if pode_editar %}
+      <div class="hero-actions d-flex flex-wrap gap-2">
+        <a class="btn btn-light" href="{% url 'compras:template_precificacao_equipamentos' %}">
+          <i class="bi bi-file-earmark-arrow-down me-1"></i> {% trans "Baixar template" %}
+        </a>
+        <a class="btn btn-outline-light" href="{% url 'compras:criar_produto_catalogo' %}">
+          <i class="bi bi-plus-lg me-1"></i> {% trans "Novo item" %}
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <form method="get" class="filter-panel mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-bold"><i class="bi bi-funnel me-1 text-primary"></i> {% trans "Filtros da analise" %}</div>
+      {% if filtros.base or filtros.categoria or filtros.equipamento or filtros.q %}
+      <a href="{% url 'compras:valores_equipamentos' %}" class="small text-decoration-none">{% trans "Limpar filtros" %}</a>
+      {% endif %}
+    </div>
+    <div class="row g-2 align-items-end">
+      <div class="col-sm-6 col-xl-2">
+        <label class="form-label" for="filtro-base">{% trans "Regional" %}</label>
+        <select class="form-select" id="filtro-base" name="base">
+          <option value="">{% trans "Todas as regionais" %}</option>
+          {% for base in bases %}<option value="{{ base.pk }}" {% if filtros.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-xl-2">
+        <label class="form-label" for="filtro-categoria">{% trans "Categoria" %}</label>
+        <select class="form-select" id="filtro-categoria" name="categoria">
+          <option value="">{% trans "Todas as categorias" %}</option>
+          {% for valor, rotulo in categorias %}<option value="{{ valor }}" {% if filtros.categoria == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <label class="form-label" for="filtro-equipamento">{% trans "Equipamento" %}</label>
+        <select class="form-select" id="filtro-equipamento" name="equipamento">
+          <option value="">{% trans "Todos os equipamentos" %}</option>
+          {% for produto in produtos %}<option value="{{ produto.pk }}" {% if filtros.equipamento == produto.pk|stringformat:'s' %}selected{% endif %}>{{ produto.categoria }} · {{ produto.descricao }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <label class="form-label" for="filtro-busca">{% trans "Busca rapida" %}</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input class="form-control" id="filtro-busca" type="search" name="q" value="{{ filtros.q }}" placeholder="{% trans 'Patrimonio, serie ou equipamento' %}">
+        </div>
+      </div>
+      <div class="col-xl-2 d-grid">
+        <button class="btn btn-primary py-2"><i class="bi bi-sliders me-1"></i> {% trans "Atualizar painel" %}</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="audit-note mb-3">
+    <i class="bi bi-shield-lock-fill fs-5"></i>
+    <span>{% trans "Por seguranca, equipamentos de bases em periodo de auditoria nao aparecem nesta visao." %}</span>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-sm-6 col-xl-3">
+      <div class="kpi-card" style="--kpi-color:#2563eb">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-3"><span class="kpi-label">{% trans "Valor do parque" %}</span><span class="kpi-icon"><i class="bi bi-cash-stack"></i></span></div>
+        <div class="kpi-value">R$ {{ total|floatformat:2 }}</div>
+        <div class="kpi-help mt-1">{% trans "Custo ou referencia disponivel" %}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="kpi-card" style="--kpi-color:#4f46e5">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-3"><span class="kpi-label">{% trans "Equipamentos visiveis" %}</span><span class="kpi-icon"><i class="bi bi-pc-display-horizontal"></i></span></div>
+        <div class="kpi-value">{{ total_equipamentos }}</div>
+        <div class="kpi-help mt-1">{% trans "Apos filtros e regras de acesso" %}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="kpi-card" style="--kpi-color:#0f766e">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-3"><span class="kpi-label">{% trans "Cobertura de precificacao" %}</span><span class="kpi-icon"><i class="bi bi-patch-check"></i></span></div>
+        <div class="kpi-value">{{ cobertura|floatformat:1 }}%</div>
+        <div class="kpi-help mt-1">{% blocktrans %}{{ precificados }} equipamentos com valor validado{% endblocktrans %}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="kpi-card" style="--kpi-color:#d97706">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-3"><span class="kpi-label">{% trans "Pendentes de validacao" %}</span><span class="kpi-icon"><i class="bi bi-exclamation-circle"></i></span></div>
+        <div class="kpi-value">{{ sem_preco }}</div>
+        <div class="kpi-help mt-1">{% trans "Valor medio por item" %}: R$ {{ valor_medio|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="allocation-strip mb-3" aria-label="{% trans 'Distribuicao do valor por finalidade e status' %}">
+    <div class="allocation-item"><small>{% trans "Operacional" %}</small><strong>R$ {{ categorias_valor.operacional|floatformat:2 }}</strong></div>
+    <div class="allocation-item"><small>{% trans "Administrativo" %}</small><strong>R$ {{ categorias_valor.administrativo|floatformat:2 }}</strong></div>
+    <div class="allocation-item"><small>{% trans "SICK / Manutencao" %}</small><strong>R$ {{ categorias_valor.indisponivel|floatformat:2 }}</strong></div>
+    <div class="allocation-item"><small>{% trans "Em transito" %}</small><strong>R$ {{ categorias_valor.transito|floatformat:2 }}</strong></div>
+    <div class="allocation-item"><small>{% trans "Inativos / Baixa" %}</small><strong>R$ {{ categorias_valor.baixados|floatformat:2 }}</strong></div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-xl-7">
+      <section class="chart-panel">
+        <div class="d-flex justify-content-between gap-2">
+          <div><h2 class="chart-heading">{% trans "Concentracao por regional" %}</h2><p class="chart-subtitle">{% trans "As dez regionais com maior valor patrimonial" %}</p></div>
+          <i class="bi bi-building text-primary fs-5"></i>
+        </div>
+        <div class="chart-stage"><canvas id="graficoRegionais"></canvas></div>
+      </section>
+    </div>
+    <div class="col-xl-5">
+      <section class="chart-panel">
+        <div class="d-flex justify-content-between gap-2">
+          <div><h2 class="chart-heading">{% trans "Composicao por categoria" %}</h2><p class="chart-subtitle">{% trans "Participacao de cada categoria no valor total" %}</p></div>
+          <i class="bi bi-pie-chart text-primary fs-5"></i>
+        </div>
+        <div class="chart-stage"><canvas id="graficoCategorias"></canvas></div>
+      </section>
+    </div>
+    <div class="col-12">
+      <section class="chart-panel">
+        <div class="d-flex justify-content-between gap-2">
+          <div><h2 class="chart-heading">{% trans "Equipamentos de maior impacto" %}</h2><p class="chart-subtitle">{% trans "Modelos que representam os maiores valores acumulados" %}</p></div>
+          <i class="bi bi-bar-chart-line text-primary fs-5"></i>
+        </div>
+        <div class="chart-stage" style="height:300px"><canvas id="graficoEquipamentos"></canvas></div>
+      </section>
+    </div>
+  </div>
+
+  {% if pode_editar %}
+  <details class="import-panel mb-3">
+    <summary>
+      <span><i class="bi bi-cloud-arrow-up text-success me-2"></i><strong>{% trans "Atualizar precos por planilha" %}</strong> <small class="text-secondary d-none d-md-inline">· {% trans "Use o template oficial para alteracoes em lote" %}</small></span>
+      <i class="bi bi-chevron-down details-chevron"></i>
+    </summary>
+    <form class="row g-2 align-items-end p-3" method="post" enctype="multipart/form-data" action="{% url 'compras:importar_precificacao_equipamentos' %}">
+      {% csrf_token %}
+      <div class="col-md-9"><label class="form-label">{% trans "Planilha preenchida" %}</label>{{ importacao_form.arquivo }}</div>
+      <div class="col-md-3 d-grid"><button class="btn btn-success"><i class="bi bi-upload me-1"></i> {% trans "Importar precos" %}</button></div>
+    </form>
+  </details>
+  {% endif %}
+
+  <details class="inventory-panel" {% if filtros.q or page_obj.number != 1 %}open{% endif %}>
+    <summary>
+      <span>
+        <i class="bi bi-list-ul text-primary me-2"></i><strong>{% trans "Consultar inventario detalhado" %}</strong>
+        <span class="badge rounded-pill text-bg-light ms-2">{{ total_equipamentos }}</span>
+        <small class="text-secondary d-none d-md-inline ms-2">{% trans "Abra somente quando precisar consultar um item" %}</small>
+      </span>
+      <i class="bi bi-chevron-down details-chevron"></i>
+    </summary>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>{% trans "Equipamento" %}</th><th>{% trans "Regional" %}</th><th>{% trans "Identificacao" %}</th><th>{% trans "Status" %}</th><th>{% trans "Valor considerado" %}</th><th>{% trans "Precificacao" %}</th></tr></thead>
+        <tbody>
+          {% for e in equipamentos %}
+          <tr>
+            <td class="equipment-name"><div class="fw-semibold">{{ e.produto|default:"—" }}</div><div class="equipment-meta">{{ e.produto.get_categoria_display|default:"—" }}</div></td>
+            <td>{{ e.regional }}</td>
+            <td><div>{{ e.patrimonio|default:"—" }}</div><div class="equipment-meta">{% trans "Serie" %}: {{ e.numero_serie|default:"—" }}</div></td>
+            <td><span class="badge rounded-pill text-bg-light border">{{ e.get_status_display }}</span></td>
+            <td class="fw-semibold text-nowrap">{% if e.custo_aquisicao != None %}R$ {{ e.custo_aquisicao|floatformat:2 }}{% elif e.preco_referencia != None %}R$ {{ e.preco_referencia|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td>{% if e.origem_valor == 'SEM_PRECO_VALIDADO' %}<span class="price-pill pending">{% trans "Pendente" %}</span>{% else %}<span class="price-pill">{{ e.get_origem_valor_display }}</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-secondary py-5"><i class="bi bi-search d-block fs-2 mb-2"></i>{% trans "Nenhum equipamento encontrado para os filtros informados." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-top">
+      <small class="text-secondary">{% blocktrans with inicio=page_obj.start_index fim=page_obj.end_index total=page_obj.paginator.count %}Exibindo {{ inicio }} a {{ fim }} de {{ total }} equipamentos{% endblocktrans %}</small>
+      <nav aria-label="{% trans 'Paginacao dos equipamentos' %}">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+          {% for numero in page_obj.paginator.page_range %}{% if numero >= page_obj.number|add:"-2" and numero <= page_obj.number|add:"2" %}<li class="page-item {% if numero == page_obj.number %}active{% endif %}"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ numero }}">{{ numero }}</a></li>{% endif %}{% endfor %}
+          <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.paginator.num_pages }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </details>
+</div>
+
+{{ grafico_regionais|json_script:"dados-regionais" }}
+{{ grafico_categorias|json_script:"dados-categorias" }}
+{{ grafico_equipamentos|json_script:"dados-equipamentos" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+  const palette = ['#2563eb', '#4f46e5', '#0f766e', '#0891b2', '#d97706', '#7c3aed', '#db2777', '#64748b', '#16a34a', '#dc2626'];
+  const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const compact = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
+  const read = id => JSON.parse(document.getElementById(id).textContent);
+  const noData = canvas => {
+    canvas.parentElement.innerHTML = '<div class="chart-empty"><div><i class="bi bi-bar-chart d-block fs-2 mb-2"></i>{% trans "Sem dados para os filtros selecionados" %}</div></div>';
+  };
+  const values = data => data.map(item => Number(item.total || 0));
+  const hasValues = data => data.length && values(data).some(value => value > 0);
+  const tooltip = {
+    callbacks: { label: context => ` ${context.label || context.dataset.label || ''}: ${currency.format(context.raw || 0)}` }
+  };
+  const grid = { color: 'rgba(148, 163, 184, .18)', drawBorder: false };
+  const ticks = { color: '#64748b', callback: value => `R$ ${compact.format(value)}` };
+
+  const regionais = read('dados-regionais');
+  const regionalCanvas = document.getElementById('graficoRegionais');
+  if (!hasValues(regionais)) noData(regionalCanvas);
+  else new Chart(regionalCanvas, {
+    type: 'bar',
+    data: { labels: regionais.map(item => item.regional__nome || '{% trans "Sem regional" %}'), datasets: [{ data: values(regionais), backgroundColor: '#2563eb', hoverBackgroundColor: '#1d4ed8', borderRadius: 7, borderSkipped: false, barThickness: 18 }] },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', interaction: { intersect: false }, plugins: { legend: { display: false }, tooltip }, scales: { x: { beginAtZero: true, grid, ticks }, y: { grid: { display: false }, ticks: { color: '#334155', font: { weight: '600' } } } } }
+  });
+
+  const categorias = read('dados-categorias');
+  const categoriaCanvas = document.getElementById('graficoCategorias');
+  if (!hasValues(categorias)) noData(categoriaCanvas);
+  else new Chart(categoriaCanvas, {
+    type: 'doughnut',
+    data: { labels: categorias.map(item => item.produto__categoria || '{% trans "Sem categoria" %}'), datasets: [{ data: values(categorias), backgroundColor: palette, borderColor: '#fff', borderWidth: 3, hoverOffset: 7 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '67%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, color: '#475569' } }, tooltip } }
+  });
+
+  const equipamentos = read('dados-equipamentos');
+  const equipamentoCanvas = document.getElementById('graficoEquipamentos');
+  if (!hasValues(equipamentos)) noData(equipamentoCanvas);
+  else new Chart(equipamentoCanvas, {
+    type: 'bar',
+    data: { labels: equipamentos.map(item => item.produto__descricao || '{% trans "Sem descricao" %}'), datasets: [{ label: '{% trans "Valor acumulado" %}', data: values(equipamentos), backgroundColor: equipamentos.map((_, index) => palette[index % palette.length]), borderRadius: 7, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false }, plugins: { legend: { display: false }, tooltip }, scales: { x: { grid: { display: false }, ticks: { color: '#475569', maxRotation: 0, autoSkip: false, callback(value) { const label = this.getLabelForValue(value); return label.length > 18 ? `${label.slice(0, 18)}…` : label; } } }, y: { beginAtZero: true, grid, ticks } } }
+  });
+})();
+</script>
+{% endblock %}

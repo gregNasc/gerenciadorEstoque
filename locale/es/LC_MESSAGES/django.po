@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Gerenciador de Estoque 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-13 14:47-0300\n"
+"POT-Creation-Date: 2026-08-13 15:31-0300\n"
 "PO-Revision-Date: 2026-07-12 18:00-0300\n"
 "Last-Translator: Inventory T.I\n"
 "Language-Team: Spanish <es@li.org>\n"
@@ -557,18 +557,15 @@ msgstr "Ninguna divergencia encontrada."
 msgid "Categoria"
 msgstr "Categoría"
 
-#| msgid "Atendente"
 msgid "Novo atendente"
 msgstr "Nuevo agente"
 
 msgid "Motivo"
 msgstr "Motivo"
 
-#| msgid "Todos os inventários"
 msgid "Antes do inventario"
 msgstr "Antes del inventario"
 
-#| msgid "Central de atendimento"
 msgid "Inventario em andamento"
 msgstr "Inventario en curso"
 
@@ -581,7 +578,6 @@ msgstr "Normal"
 msgid "Alta"
 msgstr "Alta"
 
-#| msgid "Crítico"
 msgid "Crítica"
 msgstr "Crítica"
 
@@ -594,27 +590,21 @@ msgstr "Esperando atención"
 msgid "Em atendimento"
 msgstr "En atención"
 
-#| msgid "Base solicitante"
 msgid "Aguardando solicitante"
 msgstr "Esperando al solicitante"
 
-#| msgid "Aguardando retorno"
 msgid "Aguardando terceiro"
 msgstr "Esperando a un tercero"
 
-#| msgid "Resolvidos"
 msgid "Resolvido"
 msgstr "Resuelto"
 
-#| msgid "1. Aguardando envio"
 msgid "Aguardando avaliação"
 msgstr "Esperando evaluación"
 
-#| msgid "Encerrada"
 msgid "Encerrado"
 msgstr "Cerrado"
 
-#| msgid "Reaberta"
 msgid "Reaberto"
 msgstr "Reabierto"
 
@@ -714,22 +704,18 @@ msgstr "Ningún ticket requiere atención inmediata"
 msgid "Nao ha criticos ou SLAs vencidos no momento."
 msgstr "No hay críticos ni SLA vencidos en este momento."
 
-#| msgid "Em atendimento"
 msgid "Assumir atendimento"
 msgstr "Asumir atención"
 
-#| msgid "Critico"
 msgid "Critica"
 msgstr "Crítica"
 
-#| msgid "Categoria do problema"
 msgid "Descricao do problema"
 msgstr "Descripción del problema"
 
 msgid "Informacoes registradas na abertura."
 msgstr "Información registrada en la apertura."
 
-#| msgid "Em atendimento"
 msgid "Atendimento"
 msgstr "Atención"
 
@@ -739,7 +725,6 @@ msgstr "Conversación vinculada al ticket."
 msgid "Conectando"
 msgstr "Conectando"
 
-#| msgid "Nenhuma base incluída."
 msgid "Nenhuma mensagem ainda"
 msgstr "Aún no hay mensajes"
 
@@ -749,44 +734,36 @@ msgstr "La conversación aparecerá aquí."
 msgid "Nota interna"
 msgstr "Nota interna"
 
-#| msgid "Mensagem"
 msgid "Nova mensagem"
 msgstr "Nuevo mensaje"
 
-#| msgid "Anexos"
 msgid "Anexo"
 msgstr "Adjunto"
 
-#| msgid "Enter envia · Shift+Enter quebra a linha"
 msgid "Enter envia. Shift + Enter cria nova linha."
 msgstr "Enter envía. Shift + Enter crea una nueva línea."
 
 msgid "Enviar"
 msgstr "Enviar"
 
-#| msgid "Informações"
 msgid "Informacoes"
 msgstr "Información"
 
 msgid "Inventario"
 msgstr "Inventario"
 
-#| msgid "Motivo da recusa"
 msgid "Momento da abertura:"
 msgstr "Momento de la apertura:"
 
-#| msgid "Patrimonio"
 msgid "Patrimonio:"
 msgstr "Patrimonio:"
 
-#| msgid "Justificativa técnica"
 msgid "Classificacao tecnica"
 msgstr "Clasificación técnica"
 
 msgid "Lider"
 msgstr "Lider"
 
-#| msgid "Aberto"
 msgid "Aberto por"
 msgstr "Abierto por"
 
@@ -796,15 +773,12 @@ msgstr "Agente"
 msgid "Abertura"
 msgstr "Apertura"
 
-#| msgid "Prazo"
 msgid "Prazo SLA"
 msgstr "Plazo de SLA"
 
-#| msgid "SLA vencido"
 msgid "Vencido"
 msgstr "Vencido"
 
-#| msgid "Aguardando atendimento"
 msgid "Atualizar atendimento"
 msgstr "Actualizar atención"
 
@@ -814,61 +788,48 @@ msgstr "Causa raíz"
 msgid "Obrigatoria ao resolver o chamado."
 msgstr "Obligatoria al resolver el ticket."
 
-#| msgid "Justificativa"
 msgid "Solucao / justificativa"
 msgstr "Solución / justificación"
 
-#| msgid "Atualizado em"
 msgid "Atualizar status"
 msgstr "Actualizar estado"
 
-#| msgid "Analisar solicitação"
 msgid "Avaliar solucao"
 msgstr "Evaluar solución"
 
-#| msgid "Iniciar avaliação"
 msgid "Enviar avaliacao"
 msgstr "Enviar evaluación"
 
-#| msgid "Transferir equipamento"
 msgid "Transferir atendimento"
 msgstr "Transferir atención"
 
-#| msgid "Transferir para:"
 msgid "Transferir"
 msgstr "Transferir"
 
-#| msgid "Nenhum equipamento em SICK."
 msgid "Converter equipamento em SICK"
 msgstr "Convertir equipo en SICK"
 
 msgid "Criar SICK e O.S."
 msgstr "Crear SICK y O.S."
 
-#| msgid "Resolvida"
 msgid "Resolucao"
 msgstr "Resolución"
 
-#| msgid "Solução"
 msgid "Solucao"
 msgstr "Solución"
 
-#| msgid "Em atendimento"
 msgid "Tempos do atendimento"
 msgstr "Tiempos de atención"
 
 msgid "Aceite"
 msgstr "Aceptación"
 
-#| msgid "Suporte tecnico"
 msgid "Suporte efetivo"
 msgstr "Soporte efectivo"
 
-#| msgid "Transferências"
 msgid "Transferencias"
 msgstr "Transferencias"
 
-#| msgid "Reaberta"
 msgid "Reaberturas"
 msgstr "Reaperturas"
 
@@ -947,7 +908,6 @@ msgstr "Base / Tienda"
 msgid "Nenhum chamado encontrado."
 msgstr "No se encontró ningún ticket."
 
-#| msgid "Baixar template de precificacao"
 msgid "Planilha XLSX gerada pelo template de precificação."
 msgstr "Hoja XLSX generada por la plantilla de precios."
 
@@ -979,38 +939,98 @@ msgstr "Cancelar"
 msgid "Valores de equipamentos"
 msgstr "Valores de equipos"
 
-msgid "Visao geral de valores dos equipamentos"
-msgstr "Vista general de valores de los equipos"
+msgid "Inteligencia patrimonial"
+msgstr "Inteligencia patrimonial"
+
+#| msgid "Valores de equipamentos"
+msgid "Valores dos equipamentos"
+msgstr "Valores de equipos"
 
 msgid ""
-"Patrimonio, cobertura de precificacao e distribuicao por regional e "
-"categoria."
+"Acompanhe o valor do parque, a cobertura de precificacao e onde o patrimonio "
+"esta concentrado."
 msgstr ""
-"Patrimonio, cobertura de precios y distribución por regional y categoría."
+"Siga el valor del parque, la cobertura de precios y dónde se concentra el "
+"patrimonio."
 
-msgid "Baixar template de precificacao"
-msgstr "Descargar plantilla de precios"
+#| msgid "Baixar template de precificacao"
+msgid "Baixar template"
+msgstr "Descargar plantilla"
 
-msgid "Equipamentos de bases em auditoria permanecem ocultos."
-msgstr "Los equipos de bases en auditoría permanecen ocultos."
+#| msgid "Filtros do relatório"
+msgid "Filtros da analise"
+msgstr "Filtros del análisis"
+
+msgid "Limpar filtros"
+msgstr "Limpiar filtros"
 
 msgid "Regional"
 msgstr "Regional"
 
-msgid "Todas"
-msgstr "Todas"
+msgid "Todas as regionais"
+msgstr "Todas las regionales"
 
-msgid "Todos"
-msgstr "Todos"
+#| msgid "Todas as regionais"
+msgid "Todas as categorias"
+msgstr "Todas las categorías"
 
-msgid "Total controlado"
-msgstr "Total controlado"
+#| msgid "Valores de equipamentos"
+msgid "Todos os equipamentos"
+msgstr "Todos los equipos"
 
-msgid "Sem preco validado"
-msgstr "Sin precio validado"
+#| msgid "Busca rápida"
+msgid "Busca rapida"
+msgstr "Búsqueda rápida"
 
-msgid "Distribuicao operacional"
-msgstr "Distribución operativa"
+#| msgid "Categoria do equipamento"
+msgid "Patrimonio, serie ou equipamento"
+msgstr "Patrimonio, serie o equipo"
+
+#| msgid "Atualizar atendimento"
+msgid "Atualizar painel"
+msgstr "Actualizar panel"
+
+#| msgid "Equipamentos de bases em auditoria permanecem ocultos."
+msgid ""
+"Por seguranca, equipamentos de bases em periodo de auditoria nao aparecem "
+"nesta visao."
+msgstr ""
+"Por seguridad, los equipos de bases en período de auditoría no aparecen en "
+"esta vista."
+
+#| msgid "Valor por regional"
+msgid "Valor do parque"
+msgstr "Valor del parque"
+
+msgid "Custo ou referencia disponivel"
+msgstr "Costo o referencia disponible"
+
+#| msgid "equipamento(s) visível(is)"
+msgid "Equipamentos visiveis"
+msgstr "Equipos visibles"
+
+#| msgid "Copiar bases de acesso"
+msgid "Apos filtros e regras de acesso"
+msgstr "Después de filtros y reglas de acceso"
+
+#| msgid "Baixar template de precificacao"
+msgid "Cobertura de precificacao"
+msgstr "Cobertura de precios"
+
+#, python-format
+msgid "%(precificados)s equipamentos com valor validado"
+msgstr "%(precificados)s equipos con valor validado"
+
+#| msgid "Ordens de servico"
+msgid "Pendentes de validacao"
+msgstr "Pendientes de validación"
+
+#| msgid "Valor estimado do estoque"
+msgid "Valor medio por item"
+msgstr "Valor medio por artículo"
+
+msgid "Distribuicao do valor por finalidade e status"
+msgstr "Distribución del valor por finalidad y estado"
 
 msgid "Operacional"
 msgstr "Operacional"
@@ -1018,44 +1038,116 @@ msgstr "Operacional"
 msgid "Administrativo"
 msgstr "Administrativo"
 
-msgid "Valor por regional"
-msgstr "Valor por regional"
+#| msgid "Manutencao"
+msgid "SICK / Manutencao"
+msgstr "SICK / Mantenimiento"
 
-msgid "Valor por categoria"
-msgstr "Valor por categoría"
+#| msgid "Em Transito"
+msgid "Em transito"
+msgstr "En tránsito"
 
-msgid "Principais equipamentos"
-msgstr "Equipos principales"
+#| msgid "Inativos / sucata"
+msgid "Inativos / Baixa"
+msgstr "Inactivos / Baja"
 
-msgid "Importar template preenchido"
-msgstr "Importar plantilla completada"
+#| msgid "Valor por regional"
+msgid "Concentracao por regional"
+msgstr "Concentración por regional"
+
+msgid "As dez regionais com maior valor patrimonial"
+msgstr "Las diez regionales con mayor valor patrimonial"
+
+#| msgid "Insumos por categoria"
+msgid "Composicao por categoria"
+msgstr "Composición por categoría"
+
+#| msgid "Participação de cada cliente no custo total filtrado."
+msgid "Participacao de cada categoria no valor total"
+msgstr "Participación de cada categoría en el valor total"
+
+#| msgid "Equipamentos por modelo"
+msgid "Equipamentos de maior impacto"
+msgstr "Equipos de mayor impacto"
+
+msgid "Modelos que representam os maiores valores acumulados"
+msgstr "Modelos que representan los mayores valores acumulados"
+
+msgid "Atualizar precos por planilha"
+msgstr "Actualizar precios mediante hoja de cálculo"
+
+msgid "Use o template oficial para alteracoes em lote"
+msgstr "Use la plantilla oficial para cambios por lotes"
+
+msgid "Planilha preenchida"
+msgstr "Hoja completada"
 
 msgid "Importar precos"
 msgstr "Importar precios"
 
-msgid "Patrimonio"
-msgstr "Patrimonio"
+msgid "Consultar inventario detalhado"
+msgstr "Consultar inventario detallado"
+
+msgid "Abra somente quando precisar consultar um item"
+msgstr "Abra solo cuando necesite consultar un artículo"
+
+msgid "Identificacao"
+msgstr "Identificación"
+
+#| msgid "Valor total declarado"
+msgid "Valor considerado"
+msgstr "Valor considerado"
+
+#| msgid "Identificacao"
+msgid "Precificacao"
+msgstr "Fijación de precios"
 
 msgid "Serie"
 msgstr "Serie"
 
-msgid "Aquisicao"
-msgstr "Adquisición"
+msgid "Pendente"
+msgstr "Pendiente"
 
-msgid "Referencia"
-msgstr "Referencia"
+#| msgid "Nenhum registro SICK encontrado para os filtros informados."
+msgid "Nenhum equipamento encontrado para os filtros informados."
+msgstr "No se encontró ningún equipo para los filtros indicados."
 
-msgid "Origem"
-msgstr "Origen"
+#, python-format
+msgid "Exibindo %(inicio)s a %(fim)s de %(total)s equipamentos"
+msgstr "Mostrando %(inicio)s a %(fim)s de %(total)s equipos"
 
-msgid "Nenhum equipamento encontrado."
-msgstr "Ningún equipo encontrado."
+#| msgid "Paginação dos equipamentos"
+msgid "Paginacao dos equipamentos"
+msgstr "Paginación de los equipos"
+
+#| msgid "Nenhum consumo encontrado para os filtros selecionados."
+msgid "Sem dados para os filtros selecionados"
+msgstr "No hay datos para los filtros seleccionados"
+
+#| msgid "Regional"
+msgid "Sem regional"
+msgstr "Sin regional"
+
+#| msgid "Categoria"
+msgid "Sem categoria"
+msgstr "Sin categoría"
+
+#| msgid "Descricao"
+msgid "Sem descricao"
+msgstr "Sin descripción"
+
+#| msgid "Valor total declarado"
+msgid "Valor acumulado"
+msgstr "Valor acumulado"
 
 msgid "Planilha de precificação inválida."
 msgstr "Hoja de precios no válida."
 
 msgid "O cabeçalho da planilha não corresponde ao template oficial."
 msgstr "El encabezado de la hoja no coincide con la plantilla oficial."
+
+#, python-format
+msgid "Linha %(numero)s: EQUIPAMENTO_ID deve ser um número inteiro."
+msgstr ""
 
 #, python-format
 msgid ""
@@ -1205,9 +1297,6 @@ msgstr "Resuelto"
 
 msgid "Divergência"
 msgstr "Divergencia"
-
-msgid "Pendente"
-msgstr "Pendiente"
 
 msgid "Aprovado"
 msgstr "Aprobado"
@@ -1749,9 +1838,6 @@ msgstr "Soporte técnico"
 msgid "Operador SICK"
 msgstr "Operador SICK"
 
-msgid "Identificacao"
-msgstr "Identificación"
-
 msgid "Sobrenome"
 msgstr "Apellido"
 
@@ -1822,6 +1908,9 @@ msgstr "Buscar usuario"
 msgid "Acao"
 msgstr "Acción"
 
+msgid "Todas"
+msgstr "Todas"
+
 msgid "Sem empresa"
 msgstr "Sin empresa"
 
@@ -1857,6 +1946,9 @@ msgstr "Bandeja de Separación"
 
 msgid "Transferências aguardando separação de equipamentos"
 msgstr "Transferencias pendientes de separación de equipos"
+
+msgid "Origem"
+msgstr "Origen"
 
 msgid "Destino"
 msgstr "Destino"
@@ -2042,6 +2134,9 @@ msgstr "Foto"
 msgid "Sem Foto"
 msgstr "Sin Foto"
 
+msgid "Nenhum equipamento encontrado."
+msgstr "Ningún equipo encontrado."
+
 msgid "📤 Transferência de Equipamentos"
 msgstr "📤 Transferencia de Equipos"
 
@@ -2108,9 +2203,6 @@ msgstr "Gestión de equipos por regional"
 
 msgid "📊 Relatórios Administrativos"
 msgstr "📊 Informes Administrativos"
-
-msgid "Todas as regionais"
-msgstr "Todas las regionales"
 
 msgid "Aplicar"
 msgstr "Aplicar"
@@ -2230,6 +2322,9 @@ msgstr "Volver a equipos"
 msgid "Erro ao carregar histórico:"
 msgstr "Error al cargar historial:"
 
+msgid "Todos"
+msgstr "Todos"
+
 msgid "Filtro"
 msgstr "Filtro"
 
@@ -2271,6 +2366,9 @@ msgstr "Detalles del historial"
 
 msgid "Registro"
 msgstr "Registro"
+
+msgid "Patrimonio"
+msgstr "Patrimonio"
 
 msgid "Detalhes completos"
 msgstr "Detalles completos"
@@ -2853,9 +2951,6 @@ msgstr "Total de transferencias"
 
 msgid "Protocolo, regional, usuário ou equipamento..."
 msgstr "Protocolo, regional, usuario o equipo..."
-
-msgid "Limpar filtros"
-msgstr "Limpiar filtros"
 
 msgid "Movimentações encontradas"
 msgstr "Movimientos encontrados"
@@ -3729,6 +3824,39 @@ msgstr "Solicitud finalizada."
 
 msgid "Ação inválida."
 msgstr "Acción no válida."
+
+#~ msgid "Visao geral de valores dos equipamentos"
+#~ msgstr "Vista general de valores de los equipos"
+
+#~ msgid ""
+#~ "Patrimonio, cobertura de precificacao e distribuicao por regional e "
+#~ "categoria."
+#~ msgstr ""
+#~ "Patrimonio, cobertura de precios y distribución por regional y categoría."
+
+#~ msgid "Total controlado"
+#~ msgstr "Total controlado"
+
+#~ msgid "Sem preco validado"
+#~ msgstr "Sin precio validado"
+
+#~ msgid "Distribuicao operacional"
+#~ msgstr "Distribución operativa"
+
+#~ msgid "Valor por categoria"
+#~ msgstr "Valor por categoría"
+
+#~ msgid "Principais equipamentos"
+#~ msgstr "Equipos principales"
+
+#~ msgid "Importar template preenchido"
+#~ msgstr "Importar plantilla completada"
+
+#~ msgid "Aquisicao"
+#~ msgstr "Adquisición"
+
+#~ msgid "Referencia"
+#~ msgstr "Referencia"
 
 #~ msgid ""
 #~ "Confirma a apuração como fonte de verdade. Equipamentos não localizados "

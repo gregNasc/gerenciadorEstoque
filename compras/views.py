@@ -5,6 +5,7 @@ from zipfile import BadZipFile
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -228,11 +229,30 @@ def valores_equipamentos(request):
         equipamentos = equipamentos.filter(regional_id=base_id)
     categoria = request.GET.get('categoria', '').strip()
     produto_id = request.GET.get('equipamento', '').strip()
+    busca = request.GET.get('q', '').strip()
     if categoria:
         equipamentos = equipamentos.filter(produto__categoria=categoria)
     if produto_id.isdigit():
         equipamentos = equipamentos.filter(produto_id=produto_id)
+    if busca:
+        equipamentos = equipamentos.filter(
+            Q(produto__descricao__icontains=busca)
+            | Q(produto__modelo__icontains=busca)
+            | Q(patrimonio__icontains=busca)
+            | Q(numero_serie__icontains=busca)
+            | Q(codigo__icontains=busca)
+            | Q(regional__nome__icontains=busca)
+        )
     valor = Coalesce('custo_aquisicao', 'preco_referencia', 0, output_field=DecimalField())
+    total_equipamentos = equipamentos.count()
+    sem_preco = equipamentos.filter(
+        Q(custo_aquisicao=None, preco_referencia=None)
+        | Q(origem_valor=Equipamento.OrigemValor.SEM_PRECO_VALIDADO)
+    ).count()
+    precificados = total_equipamentos - sem_preco
+    total = equipamentos.aggregate(v=Sum(valor))['v'] or Decimal('0')
+    cobertura = round((precificados / total_equipamentos * 100), 1) if total_equipamentos else 0
+    valor_medio = total / total_equipamentos if total_equipamentos else Decimal('0')
     categorias = {
         'operacional': equipamentos.filter(finalidade='OPERACIONAL', status__in=['ATIVO', 'EM_USO']).aggregate(v=Sum(valor))['v'] or 0,
         'administrativo': equipamentos.filter(finalidade='ADMINISTRATIVO').aggregate(v=Sum(valor))['v'] or 0,
@@ -240,24 +260,42 @@ def valores_equipamentos(request):
         'transito': equipamentos.filter(status='EM_TRANSITO').aggregate(v=Sum(valor))['v'] or 0,
         'baixados': equipamentos.filter(status__in=['BAIXA', 'INATIVO']).aggregate(v=Sum(valor))['v'] or 0,
     }
+    equipamentos_ordenados = equipamentos.order_by(
+        'regional__nome', 'produto__descricao', 'patrimonio'
+    )
+    page_obj = Paginator(equipamentos_ordenados, 20).get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+    produtos = Produto.objects.filter(ativo=True)
+    if categoria:
+        produtos = produtos.filter(categoria=categoria)
     return render(request, 'compras/valores_equipamentos.html', {
-        'equipamentos': equipamentos.order_by('regional__nome', 'produto__descricao')[:1000],
+        'equipamentos': page_obj.object_list,
+        'page_obj': page_obj,
+        'query_string': query_params.urlencode(),
         'bases': bases,
-        'total': equipamentos.aggregate(v=Sum(valor))['v'] or 0,
-        'sem_preco': equipamentos.filter(custo_aquisicao=None, preco_referencia=None).count(),
+        'total': total,
+        'total_equipamentos': total_equipamentos,
+        'sem_preco': sem_preco,
+        'precificados': precificados,
+        'cobertura': cobertura,
+        'valor_medio': valor_medio,
         'categorias_valor': categorias,
         'pode_editar': ComprasAccessPolicy.pode_editar_precos(request.user),
         'categorias': Produto.CATEGORIAS,
-        'produtos': Produto.objects.filter(ativo=True).order_by('categoria', 'descricao'),
-        'filtros': {'base': base_id or '', 'categoria': categoria, 'equipamento': produto_id},
+        'produtos': produtos.order_by('categoria', 'descricao'),
+        'filtros': {
+            'base': base_id or '', 'categoria': categoria,
+            'equipamento': produto_id, 'q': busca,
+        },
         'grafico_regionais': list(
-            equipamentos.values('regional__nome').annotate(total=Sum(valor)).order_by('-total')[:15]
+            equipamentos.values('regional__nome').annotate(total=Sum(valor)).order_by('-total')[:10]
         ),
         'grafico_categorias': list(
             equipamentos.values('produto__categoria').annotate(total=Sum(valor)).order_by('-total')
         ),
         'grafico_equipamentos': list(
-            equipamentos.values('produto__descricao').annotate(total=Sum(valor)).order_by('-total')[:15]
+            equipamentos.values('produto__descricao').annotate(total=Sum(valor)).order_by('-total')[:10]
         ),
         'importacao_form': ImportacaoPrecificacaoForm(),
     })

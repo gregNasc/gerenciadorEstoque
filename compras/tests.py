@@ -5,7 +5,7 @@ from io import BytesIO
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import Workbook
 
@@ -24,6 +24,9 @@ from insumos.services.movimentacao_service import MovimentacaoService
 from ordens_servico.models import OrdemServico
 
 
+@override_settings(
+    PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'],
+)
 class ComprasRemessasTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa Compras')
@@ -206,6 +209,34 @@ class ComprasRemessasTests(TestCase):
         self.assertEqual(self.client.get(reverse('compras:aquisicao_lista')).status_code, 200)
         self.assertEqual(self.client.get(reverse('compras:valores_insumos')).status_code, 200)
         self.assertEqual(self.client.get(reverse('compras:valores_equipamentos')).status_code, 200)
+
+    def test_painel_de_valores_pagina_e_pesquisa_o_inventario_detalhado(self):
+        Equipamento.objects.bulk_create([
+            Equipamento(
+                produto=self.produto, numero_serie=f'SERIE-PAINEL-{indice:02d}',
+                patrimonio=f'PAT-PAINEL-{indice:02d}', regional=self.base,
+                codigo=f'EQP-PAINEL-{indice:02d}', preco_referencia=indice * 100,
+                origem_valor=Equipamento.OrigemValor.ESTIMATIVA_MERCADO,
+            )
+            for indice in range(1, 22)
+        ])
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(reverse('compras:valores_equipamentos'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.context['total_equipamentos'], 21)
+        self.assertEqual(len(resposta.context['equipamentos']), 20)
+        self.assertEqual(resposta.context['page_obj'].paginator.num_pages, 2)
+        self.assertContains(resposta, 'Consultar inventario detalhado')
+
+        resposta_busca = self.client.get(
+            reverse('compras:valores_equipamentos'),
+            {'q': 'PAT-PAINEL-21'},
+        )
+        self.assertEqual(resposta_busca.context['total_equipamentos'], 1)
+        self.assertContains(resposta_busca, 'PAT-PAINEL-21')
+        self.assertNotContains(resposta_busca, 'PAT-PAINEL-20')
 
     def test_admin_atende_solicitacoes_mas_nao_cria(self):
         self.client.force_login(self.admin)
