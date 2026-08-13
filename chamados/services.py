@@ -64,16 +64,28 @@ class ChamadoService:
         )
 
     @staticmethod
-    def _comunicar(chamado, usuario, titulo, mensagem, tipo='OPERACIONAL', interno=False):
+    def _comunicar(
+        chamado, usuario, titulo, mensagem, tipo='OPERACIONAL',
+        evento='ATUALIZACAO', dados=None, incluir_fila=False,
+    ):
+        metadados = {
+            'template_codigo': 'chamado_acao',
+            'evento_codigo': evento,
+            'chamado_id': chamado.pk,
+        }
+        metadados.update(dados or {})
+        destinatarios = ChamadoService._envolvidos(chamado)
+        if incluir_fila:
+            destinatarios.extend(ChamadoAccessPolicy.atendentes_para(chamado))
         return ComunicadoService.criar_acao(
             titulo=titulo,
             mensagem=mensagem,
             usuario=usuario,
-            usuarios=[chamado.atendente] if interno else ChamadoService._envolvidos(chamado),
-            bases=None if interno else [chamado.base],
+            usuarios=destinatarios,
+            bases=None,
             empresa=chamado.empresa,
             tipo=tipo,
-            dados={'template_codigo': 'chamado_acao', 'chamado_id': chamado.pk},
+            dados=metadados,
             url=f'/chamados/{chamado.pk}/',
         )
 
@@ -310,6 +322,7 @@ class ChamadoService:
                 }
                 else 'OPERACIONAL'
             ),
+            evento='ABERTURA', incluir_fila=True,
         )
 
         return chamado
@@ -345,10 +358,6 @@ class ChamadoService:
             {'atendente_id': usuario.pk, 'status_novo': chamado.status},
         )
         cls._evento(chamado, 'PRIMEIRA_RESPOSTA', 'PRIMEIRA RESPOSTA REGISTRADA.', usuario)
-        cls._comunicar(
-            chamado, usuario, f'CHAMADO {chamado.protocolo} EM ATENDIMENTO',
-            f'{usuario.get_full_name() or usuario.get_username()} INICIOU O ATENDIMENTO.',
-        )
         return chamado
 
     @classmethod
@@ -398,11 +407,6 @@ class ChamadoService:
             'NOTA INTERNA ADICIONADA.' if nota_interna else 'NOVA MENSAGEM NO CHAMADO.',
             usuario, {'mensagem_id': mensagem.pk},
         )
-        cls._comunicar(
-            chamado, usuario, f'ATUALIZAÇÃO NO CHAMADO {chamado.protocolo}',
-            'UMA NOTA INTERNA FOI REGISTRADA.' if nota_interna else texto,
-            interno=nota_interna,
-        )
         return mensagem
 
     @classmethod
@@ -429,11 +433,13 @@ class ChamadoService:
             chamado, 'STATUS', f'STATUS ALTERADO DE {anterior} PARA {status}.', usuario,
             {'status_anterior': anterior, 'status_novo': status, 'justificativa': resolucao},
         )
-        cls._comunicar(
-            chamado, usuario, f'CHAMADO {chamado.protocolo}: {chamado.get_status_display()}',
-            resolucao or f'STATUS ALTERADO PARA {chamado.get_status_display()}.',
-            tipo='URGENTE' if status == Chamado.Status.CANCELADO else 'OPERACIONAL',
-        )
+        if status == Chamado.Status.CANCELADO:
+            cls._comunicar(
+                chamado, usuario, f'CHAMADO {chamado.protocolo} CANCELADO',
+                resolucao or 'O CHAMADO FOI CANCELADO.',
+                tipo='URGENTE', evento='ENCERRAMENTO',
+                dados={'status': chamado.status},
+            )
         return chamado
 
     @classmethod
@@ -471,8 +477,10 @@ class ChamadoService:
             {'status_anterior': anterior, 'status_novo': chamado.status},
         )
         cls._comunicar(
-            chamado, usuario, f'AVALIE O CHAMADO {chamado.protocolo}',
-            f'SOLUÇÃO INFORMADA: {chamado.resolucao}',
+            chamado, usuario, f'ATENDIMENTO {chamado.protocolo} CONCLUÍDO',
+            f'SOLUÇÃO INFORMADA: {chamado.resolucao}. AVALIE O ATENDIMENTO.',
+            evento='ENCERRAMENTO',
+            dados={'status': chamado.status},
         )
         return chamado
 
@@ -484,7 +492,13 @@ class ChamadoService:
             raise PermissionDenied('SOMENTE O SOLICITANTE PODE AVALIAR O CHAMADO.')
         if chamado.status != Chamado.Status.AVALIACAO:
             raise ValidationError('O CHAMADO NÃO ESTÁ AGUARDANDO AVALIAÇÃO.')
-        avaliacao = ChamadoAvaliacao.objects.filter(chamado=chamado).first()
+        atendimento = chamado.sessoes.filter(
+            encerrada_em__isnull=False,
+            motivo_encerramento='RESOLVIDO',
+        ).order_by('-encerrada_em', '-pk').first()
+        if not atendimento:
+            raise ValidationError('NÃO EXISTE ATENDIMENTO RESOLVIDO PARA RECEBER A NOTA.')
+        avaliacao = ChamadoAvaliacao.objects.filter(atendimento=atendimento).first()
         if avaliacao:
             avaliacao.nota = nota
             avaliacao.resolvido = bool(resolvido)
@@ -493,14 +507,19 @@ class ChamadoService:
             avaliacao.save(update_fields=['nota', 'resolvido', 'comentario', 'atualizada_em'])
         else:
             avaliacao = ChamadoAvaliacao(
-                chamado=chamado, solicitante=usuario, nota=nota,
+                chamado=chamado, atendimento=atendimento,
+                solicitante=usuario, nota=nota,
                 resolvido=bool(resolvido), comentario=comentario,
             )
             avaliacao.full_clean()
             avaliacao.save()
         cls._evento(
             chamado, 'AVALIACAO', 'AVALIAÇÃO DO SOLICITANTE REGISTRADA.', usuario,
-            {'avaliacao_id': avaliacao.pk, 'nota': nota, 'resolvido': bool(resolvido)},
+            {
+                'avaliacao_id': avaliacao.pk, 'atendimento_id': atendimento.pk,
+                'atendente_id': atendimento.atendente_id,
+                'nota': nota, 'resolvido': bool(resolvido),
+            },
         )
         if resolvido:
             chamado.status = Chamado.Status.ENCERRADO
@@ -513,10 +532,24 @@ class ChamadoService:
             evento = 'REABERTURA_AVALIACAO'
             mensagem = 'CHAMADO REABERTO APÓS AVALIAÇÃO NEGATIVA.'
         chamado.save(update_fields=['status', 'fechado_em', 'atualizado_em'])
-        cls._evento(chamado, evento, mensagem, usuario, {'avaliacao_id': avaliacao.pk})
+        cls._evento(
+            chamado, evento, mensagem, usuario,
+            {'avaliacao_id': avaliacao.pk, 'atendimento_id': atendimento.pk},
+        )
         cls._comunicar(
-            chamado, usuario, f'AVALIAÇÃO DO CHAMADO {chamado.protocolo}', mensagem,
+            chamado, usuario, f'NOTA DO ATENDIMENTO {chamado.protocolo}',
+            (
+                f'NOTA: {nota}/5. '
+                f'ATENDENTE: {atendimento.atendente.get_full_name() or atendimento.atendente.get_username()}. '
+                f'{comentario or "SEM COMENTÁRIO."}'
+            ),
             tipo='URGENTE' if not resolvido else 'OPERACIONAL',
+            evento='NOTA_ATENDIMENTO',
+            dados={
+                'avaliacao_id': avaliacao.pk, 'atendimento_id': atendimento.pk,
+                'atendente_id': atendimento.atendente_id, 'nota': nota,
+                'resolvido': bool(resolvido),
+            },
         )
         return avaliacao
 
@@ -555,10 +588,6 @@ class ChamadoService:
                 'motivo': motivo,
             },
         )
-        cls._comunicar(
-            chamado, usuario, f'CHAMADO {chamado.protocolo} TRANSFERIDO',
-            f'NOVO ATENDENTE: {atendente_novo.get_full_name() or atendente_novo.get_username()}.',
-        )
         return transferencia
 
     @classmethod
@@ -586,11 +615,6 @@ class ChamadoService:
         cls._evento(
             chamado, 'SICK_CRIADO', 'CHAMADO CONVERTIDO EM SICK.', usuario,
             {'sick_id': sick.pk, 'diagnostico': diagnostico},
-        )
-        cls._comunicar(
-            chamado, usuario, f'SICK CRIADO PELO CHAMADO {chamado.protocolo}',
-            f'EQUIPAMENTO: {chamado.equipamento}. DIAGNÓSTICO: {diagnostico}',
-            tipo='URGENTE',
         )
         return sick
 

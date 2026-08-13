@@ -22,7 +22,7 @@ from compras.services import AquisicaoService, RemessaCompraService
 from estoque.forms import ProdutoForm
 from estoque.models import Base, Equipamento, Produto
 from estoque.policies.compras import ComprasAccessPolicy
-from insumos.models import SaldoInsumoBase
+from insumos.models import CategoriaInsumo, Insumo, SaldoInsumoBase
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
@@ -199,18 +199,79 @@ def valores_insumos(request):
     bases = ComprasAccessPolicy.bases(request.user)
     if not request.user.perfil.is_admin:
         saldos = saldos.filter(base__in=bases)
-    base_id = request.GET.get('base')
+    base_id = request.GET.get('base', '').strip()
+    categoria_id = request.GET.get('categoria', '').strip()
+    insumo_id = request.GET.get('insumo', '').strip()
+    busca = request.GET.get('q', '').strip()
     if base_id and base_id.isdigit():
         saldos = saldos.filter(base_id=base_id)
-    valor = ExpressionWrapper(F('saldo') * F('custo_medio'), output_field=DecimalField())
+    if categoria_id.isdigit():
+        saldos = saldos.filter(insumo__categoria_id=categoria_id)
+    if insumo_id.isdigit():
+        saldos = saldos.filter(insumo_id=insumo_id)
+    if busca:
+        saldos = saldos.filter(
+            Q(insumo__descricao__icontains=busca)
+            | Q(insumo__categoria__nome__icontains=busca)
+            | Q(base__nome__icontains=busca)
+        )
+    valor = ExpressionWrapper(
+        F('saldo') * F('custo_medio'),
+        output_field=DecimalField(max_digits=28, decimal_places=6),
+    )
+    disponivel = ExpressionWrapper(
+        F('saldo') - F('saldo_reservado'),
+        output_field=DecimalField(max_digits=14, decimal_places=2),
+    )
+    saldos = saldos.annotate(valor_calculado=valor, saldo_disponivel_calculado=disponivel)
+    resumo = saldos.aggregate(
+        total=Coalesce(Sum('valor_calculado'), Value(Decimal('0'))),
+        saldo=Coalesce(Sum('saldo'), Value(Decimal('0'))),
+        reservado=Coalesce(Sum('saldo_reservado'), Value(Decimal('0'))),
+        disponivel=Coalesce(Sum('saldo_disponivel_calculado'), Value(Decimal('0'))),
+    )
+    sem_preco = saldos.filter(saldo__gt=0, custo_medio=0).count()
+    skus = saldos.values('insumo_id').distinct().count()
+    bases_com_saldo = saldos.filter(saldo__gt=0).values('base_id').distinct().count()
+    page_obj = Paginator(
+        saldos.order_by('base__nome', 'insumo__descricao'), 20
+    ).get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+    insumos = Insumo.objects.filter(ativo=True)
+    if categoria_id.isdigit():
+        insumos = insumos.filter(categoria_id=categoria_id)
     return render(request, 'compras/valores_insumos.html', {
-        'saldos': saldos.order_by('base__nome', 'insumo__descricao')[:1000],
+        'saldos': page_obj.object_list,
+        'page_obj': page_obj,
+        'query_string': query_params.urlencode(),
         'bases': bases,
-        'total': saldos.aggregate(
-            total=Coalesce(Sum(valor), Value(Decimal('0')))
-        )['total'],
-        'skus': saldos.values('base_id', 'insumo_id').distinct().count(),
-        'sem_preco': saldos.filter(custo_medio=0).count(),
+        'categorias': CategoriaInsumo.objects.order_by('nome'),
+        'insumos': insumos.select_related('categoria').order_by('categoria__nome', 'descricao'),
+        'total': resumo['total'],
+        'saldo_total': resumo['saldo'],
+        'saldo_reservado': resumo['reservado'],
+        'saldo_disponivel': resumo['disponivel'],
+        'skus': skus,
+        'bases_com_saldo': bases_com_saldo,
+        'sem_preco': sem_preco,
+        'filtros': {
+            'base': base_id, 'categoria': categoria_id,
+            'insumo': insumo_id, 'q': busca,
+        },
+        'grafico_bases': list(
+            saldos.values('base__nome').annotate(total=Sum('valor_calculado')).order_by('-total')[:10]
+        ),
+        'grafico_categorias': list(
+            saldos.values('insumo__categoria__nome').annotate(
+                total=Sum('valor_calculado')
+            ).order_by('-total')
+        ),
+        'grafico_insumos': list(
+            saldos.values('insumo__descricao').annotate(
+                total=Sum('valor_calculado')
+            ).order_by('-total')[:10]
+        ),
     })
 
 

@@ -271,6 +271,9 @@ def detalhe(request, pk):
     return render(request, 'chamados/detalhe.html', {
         'chamado': chamado,
         'mensagens_chamado': mensagens_qs,
+        'avaliacoes_chamado': chamado.avaliacoes.select_related(
+            'atendimento__atendente', 'solicitante',
+        ).order_by('-criada_em'),
         'mensagem_form': ChamadoMensagemForm(),
         'status_form': ChamadoStatusForm(
             status_permitidos=status_permitidos,

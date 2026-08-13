@@ -355,7 +355,12 @@ class ChamadoTransferenciaAtendente(models.Model):
 
 
 class ChamadoAvaliacao(models.Model):
-    chamado = models.OneToOneField(Chamado, on_delete=models.PROTECT, related_name='avaliacao')
+    chamado = models.ForeignKey(Chamado, on_delete=models.PROTECT, related_name='avaliacoes')
+    atendimento = models.OneToOneField(
+        ChamadoSessaoAtendimento,
+        on_delete=models.PROTECT,
+        related_name='avaliacao',
+    )
     solicitante = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='avaliacoes_chamados'
     )
@@ -366,6 +371,12 @@ class ChamadoAvaliacao(models.Model):
     comentario = models.TextField(blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        if not self.atendimento_id:
+            raise ValidationError({'atendimento': 'A NOTA DEVE ESTAR VINCULADA AO ATENDIMENTO.'})
+        if self.chamado_id and self.atendimento.chamado_id != self.chamado_id:
+            raise ValidationError({'atendimento': 'O ATENDIMENTO NÃO PERTENCE AO CHAMADO INFORMADO.'})
 
 
 class ChamadoConexaoAtendente(models.Model):

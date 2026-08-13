@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Gerenciador de Estoque 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-13 15:31-0300\n"
+"POT-Creation-Date: 2026-08-13 16:30-0300\n"
 "PO-Revision-Date: 2026-07-12 18:00-0300\n"
 "Last-Translator: Inventory T.I\n"
 "Language-Team: Spanish <es@li.org>\n"
@@ -800,6 +800,14 @@ msgstr "Evaluar solución"
 msgid "Enviar avaliacao"
 msgstr "Enviar evaluación"
 
+#| msgid "Tempos do atendimento"
+msgid "Notas dos atendimentos"
+msgstr "Calificaciones de los servicios"
+
+#, python-format
+msgid "Atendimento de %(inicio)s a %(fim)s"
+msgstr "Servicio desde %(inicio)s hasta %(fim)s"
+
 msgid "Transferir atendimento"
 msgstr "Transferir atención"
 
@@ -942,7 +950,6 @@ msgstr "Valores de equipos"
 msgid "Inteligencia patrimonial"
 msgstr "Inteligencia patrimonial"
 
-#| msgid "Valores de equipamentos"
 msgid "Valores dos equipamentos"
 msgstr "Valores de equipos"
 
@@ -953,11 +960,9 @@ msgstr ""
 "Siga el valor del parque, la cobertura de precios y dónde se concentra el "
 "patrimonio."
 
-#| msgid "Baixar template de precificacao"
 msgid "Baixar template"
 msgstr "Descargar plantilla"
 
-#| msgid "Filtros do relatório"
 msgid "Filtros da analise"
 msgstr "Filtros del análisis"
 
@@ -970,27 +975,21 @@ msgstr "Regional"
 msgid "Todas as regionais"
 msgstr "Todas las regionales"
 
-#| msgid "Todas as regionais"
 msgid "Todas as categorias"
 msgstr "Todas las categorías"
 
-#| msgid "Valores de equipamentos"
 msgid "Todos os equipamentos"
 msgstr "Todos los equipos"
 
-#| msgid "Busca rápida"
 msgid "Busca rapida"
 msgstr "Búsqueda rápida"
 
-#| msgid "Categoria do equipamento"
 msgid "Patrimonio, serie ou equipamento"
 msgstr "Patrimonio, serie o equipo"
 
-#| msgid "Atualizar atendimento"
 msgid "Atualizar painel"
 msgstr "Actualizar panel"
 
-#| msgid "Equipamentos de bases em auditoria permanecem ocultos."
 msgid ""
 "Por seguranca, equipamentos de bases em periodo de auditoria nao aparecem "
 "nesta visao."
@@ -998,22 +997,18 @@ msgstr ""
 "Por seguridad, los equipos de bases en período de auditoría no aparecen en "
 "esta vista."
 
-#| msgid "Valor por regional"
 msgid "Valor do parque"
 msgstr "Valor del parque"
 
 msgid "Custo ou referencia disponivel"
 msgstr "Costo o referencia disponible"
 
-#| msgid "equipamento(s) visível(is)"
 msgid "Equipamentos visiveis"
 msgstr "Equipos visibles"
 
-#| msgid "Copiar bases de acesso"
 msgid "Apos filtros e regras de acesso"
 msgstr "Después de filtros y reglas de acceso"
 
-#| msgid "Baixar template de precificacao"
 msgid "Cobertura de precificacao"
 msgstr "Cobertura de precios"
 
@@ -1021,11 +1016,9 @@ msgstr "Cobertura de precios"
 msgid "%(precificados)s equipamentos com valor validado"
 msgstr "%(precificados)s equipos con valor validado"
 
-#| msgid "Ordens de servico"
 msgid "Pendentes de validacao"
 msgstr "Pendientes de validación"
 
-#| msgid "Valor estimado do estoque"
 msgid "Valor medio por item"
 msgstr "Valor medio por artículo"
 
@@ -1038,34 +1031,27 @@ msgstr "Operacional"
 msgid "Administrativo"
 msgstr "Administrativo"
 
-#| msgid "Manutencao"
 msgid "SICK / Manutencao"
 msgstr "SICK / Mantenimiento"
 
-#| msgid "Em Transito"
 msgid "Em transito"
 msgstr "En tránsito"
 
-#| msgid "Inativos / sucata"
 msgid "Inativos / Baixa"
 msgstr "Inactivos / Baja"
 
-#| msgid "Valor por regional"
 msgid "Concentracao por regional"
 msgstr "Concentración por regional"
 
 msgid "As dez regionais com maior valor patrimonial"
 msgstr "Las diez regionales con mayor valor patrimonial"
 
-#| msgid "Insumos por categoria"
 msgid "Composicao por categoria"
 msgstr "Composición por categoría"
 
-#| msgid "Participação de cada cliente no custo total filtrado."
 msgid "Participacao de cada categoria no valor total"
 msgstr "Participación de cada categoría en el valor total"
 
-#| msgid "Equipamentos por modelo"
 msgid "Equipamentos de maior impacto"
 msgstr "Equipos de mayor impacto"
 
@@ -1093,11 +1079,9 @@ msgstr "Abra solo cuando necesite consultar un artículo"
 msgid "Identificacao"
 msgstr "Identificación"
 
-#| msgid "Valor total declarado"
 msgid "Valor considerado"
 msgstr "Valor considerado"
 
-#| msgid "Identificacao"
 msgid "Precificacao"
 msgstr "Fijación de precios"
 
@@ -1107,7 +1091,6 @@ msgstr "Serie"
 msgid "Pendente"
 msgstr "Pendiente"
 
-#| msgid "Nenhum registro SICK encontrado para os filtros informados."
 msgid "Nenhum equipamento encontrado para os filtros informados."
 msgstr "No se encontró ningún equipo para los filtros indicados."
 
@@ -1115,29 +1098,125 @@ msgstr "No se encontró ningún equipo para los filtros indicados."
 msgid "Exibindo %(inicio)s a %(fim)s de %(total)s equipamentos"
 msgstr "Mostrando %(inicio)s a %(fim)s de %(total)s equipos"
 
-#| msgid "Paginação dos equipamentos"
 msgid "Paginacao dos equipamentos"
 msgstr "Paginación de los equipos"
 
-#| msgid "Nenhum consumo encontrado para os filtros selecionados."
 msgid "Sem dados para os filtros selecionados"
 msgstr "No hay datos para los filtros seleccionados"
 
-#| msgid "Regional"
 msgid "Sem regional"
 msgstr "Sin regional"
 
-#| msgid "Categoria"
 msgid "Sem categoria"
 msgstr "Sin categoría"
 
-#| msgid "Descricao"
 msgid "Sem descricao"
 msgstr "Sin descripción"
 
-#| msgid "Valor total declarado"
 msgid "Valor acumulado"
 msgstr "Valor acumulado"
+
+msgid "Valor de insumos por base"
+msgstr "Valor de insumos por base"
+
+msgid "Inteligencia de suprimentos"
+msgstr "Inteligencia de suministros"
+
+msgid ""
+"Entenda onde o estoque esta concentrado, quanto esta disponivel e quais "
+"itens ainda precisam de custo validado."
+msgstr ""
+"Comprenda dónde se concentra el inventario, cuánto está disponible y qué "
+"artículos aún necesitan un costo validado."
+
+msgid "Insumo"
+msgstr "Insumo"
+
+msgid "Todos os insumos"
+msgstr "Todos los insumos"
+
+msgid "Base, categoria ou insumo"
+msgstr "Base, categoría o insumo"
+
+msgid "Valor total"
+msgstr "Valor total"
+
+msgid "Saldo multiplicado pelo custo medio"
+msgstr "Saldo multiplicado por el costo medio"
+
+msgid "SKUs visiveis"
+msgstr "SKU visibles"
+
+#, python-format
+msgid "Distribuidos em %(bases_com_saldo)s bases com saldo"
+msgstr "Distribuidos en %(bases_com_saldo)s bases con saldo"
+
+msgid "Quantidade em estoque"
+msgstr "Cantidad en inventario"
+
+msgid "Soma das unidades controladas"
+msgstr "Suma de las unidades controladas"
+
+msgid "Sem custo validado"
+msgstr "Sin costo validado"
+
+msgid "Itens com saldo e custo medio zerado"
+msgstr "Artículos con saldo y costo medio cero"
+
+msgid "Saldo contabil"
+msgstr "Saldo contable"
+
+msgid "Reservado para movimentacoes"
+msgstr "Reservado para movimientos"
+
+msgid "Disponivel para uso"
+msgstr "Disponible para uso"
+
+msgid "Concentracao por base"
+msgstr "Concentración por base"
+
+msgid "As dez bases com maior valor de insumos"
+msgstr "Las diez bases con mayor valor de insumos"
+
+msgid "Participacao das categorias no valor do estoque"
+msgstr "Participación de las categorías en el valor del inventario"
+
+msgid "Insumos de maior impacto"
+msgstr "Insumos de mayor impacto"
+
+msgid "Itens que representam os maiores valores acumulados"
+msgstr "Artículos que representan los mayores valores acumulados"
+
+msgid "Consultar estoque detalhado"
+msgstr "Consultar inventario detallado"
+
+msgid "Saldo"
+msgstr "Saldo"
+
+msgid "Disponivel"
+msgstr "Disponible"
+
+msgid "Custo medio"
+msgstr "Costo medio"
+
+msgid "reservado"
+msgstr "reservado"
+
+msgid "Validado"
+msgstr "Validado"
+
+msgid "Nenhum insumo encontrado para os filtros informados."
+msgstr "No se encontró ningún insumo para los filtros indicados."
+
+#, python-format
+msgid "Exibindo %(inicio)s a %(fim)s de %(total)s registros"
+msgstr "Mostrando %(inicio)s a %(fim)s de %(total)s registros"
+
+msgid "Paginacao dos insumos"
+msgstr "Paginación de los insumos"
+
+msgid "Sem base"
+msgstr "Sin base"
 
 msgid "Planilha de precificação inválida."
 msgstr "Hoja de precios no válida."
@@ -1147,7 +1226,7 @@ msgstr "El encabezado de la hoja no coincide con la plantilla oficial."
 
 #, python-format
 msgid "Linha %(numero)s: EQUIPAMENTO_ID deve ser um número inteiro."
-msgstr ""
+msgstr "Línea %(numero)s: EQUIPAMENTO_ID debe ser un número entero."
 
 #, python-format
 msgid ""
@@ -3014,9 +3093,6 @@ msgstr "Plazo de entrega en días"
 msgid "Usar como custo atual do insumo"
 msgstr "Usar como costo actual del insumo"
 
-msgid "Insumo"
-msgstr "Insumo"
-
 msgid "Fornecedor"
 msgstr "Proveedor"
 
@@ -3523,9 +3599,6 @@ msgstr ""
 msgid "Unidade"
 msgstr "Unidad"
 
-msgid "Saldo"
-msgstr "Saldo"
-
 msgid "Mínimo"
 msgstr "Mínimo"
 
@@ -3836,9 +3909,6 @@ msgstr "Acción no válida."
 
 #~ msgid "Total controlado"
 #~ msgstr "Total controlado"
-
-#~ msgid "Sem preco validado"
-#~ msgstr "Sin precio validado"
 
 #~ msgid "Distribuicao operacional"
 #~ msgstr "Distribución operativa"

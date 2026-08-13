@@ -238,6 +238,44 @@ class ComprasRemessasTests(TestCase):
         self.assertContains(resposta_busca, 'PAT-PAINEL-21')
         self.assertNotContains(resposta_busca, 'PAT-PAINEL-20')
 
+    def test_painel_de_insumos_pagina_pesquisa_e_calcula_disponibilidade(self):
+        insumos = Insumo.objects.bulk_create([
+            Insumo(
+                descricao=f'INSUMO PAINEL {indice:02d}', categoria=self.insumo.categoria,
+                unidade_medida='UN', valor_medio=indice,
+            )
+            for indice in range(1, 22)
+        ])
+        SaldoInsumoBase.objects.bulk_create([
+            SaldoInsumoBase(
+                base=self.base, insumo=insumo, saldo=10,
+                saldo_reservado=2, custo_medio=indice,
+            )
+            for indice, insumo in enumerate(insumos, start=1)
+        ])
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(reverse('compras:valores_insumos'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.context['skus'], 21)
+        self.assertEqual(len(resposta.context['saldos']), 20)
+        self.assertEqual(resposta.context['page_obj'].paginator.num_pages, 2)
+        self.assertEqual(resposta.context['saldo_total'], Decimal('210'))
+        self.assertEqual(resposta.context['saldo_reservado'], Decimal('42'))
+        self.assertEqual(resposta.context['saldo_disponivel'], Decimal('168'))
+        self.assertContains(resposta, 'Consultar estoque detalhado')
+
+        resposta_busca = self.client.get(
+            reverse('compras:valores_insumos'), {'q': 'INSUMO PAINEL 21'},
+        )
+        self.assertEqual(resposta_busca.context['skus'], 1)
+        self.assertContains(resposta_busca, 'INSUMO PAINEL 21')
+        self.assertEqual(
+            [item.insumo.descricao for item in resposta_busca.context['saldos']],
+            ['INSUMO PAINEL 21'],
+        )
+
     def test_admin_atende_solicitacoes_mas_nao_cria(self):
         self.client.force_login(self.admin)
         self.assertEqual(

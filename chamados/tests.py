@@ -61,13 +61,17 @@ class ChamadosIntegracaoTests(TestCase):
         self.atendente.perfil.empresa = self.empresa
         self.atendente.perfil.regionais.add(self.base)
         self.atendente.perfil.save()
-        self.atendente.groups.add(Group.objects.get(name=GruposChamados.SUPORTE))
+        grupo_suporte, _ = Group.objects.get_or_create(name=GruposChamados.SUPORTE)
+        self.atendente.groups.add(grupo_suporte)
         self.supervisor = User.objects.create_user('supervisor', password='SenhaForte123!')
         self.supervisor.perfil.empresa = self.empresa
         self.supervisor.perfil.regionais.add(self.base)
         self.supervisor.perfil.save()
-        self.supervisor.groups.add(Group.objects.get(name=GruposChamados.SUPERVISOR))
-        self.categoria = CategoriaChamado.objects.get(nome='ROUTER NÃO FUNCIONA')
+        grupo_supervisor, _ = Group.objects.get_or_create(name=GruposChamados.SUPERVISOR)
+        self.supervisor.groups.add(grupo_supervisor)
+        self.categoria, _ = CategoriaChamado.objects.get_or_create(
+            nome='ROUTER NÃO FUNCIONA', defaults={'sla_horas': 4},
+        )
         self.produto = Produto.objects.create(
             codigo='RTR-1', descricao='Router', fabricante='Cisco', modelo='R1', categoria='Routers'
         )
@@ -149,9 +153,10 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(mensagem.texto, 'REINICIAMOS O EQUIPAMENTO E VALIDAMOS A REDE.')
         self.assertGreaterEqual(chamado.eventos.count(), 4)
 
-    def test_nota_interna_nao_e_exibida_ao_solicitante(self):
+    def test_nota_interna_nao_e_exibida_nem_gera_comunicado(self):
         chamado = self.abrir()
         ChamadoService.assumir(chamado, self.atendente)
+        comunicados_antes = Comunicado.objects.filter(dados__chamado_id=chamado.pk).count()
         ChamadoService.adicionar_mensagem(
             chamado, self.atendente, 'Possível troca em garantia.', nota_interna=True
         )
@@ -161,12 +166,48 @@ class ChamadosIntegracaoTests(TestCase):
 
         self.assertNotContains(response, 'POSSÍVEL TROCA EM GARANTIA')
         self.assertFalse(response.context['mensagens_chamado'].filter(nota_interna=True).exists())
-        comunicado_nota = Comunicado.objects.filter(
-            dados__chamado_id=chamado.pk,
-            mensagem='UMA NOTA INTERNA FOI REGISTRADA.',
-        ).latest('pk')
-        self.assertFalse(comunicado_nota.usuarios.filter(pk=self.solicitante.pk).exists())
-        self.assertTrue(comunicado_nota.usuarios.filter(pk=self.admin.pk).exists())
+        self.assertEqual(
+            Comunicado.objects.filter(dados__chamado_id=chamado.pk).count(),
+            comunicados_antes,
+        )
+
+    def test_chat_nao_gera_comunicado_e_nota_fica_vinculada_ao_atendimento(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        ChamadoService.adicionar_mensagem(chamado, self.atendente, 'Análise iniciada.')
+        ChamadoService.adicionar_mensagem(chamado, self.solicitante, 'Aguardando retorno.')
+
+        comunicados = Comunicado.objects.filter(dados__chamado_id=chamado.pk)
+        self.assertEqual(comunicados.count(), 1)
+        self.assertEqual(comunicados.get().dados['evento_codigo'], 'ABERTURA')
+
+        ChamadoService.resolver(
+            chamado, self.atendente,
+            causa_raiz='Configuração incorreta.', solucao='Configuração corrigida.',
+        )
+        self.assertEqual(comunicados.count(), 2)
+        self.assertTrue(comunicados.filter(dados__evento_codigo='ENCERRAMENTO').exists())
+
+        avaliacao = ChamadoService.avaliar(
+            chamado, self.solicitante, nota=5, resolvido=True,
+            comentario='Atendimento concluído.',
+        )
+        self.assertEqual(avaliacao.atendimento.atendente, self.atendente)
+        self.assertEqual(avaliacao.atendimento.motivo_encerramento, 'RESOLVIDO')
+        self.assertCountEqual(
+            comunicados.values_list('dados__evento_codigo', flat=True),
+            ['ABERTURA', 'ENCERRAMENTO', 'NOTA_ATENDIMENTO'],
+        )
+        self.assertTrue(all(
+            comunicado.usuarios.filter(pk=self.admin.pk).exists()
+            and comunicado.usuarios.filter(pk=self.solicitante.pk).exists()
+            and comunicado.usuarios.filter(pk=self.atendente.pk).exists()
+            for comunicado in comunicados
+        ))
+        self.client.force_login(self.solicitante)
+        resposta = self.client.get(reverse('chamados:detalhe', args=[chamado.pk]))
+        self.assertEqual(resposta.context['comunicados_nao_lidos'], 3)
+        self.assertContains(resposta, 'Notas dos atendimentos')
 
     def test_usuario_comum_nao_assume_nem_cria_nota_interna(self):
         chamado = self.abrir()
@@ -307,7 +348,8 @@ class ChamadosIntegracaoTests(TestCase):
             comentario='Resolvido.',
         )
         chamado.refresh_from_db()
-        self.assertEqual(avaliacao.pk, segunda.pk)
+        self.assertNotEqual(avaliacao.pk, segunda.pk)
+        self.assertNotEqual(avaliacao.atendimento_id, segunda.atendimento_id)
         self.assertEqual(chamado.status, Chamado.Status.ENCERRADO)
         self.assertTrue(chamado.eventos.filter(tipo='REABERTURA_AVALIACAO').exists())
 
@@ -382,7 +424,9 @@ class ChamadoWebSocketTests(TransactionTestCase):
             data_inicio=timezone.localdate(), criado_por=self.usuario,
             lider='Usuário WS', lider_usuario=self.usuario,
         )
-        categoria = CategoriaChamado.objects.get(nome='OUTRO')
+        categoria, _ = CategoriaChamado.objects.get_or_create(
+            nome='OUTRO', defaults={'sla_horas': 24},
+        )
         self.chamado = ChamadoService.abrir(
             usuario=self.usuario, base=self.base, inventario=inventario,
             equipamento=None, categoria=categoria, loja='Loja WebSocket',
