@@ -14,6 +14,7 @@ from chamados.models import (
     CategoriaChamado,
     Chamado,
     ChamadoAnexo,
+    ChamadoConexaoAtendente,
     ChamadoEvento,
     ChamadoMensagem,
     ChamadoSessaoAtendimento,
@@ -100,6 +101,27 @@ class ChamadosIntegracaoTests(TestCase):
         comunicado = Comunicado.objects.get(dados__chamado_id=chamado.pk)
         self.assertTrue(comunicado.usuarios.filter(pk=self.admin.pk).exists())
         self.assertTrue(comunicado.usuarios.filter(pk=self.solicitante.pk).exists())
+
+    def test_chamado_registra_se_ocorreu_antes_ou_durante_o_inventario(self):
+        antes = self.abrir()
+        self.assertEqual(antes.momento_inventario_abertura, Chamado.MomentoInventario.ANTES)
+        self.inventario.status = 'EM_ANDAMENTO'
+        self.inventario.save(update_fields=['status'])
+        durante = self.abrir()
+        self.assertEqual(
+            durante.momento_inventario_abertura,
+            Chamado.MomentoInventario.EM_ANDAMENTO,
+        )
+
+    def test_abertura_exibe_somente_atendentes_online(self):
+        ChamadoConexaoAtendente.objects.create(
+            usuario=self.atendente, canal='teste-lista-atendentes-online'
+        )
+        self.client.force_login(self.solicitante)
+        resposta = self.client.get(reverse('chamados:criar'))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, self.atendente.username)
+        self.assertNotContains(resposta, self.supervisor.username)
 
     def test_isola_chamado_de_usuario_sem_acesso(self):
         chamado = self.abrir()
@@ -204,11 +226,19 @@ class ChamadosIntegracaoTests(TestCase):
         inventario = Inventario.objects.create(
             cliente=cliente, loja='Matriz', base=base,
             data_inicio=timezone.localdate(), criado_por=self.admin,
-            lider_usuario=self.admin,
         )
+        solicitante_segunda_empresa = User.objects.create_user(
+            'solicitante_segunda_empresa', password='SenhaForte123!'
+        )
+        solicitante_segunda_empresa.perfil.empresa = outra_empresa
+        solicitante_segunda_empresa.perfil.role = Perfil.Role.OPERADOR
+        solicitante_segunda_empresa.perfil.save()
+        solicitante_segunda_empresa.perfil.regionais.add(base)
+        inventario.lider_usuario = solicitante_segunda_empresa
+        inventario.save(update_fields=['lider_usuario'])
 
         segundo = ChamadoService.abrir(
-            usuario=self.admin,
+            usuario=solicitante_segunda_empresa,
             base=base,
             inventario=inventario,
             equipamento=None,
@@ -284,6 +314,9 @@ class ChamadosIntegracaoTests(TestCase):
     def test_transferencia_fecha_sessao_e_preserva_atendentes(self):
         chamado = self.abrir()
         ChamadoService.assumir(chamado, self.atendente)
+        ChamadoConexaoAtendente.objects.create(
+            usuario=self.supervisor, canal='teste-transferencia-supervisor'
+        )
         transferencia = ChamadoService.transferir_atendente(
             chamado, self.atendente, atendente_novo=self.supervisor,
             motivo='Escalonamento técnico.',

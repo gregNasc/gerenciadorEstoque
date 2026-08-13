@@ -28,6 +28,10 @@ class EquipamentosSickBaseTests(TestCase):
         self.admin_inativo = self._usuario('admin_inativo_sick', Perfil.Role.ADMIN, ativo=False)
         self.gestor = self._usuario('gestor_sick', Perfil.Role.GESTOR, self.base)
         self.operador = self._usuario('operador_sick', Perfil.Role.OPERADOR, self.base)
+        grupo_sick, _ = Group.objects.get_or_create(
+            name=GruposCorporativos.SICK_GERENCIAR,
+        )
+        self.operador.groups.add(grupo_sick)
         grupo_matriz, _ = Group.objects.get_or_create(
             name=GruposCorporativos.SICK_MANUTENCAO,
         )

@@ -114,50 +114,204 @@ class ChamadoService:
     def abrir(cls, *, usuario, **dados):
         base = dados['base']
         inventario = dados.get('inventario')
-        if not inventario:
-            raise ValidationError({'inventario': 'O INVENTÁRIO É OBRIGATÓRIO PARA ABRIR UM CHAMADO.'})
-        if not ChamadoAccessPolicy.pode_abrir_na_base(usuario, base):
-            raise PermissionDenied('VOCÊ NÃO POSSUI ACESSO A ESTA BASE.')
-        if inventario.base_id != base.pk:
-            raise ValidationError({'inventario': 'O INVENTÁRIO NÃO PERTENCE À BASE INFORMADA.'})
-        perfil = getattr(usuario, 'perfil', None)
-        if (
-            perfil and perfil.is_operador and not ChamadoAccessPolicy.pode_atender(usuario)
-            and inventario.lider_usuario_id != usuario.pk
-        ):
-            raise PermissionDenied('O INVENTÁRIO NÃO ESTÁ VINCULADO A ESTE OPERADOR.')
-        equipamento = dados.get('equipamento')
-        if equipamento and equipamento.regional_id != base.pk:
-            raise ValidationError({'equipamento': 'O EQUIPAMENTO NÃO PERTENCE À BASE INFORMADA.'})
 
-        ano = timezone.localdate().year
-        sequencia, _ = SequenciaChamado.objects.select_for_update().get_or_create(
-            empresa=base.empresa, ano=ano
+        hoje = timezone.localdate()
+
+       # INVENTÁRIO
+        if not inventario:
+            raise ValidationError({
+                'inventario':
+                    'O INVENTÁRIO É OBRIGATÓRIO PARA ABRIR UM CHAMADO.'
+            })
+
+        # Usuário precisa possuir acesso à base.
+        if not ChamadoAccessPolicy.pode_abrir_na_base(
+                usuario,
+                base,
+        ):
+            raise PermissionDenied(
+                'VOCÊ NÃO POSSUI ACESSO A ESTA BASE.'
+            )
+
+        # Inventário precisa pertencer à base.
+        if inventario.base_id != base.pk:
+            raise ValidationError({
+                'inventario':
+                    'O INVENTÁRIO NÃO PERTENCE À BASE INFORMADA.'
+            })
+
+        # Inventário precisa ser do dia atual.
+        if (
+            inventario.lider_usuario_id
+            and inventario.lider_usuario_id != usuario.pk
+            and not getattr(usuario.perfil, 'is_gestor', False)
+        ):
+            raise PermissionDenied(
+                'SOMENTE O LIDER VINCULADO AO INVENTARIO PODE ABRIR ESTE CHAMADO.'
+            )
+
+        if inventario.data_inicio != hoje:
+            raise ValidationError({
+                'inventario':
+                    'SÓ É POSSÍVEL ABRIR CHAMADOS PARA INVENTÁRIOS DO DIA ATUAL.'
+            })
+
+        # Permitimos planejado ou em andamento.
+        status_permitidos = {
+            'PLANEJADO',
+            'EM_ANDAMENTO',
+        }
+
+        if inventario.status not in status_permitidos:
+            raise ValidationError({
+                'inventario':
+                    'SÓ É POSSÍVEL ABRIR CHAMADOS PARA INVENTÁRIOS PLANEJADOS OU EM ANDAMENTO.'
+            })
+
+       # DADOS HERDADOS DO INVENTÁRIO
+        # Loja sempre vem do inventário.
+        dados['momento_inventario_abertura'] = (
+            Chamado.MomentoInventario.EM_ANDAMENTO
+            if inventario.status == 'EM_ANDAMENTO'
+            else Chamado.MomentoInventario.ANTES
         )
+
+        dados['loja'] = (
+                inventario.loja or ''
+        ).strip()
+
+        # Líder vem do inventário,
+        # mas preservamos alteração manual feita no formulário.
+        dados['lider'] = (
+                dados.get('lider')
+                or inventario.lider
+                or ''
+        ).strip()
+
+       # CATEGORIA DO EQUIPAMENTO
+        equipamento = dados.get('equipamento')
+        categoria_equipamento = (
+                dados.get('categoria_equipamento')
+                or (
+                    equipamento.produto.categoria
+                    if equipamento and equipamento.produto_id
+                    else 'Sistema'
+                )
+        ).strip()
+        dados['categoria_equipamento'] = categoria_equipamento
+
+        if not categoria_equipamento:
+            raise ValidationError({
+                'categoria_equipamento':
+                    'INFORME A CATEGORIA DO EQUIPAMENTO.'
+            })
+
+       # EQUIPAMENTO (OPCIONAL PARA SISTEMA / SOFTWARE)
+        if categoria_equipamento != 'Sistema' and not equipamento:
+            raise ValidationError({
+                'equipamento':
+                    'INFORME O EQUIPAMENTO DO CHAMADO.'
+            })
+
+        # Equipamento precisa pertencer à base.
+        if equipamento and equipamento.regional_id != base.pk:
+            raise ValidationError({
+                'equipamento':
+                    'O EQUIPAMENTO NÃO PERTENCE À BASE INFORMADA.'
+            })
+
+        # Equipamento precisa possuir produto.
+        if equipamento and not equipamento.produto:
+            raise ValidationError({
+                'equipamento':
+                    'O EQUIPAMENTO NÃO POSSUI PRODUTO VINCULADO.'
+            })
+
+        # Categoria escolhida precisa ser a categoria real
+        # do produto vinculado ao equipamento.
+        if (
+                equipamento
+                and equipamento.produto.categoria
+                != categoria_equipamento
+        ):
+            raise ValidationError({
+                'equipamento':
+                    'O EQUIPAMENTO NÃO PERTENCE À CATEGORIA INFORMADA.'
+            })
+
+       # SEQUÊNCIA DO PROTOCOLO
+        ano = hoje.year
+
+        sequencia, _ = (
+            SequenciaChamado.objects
+            .select_for_update()
+            .get_or_create(
+                empresa=base.empresa,
+                ano=ano,
+            )
+        )
+
         sequencia.ultimo_numero += 1
-        sequencia.save(update_fields=['ultimo_numero'])
+
+        sequencia.save(
+            update_fields=['ultimo_numero']
+        )
+
+       # CRIAÇÃO DO CHAMADO
         chamado = Chamado(
-            protocolo=f'CH-{ano}-{base.empresa_id:04d}-{sequencia.ultimo_numero:06d}',
+            protocolo=(
+                f'CH-{ano}-'
+                f'{base.empresa_id:04d}-'
+                f'{sequencia.ultimo_numero:06d}'
+            ),
             empresa=base.empresa,
             aberto_por=usuario,
             status=Chamado.Status.AGUARDANDO_ATENDIMENTO,
             **dados,
         )
+
         chamado.definir_prazo_sla()
         chamado.full_clean()
         chamado.save()
-        cls._evento(chamado, 'ABERTURA', 'CHAMADO ABERTO.', usuario)
+
+       # HISTÓRICO
         cls._evento(
-            chamado, 'ENTRADA_FILA', 'CHAMADO ENCAMINHADO À FILA DE ATENDIMENTO.', usuario,
-            {'status': chamado.status},
+            chamado,
+            'ABERTURA',
+            'CHAMADO ABERTO.',
+            usuario,
         )
+
+        cls._evento(
+            chamado,
+            'ENTRADA_FILA',
+            'CHAMADO ENCAMINHADO À FILA DE ATENDIMENTO.',
+            usuario,
+            {
+                'status': chamado.status,
+            },
+        )
+
+       # COMUNICAÇÃO
         cls._comunicar(
-            chamado, usuario, f'NOVO CHAMADO {chamado.protocolo}',
-            f'{chamado.titulo}\nBASE: {chamado.base.nome}\nPRIORIDADE: {chamado.get_prioridade_display()}',
-            tipo='URGENTE' if chamado.prioridade in {
-                Chamado.Prioridade.ALTA, Chamado.Prioridade.CRITICA,
-            } else 'OPERACIONAL',
+            chamado,
+            usuario,
+            f'NOVO CHAMADO {chamado.protocolo}',
+            (
+                f'{chamado.titulo}\n'
+                f'BASE: {chamado.base.nome}\n'
+                f'PRIORIDADE: {chamado.get_prioridade_display()}'
+            ),
+            tipo=(
+                'URGENTE'
+                if chamado.prioridade in {
+                    Chamado.Prioridade.ALTA,
+                    Chamado.Prioridade.CRITICA,
+                }
+                else 'OPERACIONAL'
+            ),
         )
+
         return chamado
 
     @classmethod
@@ -378,6 +532,8 @@ class ChamadoService:
             raise ValidationError('SELECIONE UM ATENDENTE DIFERENTE.')
         if not ChamadoAccessPolicy.pode_atender(atendente_novo):
             raise ValidationError('O DESTINATÁRIO NÃO POSSUI PERFIL DE ATENDIMENTO.')
+        if not ChamadoAccessPolicy.atendentes_online_para(chamado).filter(pk=atendente_novo.pk).exists():
+            raise ValidationError('O NOVO ATENDENTE PRECISA ESTAR ONLINE.')
         if not ChamadoAccessPolicy.bases(atendente_novo).filter(pk=chamado.base_id).exists() and not ChamadoAccessPolicy.e_admin(atendente_novo):
             raise ValidationError('O NOVO ATENDENTE NÃO POSSUI ACESSO À BASE.')
         anterior = chamado.atendente
@@ -442,17 +598,49 @@ class ChamadoService:
     def metricas(cls, chamado):
         agora = timezone.now()
         fim = chamado.fechado_em or chamado.resolvido_em or agora
+
+        def sem_microssegundos(valor):
+            if valor is None:
+                return None
+
+            return valor - timedelta(
+                microseconds=valor.microseconds
+            )
+
         suporte = timedelta()
+
         for sessao in chamado.sessoes.all():
-            suporte += (sessao.encerrada_em or agora) - sessao.iniciada_em
+            suporte += (
+                    (sessao.encerrada_em or agora)
+                    - sessao.iniciada_em
+            )
+
         return {
-            'espera_primeira_resposta': (
+            'espera_primeira_resposta': sem_microssegundos(
                 chamado.primeira_resposta_em - chamado.aberto_em
-                if chamado.primeira_resposta_em else None
+                if chamado.primeira_resposta_em
+                else None
             ),
-            'tempo_aceite': chamado.aceito_em - chamado.aberto_em if chamado.aceito_em else None,
-            'tempo_resolucao': fim - chamado.aberto_em,
-            'suporte_efetivo': suporte,
-            'transferencias': chamado.transferencias_atendente.count(),
-            'reaberturas': chamado.eventos.filter(tipo__startswith='REABERTURA').count(),
+
+            'tempo_aceite': sem_microssegundos(
+                chamado.aceito_em - chamado.aberto_em
+                if chamado.aceito_em
+                else None
+            ),
+
+            'tempo_resolucao': sem_microssegundos(
+                fim - chamado.aberto_em
+            ),
+
+            'suporte_efetivo': sem_microssegundos(
+                suporte
+            ),
+
+            'transferencias':
+                chamado.transferencias_atendente.count(),
+
+            'reaberturas':
+                chamado.eventos.filter(
+                    tipo__startswith='REABERTURA'
+                ).count(),
         }

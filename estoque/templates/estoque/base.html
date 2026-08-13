@@ -69,6 +69,7 @@
             {% with perfil=request.user.perfil url_name=request.resolver_match.url_name %}
 
             <ul class="navbar-nav ms-auto align-items-xxl-center">
+                {% if not operador_restrito %}
                 <!-- CHECKLIST -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
@@ -309,6 +310,7 @@
                 </li>
                 {% endif %}
 
+                {% endif %}
                 <!-- CHAMADOS -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if request.resolver_match.namespace == 'chamados' %}active{% endif %}"
@@ -318,9 +320,9 @@
                         {% if chamados_pendentes > 0 %}<span class="badge rounded-pill text-bg-danger ms-1">{{ chamados_pendentes }}</span>{% endif %}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="chamadosDropdown">
-                        <li><a class="dropdown-item" href="{% url 'chamados:lista' %}"><i class="bi bi-list-task me-2"></i>Fila de chamados</a></li>
-                        <li><a class="dropdown-item" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-circle me-2"></i>Novo chamado</a></li>
-                        <li><a class="dropdown-item" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart me-2"></i>Dashboard</a></li>
+                        <li><a class="dropdown-item" href="{% url 'chamados:lista' %}"><i class="bi bi-list-task me-2"></i>{% if pode_atender_chamados %}Fila de chamados{% else %}Meus chamados{% endif %}</a></li>
+                        {% if pode_criar_chamado %}<li><a class="dropdown-item" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-circle me-2"></i>Novo chamado</a></li>{% endif %}
+                        {% if pode_dashboard_chamados %}<li><a class="dropdown-item" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart me-2"></i>Dashboard</a></li>{% endif %}
                     </ul>
                 </li>
 
@@ -539,7 +541,8 @@
                 {% endif %}
 
                 <!-- SICK -->
-                {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.role == 'operador' or pode_realizar_manutencao_sick %}
+                {% if not operador_restrito or pode_gerenciar_sick %}
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' or pode_gerenciar_sick or pode_realizar_manutencao_sick %}
                 <li class="nav-item">
 
                     <a class="nav-link {% if url_name == 'sick' %}active{% endif %}"
@@ -551,6 +554,8 @@
                     </a>
 
                 </li>
+                {% endif %}
+
                 {% endif %}
 
                 <!-- CADASTROS -->
@@ -717,12 +722,46 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {% block extra_js %}{% endblock %}
-{% if request.user.is_authenticated %}
+{% if request.user.is_authenticated and not operador_restrito %}
     {% include 'estoque/partials/assistente_widget.html' %}
     <script src="{% static 'js/tory-api.js' %}?v=1" defer></script>
     <script src="{% static 'js/tory-renderer.js' %}?v=3" defer></script>
     <script src="{% static 'js/tory-resultados.js' %}?v=3" defer></script>
     <script src="{% static 'js/tory.js' %}?v=1" defer></script>
+{% endif %}
+{% if request.user.is_authenticated and pode_atender_chamados %}
+<script>
+(function () {
+    let socket;
+    let ping;
+    let reconectar;
+
+    function conectarPresenca() {
+        const protocolo = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        socket = new WebSocket(`${protocolo}://${window.location.host}/ws/chamados/presenca/`);
+        socket.addEventListener('open', function () {
+            clearInterval(ping);
+            ping = setInterval(function () {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({tipo: 'ping'}));
+                }
+            }, 30000);
+        });
+        socket.addEventListener('close', function () {
+            clearInterval(ping);
+            clearTimeout(reconectar);
+            reconectar = setTimeout(conectarPresenca, 10000);
+        });
+    }
+
+    conectarPresenca();
+    window.addEventListener('beforeunload', function () {
+        clearInterval(ping);
+        clearTimeout(reconectar);
+        if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+    });
+})();
+</script>
 {% endif %}
 </body>
 </html>

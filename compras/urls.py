@@ -18,5 +18,8 @@ urlpatterns = [
     path('remessas/<int:pk>/confirmar/', views.confirmar_remessa, name='remessa_confirmar'),
     path('valores/insumos/', views.valores_insumos, name='valores_insumos'),
     path('valores/equipamentos/', views.valores_equipamentos, name='valores_equipamentos'),
+    path('valores/equipamentos/template/', views.template_precificacao_equipamentos, name='template_precificacao_equipamentos'),
+    path('valores/equipamentos/importar/', views.importar_precificacao_equipamentos, name='importar_precificacao_equipamentos'),
+    path('catalogo/equipamentos/novo/', views.criar_produto_catalogo, name='criar_produto_catalogo'),
     path('api/catalogo/resolver/', views.resolver_codigo, name='resolver_codigo'),
 ]

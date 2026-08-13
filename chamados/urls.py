@@ -8,6 +8,7 @@ app_name = 'chamados'
 urlpatterns = [
     path('', views.lista, name='lista'),
     path('novo/', views.criar, name='criar'),
+    path('ajax/equipamentos/', views.equipamentos_por_categoria, name='equipamentos_por_categoria'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('exportar/', views.exportar, name='exportar'),
     path('<int:pk>/', views.detalhe, name='detalhe'),

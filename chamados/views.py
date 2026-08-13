@@ -1,15 +1,15 @@
 from io import BytesIO
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Q
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
-
+from estoque.models import Equipamento, Produto
+from estoque.security import secure_queryset
 from chamados.forms import (
     ChamadoAvaliacaoForm,
     ChamadoForm,
@@ -18,6 +18,7 @@ from chamados.forms import (
     ChamadoStatusForm,
     ChamadoTransferenciaForm,
 )
+from datetime import datetime, time, timedelta
 from chamados.models import Chamado, ChamadoAnexo
 from chamados.policies import ChamadoAccessPolicy
 from chamados.services import ChamadoService
@@ -44,12 +45,10 @@ def _filtrar(request, queryset):
         )
     return queryset
 
-
 def _excel_seguro(valor):
     if isinstance(valor, str) and valor.startswith(('=', '+', '-', '@')):
         return f"'{valor}"
     return valor
-
 
 @login_required
 def lista(request):
@@ -65,6 +64,10 @@ def lista(request):
         'status_choices': Chamado.Status.choices,
         'prioridade_choices': Chamado.Prioridade.choices,
         'pode_atender': ChamadoAccessPolicy.pode_atender(request.user),
+        'pode_criar': bool(
+            ChamadoAccessPolicy.bases(request.user).exists()
+            and not ChamadoAccessPolicy.e_admin(request.user)
+        ),
         'pode_dashboard': ChamadoAccessPolicy.pode_dashboard(request.user),
         'pode_exportar': bool(
             ChamadoAccessPolicy.e_admin(request.user)
@@ -73,20 +76,179 @@ def lista(request):
         ),
     })
 
+@login_required
+def equipamentos_por_categoria(request):
+    categoria = (
+        request.GET.get('categoria')
+        or ''
+    ).strip()
+
+    base_id = (
+        request.GET.get('base')
+        or ''
+    ).strip()
+
+    # Categoria obrigatória
+    if not categoria:
+        return JsonResponse({
+            'equipamentos': [],
+        })
+
+    if categoria == 'Sistema':
+        return JsonResponse({
+            'equipamentos': [],
+            'equipamento_opcional': True,
+        })
+
+    # Validar categoria
+    categorias_validas = {
+        valor
+        for valor, _rotulo
+        in Produto.CATEGORIAS
+    }
+
+    if categoria not in categorias_validas:
+        return JsonResponse(
+            {
+                'erro': 'Categoria inválida.',
+                'equipamentos': [],
+            },
+            status=400,
+        )
+
+    # Bases que o usuário realmente pode acessar
+    bases_permitidas = (
+        ChamadoAccessPolicy.bases(
+            request.user
+        )
+    )
+
+    base = None
+
+    # Usuário normal: sua única base é usada
+    # independentemente do parâmetro recebido.
+    if bases_permitidas.count() == 1:
+        base = bases_permitidas.first()
+
+    # Admin / usuário com várias bases
+    elif base_id.isdigit():
+        base = bases_permitidas.filter(
+            pk=base_id
+        ).first()
+
+    if not base:
+        return JsonResponse(
+            {
+                'erro': 'Base inválida ou não autorizada.',
+                'equipamentos': [],
+            },
+            status=400,
+        )
+
+    # Equipamentos:
+    # - da base
+    # - da categoria
+    equipamentos = (
+        Equipamento.objects
+        .filter(
+            regional=base,
+            produto__categoria=categoria,
+        )
+        .select_related(
+            'produto',
+            'regional',
+        )
+    )
+
+    # Mantém as mesmas regras de segurança
+    # usadas pelo estoque.
+    equipamentos = secure_queryset(
+        equipamentos,
+        request.user,
+    )
+
+    equipamentos = equipamentos.order_by(
+        'produto__descricao',
+        'patrimonio',
+    )
+
+    resultado = []
+
+    for equipamento in equipamentos:
+        produto = equipamento.produto
+
+        partes = []
+
+        if equipamento.patrimonio:
+            partes.append(
+                f'Patrimônio: {equipamento.patrimonio}'
+            )
+
+        if produto:
+            partes.append(
+                produto.descricao
+            )
+
+        if equipamento.numero_serie:
+            partes.append(
+                f'S/N: {equipamento.numero_serie}'
+            )
+
+        resultado.append({
+            'id': equipamento.pk,
+            'texto': ' · '.join(partes),
+        })
+
+    return JsonResponse({
+        'equipamentos': resultado,
+    })
 
 @login_required
 def criar(request):
-    form = ChamadoForm(request.POST or None, user=request.user)
+    if ChamadoAccessPolicy.e_admin(request.user):
+        raise PermissionDenied('ADMINISTRADORES ATENDEM CHAMADOS E NÃO ABREM SOLICITAÇÕES.')
+    form = ChamadoForm(
+        request.POST or None,
+        user=request.user,
+    )
+
     if request.method == 'POST' and form.is_valid():
         try:
-            chamado = ChamadoService.abrir(usuario=request.user, **form.cleaned_data)
+            chamado = ChamadoService.abrir(
+                usuario=request.user,
+                **form.cleaned_data,
+            )
         except (PermissionDenied, ValidationError) as exc:
             form.add_error(None, exc)
         else:
-            messages.success(request, f'CHAMADO {chamado.protocolo} ABERTO COM SUCESSO.')
-            return redirect('chamados:detalhe', pk=chamado.pk)
-    return render(request, 'chamados/form.html', {'form': form})
+            messages.success(
+                request,
+                f'CHAMADO {chamado.protocolo} ABERTO COM SUCESSO.'
+            )
+            return redirect(
+                'chamados:detalhe',
+                pk=chamado.pk,
+            )
 
+    inventarios_contexto = {
+        str(inventario.pk): {
+            'lider': inventario.lider or '',
+            'loja': inventario.loja or '',
+        }
+        for inventario
+        in form.fields['inventario'].queryset
+    }
+
+    return render(
+        request,
+        'chamados/form.html',
+        {
+            'form': form,
+            'hoje': timezone.localdate(),
+            'inventarios_contexto': inventarios_contexto,
+            'atendentes_online': ChamadoAccessPolicy.atendentes_online_para(),
+        }
+    )
 
 @login_required
 def detalhe(request, pk):
@@ -127,7 +289,6 @@ def detalhe(request, pk):
         'ordens': ordens,
     })
 
-
 @login_required
 @require_POST
 def assumir(request, pk):
@@ -138,7 +299,6 @@ def assumir(request, pk):
     except (PermissionDenied, ValidationError) as exc:
         messages.error(request, str(exc))
     return redirect('chamados:detalhe', pk=pk)
-
 
 @login_required
 @require_POST
@@ -160,7 +320,6 @@ def mensagem(request, pk):
     else:
         messages.error(request, 'NÃO FOI POSSÍVEL REGISTRAR A MENSAGEM.')
     return redirect('chamados:detalhe', pk=pk)
-
 
 @login_required
 @require_POST
@@ -184,7 +343,6 @@ def alterar_status(request, pk):
         messages.error(request, 'VERIFIQUE O STATUS E A RESOLUÇÃO INFORMADOS.')
     return redirect('chamados:detalhe', pk=pk)
 
-
 @login_required
 @require_POST
 def avaliar(request, pk):
@@ -199,7 +357,6 @@ def avaliar(request, pk):
     else:
         messages.error(request, 'VERIFIQUE A NOTA E A CONFIRMAÇÃO DA SOLUÇÃO.')
     return redirect('chamados:detalhe', pk=pk)
-
 
 @login_required
 @require_POST
@@ -216,7 +373,6 @@ def transferir(request, pk):
         messages.error(request, 'VERIFIQUE O NOVO ATENDENTE E O MOTIVO.')
     return redirect('chamados:detalhe', pk=pk)
 
-
 @login_required
 @require_POST
 def converter_sick(request, pk):
@@ -232,7 +388,6 @@ def converter_sick(request, pk):
         messages.error(request, 'INFORME O DIAGNÓSTICO PARA O SICK.')
     return redirect('chamados:detalhe', pk=pk)
 
-
 @login_required
 def baixar_anexo(request, pk):
     anexo = get_object_or_404(ChamadoAnexo.objects.select_related('chamado'), pk=pk)
@@ -242,29 +397,387 @@ def baixar_anexo(request, pk):
         raise PermissionDenied
     return FileResponse(anexo.arquivo.open('rb'), as_attachment=True, filename=anexo.nome_original)
 
+def _media_duracoes(duracoes):
+    segundos = [
+        duracao.total_seconds()
+        for duracao in duracoes
+        if duracao is not None
+    ]
+
+    if not segundos:
+        return None
+
+    return sum(segundos) / len(segundos)
+
+def _formatar_tempo(segundos):
+    if segundos is None:
+        return '—'
+
+    segundos = int(segundos)
+
+    dias, resto = divmod(
+        segundos,
+        86400,
+    )
+
+    horas, resto = divmod(
+        resto,
+        3600,
+    )
+
+    minutos, segundos = divmod(
+        resto,
+        60,
+    )
+
+    if dias:
+        return (
+            f'{dias}d '
+            f'{horas}h '
+            f'{minutos}min'
+        )
+
+    if horas:
+        return (
+            f'{horas}h '
+            f'{minutos:02d}min'
+        )
+
+    if minutos:
+        return (
+            f'{minutos}min '
+            f'{segundos:02d}s'
+        )
+
+    return f'{segundos}s'
 
 @login_required
 def dashboard(request):
-    if not ChamadoAccessPolicy.pode_dashboard(request.user):
+    if not ChamadoAccessPolicy.pode_dashboard(
+        request.user
+    ):
         raise PermissionDenied
-    qs = ChamadoAccessPolicy.queryset(request.user)
-    agora = timezone.now()
-    terminais = [Chamado.Status.RESOLVIDO, Chamado.Status.AVALIACAO, Chamado.Status.ENCERRADO, Chamado.Status.CANCELADO]
-    por_status = list(qs.values('status').annotate(total=Count('id')).order_by('status'))
-    por_categoria = list(
-        qs.values('categoria__nome').annotate(total=Count('id')).order_by('-total')[:8]
-    )
-    por_base = list(qs.values('base__nome').annotate(total=Count('id')).order_by('-total')[:8])
-    return render(request, 'chamados/dashboard.html', {
-        'total': qs.count(),
-        'abertos': qs.exclude(status__in=terminais).count(),
-        'resolvidos': qs.filter(status__in=[Chamado.Status.RESOLVIDO, Chamado.Status.AVALIACAO, Chamado.Status.ENCERRADO]).count(),
-        'sla_vencido': qs.filter(prazo_sla_em__lt=agora).exclude(status__in=terminais).count(),
-        'por_status': por_status,
-        'por_categoria': por_categoria,
-        'por_base': por_base,
-    })
 
+    # ESCOPO DE ACESSO
+
+    qs = ChamadoAccessPolicy.queryset(
+        request.user
+    )
+
+    agora = timezone.now()
+    hoje = timezone.localdate()
+
+    # PERÍODO
+
+    periodo = (
+        request.GET.get('periodo')
+        or 'hoje'
+    ).strip()
+
+    if periodo == '7d':
+        data_inicio = (
+            hoje - timedelta(days=6)
+        )
+        periodo_label = 'Últimos 7 dias'
+
+    elif periodo == '30d':
+        data_inicio = (
+            hoje - timedelta(days=29)
+        )
+        periodo_label = 'Últimos 30 dias'
+
+    else:
+        periodo = 'hoje'
+        data_inicio = hoje
+        periodo_label = 'Hoje'
+
+    inicio_periodo = timezone.make_aware(
+        datetime.combine(
+            data_inicio,
+            time.min,
+        ),
+        timezone.get_current_timezone(),
+    )
+
+    # STATUS TERMINAIS
+
+    terminais = {
+        Chamado.Status.RESOLVIDO,
+        Chamado.Status.AVALIACAO,
+        Chamado.Status.ENCERRADO,
+        Chamado.Status.CANCELADO,
+    }
+
+    # BACKLOG ATUAL
+    #
+    # Não depende do período.
+
+    backlog = qs.exclude(
+        status__in=terminais
+    )
+
+    aguardando = backlog.filter(
+        status__in={
+            Chamado.Status.ABERTO,
+            Chamado.Status.AGUARDANDO_ATENDIMENTO,
+            Chamado.Status.REABERTO,
+        }
+    ).count()
+
+    em_atendimento = backlog.filter(
+        status=Chamado.Status.EM_ATENDIMENTO
+    ).count()
+
+    sla_vencido = backlog.filter(
+        prazo_sla_em__lt=agora
+    ).count()
+
+    criticos = backlog.filter(
+        prioridade=Chamado.Prioridade.CRITICA
+    ).count()
+
+    # CHAMADOS ABERTOS NO PERÍODO
+
+    chamados_periodo = qs.filter(
+        aberto_em__gte=inicio_periodo,
+        aberto_em__lte=agora,
+    )
+
+    # RESOLVIDOS NO PERÍODO
+    #
+    # Aqui usamos a data de resolução, não a abertura.
+
+    resolvidos_periodo_qs = qs.filter(
+        resolvido_em__isnull=False,
+        resolvido_em__gte=inicio_periodo,
+        resolvido_em__lte=agora,
+    )
+
+    resolvidos_periodo = (
+        resolvidos_periodo_qs.count()
+    )
+
+    # PRIMEIRA RESPOSTA
+
+    tempos_primeira_resposta = []
+
+    for (
+        aberto_em,
+        primeira_resposta_em,
+    ) in chamados_periodo.exclude(
+        primeira_resposta_em__isnull=True
+    ).values_list(
+        'aberto_em',
+        'primeira_resposta_em',
+    ):
+
+        tempos_primeira_resposta.append(
+            primeira_resposta_em
+            - aberto_em
+        )
+
+    media_primeira_resposta = (
+        _media_duracoes(
+            tempos_primeira_resposta
+        )
+    )
+
+    # TEMPO ATÉ ACEITE
+
+    tempos_aceite = []
+
+    for (
+        aberto_em,
+        aceito_em,
+    ) in chamados_periodo.exclude(
+        aceito_em__isnull=True
+    ).values_list(
+        'aberto_em',
+        'aceito_em',
+    ):
+
+        tempos_aceite.append(
+            aceito_em - aberto_em
+        )
+
+    media_aceite = _media_duracoes(
+        tempos_aceite
+    )
+
+    # TEMPO DE RESOLUÇÃO
+
+    tempos_resolucao = []
+
+    for (
+        aberto_em,
+        resolvido_em,
+    ) in resolvidos_periodo_qs.values_list(
+        'aberto_em',
+        'resolvido_em',
+    ):
+
+        tempos_resolucao.append(
+            resolvido_em - aberto_em
+        )
+
+    media_resolucao = (
+        _media_duracoes(
+            tempos_resolucao
+        )
+    )
+
+    # CATEGORIA DO EQUIPAMENTO
+
+    por_categoria = list(
+        chamados_periodo
+        .exclude(
+            categoria_equipamento=''
+        )
+        .values(
+            'categoria_equipamento'
+        )
+        .annotate(
+            total=Count('id')
+        )
+        .order_by('-total')
+    )
+
+    # BASE
+
+    por_base = list(
+        chamados_periodo
+        .values(
+            'base__nome'
+        )
+        .annotate(
+            total=Count('id')
+        )
+        .order_by('-total')[:10]
+    )
+
+    # IDADE DO BACKLOG
+
+    uma_hora = (
+        agora - timedelta(hours=1)
+    )
+
+    quatro_horas = (
+        agora - timedelta(hours=4)
+    )
+
+    oito_horas = (
+        agora - timedelta(hours=8)
+    )
+
+    vinte_quatro_horas = (
+        agora - timedelta(hours=24)
+    )
+
+    por_idade = [
+        {
+            'faixa': '< 1h',
+            'total': backlog.filter(
+                aberto_em__gte=uma_hora
+            ).count(),
+        },
+        {
+            'faixa': '1–4h',
+            'total': backlog.filter(
+                aberto_em__lt=uma_hora,
+                aberto_em__gte=quatro_horas,
+            ).count(),
+        },
+        {
+            'faixa': '4–8h',
+            'total': backlog.filter(
+                aberto_em__lt=quatro_horas,
+                aberto_em__gte=oito_horas,
+            ).count(),
+        },
+        {
+            'faixa': '8–24h',
+            'total': backlog.filter(
+                aberto_em__lt=oito_horas,
+                aberto_em__gte=vinte_quatro_horas,
+            ).count(),
+        },
+        {
+            'faixa': '> 24h',
+            'total': backlog.filter(
+                aberto_em__lt=vinte_quatro_horas
+            ).count(),
+        },
+    ]
+
+    # CHAMADOS QUE EXIGEM ATENÇÃO
+
+    chamados_atencao = (
+        backlog
+        .filter(
+            Q(
+                prioridade=Chamado.Prioridade.CRITICA
+            )
+            |
+            Q(
+                prazo_sla_em__lt=agora
+            )
+        )
+        .select_related(
+            'base',
+            'equipamento__produto',
+            'atendente',
+        )
+        .order_by(
+            'prazo_sla_em',
+            'aberto_em',
+        )[:8]
+    )
+
+    # RENDER
+
+    return render(
+        request,
+        'chamados/dashboard.html',
+        {
+            # Período
+            'periodo': periodo,
+            'periodo_label': periodo_label,
+
+            # Situação atual
+            'aguardando': aguardando,
+            'em_atendimento': em_atendimento,
+            'sla_vencido': sla_vencido,
+            'criticos': criticos,
+
+            # Desempenho
+            'media_primeira_resposta':
+                _formatar_tempo(
+                    media_primeira_resposta
+                ),
+
+            'media_aceite':
+                _formatar_tempo(
+                    media_aceite
+                ),
+
+            'media_resolucao':
+                _formatar_tempo(
+                    media_resolucao
+                ),
+
+            'resolvidos_periodo':
+                resolvidos_periodo,
+
+            # Gráficos
+            'por_categoria': por_categoria,
+            'por_base': por_base,
+            'por_idade': por_idade,
+
+            # Atenção
+            'chamados_atencao':
+                chamados_atencao,
+        },
+    )
 
 @login_required
 def exportar(request):

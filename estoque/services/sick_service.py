@@ -151,6 +151,8 @@ class SickService:
                 'Usuário sem acesso à base do equipamento.'
             )
 
+        return perfil
+
     @classmethod
     def _validar_acesso_sick(cls, usuario, sick):
         if sick.tipo_destino != Sick.TipoDestino.TERCEIRIZADA:

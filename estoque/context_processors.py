@@ -1,6 +1,6 @@
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
-from estoque.permissions import pode_realizar_manutencao_sick
+from estoque.permissions import pode_gerenciar_sick, pode_realizar_manutencao_sick
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.services.comunicado_service import ComunicadoService
 from .models import (
@@ -184,9 +184,11 @@ def permissoes_especiais(request):
         from chamados.policies import ChamadoAccessPolicy
         compras_restrito = ComprasAccessPolicy.restrito(request.user)
         perfil = request.user.perfil
+        username = request.user.get_username().strip().lower()
         return {
             'pode_realizar_manutencao_sick':
                 pode_realizar_manutencao_sick(request.user),
+            'pode_gerenciar_sick': pode_gerenciar_sick(request.user),
             'pode_visualizar_valores':
                 ComprasAccessPolicy.pode_visualizar_valores(request.user),
             'pode_editar_precos':
@@ -207,10 +209,25 @@ def permissoes_especiais(request):
                 )
             ),
             'pode_atender_chamados': ChamadoAccessPolicy.pode_atender(request.user),
+            'pode_criar_chamado': bool(
+                ChamadoAccessPolicy.bases(request.user).exists()
+                and not ChamadoAccessPolicy.e_admin(request.user)
+            ),
+            'pode_dashboard_chamados': ChamadoAccessPolicy.pode_dashboard(request.user),
+            'pode_ver_os_operacionais': bool(
+                perfil.is_admin or perfil.is_gestor or
+                username in {'rafael.ribeiro', 'jose.barboza'}
+            ),
+            'operador_restrito': bool(
+                perfil.is_operador
+                and not perfil.is_funcional_global
+                and username not in {'rafael.ribeiro', 'jose.barboza'}
+            ),
         }
 
     return {
         'pode_realizar_manutencao_sick': False,
+        'pode_gerenciar_sick': False,
         'pode_visualizar_valores': False,
         'pode_editar_precos': False,
         'pode_gerenciar_fornecedores': False,
@@ -219,4 +236,8 @@ def permissoes_especiais(request):
         'compras_restrito': False,
         'pode_visualizar_saude_estoque': False,
         'pode_atender_chamados': False,
+        'pode_criar_chamado': False,
+        'pode_dashboard_chamados': False,
+        'pode_ver_os_operacionais': False,
+        'operador_restrito': False,
     }

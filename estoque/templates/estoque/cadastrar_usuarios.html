@@ -64,6 +64,18 @@
                                         <label class="form-check-label small" for="is_active">{% trans "Usuario ativo" %}</label>
                                     </div>
                                 </div>
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap gap-4 border rounded p-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="usuario_suporte" id="usuario_suporte">
+                                            <label class="form-check-label small" for="usuario_suporte">{% trans "Suporte tecnico" %}</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="usuario_sick" id="usuario_sick">
+                                            <label class="form-check-label small" for="usuario_sick">{% trans "Operador SICK" %}</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </section>
 
@@ -253,6 +265,8 @@
                                         data-telefone="{{ usuario.perfil.telefone }}"
                                         data-telefone-alternativo="{{ usuario.perfil.telefone_alternativo }}"
                                         data-active="{% if usuario.is_active %}1{% else %}0{% endif %}"
+                                        data-suporte="{% for grupo in usuario.groups.all %}{% if grupo.name == 'CHAMADOS_SUPORTE' %}1{% endif %}{% endfor %}"
+                                        data-sick="{% for grupo in usuario.groups.all %}{% if grupo.name == 'SICK_GERENCIAR' %}1{% endif %}{% endfor %}"
                                         data-regionais="{% for base in usuario.perfil.regionais.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
                                         data-bases-checklist="{% for base in usuario.perfil.bases_checklist.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                                         <td>
@@ -285,6 +299,10 @@
                                             {% if not usuario.is_active %}
                                                 <span class="badge text-bg-warning border">{% trans "Inativo" %}</span>
                                             {% endif %}
+                                            {% for grupo in usuario.groups.all %}
+                                                {% if grupo.name == 'CHAMADOS_SUPORTE' %}<span class="badge text-bg-primary">{% trans "Suporte" %}</span>{% endif %}
+                                                {% if grupo.name == 'SICK_GERENCIAR' %}<span class="badge text-bg-danger">SICK</span>{% endif %}
+                                            {% endfor %}
                                         </td>
                                         <td>
                                             {% if usuario.perfil.telefone %}
@@ -454,6 +472,8 @@ document.addEventListener('DOMContentLoaded', function () {
         form.reset();
         usuarioId.value = '';
         active.checked = true;
+        document.getElementById('usuario_suporte').checked = false;
+        document.getElementById('usuario_sick').checked = false;
         checkboxes.forEach(cb => cb.checked = false);
         checkboxesChecklist.forEach(cb => cb.checked = false);
         setModoEdicao(false);
@@ -472,6 +492,8 @@ document.addEventListener('DOMContentLoaded', function () {
         role.value = row.dataset.perfilAcesso || 'operador';
         empresa.value = row.dataset.empresa || '';
         active.checked = row.dataset.active === '1';
+        document.getElementById('usuario_suporte').checked = row.dataset.suporte === '1';
+        document.getElementById('usuario_sick').checked = row.dataset.sick === '1';
         senha.value = '';
         checkboxes.forEach(cb => cb.checked = false);
         checkboxesChecklist.forEach(cb => cb.checked = false);

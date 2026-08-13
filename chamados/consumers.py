@@ -1,10 +1,52 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.utils import timezone
 
-from chamados.models import Chamado
+from chamados.models import Chamado, ChamadoConexaoAtendente
 from chamados.policies import ChamadoAccessPolicy
 from chamados.services import ChamadoService
+
+
+class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
+    """Mantem a presenca de atendentes autenticados enquanto a aplicacao esta aberta."""
+
+    async def connect(self):
+        user = self.scope.get('user')
+        if not user or not user.is_authenticated or not await self._pode_atender():
+            await self.close(code=4403)
+            return
+        await self._registrar_presenca()
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self._remover_presenca()
+
+    async def receive_json(self, content, **kwargs):
+        if content.get('tipo') == 'ping':
+            await self._atualizar_presenca()
+            await self.send_json({'tipo': 'pong'})
+
+    @database_sync_to_async
+    def _pode_atender(self):
+        return ChamadoAccessPolicy.pode_atender(self.scope['user'])
+
+    @database_sync_to_async
+    def _registrar_presenca(self):
+        ChamadoConexaoAtendente.objects.update_or_create(
+            canal=self.channel_name,
+            defaults={'usuario': self.scope['user']},
+        )
+
+    @database_sync_to_async
+    def _atualizar_presenca(self):
+        ChamadoConexaoAtendente.objects.filter(canal=self.channel_name).update(
+            visto_em=timezone.now(),
+        )
+
+    @database_sync_to_async
+    def _remover_presenca(self):
+        ChamadoConexaoAtendente.objects.filter(canal=self.channel_name).delete()
 
 
 class ChamadoChatConsumer(AsyncJsonWebsocketConsumer):

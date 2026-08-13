@@ -7,7 +7,18 @@ from ordens_servico.models import OrdemServico
 class OrdemServicoAccessPolicy:
     @staticmethod
     def queryset(user):
-        if not user or not user.is_authenticated or ComprasAccessPolicy.restrito(user):
+        if not user or not user.is_authenticated:
+            return OrdemServico.objects.none()
+        username = user.get_username().strip().lower()
+        if username == 'rafael.ribeiro':
+            return OrdemServico.objects.filter(tipo=OrdemServico.Tipo.SICK)
+        if username == 'jose.barboza':
+            return OrdemServico.objects.filter(tipo__in=[
+                OrdemServico.Tipo.TRANSFERENCIA,
+                OrdemServico.Tipo.EMPRESTIMO,
+                OrdemServico.Tipo.SICK,
+            ])
+        if ComprasAccessPolicy.restrito(user):
             return OrdemServico.objects.none()
         perfil = getattr(user, 'perfil', None)
         if not perfil:

@@ -1,14 +1,512 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Novo chamado{% endblock %}
+{% load i18n %}
+
+{% block title %}{% trans "Novo chamado" %}{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center"><div class="col-xl-9">
-  <div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h3 mb-1">Novo chamado</h1><p class="text-secondary mb-0">Descreva o problema com informações suficientes para o atendimento.</p></div><a class="btn btn-outline-secondary" href="{% url 'chamados:lista' %}">Voltar</a></div>
-  <form method="post" class="card card-body">{% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-    <div class="row g-3">
-      {% for field in form %}<div class="{% if field.name == 'descricao' or field.name == 'titulo' %}col-12{% else %}col-md-6{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}</div>{% endfor %}
+
+<div class="row justify-content-center">
+  <div class="col-xl-9">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h1 class="h3 mb-1">{% trans "Novo chamado" %}</h1>
+        <p class="text-secondary mb-0">
+          {% trans "Registre um problema relacionado ao inventario em andamento." %}
+        </p>
+      </div>
+
+      <a
+        class="btn btn-outline-secondary"
+        href="{% url 'chamados:lista' %}"
+      >
+        {% trans "Voltar" %}
+      </a>
     </div>
-    <div class="d-flex justify-content-end mt-4"><button class="btn btn-primary"><i class="bi bi-send"></i> Abrir chamado</button></div>
-  </form>
-</div></div>
+
+    <div class="alert alert-info" role="status">
+      <strong>{% trans "Atendentes on-line:" %}</strong>
+      {% for atendente in atendentes_online %}
+        {{ atendente.get_full_name|default:atendente.username }}{% if not forloop.last %}, {% endif %}
+      {% empty %}
+        nenhum atendente estÃ¡ on-line neste momento. O chamado ainda poderÃ¡ ser registrado.
+      {% endfor %}
+    </div>
+
+    <form method="post" class="card card-body">
+
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <!-- CONTEXTO DO CHAMADO -->
+      <div class="row g-3 mb-4">
+
+        <div class="col-md-6">
+          <label class="form-label">
+            {% trans "Data" %}
+          </label>
+
+          <input
+            type="text"
+            class="form-control"
+            value="{{ hoje|date:'d/m/Y' }}"
+            disabled
+          >
+        </div>
+
+        <div class="col-md-6">
+          <label
+            class="form-label"
+            for="{{ form.base.id_for_label }}"
+          >
+            {{ form.base.label }}
+          </label>
+
+          {{ form.base }}
+
+          {% for error in form.base.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6">
+          <label
+            class="form-label"
+            for="{{ form.inventario.id_for_label }}"
+          >
+            {% trans "Inventario" %}
+          </label>
+
+          {{ form.inventario }}
+
+          {% for error in form.inventario.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+
+          <div class="form-text">
+            {% trans "Somente inventarios de hoje e em andamento sao exibidos." %}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label
+            class="form-label"
+            for="{{ form.lider.id_for_label }}"
+          >
+            {% trans "Lider" %}
+          </label>
+
+          {{ form.lider }}
+
+          {% for error in form.lider.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+
+          <div class="form-text">
+            {% trans "Preenchido automaticamente pelo inventario. Pode ser alterado se necessario." %}
+          </div>
+        </div>
+
+      </div>
+
+      <hr>
+
+      <!-- DADOS DO PROBLEMA -->
+      <div class="row g-3 mt-1">
+
+        <div class="col-md-6">
+          <label
+            class="form-label"
+            for="{{ form.categoria_equipamento.id_for_label }}"
+          >
+            {% trans "Categoria" %}
+          </label>
+
+          {{ form.categoria_equipamento }}
+
+          {% for error in form.categoria_equipamento.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+
+          <div class="form-text">
+            {% trans "Selecione Sistema para software ou a categoria do equipamento fisico." %}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label
+            class="form-label"
+            for="{{ form.equipamento.id_for_label }}"
+          >
+            {% trans "Equipamento" %}
+          </label>
+
+          {{ form.equipamento }}
+
+          {% for error in form.equipamento.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+
+          <div class="form-text">
+            {% trans "Obrigatorio para categorias fisicas; opcional para Sistema." %}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label
+            class="form-label"
+            for="{{ form.prioridade.id_for_label }}"
+          >
+            {% trans "Prioridade" %}
+          </label>
+
+          {{ form.prioridade }}
+
+          {% for error in form.prioridade.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="col-12">
+          <label
+            class="form-label"
+            for="{{ form.titulo.id_for_label }}"
+          >
+            {% trans "Titulo" %}
+          </label>
+
+          {{ form.titulo }}
+
+          {% for error in form.titulo.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="col-12">
+          <label
+            class="form-label"
+            for="{{ form.descricao.id_for_label }}"
+          >
+            {% trans "Descricao" %}
+          </label>
+
+          {{ form.descricao }}
+
+          {% for error in form.descricao.errors %}
+            <div class="text-danger small">
+              {{ error }}
+            </div>
+          {% endfor %}
+        </div>
+
+      </div>
+
+      <div class="d-flex justify-content-end mt-4">
+        <button class="btn btn-primary">
+          <i class="bi bi-send"></i>
+          {% trans "Abrir chamado" %}
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+{{ inventarios_contexto|json_script:"inventarios-contexto" }}
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // =================================================
+    // LÍDER DO INVENTÁRIO
+    // =================================================
+
+    const inventarioSelect =
+        document.getElementById(
+            '{{ form.inventario.id_for_label }}'
+        );
+
+    const liderInput =
+        document.getElementById(
+            '{{ form.lider.id_for_label }}'
+        );
+
+    const dadosElement =
+        document.getElementById(
+            'inventarios-contexto'
+        );
+
+    if (
+        inventarioSelect &&
+        liderInput &&
+        dadosElement
+    ) {
+        const inventarios =
+            JSON.parse(
+                dadosElement.textContent
+            );
+
+        function atualizarLider() {
+
+            const inventarioId =
+                inventarioSelect.value;
+
+            if (!inventarioId) {
+                return;
+            }
+
+            const dados =
+                inventarios[inventarioId];
+
+            if (!dados) {
+                return;
+            }
+
+            liderInput.value =
+                dados.lider || '';
+        }
+
+        inventarioSelect.addEventListener(
+            'change',
+            atualizarLider
+        );
+
+        if (
+            inventarioSelect.value &&
+            !liderInput.value
+        ) {
+            atualizarLider();
+        }
+    }
+
+
+    // =================================================
+    // EQUIPAMENTOS POR CATEGORIA
+    // =================================================
+
+    const categoriaSelect =
+        document.getElementById(
+            '{{ form.categoria_equipamento.id_for_label }}'
+        );
+
+    const equipamentoSelect =
+        document.getElementById(
+            '{{ form.equipamento.id_for_label }}'
+        );
+
+    const baseSelect =
+        document.getElementById(
+            '{{ form.base.id_for_label }}'
+        );
+
+    if (
+        categoriaSelect &&
+        equipamentoSelect &&
+        baseSelect
+    ) {
+
+        const endpointEquipamentos =
+            "{% url 'chamados:equipamentos_por_categoria' %}";
+
+        async function carregarEquipamentos() {
+
+            const categoria =
+                categoriaSelect.value;
+
+            const base =
+                baseSelect.value;
+
+            equipamentoSelect.innerHTML = '';
+
+            const opcaoInicial =
+                document.createElement('option');
+
+            opcaoInicial.value = '';
+
+            if (!categoria) {
+
+                opcaoInicial.textContent =
+                    'Selecione primeiro uma categoria';
+
+                equipamentoSelect.appendChild(
+                    opcaoInicial
+                );
+
+                equipamentoSelect.disabled = true;
+
+                return;
+            }
+
+            if (categoria === 'Sistema') {
+                opcaoInicial.textContent =
+                    'Não se aplica — chamado de software';
+                equipamentoSelect.appendChild(opcaoInicial);
+                equipamentoSelect.disabled = true;
+                return;
+            }
+
+            opcaoInicial.textContent =
+                'Carregando equipamentos...';
+
+            equipamentoSelect.appendChild(
+                opcaoInicial
+            );
+
+            equipamentoSelect.disabled = true;
+
+            try {
+
+                const parametros =
+                    new URLSearchParams({
+                        categoria: categoria,
+                        base: base,
+                    });
+
+                const resposta =
+                    await fetch(
+                        `${endpointEquipamentos}?${parametros.toString()}`
+                    );
+
+                const dados =
+                    await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        dados.erro
+                        || 'Erro ao carregar equipamentos.'
+                    );
+                }
+
+                equipamentoSelect.innerHTML = '';
+
+                const selecione =
+                    document.createElement('option');
+
+                selecione.value = '';
+
+                if (
+                    !dados.equipamentos
+                    || dados.equipamentos.length === 0
+                ) {
+                    selecione.textContent =
+                        'Nenhum equipamento encontrado';
+
+                    equipamentoSelect.appendChild(
+                        selecione
+                    );
+
+                    equipamentoSelect.disabled = true;
+
+                    return;
+                }
+
+                selecione.textContent =
+                    'Selecione um equipamento';
+
+                equipamentoSelect.appendChild(
+                    selecione
+                );
+
+                dados.equipamentos.forEach(
+                    function (equipamento) {
+
+                        const option =
+                            document.createElement(
+                                'option'
+                            );
+
+                        option.value =
+                            equipamento.id;
+
+                        option.textContent =
+                            equipamento.texto;
+
+                        equipamentoSelect.appendChild(
+                            option
+                        );
+                    }
+                );
+
+                equipamentoSelect.disabled = false;
+
+            } catch (erro) {
+
+                console.error(erro);
+
+                equipamentoSelect.innerHTML = '';
+
+                const option =
+                    document.createElement('option');
+
+                option.value = '';
+
+                option.textContent =
+                    'Erro ao carregar equipamentos';
+
+                equipamentoSelect.appendChild(
+                    option
+                );
+
+                equipamentoSelect.disabled = true;
+            }
+        }
+
+        categoriaSelect.addEventListener(
+            'change',
+            carregarEquipamentos
+        );
+
+        baseSelect.addEventListener(
+            'change',
+            carregarEquipamentos
+        );
+
+        if (!categoriaSelect.value) {
+
+            equipamentoSelect.innerHTML = '';
+
+            const option =
+                document.createElement('option');
+
+            option.value = '';
+
+            option.textContent =
+                'Selecione primeiro uma categoria';
+
+            equipamentoSelect.appendChild(
+                option
+            );
+
+            equipamentoSelect.disabled = true;
+        }
+    }
+
+});
+</script>
+
 {% endblock %}

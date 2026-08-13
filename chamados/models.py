@@ -2,14 +2,13 @@ from datetime import timedelta
 from pathlib import Path
 import re
 import unicodedata
-
+from estoque.models import Base, Empresa, Equipamento, Produto, Sick
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
-
-from estoque.models import Base, Empresa, Equipamento, Sick
+from django.utils.translation import gettext_lazy as _
 
 
 MIMES_ANEXO_PERMITIDOS = {
@@ -130,37 +129,42 @@ class InventarioLiderHistorico(models.Model):
 
 
 class Chamado(models.Model):
+    class MomentoInventario(models.TextChoices):
+        ANTES = 'ANTES', _('Antes do inventario')
+        EM_ANDAMENTO = 'EM_ANDAMENTO', _('Inventario em andamento')
+
     class Prioridade(models.TextChoices):
-        BAIXA = 'BAIXA', 'Baixa'
-        NORMAL = 'NORMAL', 'Normal'
-        ALTA = 'ALTA', 'Alta'
-        CRITICA = 'CRITICA', 'Crítica'
+        BAIXA = 'BAIXA', _('Baixa')
+        NORMAL = 'NORMAL', _('Normal')
+        ALTA = 'ALTA', _('Alta')
+        CRITICA = 'CRITICA', _('Crítica')
 
     class Status(models.TextChoices):
-        ABERTO = 'ABERTO', 'Aberto'
-        AGUARDANDO_ATENDIMENTO = 'AGUARDANDO_ATENDIMENTO', 'Aguardando atendimento'
-        EM_ATENDIMENTO = 'EM_ATENDIMENTO', 'Em atendimento'
-        AGUARDANDO_SOLICITANTE = 'AGUARDANDO_SOLICITANTE', 'Aguardando solicitante'
-        AGUARDANDO_TERCEIRO = 'AGUARDANDO_TERCEIRO', 'Aguardando terceiro'
-        RESOLVIDO = 'RESOLVIDO', 'Resolvido'
-        AVALIACAO = 'AVALIACAO', 'Aguardando avaliação'
-        ENCERRADO = 'ENCERRADO', 'Encerrado'
-        REABERTO = 'REABERTO', 'Reaberto'
-        CANCELADO = 'CANCELADO', 'Cancelado'
+        ABERTO = 'ABERTO', _('Aberto')
+        AGUARDANDO_ATENDIMENTO = 'AGUARDANDO_ATENDIMENTO', _('Aguardando atendimento')
+        EM_ATENDIMENTO = 'EM_ATENDIMENTO', _('Em atendimento')
+        AGUARDANDO_SOLICITANTE = 'AGUARDANDO_SOLICITANTE', _('Aguardando solicitante')
+        AGUARDANDO_TERCEIRO = 'AGUARDANDO_TERCEIRO', _('Aguardando terceiro')
+        RESOLVIDO = 'RESOLVIDO', _('Resolvido')
+        AVALIACAO = 'AVALIACAO', _('Aguardando avaliação')
+        ENCERRADO = 'ENCERRADO', _('Encerrado')
+        REABERTO = 'REABERTO', _('Reaberto')
+        CANCELADO = 'CANCELADO', _('Cancelado')
 
     protocolo = models.CharField(max_length=30, unique=True, editable=False)
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='chamados')
     base = models.ForeignKey(Base, on_delete=models.PROTECT, related_name='chamados')
-    inventario = models.ForeignKey(
-        'insumos.Inventario', null=True, blank=True, on_delete=models.PROTECT,
-        related_name='chamados',
+    inventario = models.ForeignKey('insumos.Inventario', null=True, blank=True, on_delete=models.PROTECT, related_name='chamados')
+    momento_inventario_abertura = models.CharField(
+        max_length=20,
+        choices=MomentoInventario.choices,
+        blank=True,
+        default='',
+        db_index=True,
     )
-    equipamento = models.ForeignKey(
-        Equipamento, null=True, blank=True, on_delete=models.PROTECT, related_name='chamados'
-    )
-    categoria = models.ForeignKey(
-        CategoriaChamado, on_delete=models.PROTECT, related_name='chamados'
-    )
+    categoria_equipamento = models.CharField(max_length=50, choices=Produto.CATEGORIAS, blank=True, db_index=True)
+    equipamento = models.ForeignKey(Equipamento, null=True, blank=True, on_delete=models.PROTECT, related_name='chamados')
+    categoria = models.ForeignKey(CategoriaChamado, null=True, blank=True,  on_delete=models.PROTECT, related_name='chamados')
     loja = models.CharField(max_length=100, blank=True)
     lider = models.CharField(max_length=150, blank=True)
     titulo = models.CharField(max_length=180)
@@ -243,11 +247,18 @@ class Chamado(models.Model):
         )
 
     def definir_prazo_sla(self):
-        if not self.prazo_sla_em and self.categoria_id:
-            self.prazo_sla_em = self.aberto_em + timedelta(hours=self.categoria.sla_horas)
+        if self.prazo_sla_em:
+            return
 
-    def __str__(self):
-        return f'{self.protocolo} - {self.titulo}'
+        sla_horas = 24
+
+        if self.categoria_id:
+            sla_horas = self.categoria.sla_horas
+
+        self.prazo_sla_em = (
+                self.aberto_em
+                + timedelta(hours=sla_horas)
+        )
 
 
 class ChamadoMensagem(models.Model):
@@ -355,3 +366,16 @@ class ChamadoAvaliacao(models.Model):
     comentario = models.TextField(blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
+
+
+class ChamadoConexaoAtendente(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='conexoes_presenca_chamados',
+    )
+    canal = models.CharField(max_length=255, unique=True)
+    conectado_em = models.DateTimeField(auto_now_add=True)
+    visto_em = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['usuario', 'visto_em'])]

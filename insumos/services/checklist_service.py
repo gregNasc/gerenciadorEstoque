@@ -36,9 +36,16 @@ class ChecklistService:
         declaracao_quantidades=None,
         declaracao_dados=None,
     ):
+        agora = timezone.now()
+        inventario = inventario.__class__.objects.select_for_update().get(pk=inventario.pk)
+        if inventario.status == 'FINALIZADO':
+            raise ValidationError('Não é possível criar checklist para inventário finalizado.')
+        inventario.status = 'EM_ANDAMENTO'
+        inventario.inicio_real = inventario.inicio_real or agora
+        inventario.save(update_fields=['status', 'inicio_real'])
         return ChecklistDiario.objects.create(
             inventario=inventario,
-            data_inicio=timezone.now(),
+            data_inicio=agora,
             criado_por=usuario,
             responsavel=responsavel or usuario,
             observacao=observacao,
@@ -614,6 +621,14 @@ class ChecklistService:
         checklist.save(update_fields=[
             'status', 'data_fim', 'finalizado_em', 'finalizado_por'
         ])
+
+        inventario = checklist.inventario.__class__.objects.select_for_update().get(
+            pk=checklist.inventario_id
+        )
+        inventario.status = 'FINALIZADO'
+        inventario.fim_real = agora
+        inventario.data_fim = timezone.localdate()
+        inventario.save(update_fields=['status', 'fim_real', 'data_fim'])
 
         ComunicadoService.checklist_finalizado(checklist, usuario)
 

@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.db.models import Q
+from django.utils import timezone
 
 from chamados.models import Chamado
 from estoque.models import Base
@@ -49,13 +52,14 @@ class ChamadoAccessPolicy:
 
     @classmethod
     def pode_dashboard(cls, user):
-        perfil = cls.perfil(user)
         return bool(
             cls.e_admin(user)
-            or (perfil and perfil.is_gestor)
             or user.has_perm('chamados.visualizar_dashboard_chamado')
             or user.has_perm('chamados.exportar_chamados')
-            or cls._grupo(user, GruposChamados.DASHBOARD, GruposChamados.SUPERVISOR)
+            or cls._grupo(
+                user, GruposChamados.SUPORTE, GruposChamados.DASHBOARD,
+                GruposChamados.SUPERVISOR,
+            )
         )
 
     @classmethod
@@ -90,7 +94,13 @@ class ChamadoAccessPolicy:
 
     @classmethod
     def pode_abrir_na_base(cls, user, base):
-        return cls.bases(user).filter(pk=base.pk).exists()
+        perfil = cls.perfil(user)
+        return bool(
+            perfil
+            and not cls.e_admin(user)
+            and (perfil.is_gestor or perfil.is_operador)
+            and cls.bases(user).filter(pk=base.pk).exists()
+        )
 
     @classmethod
     def pode_ver(cls, user, chamado):
@@ -122,6 +132,22 @@ class ChamadoAccessPolicy:
         ).filter(
             Q(perfil__role='admin') | Q(perfil__regionais=chamado.base)
         ).distinct()
+
+    @classmethod
+    def atendentes_online_para(cls, chamado=None):
+        from django.contrib.auth.models import User
+
+        limite = timezone.now() - timedelta(seconds=90)
+        ids = User.objects.filter(
+            conexoes_presenca_chamados__visto_em__gte=limite,
+        ).values_list('pk', flat=True)
+        if chamado is None:
+            return User.objects.filter(pk__in=ids, is_active=True).filter(
+                Q(perfil__role='admin')
+                | Q(groups__name__in=[GruposChamados.SUPORTE, GruposChamados.SUPERVISOR])
+                | Q(user_permissions__codename='atender_chamado')
+            ).distinct()
+        return cls.atendentes_para(chamado).filter(pk__in=ids)
 
     @classmethod
     def pode_converter_sick(cls, user, chamado):

@@ -707,6 +707,8 @@ def gerenciar_usuarios(request):
     from .models import Perfil, Empresa, Base
     from django.db import transaction
     from insumos.constants import GruposInsumos
+    from chamados.policies import GruposChamados
+    from estoque.policies.compras import GruposCorporativos
 
     perfis_acesso = [
         {'value': 'operador', 'label': 'Operador', 'role': Perfil.Role.OPERADOR, 'grupo': '', 'global': False},
@@ -738,6 +740,8 @@ def gerenciar_usuarios(request):
                 telefone = request.POST.get('telefone', '').strip()
                 telefone_alternativo = request.POST.get('telefone_alternativo', '').strip()
                 is_active = request.POST.get('is_active') == 'on'
+                usuario_suporte = request.POST.get('usuario_suporte') == 'on'
+                usuario_sick = request.POST.get('usuario_sick') == 'on'
                 editando = bool(usuario_id)
 
                 if not username:
@@ -843,6 +847,17 @@ def gerenciar_usuarios(request):
                     grupo, _ = Group.objects.get_or_create(name=perfil_config['grupo'])
                     user.groups.add(grupo)
 
+                grupos_funcionais = {
+                    'suporte': Group.objects.get_or_create(name=GruposChamados.SUPORTE)[0],
+                    'dashboard': Group.objects.get_or_create(name=GruposChamados.DASHBOARD)[0],
+                    'sick': Group.objects.get_or_create(name=GruposCorporativos.SICK_GERENCIAR)[0],
+                }
+                user.groups.remove(*grupos_funcionais.values())
+                if usuario_suporte:
+                    user.groups.add(grupos_funcionais['suporte'], grupos_funcionais['dashboard'])
+                if usuario_sick:
+                    user.groups.add(grupos_funcionais['sick'])
+
                 if not acesso_global:
                     perfil.regionais.set(regionais)
                     perfil.bases_checklist.set(bases_checklist)
@@ -866,7 +881,7 @@ def gerenciar_usuarios(request):
         'usuarios': (
             User.objects
             .select_related('perfil', 'perfil__empresa')
-            .prefetch_related('perfil__regionais', 'perfil__bases_checklist')
+            .prefetch_related('perfil__regionais', 'perfil__bases_checklist', 'groups')
             .order_by('first_name', 'username')
         ),
     }
@@ -1341,7 +1356,7 @@ def sick_view(request):
     pode_acessar = (
             perfil.is_admin or
             perfil.is_gestor or
-            perfil.is_operador or
+            pode_gerenciar_sick(request.user) or
             pode_realizar_manutencao_sick(request.user)
     )
 

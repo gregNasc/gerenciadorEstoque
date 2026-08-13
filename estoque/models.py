@@ -230,9 +230,10 @@ class GrupoRegional(models.Model):
 class Produto(models.Model):
 
     CATEGORIAS = [
+        ('Sistema', _('Sistema')),
         ('Coletores', _('Coletores')),
-        ('Impressoras', _('Impressoras')),
         ('Notebooks', _('Notebooks')),
+        ('Impressoras', _('Impressoras')),
         ('Routers', _('Routers')),
     ]
 

@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from compras.models import Aquisicao, ItemAquisicao, RemessaCompra
 from estoque.models import Base, Equipamento, Produto
@@ -25,6 +26,20 @@ class ItemAquisicaoForm(forms.Form):
     desconto = forms.DecimalField(min_value=0, decimal_places=2, initial=0)
     frete = forms.DecimalField(min_value=0, decimal_places=2, initial=0)
     impostos = forms.DecimalField(min_value=0, decimal_places=2, initial=0)
+
+
+class ImportacaoPrecificacaoForm(forms.Form):
+    arquivo = forms.FileField(
+        help_text=_('Planilha XLSX gerada pelo template de precificação.')
+    )
+
+    def clean_arquivo(self):
+        arquivo = self.cleaned_data['arquivo']
+        if not arquivo.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError(_('Envie uma planilha no formato XLSX.'))
+        if arquivo.size > 10 * 1024 * 1024:
+            raise forms.ValidationError(_('A planilha não pode ultrapassar 10 MB.'))
+        return arquivo
 
 
 class RemessaForm(forms.Form):

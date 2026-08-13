@@ -1,14 +1,973 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Dashboard de chamados{% endblock %}
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h3 mb-1">Dashboard de chamados</h1><p class="text-secondary mb-0">Indicadores operacionais no seu escopo de acesso.</p></div><a class="btn btn-outline-secondary" href="{% url 'chamados:lista' %}">Ver chamados</a></div>
-<div class="row g-3 mb-3"><div class="col-md-3"><div class="card card-body"><div class="text-secondary">Total</div><div class="display-6">{{ total }}</div></div></div><div class="col-md-3"><div class="card card-body"><div class="text-secondary">Em aberto</div><div class="display-6 text-primary">{{ abertos }}</div></div></div><div class="col-md-3"><div class="card card-body"><div class="text-secondary">Resolvidos</div><div class="display-6 text-success">{{ resolvidos }}</div></div></div><div class="col-md-3"><div class="card card-body"><div class="text-secondary">SLA vencido</div><div class="display-6 text-danger">{{ sla_vencido }}</div></div></div></div>
-<div class="row g-3"><div class="col-lg-4"><div class="card card-body"><h2 class="h6">Por status</h2><div style="height:300px"><canvas id="statusChart"></canvas></div></div></div><div class="col-lg-4"><div class="card card-body"><h2 class="h6">Por categoria</h2><div style="height:300px"><canvas id="categoriaChart"></canvas></div></div></div><div class="col-lg-4"><div class="card card-body"><h2 class="h6">Por base</h2><div style="height:300px"><canvas id="baseChart"></canvas></div></div></div></div>
-{{ por_status|json_script:'por-status' }}{{ por_categoria|json_script:'por-categoria' }}{{ por_base|json_script:'por-base' }}
+{% load i18n %}
+
+{% block title %}
+{% trans "Dashboard de chamados" %}
 {% endblock %}
-{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script>
-function dados(id,label){const rows=JSON.parse(document.getElementById(id).textContent);return {labels:rows.map(x=>x[label]||'NÃO INFORMADO'),datasets:[{data:rows.map(x=>x.total),backgroundColor:['#2563eb','#16a34a','#f59e0b','#dc2626','#7c3aed','#0891b2','#64748b','#db2777'],borderRadius:5}]};}
-new Chart(document.getElementById('statusChart'),{type:'doughnut',data:dados('por-status','status'),options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
-new Chart(document.getElementById('categoriaChart'),{type:'bar',data:dados('por-categoria','categoria__nome'),options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-new Chart(document.getElementById('baseChart'),{type:'bar',data:dados('por-base','base__nome'),options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-</script>{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  .chamados-dashboard {
+    --dash-border: #e7e9ee;
+    --dash-muted: #6c757d;
+    --dash-soft: #f7f8fa;
+  }
+
+  /* =====================================================
+     HEADER
+     ===================================================== */
+
+  .dashboard-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .dashboard-eyebrow {
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--dash-muted);
+  }
+
+  .dashboard-title {
+    font-weight: 700;
+    letter-spacing: -.025em;
+  }
+
+  /* =====================================================
+     PERÍODO
+     ===================================================== */
+
+  .periodo-selector {
+    display: inline-flex;
+    padding: .25rem;
+    background: #f1f3f5;
+    border-radius: .75rem;
+    gap: .15rem;
+  }
+
+  .periodo-selector .btn {
+    border: 0;
+    border-radius: .55rem;
+    padding: .4rem .8rem;
+    font-size: .82rem;
+  }
+
+  /* =====================================================
+     KPI
+     ===================================================== */
+
+  .dashboard-kpi {
+    height: 100%;
+    border: 1px solid var(--dash-border);
+    border-radius: 1rem;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .dashboard-kpi .card-body {
+    padding: 1.15rem;
+  }
+
+  .dashboard-kpi__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .75rem;
+  }
+
+  .dashboard-kpi__label {
+    color: var(--dash-muted);
+    font-size: .82rem;
+    font-weight: 500;
+  }
+
+  .dashboard-kpi__value {
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 700;
+    margin-top: .6rem;
+    letter-spacing: -.04em;
+  }
+
+  .dashboard-kpi__icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dash-soft);
+    font-size: 1rem;
+  }
+
+  .dashboard-kpi__hint {
+    margin-top: .5rem;
+    color: var(--dash-muted);
+    font-size: .72rem;
+  }
+
+  /* =====================================================
+     SEÇÕES
+     ===================================================== */
+
+  .dashboard-section-title {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--dash-muted);
+    margin-bottom: .75rem;
+  }
+
+  .dashboard-card {
+    border: 1px solid var(--dash-border);
+    border-radius: 1rem;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  .dashboard-card .card-header {
+    background: #fff;
+    border-bottom: 1px solid var(--dash-border);
+    padding: 1rem 1.1rem;
+  }
+
+  .dashboard-card .card-body {
+    padding: 1rem 1.1rem;
+  }
+
+  .dashboard-chart {
+    position: relative;
+    height: 290px;
+  }
+
+  /* =====================================================
+     ATENÇÃO
+     ===================================================== */
+
+  .atencao-item {
+    display: block;
+    padding: .85rem 1rem;
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid #f0f1f3;
+  }
+
+  .atencao-item:last-child {
+    border-bottom: 0;
+  }
+
+  .atencao-item:hover {
+    background: #fafbfc;
+  }
+
+  .atencao-protocolo {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--dash-muted);
+    text-transform: uppercase;
+  }
+
+  .atencao-titulo {
+    font-size: .9rem;
+    font-weight: 600;
+    margin-top: .1rem;
+  }
+
+  .atencao-meta {
+    color: var(--dash-muted);
+    font-size: .76rem;
+    margin-top: .3rem;
+  }
+
+  /* =====================================================
+     RESPONSIVO
+     ===================================================== */
+
+  @media (max-width: 767.98px) {
+    .dashboard-kpi__value {
+      font-size: 1.7rem;
+    }
+
+    .dashboard-chart {
+      height: 250px;
+    }
+  }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container-fluid px-3 px-lg-4 pb-5 chamados-dashboard">
+
+  <!-- ===================================================
+       HEADER
+       =================================================== -->
+
+  <header class="dashboard-header">
+
+    <div
+      class="d-flex flex-wrap justify-content-between align-items-start gap-3"
+    >
+
+      <div>
+
+        <div class="dashboard-eyebrow mb-1">
+          {% trans "Central de atendimento" %}
+        </div>
+
+        <h1 class="h3 dashboard-title mb-1">
+          {% trans "Dashboard de chamados" %}
+        </h1>
+
+        <p class="text-secondary mb-0">
+          {% trans "Situacao atual da operacao e desempenho dos atendimentos." %}
+        </p>
+
+      </div>
+
+
+      <div class="d-flex flex-wrap gap-2">
+
+        <a
+          class="btn btn-outline-secondary"
+          href="{% url 'chamados:lista' %}"
+        >
+          <i class="bi bi-list-ul me-1"></i>
+          {% trans "Ver chamados" %}
+        </a>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- ===================================================
+       SITUAÇÃO ATUAL
+       =================================================== -->
+
+  <div class="dashboard-section-title">
+    {% trans "Situacao atual" %}
+  </div>
+
+
+  <div class="row g-3 mb-4">
+
+    <!-- AGUARDANDO -->
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__header">
+
+            <div class="dashboard-kpi__label">
+              {% trans "Aguardando atendimento" %}
+            </div>
+
+            <div class="dashboard-kpi__icon">
+              <i class="bi bi-hourglass-split"></i>
+            </div>
+
+          </div>
+
+          <div class="dashboard-kpi__value">
+            {{ aguardando }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Chamados ainda nao assumidos." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- EM ATENDIMENTO -->
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__header">
+
+            <div class="dashboard-kpi__label">
+              {% trans "Em atendimento" %}
+            </div>
+
+            <div class="dashboard-kpi__icon">
+              <i class="bi bi-headset"></i>
+            </div>
+
+          </div>
+
+          <div class="dashboard-kpi__value text-primary">
+            {{ em_atendimento }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Atendimento ativo neste momento." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- SLA -->
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__header">
+
+            <div class="dashboard-kpi__label">
+              {% trans "SLA vencido" %}
+            </div>
+
+            <div class="dashboard-kpi__icon">
+              <i class="bi bi-clock-history"></i>
+            </div>
+
+          </div>
+
+          <div class="dashboard-kpi__value text-danger">
+            {{ sla_vencido }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Chamados fora do prazo." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- CRÍTICOS -->
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__header">
+
+            <div class="dashboard-kpi__label">
+              {% trans "Criticos em aberto" %}
+            </div>
+
+            <div class="dashboard-kpi__icon">
+              <i class="bi bi-exclamation-triangle"></i>
+            </div>
+
+          </div>
+
+          <div class="dashboard-kpi__value text-danger">
+            {{ criticos }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Prioridade maxima ainda ativa." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================
+       DESEMPENHO
+       =================================================== -->
+
+  <div
+    class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"
+  >
+
+    <div class="dashboard-section-title mb-0">
+      Desempenho · {{ periodo_label }}
+    </div>
+
+
+    <div class="periodo-selector">
+
+      <a
+        href="?periodo=hoje"
+        class="btn {% if periodo == 'hoje' %}btn-light bg-white shadow-sm{% else %}text-secondary{% endif %}"
+      >
+        {% trans "Hoje" %}
+      </a>
+
+      <a
+        href="?periodo=7d"
+        class="btn {% if periodo == '7d' %}btn-light bg-white shadow-sm{% else %}text-secondary{% endif %}"
+      >
+        7 dias
+      </a>
+
+      <a
+        href="?periodo=30d"
+        class="btn {% if periodo == '30d' %}btn-light bg-white shadow-sm{% else %}text-secondary{% endif %}"
+      >
+        30 dias
+      </a>
+
+    </div>
+
+  </div>
+
+
+  <div class="row g-3 mb-4">
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__label">
+            {% trans "Primeira resposta" %}
+          </div>
+
+          <div class="dashboard-kpi__value">
+            {{ media_primeira_resposta }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Media no periodo." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__label">
+            {% trans "Tempo ate aceite" %}
+          </div>
+
+          <div class="dashboard-kpi__value">
+            {{ media_aceite }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Media ate o atendimento ser assumido." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__label">
+            {% trans "Tempo de resolucao" %}
+          </div>
+
+          <div class="dashboard-kpi__value">
+            {{ media_resolucao }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Media dos resolvidos no periodo." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="col-sm-6 col-xl-3">
+
+      <div class="card dashboard-kpi">
+
+        <div class="card-body">
+
+          <div class="dashboard-kpi__label">
+            {% trans "Resolvidos" %}
+          </div>
+
+          <div class="dashboard-kpi__value text-success">
+            {{ resolvidos_periodo }}
+          </div>
+
+          <div class="dashboard-kpi__hint">
+            {% trans "Finalizados no periodo selecionado." %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================
+       GRÁFICOS
+       =================================================== -->
+
+  <div class="dashboard-section-title">
+    {% trans "Distribuicao" %}
+  </div>
+
+
+  <div class="row g-3 mb-4">
+
+    <!-- CATEGORIA -->
+
+    <div class="col-xl-6">
+
+      <section class="card dashboard-card">
+
+        <div class="card-header">
+
+          <div class="fw-semibold">
+            <i class="bi bi-box-seam me-1"></i>
+            {% trans "Categoria do equipamento" %}
+          </div>
+
+          <small class="text-secondary">
+            Chamados abertos em {{ periodo_label|lower }}.
+          </small>
+
+        </div>
+
+        <div class="card-body">
+
+          <div class="dashboard-chart">
+            <canvas id="categoriaChart"></canvas>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+    <!-- BASE -->
+
+    <div class="col-xl-6">
+
+      <section class="card dashboard-card">
+
+        <div class="card-header">
+
+          <div class="fw-semibold">
+            <i class="bi bi-building me-1"></i>
+            {% trans "Chamados por base" %}
+          </div>
+
+          <small class="text-secondary">
+            {% trans "Bases com maior volume no periodo." %}
+          </small>
+
+        </div>
+
+        <div class="card-body">
+
+          <div class="dashboard-chart">
+            <canvas id="baseChart"></canvas>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================
+       BACKLOG + ATENÇÃO
+       =================================================== -->
+
+  <div class="row g-3">
+
+    <!-- IDADE -->
+
+    <div class="col-xl-5">
+
+      <section class="card dashboard-card">
+
+        <div class="card-header">
+
+          <div class="fw-semibold">
+            <i class="bi bi-hourglass-bottom me-1"></i>
+            {% trans "Idade do backlog" %}
+          </div>
+
+          <small class="text-secondary">
+            {% trans "Ha quanto tempo os chamados ativos estao abertos." %}
+          </small>
+
+        </div>
+
+        <div class="card-body">
+
+          <div class="dashboard-chart">
+            <canvas id="idadeChart"></canvas>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+    <!-- ATENÇÃO -->
+
+    <div class="col-xl-7">
+
+      <section class="card dashboard-card">
+
+        <div class="card-header">
+
+          <div class="fw-semibold">
+            <i class="bi bi-exclamation-circle me-1"></i>
+            {% trans "Exigem atencao" %}
+          </div>
+
+          <small class="text-secondary">
+            {% trans "Chamados criticos ou com SLA vencido." %}
+          </small>
+
+        </div>
+
+
+        {% if chamados_atencao %}
+
+          <div>
+
+            {% for chamado in chamados_atencao %}
+
+              <a
+                href="{% url 'chamados:detalhe' chamado.pk %}"
+                class="atencao-item"
+              >
+
+                <div
+                  class="d-flex justify-content-between align-items-start gap-3"
+                >
+
+                  <div>
+
+                    <div class="atencao-protocolo">
+                      {{ chamado.protocolo }}
+                    </div>
+
+                    <div class="atencao-titulo">
+                      {{ chamado.titulo }}
+                    </div>
+
+                  </div>
+
+
+                  <div class="d-flex gap-1">
+
+                    {% if chamado.prioridade == 'CRITICA' %}
+
+                      <span class="badge text-bg-danger">
+                        {% trans "Critico" %}
+                      </span>
+
+                    {% endif %}
+
+
+                    {% if chamado.sla_vencido %}
+
+                      <span class="badge text-bg-danger">
+                        SLA
+                      </span>
+
+                    {% endif %}
+
+                  </div>
+
+                </div>
+
+
+                <div class="atencao-meta">
+
+                  {{ chamado.base.nome }}
+
+                  {% if chamado.loja %}
+                    · {{ chamado.loja }}
+                  {% endif %}
+
+                  · aberto em
+                  {{ chamado.aberto_em|date:'d/m/Y H:i' }}
+
+                </div>
+
+              </a>
+
+            {% endfor %}
+
+          </div>
+
+        {% else %}
+
+          <div class="card-body text-center py-5">
+
+            <i
+              class="bi bi-check-circle fs-1 text-success d-block mb-2"
+            ></i>
+
+            <div class="fw-semibold">
+              {% trans "Nenhum chamado exige atencao imediata" %}
+            </div>
+
+            <small class="text-secondary">
+              {% trans "Nao ha criticos ou SLAs vencidos no momento." %}
+            </small>
+
+          </div>
+
+        {% endif %}
+
+      </section>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- DADOS DOS GRÁFICOS -->
+
+{{ por_categoria|json_script:'por-categoria' }}
+{{ por_base|json_script:'por-base' }}
+{{ por_idade|json_script:'por-idade' }}
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  function lerDados(id) {
+    const elemento =
+      document.getElementById(id);
+
+    if (!elemento) {
+      return [];
+    }
+
+    return JSON.parse(
+      elemento.textContent
+    );
+  }
+
+
+  // ===================================================
+  // CATEGORIA
+  // ===================================================
+
+  const categorias =
+    lerDados('por-categoria');
+
+  new Chart(
+    document.getElementById(
+      'categoriaChart'
+    ),
+    {
+      type: 'bar',
+
+      data: {
+        labels: categorias.map(
+          item =>
+            item.categoria_equipamento
+            || 'Não informado'
+        ),
+
+        datasets: [{
+          data: categorias.map(
+            item => item.total
+          ),
+          backgroundColor: '#2563eb',
+          borderRadius: 6,
+        }],
+      },
+
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            display: false,
+          },
+        },
+
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0,
+            },
+          },
+        },
+      },
+    }
+  );
+
+
+  // ===================================================
+  // BASE
+  // ===================================================
+
+  const bases =
+    lerDados('por-base');
+
+  new Chart(
+    document.getElementById(
+      'baseChart'
+    ),
+    {
+      type: 'bar',
+
+      data: {
+        labels: bases.map(
+          item =>
+            item.base__nome
+            || 'Não informado'
+        ),
+
+        datasets: [{
+          data: bases.map(
+            item => item.total
+          ),
+          backgroundColor: '#64748b',
+          borderRadius: 6,
+        }],
+      },
+
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            display: false,
+          },
+        },
+
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0,
+            },
+          },
+        },
+      },
+    }
+  );
+
+
+  // ===================================================
+  // IDADE DO BACKLOG
+  // ===================================================
+
+  const idades =
+    lerDados('por-idade');
+
+  new Chart(
+    document.getElementById(
+      'idadeChart'
+    ),
+    {
+      type: 'bar',
+
+      data: {
+        labels: idades.map(
+          item => item.faixa
+        ),
+
+        datasets: [{
+          data: idades.map(
+            item => item.total
+          ),
+          backgroundColor: '#dc2626',
+          borderRadius: 6,
+        }],
+      },
+
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            display: false,
+          },
+        },
+
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0,
+            },
+          },
+        },
+      },
+    }
+  );
+
+});
+</script>
+
+{% endblock %}
