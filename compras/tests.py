@@ -203,6 +203,99 @@ class ComprasRemessasTests(TestCase):
             1,
         )
 
+    def test_importacao_ignora_linha_sem_alteracao_mesmo_sem_motivo(self):
+        equipamento = Equipamento.objects.create(
+            produto=self.produto, numero_serie='SERIE-SEM-ALTERACAO',
+            patrimonio='PAT-SEM-ALTERACAO', regional=self.base,
+            codigo='EQP-SEM-ALTERACAO', preco_referencia=Decimal('900'),
+            origem_valor=Equipamento.OrigemValor.INFORMADO_COMPRAS,
+        )
+        workbook = Workbook()
+        planilha = workbook.active
+        planilha.append([
+            'EQUIPAMENTO_ID', 'CUSTO_AQUISICAO', 'PRECO_REFERENCIA',
+            'ORIGEM_VALOR', 'MOTIVO',
+        ])
+        planilha.append([
+            equipamento.pk, None, 900,
+            Equipamento.OrigemValor.INFORMADO_COMPRAS, '',
+        ])
+        conteudo = BytesIO()
+        workbook.save(conteudo)
+        arquivo = SimpleUploadedFile(
+            'precificacao-sem-alteracao.xlsx', conteudo.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+        self.client.force_login(self.admin)
+        resposta = self.client.post(
+            reverse('compras:importar_precificacao_equipamentos'),
+            {'arquivo': arquivo},
+        )
+
+        self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
+        self.assertFalse(
+            HistoricoValorEquipamento.objects.filter(equipamento=equipamento).exists()
+        )
+
+    def test_importacao_em_lote_atualiza_e_comunica_uma_unica_acao(self):
+        equipamentos = Equipamento.objects.bulk_create([
+            Equipamento(
+                produto=self.produto,
+                numero_serie=f'SERIE-LOTE-{indice:03d}',
+                patrimonio=f'PAT-LOTE-{indice:03d}',
+                regional=self.base,
+                codigo=f'EQP-LOTE-{indice:03d}',
+            )
+            for indice in range(120)
+        ])
+        workbook = Workbook()
+        planilha = workbook.active
+        planilha.append([
+            'EQUIPAMENTO_ID', 'CUSTO_AQUISICAO', 'PRECO_REFERENCIA',
+            'ORIGEM_VALOR', 'MOTIVO',
+        ])
+        for equipamento in equipamentos:
+            planilha.append([
+                equipamento.pk, None, 750,
+                Equipamento.OrigemValor.ESTIMATIVA_MERCADO,
+                'Importação de preço padrão',
+            ])
+        conteudo = BytesIO()
+        workbook.save(conteudo)
+        arquivo = SimpleUploadedFile(
+            'precificacao-em-lote.xlsx', conteudo.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+        self.client.force_login(self.admin)
+        with self.captureOnCommitCallbacks(execute=True):
+            resposta = self.client.post(
+                reverse('compras:importar_precificacao_equipamentos'),
+                {'arquivo': arquivo},
+            )
+
+        self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
+        self.assertEqual(
+            Equipamento.objects.filter(
+                pk__in=[item.pk for item in equipamentos],
+                preco_referencia=Decimal('750'),
+                origem_valor=Equipamento.OrigemValor.ESTIMATIVA_MERCADO,
+            ).count(),
+            120,
+        )
+        self.assertEqual(
+            HistoricoValorEquipamento.objects.filter(
+                equipamento_id__in=[item.pk for item in equipamentos]
+            ).count(),
+            120,
+        )
+        comunicados = Comunicado.objects.filter(
+            dados__acao='VALORES_ATUALIZADOS_EM_LOTE'
+        )
+        self.assertEqual(comunicados.count(), 1)
+        self.assertEqual(comunicados.get().dados['quantidade'], 120)
+
     def test_paginas_financeiras_e_badge_para_admins_e_envolvidos(self):
         self._aquisicao(1)
         self.client.force_login(self.admin)

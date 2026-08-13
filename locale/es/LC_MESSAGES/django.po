@@ -1230,6 +1230,14 @@ msgstr "Línea %(numero)s: EQUIPAMENTO_ID debe ser un número entero."
 
 #, python-format
 msgid ""
+"Linha %(numero)s: EQUIPAMENTO_ID duplicado; primeira ocorrência na linha "
+"%(linha_anterior)s."
+msgstr ""
+"Línea %(numero)s: EQUIPAMENTO_ID duplicado; primera aparición en la línea "
+"%(linha_anterior)s."
+
+#, python-format
+msgid ""
 "Linha %(numero)s: equipamento inexistente ou fora do seu escopo autorizado."
 msgstr "Línea %(numero)s: equipo inexistente o fuera de su alcance autorizado."
 
@@ -1242,8 +1250,43 @@ msgid "Linha %(numero)s: origem de valor inválida."
 msgstr "Línea %(numero)s: origen de valor no válido."
 
 #, python-format
+msgid "Linha %(numero)s: custo ou preço de referência inválido."
+msgstr "Línea %(numero)s: coste o precio de referencia no válido."
+
+#, python-format
+msgid "Linha %(numero)s: valores não podem ser negativos."
+msgstr "Línea %(numero)s: los valores no pueden ser negativos."
+
+msgid "Há equipamentos inexistentes ou fora do escopo autorizado."
+msgstr "Hay equipos inexistentes o fuera del alcance autorizado."
+
+#, python-format
 msgid "%(quantidade)s equipamento(s) precificado(s) com sucesso."
 msgstr "%(quantidade)s equipo(s) valorado(s) correctamente."
+
+#, python-format
+msgid ""
+"%(quantidade)s equipamento(s) precificado(s) com sucesso; %(ignorados)s "
+"linha(s) sem alteração foram ignoradas."
+msgstr ""
+"%(quantidade)s equipo(s) valorado(s) correctamente; se ignoraron "
+"%(ignorados)s línea(s) sin cambios."
+
+#, python-format
+msgid "Nenhum valor foi alterado; %(ignorados)s linha(s) já estavam atualizadas."
+msgstr "No se modificó ningún valor; %(ignorados)s línea(s) ya estaban actualizadas."
+
+#, python-format
+msgid "Valores de %(quantidade)s equipamentos atualizados"
+msgstr "Valores de %(quantidade)s equipos actualizados"
+
+#, python-format
+msgid ""
+"A importação de precificação atualizou %(quantidade)s equipamento(s) e "
+"ignorou %(ignorados)s linha(s) sem alteração."
+msgstr ""
+"La importación de precios actualizó %(quantidade)s equipo(s) e ignoró "
+"%(ignorados)s línea(s) sin cambios."
 
 msgid "Novo item incluído no catálogo e disponibilizado nos filtros."
 msgstr "Nuevo artículo incluido en el catálogo y disponible en los filtros."

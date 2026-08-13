@@ -1,8 +1,9 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from compras.models import (
     Aquisicao,
@@ -165,6 +166,133 @@ class AquisicaoService:
             url='/compras/valores/equipamentos/',
         ))
         return equipamento
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_valores_equipamentos_em_lote(*, itens, usuario):
+        if not ComprasAccessPolicy.pode_editar_precos(usuario):
+            raise PermissionDenied('Sem permissão para editar valores de equipamentos.')
+        if not itens:
+            return 0, 0
+
+        ids = [item['equipamento_id'] for item in itens]
+        equipamentos = {
+            equipamento.pk: equipamento
+            for equipamento in Equipamento.objects.select_for_update().select_related(
+                'regional__empresa'
+            ).filter(pk__in=ids)
+        }
+        ausentes = [equipamento_id for equipamento_id in ids if equipamento_id not in equipamentos]
+        if ausentes:
+            raise ValidationError(
+                _('Há equipamentos inexistentes ou fora do escopo autorizado.')
+            )
+
+        agora = timezone.now()
+        atualizados = []
+        historicos = []
+        ignorados = 0
+        bases_ids = set()
+        empresas = {}
+
+        for item in itens:
+            equipamento = equipamentos[item['equipamento_id']]
+            try:
+                custo = (
+                    Decimal(str(item['custo']))
+                    if item['custo'] not in (None, '') else None
+                )
+                referencia = (
+                    Decimal(str(item['referencia']))
+                    if item['referencia'] not in (None, '') else None
+                )
+            except (InvalidOperation, TypeError, ValueError) as exc:
+                raise ValidationError(
+                    _('Linha %(numero)s: custo ou preço de referência inválido.') % {
+                        'numero': item['linha'],
+                    }
+                ) from exc
+            if custo is not None and custo < 0 or referencia is not None and referencia < 0:
+                raise ValidationError(
+                    _('Linha %(numero)s: valores não podem ser negativos.') % {
+                        'numero': item['linha'],
+                    }
+                )
+
+            origem = str(item['origem'] or '').strip().upper()
+            if origem not in Equipamento.OrigemValor.values:
+                raise ValidationError(
+                    _('Linha %(numero)s: origem de valor inválida.') % {
+                        'numero': item['linha'],
+                    }
+                )
+            if (
+                equipamento.custo_aquisicao == custo
+                and equipamento.preco_referencia == referencia
+                and equipamento.origem_valor == origem
+            ):
+                ignorados += 1
+                continue
+
+            motivo = str(item['motivo'] or '').strip().upper()
+            if not motivo:
+                raise ValidationError(
+                    _('Linha %(numero)s: informe o motivo da precificação.') % {
+                        'numero': item['linha'],
+                    }
+                )
+            historicos.append(HistoricoValorEquipamento(
+                equipamento=equipamento,
+                custo_anterior=equipamento.custo_aquisicao,
+                custo_novo=custo,
+                referencia_anterior=equipamento.preco_referencia,
+                referencia_nova=referencia,
+                origem_anterior=equipamento.origem_valor,
+                origem_nova=origem,
+                motivo=motivo,
+                alterado_por=usuario,
+            ))
+            equipamento.custo_aquisicao = custo
+            equipamento.preco_referencia = referencia
+            equipamento.origem_valor = origem
+            equipamento.valor_validado_por = usuario
+            equipamento.valor_validado_em = agora
+            equipamento.data_atualizacao = agora
+            atualizados.append(equipamento)
+            bases_ids.add(equipamento.regional_id)
+            empresas[equipamento.regional.empresa_id] = equipamento.regional.empresa
+
+        if not atualizados:
+            return 0, ignorados
+
+        HistoricoValorEquipamento.objects.bulk_create(historicos)
+        Equipamento.objects.bulk_update(atualizados, [
+            'custo_aquisicao', 'preco_referencia', 'origem_valor',
+            'valor_validado_por', 'valor_validado_em', 'data_atualizacao',
+        ])
+        atualizados_ids = [equipamento.pk for equipamento in atualizados]
+        empresa = next(iter(empresas.values())) if len(empresas) == 1 else None
+        quantidade = len(atualizados)
+        transaction.on_commit(lambda: ComunicadoService.criar_acao(
+            titulo=_('Valores de %(quantidade)s equipamentos atualizados') % {
+                'quantidade': quantidade,
+            },
+            mensagem=_(
+                'A importação de precificação atualizou %(quantidade)s equipamento(s) '
+                'e ignorou %(ignorados)s linha(s) sem alteração.'
+            ) % {'quantidade': quantidade, 'ignorados': ignorados},
+            usuario=usuario,
+            bases=list(bases_ids),
+            empresa=empresa,
+            dados={
+                'equipamentos_ids': atualizados_ids,
+                'quantidade': quantidade,
+                'ignorados': ignorados,
+                'acao': 'VALORES_ATUALIZADOS_EM_LOTE',
+            },
+            url='/compras/valores/equipamentos/',
+        ))
+        return quantidade, ignorados
 
 
 class RemessaCompraService:

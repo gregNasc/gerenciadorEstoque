@@ -6,7 +6,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, JsonResponse
@@ -409,7 +408,6 @@ def importar_precificacao_equipamentos(request):
         if any(coluna not in cabecalho for coluna in esperadas):
             raise ValidationError(_('O cabeçalho da planilha não corresponde ao template oficial.'))
         indices = {nome: cabecalho.index(nome) for nome in esperadas}
-        atualizados = 0
         equipamentos_permitidos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
             Equipamento.objects.all()
         )
@@ -417,57 +415,78 @@ def importar_precificacao_equipamentos(request):
             equipamentos_permitidos = equipamentos_permitidos.filter(
                 regional__in=ComprasAccessPolicy.bases(request.user)
             )
-        with transaction.atomic():
-            for numero, linha in enumerate(linhas, start=2):
-                equipamento_id = linha[indices['EQUIPAMENTO_ID']]
-                if not equipamento_id:
-                    continue
-                try:
-                    if isinstance(equipamento_id, bool):
-                        raise ValueError
-                    equipamento_id_convertido = int(equipamento_id)
-                    if isinstance(equipamento_id, float) and not equipamento_id.is_integer():
-                        raise ValueError
-                except (TypeError, ValueError):
-                    raise ValidationError(
-                        _('Linha %(numero)s: EQUIPAMENTO_ID deve ser um número inteiro.') % {
-                            'numero': numero,
-                        }
-                    )
-                equipamento = equipamentos_permitidos.filter(pk=equipamento_id_convertido).first()
-                if not equipamento:
-                    raise ValidationError(_(
-                        'Linha %(numero)s: equipamento inexistente ou fora do seu escopo autorizado.'
-                    ) % {'numero': numero})
-                origem = str(linha[indices['ORIGEM_VALOR']] or '').strip().upper()
-                motivo = str(linha[indices['MOTIVO']] or '').strip()
-                custo = linha[indices['CUSTO_AQUISICAO']]
-                referencia = linha[indices['PRECO_REFERENCIA']]
-                if not motivo:
-                    raise ValidationError(
-                        _('Linha %(numero)s: informe o motivo da precificação.') % {'numero': numero}
-                    )
-                if origem not in Equipamento.OrigemValor.values:
-                    raise ValidationError(
-                        _('Linha %(numero)s: origem de valor inválida.') % {'numero': numero}
-                    )
-                AquisicaoService.atualizar_valor_equipamento(
-                    equipamento=equipamento, usuario=request.user, custo=custo,
-                    referencia=referencia, origem=origem, motivo=motivo,
+        itens_importacao = []
+        linhas_por_id = {}
+        for numero, linha in enumerate(linhas, start=2):
+            equipamento_id = linha[indices['EQUIPAMENTO_ID']]
+            if not equipamento_id:
+                continue
+            try:
+                if isinstance(equipamento_id, bool):
+                    raise ValueError
+                equipamento_id_convertido = int(equipamento_id)
+                if isinstance(equipamento_id, float) and not equipamento_id.is_integer():
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ValidationError(
+                    _('Linha %(numero)s: EQUIPAMENTO_ID deve ser um número inteiro.') % {
+                        'numero': numero,
+                    }
                 )
-                atualizados += 1
+            if equipamento_id_convertido in linhas_por_id:
+                raise ValidationError(_(
+                    'Linha %(numero)s: EQUIPAMENTO_ID duplicado; primeira ocorrência na linha '
+                    '%(linha_anterior)s.'
+                ) % {
+                    'numero': numero,
+                    'linha_anterior': linhas_por_id[equipamento_id_convertido],
+                })
+            linhas_por_id[equipamento_id_convertido] = numero
+            itens_importacao.append({
+                'linha': numero,
+                'equipamento_id': equipamento_id_convertido,
+                'custo': linha[indices['CUSTO_AQUISICAO']],
+                'referencia': linha[indices['PRECO_REFERENCIA']],
+                'origem': linha[indices['ORIGEM_VALOR']],
+                'motivo': linha[indices['MOTIVO']],
+            })
+
+        ids_solicitados = set(linhas_por_id)
+        ids_permitidos = set(
+            equipamentos_permitidos.filter(pk__in=ids_solicitados).values_list('pk', flat=True)
+        )
+        ids_invalidos = ids_solicitados - ids_permitidos
+        if ids_invalidos:
+            primeiro_id = min(ids_invalidos, key=lambda pk: linhas_por_id[pk])
+            raise ValidationError(_(
+                'Linha %(numero)s: equipamento inexistente ou fora do seu escopo autorizado.'
+            ) % {'numero': linhas_por_id[primeiro_id]})
+
+        atualizados, ignorados = AquisicaoService.atualizar_valores_equipamentos_em_lote(
+            itens=itens_importacao,
+            usuario=request.user,
+        )
     except (
         ValidationError, ValueError, TypeError, KeyError, StopIteration,
         BadZipFile, InvalidFileException,
     ) as exc:
         messages.error(request, str(exc))
     else:
-        messages.success(
-            request,
-            _('%(quantidade)s equipamento(s) precificado(s) com sucesso.') % {
-                'quantidade': atualizados,
-            },
-        )
+        if atualizados:
+            messages.success(
+                request,
+                _(
+                    '%(quantidade)s equipamento(s) precificado(s) com sucesso; '
+                    '%(ignorados)s linha(s) sem alteração foram ignoradas.'
+                ) % {'quantidade': atualizados, 'ignorados': ignorados},
+            )
+        else:
+            messages.info(
+                request,
+                _('Nenhum valor foi alterado; %(ignorados)s linha(s) já estavam atualizadas.') % {
+                    'ignorados': ignorados,
+                },
+            )
     return redirect('compras:valores_equipamentos')
 
 

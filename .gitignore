@@ -20,6 +20,8 @@ __pycache__/
 backups/
 dumps/
 exports/
+outputs/
+.codex_tmp/
 test_databases/
 uploads/
 chamados.xlsx
