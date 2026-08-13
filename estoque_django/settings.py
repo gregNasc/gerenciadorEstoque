@@ -44,14 +44,22 @@ if not SECRET_KEY:
     else:
         raise ImproperlyConfigured('SECRET_KEY deve ser configurada fora do modo de desenvolvimento.')
 
-ALLOWED_HOSTS = env_list(
-    'ALLOWED_HOSTS',
-    'localhost,127.0.0.1,[::1]' if DEBUG else '',
+RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+RENDER_EXTERNAL_URL = os.getenv('RENDER_EXTERNAL_URL', '').strip().rstrip('/')
+if not RENDER_EXTERNAL_URL and RENDER_EXTERNAL_HOSTNAME:
+    RENDER_EXTERNAL_URL = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+
+default_allowed_hosts = (
+    ['localhost', '127.0.0.1', '[::1]']
+    if DEBUG
+    else ([RENDER_EXTERNAL_HOSTNAME] if RENDER_EXTERNAL_HOSTNAME else [])
 )
-APP_BASE_URL = os.getenv(
-    'APP_BASE_URL',
-    'http://localhost:8000' if DEBUG else '',
-).strip()
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS') or default_allowed_hosts
+default_app_base_url = 'http://localhost:8000' if DEBUG else RENDER_EXTERNAL_URL
+APP_BASE_URL = (
+    os.getenv('APP_BASE_URL', '').strip().rstrip('/')
+    or default_app_base_url
+)
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured('ALLOWED_HOSTS deve ser configurado em produção.')
 
@@ -359,6 +367,8 @@ LOGGING = {
 #CSRF_USE_SESSIONS = False
 #CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+if not CSRF_TRUSTED_ORIGINS and not DEBUG and RENDER_EXTERNAL_URL:
+    CSRF_TRUSTED_ORIGINS = [RENDER_EXTERNAL_URL]
 CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', not DEBUG)
 SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', not DEBUG)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
