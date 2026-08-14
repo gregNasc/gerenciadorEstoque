@@ -110,15 +110,8 @@ class EquipamentoForm(forms.ModelForm):
             'finalidade',
             'responsavel',
             'foto',
-            'data_aquisicao',
-            'fornecedor',
-            'custo_aquisicao',
-            'preco_referencia',
-            'origem_valor',
-            'condicao_valor',
-            'documento_compra',
-            'garantia_ate',
         ]
+
         widgets = {
             'produto': forms.Select(attrs={'class': 'form-control'}),
             'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
@@ -126,8 +119,6 @@ class EquipamentoForm(forms.ModelForm):
             'regional': forms.Select(attrs={'class': 'form-control'}),
             'finalidade': forms.Select(attrs={'class': 'form-control'}),
             'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
-            'data_aquisicao': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'garantia_ate': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
 
     def __init__(self, *args, user=None, base_selecionada=None, **kwargs):

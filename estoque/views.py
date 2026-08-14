@@ -967,27 +967,29 @@ def verificar_consistencia_api(request):
 
 # ----------------- CADASTRAR PRODUTO -----------------
 @login_required
+@role_required('admin', 'gestor')
 def cadastrar_equipamento_view(request):
-    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
-        raise PermissionDenied('Sem permissao para cadastrar equipamentos.')
     base_selecionada = _base_contexto_usuario(request)
+
     if request.method == 'POST':
         form = EquipamentoForm(
-            request.POST, request.FILES, user=request.user,
+            request.POST,
+            request.FILES,
+            user=request.user,
             base_selecionada=base_selecionada,
         )
+
         if form.is_valid():
             equipamento = form.save(commit=False)
-            if equipamento.custo_aquisicao is not None or equipamento.preco_referencia is not None:
-                equipamento.valor_validado_por = request.user
-                equipamento.valor_validado_em = timezone.now()
             equipamento.save()
+
             Historico.objects.create(
                 equipamento=equipamento,
                 tipo_acao='CRIACAO',
                 usuario=request.user,
                 detalhes={'mensagem': 'Equipamento cadastrado'}
             )
+
             ComunicadoService.criar_acao(
                 titulo=f'Equipamento {equipamento.codigo} cadastrado',
                 mensagem=(
@@ -997,19 +999,33 @@ def cadastrar_equipamento_view(request):
                 usuario=request.user,
                 bases=[equipamento.regional],
                 empresa=equipamento.regional.empresa,
-                dados={'equipamento_id': equipamento.pk, 'acao': 'CADASTRADO'},
+                dados={
+                    'equipamento_id': equipamento.pk,
+                    'acao': 'CADASTRADO'
+                },
                 url=reverse('estoque:estoque'),
             )
 
-            messages.success(request, "Equipamento cadastrado com sucesso.")
+            messages.success(
+                request,
+                "Equipamento cadastrado com sucesso."
+            )
             return redirect('estoque:index')
-    else:
-        form = EquipamentoForm(user=request.user, base_selecionada=base_selecionada)
 
-    return render(request, 'estoque/cadastrar_equipamento.html', {
-        'form': form,
-        'base_selecionada': base_selecionada,
-    })
+    else:
+        form = EquipamentoForm(
+            user=request.user,
+            base_selecionada=base_selecionada
+        )
+
+    return render(
+        request,
+        'estoque/cadastrar_equipamento.html',
+        {
+            'form': form,
+            'base_selecionada': base_selecionada,
+        }
+    )
 
 @login_required
 def produtos_por_categoria(request):
