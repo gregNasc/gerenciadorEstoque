@@ -2,5 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/backups/reference-sistema-chamados" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/backups/worktrees/master-plan" vcs="Git" />
   </component>
 </project>
