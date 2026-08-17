@@ -29,7 +29,7 @@
       {% for atendente in atendentes_online %}
         {{ atendente.get_full_name|default:atendente.username }}{% if not forloop.last %}, {% endif %}
       {% empty %}
-        nenhum atendente estÃ¡ on-line neste momento. O chamado ainda poderÃ¡ ser registrado.
+        nenhum atendente está on-line neste momento. O chamado ainda poderá ser registrado.
       {% endfor %}
     </div>
 
