@@ -153,6 +153,27 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(mensagem.texto, 'REINICIAMOS O EQUIPAMENTO E VALIDAMOS A REDE.')
         self.assertGreaterEqual(chamado.eventos.count(), 4)
 
+    def test_atendente_assume_pelo_formulario_sem_interceptacao_da_avaliacao(self):
+        chamado = self.abrir()
+        self.client.force_login(self.atendente)
+        detalhe_url = reverse('chamados:detalhe', args=[chamado.pk])
+        assumir_url = reverse('chamados:assumir', args=[chamado.pk])
+
+        pagina = self.client.get(detalhe_url)
+
+        self.assertEqual(pagina.status_code, 200)
+        self.assertContains(pagina, 'id="assumir-form"')
+        self.assertContains(pagina, 'id="ativar-alertas-chamados"')
+        self.assertContains(pagina, f'action="{assumir_url}"')
+        self.assertNotContains(pagina, 'id="avaliacao-form"')
+
+        resposta = self.client.post(assumir_url)
+
+        self.assertRedirects(resposta, detalhe_url)
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.atendente, self.atendente)
+        self.assertEqual(chamado.status, Chamado.Status.EM_ATENDIMENTO)
+
     def test_nota_interna_nao_e_exibida_nem_gera_comunicado(self):
         chamado = self.abrir()
         ChamadoService.assumir(chamado, self.atendente)
@@ -198,27 +219,30 @@ class ChamadosIntegracaoTests(TestCase):
             comunicados.values_list('dados__evento_codigo', flat=True),
             ['ABERTURA', 'ENCERRAMENTO', 'NOTA_ATENDIMENTO'],
         )
-        self.assertTrue(all(
-            comunicado.usuarios.filter(pk=self.admin.pk).exists()
-            and comunicado.usuarios.filter(pk=self.solicitante.pk).exists()
-            and comunicado.usuarios.filter(pk=self.atendente.pk).exists()
-            for comunicado in comunicados
-        ))
+        nota = comunicados.get(dados__evento_codigo='NOTA_ATENDIMENTO')
+        self.assertTrue(nota.usuarios.filter(pk=self.admin.pk).exists())
+        self.assertFalse(nota.usuarios.filter(pk=self.solicitante.pk).exists())
+        self.assertFalse(nota.usuarios.filter(pk=self.atendente.pk).exists())
         self.client.force_login(self.solicitante)
         resposta = self.client.get(reverse('chamados:detalhe', args=[chamado.pk]))
-        self.assertEqual(resposta.context['comunicados_nao_lidos'], 3)
-        self.assertContains(resposta, 'Notas dos atendimentos')
+        self.assertEqual(resposta.context['comunicados_nao_lidos'], 2)
+        self.assertNotContains(resposta, 'ATENDIMENTO CONCLUÍDO')
 
     def test_usuario_comum_nao_assume_nem_cria_nota_interna(self):
         chamado = self.abrir()
         with self.assertRaises(PermissionDenied):
             ChamadoService.assumir(chamado, self.solicitante)
+        with self.assertRaises(ValidationError):
+            ChamadoService.adicionar_mensagem(
+                chamado, self.solicitante, 'Mensagem antes do aceite.'
+            )
+        ChamadoService.assumir(chamado, self.atendente)
         with self.assertRaises(PermissionDenied):
             ChamadoService.adicionar_mensagem(
                 chamado, self.solicitante, 'Nota indevida', nota_interna=True
             )
 
-    def test_anexo_com_extensao_nao_permitida_e_bloqueado(self):
+    def test_exe_disfarcado_e_bloqueado(self):
         chamado = self.abrir()
         arquivo = SimpleUploadedFile('programa.exe', b'conteudo', content_type='application/octet-stream')
 
@@ -228,6 +252,28 @@ class ChamadosIntegracaoTests(TestCase):
             )
 
         self.assertFalse(ChamadoAnexo.objects.exists())
+
+    def test_exe_e_rar_validos_sao_armazenados_com_nome_aleatorio(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        exe = SimpleUploadedFile(
+            'ferramenta.exe', b'MZ' + b'\0' * 32,
+            content_type='application/octet-stream',
+        )
+        ChamadoService.adicionar_mensagem(
+            chamado, self.atendente, 'Ferramenta para análise.', anexo=exe,
+        )
+        anexo = ChamadoAnexo.objects.get()
+        self.assertEqual(anexo.nome_original, 'ferramenta.exe')
+        self.assertNotIn('ferramenta', anexo.arquivo.name)
+        rar = SimpleUploadedFile(
+            'evidencias.rar', b'Rar!\x1a\x07\x00' + b'\0' * 32,
+            content_type='application/vnd.rar',
+        )
+        ChamadoService.adicionar_mensagem(
+            chamado, self.atendente, 'Evidências compactadas.', anexo=rar,
+        )
+        self.assertEqual(ChamadoAnexo.objects.count(), 2)
 
     def test_rotas_de_lista_dashboard_e_exportacao_respeitam_perfis(self):
         self.abrir()
@@ -413,6 +459,8 @@ class ChamadoWebSocketTests(TransactionTestCase):
         self.usuario.perfil.role = Perfil.Role.OPERADOR
         self.usuario.perfil.save()
         self.usuario.perfil.regionais.add(self.base)
+        suporte, _ = Group.objects.get_or_create(name=GruposChamados.SUPORTE)
+        self.usuario.groups.add(suporte)
         self.intruso = User.objects.create_user('intruso_ws', password='SenhaForte123!')
         self.intruso.perfil.empresa = self.empresa
         self.intruso.perfil.role = Perfil.Role.OPERADOR
@@ -436,6 +484,7 @@ class ChamadoWebSocketTests(TransactionTestCase):
         )
 
     def test_chat_e_vinculado_ao_chamado_e_respeita_acesso(self):
+        ChamadoService.assumir(self.chamado, self.usuario)
         async def cenario():
             aplicacao = URLRouter(websocket_urlpatterns)
             autorizado = WebsocketCommunicator(

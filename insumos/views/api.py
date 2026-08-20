@@ -5,6 +5,7 @@ from insumos.models import ConsumoInsumo
 from insumos.models import (
     AlteracaoCalendario,
     ChecklistDiario,
+    ChecklistEquipamentoQuantidade,
     Insumo,
     Inventario,
     MovimentacaoInsumo,
@@ -42,7 +43,34 @@ from io import BytesIO
 from pathlib import Path
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.views.decorators.http import require_POST
 from estoque.policies.compras import ComprasAccessPolicy
+
+
+def _permissao_ou_perfil(user, permissao, *roles):
+    perfil = getattr(user, 'perfil', None)
+    return bool(
+        user.is_superuser
+        or user.has_perm(permissao)
+        or (perfil and perfil.role in roles)
+    )
+
+
+def _pode_acessar_checklist(user, checklist):
+    if user.is_superuser:
+        return True
+    perfil = getattr(user, 'perfil', None)
+    if not perfil:
+        return False
+    if perfil.is_admin:
+        return not perfil.empresa_id or checklist.inventario.base.empresa_id == perfil.empresa_id
+    return bool(
+        checklist.inventario.base_id in perfil.regionais_ids
+        and (
+            not perfil.empresa_id
+            or checklist.inventario.base.empresa_id == perfil.empresa_id
+        )
+    )
 
 @login_required
 @role_required('admin', 'gestor', 'operador')
@@ -1094,6 +1122,12 @@ def inventario_detalhes(request, inventario_id):
             if inventario.pessoas is not None
             else None
         ),
+        'saldos_equipamentos': {
+            'router': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Routers'),
+            'coletor': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Coletores'),
+            'notebook': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Notebooks'),
+            'impressora': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Impressoras'),
+        },
     }
     return JsonResponse(data)
 
@@ -1514,6 +1548,10 @@ def exportar_excel(request):
 
 @login_required
 def insumos_por_base(request):
+    if not _permissao_ou_perfil(
+        request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
+    ):
+        raise PermissionDenied
     base_id = request.GET.get('base_id')
     if not base_id:
         return JsonResponse({'insumos': []})
@@ -1717,16 +1755,15 @@ def finalizar_checklist(request, pk):
 
     # Verifica permissão (admin, gestor, ou responsável)
     perfil = request.user.perfil
-    if not perfil.is_admin:
-        if (
-            checklist.inventario.base_id not in perfil.regionais_ids or
-            checklist.inventario.base.empresa_id != perfil.empresa_id
-        ):
-            messages.error(request, 'Voce nao tem acesso a este checklist.')
-            return redirect('insumos:lista_checklists')
-        if not perfil.is_gestor and checklist.responsavel != request.user:
-            messages.error(request, 'Você não tem permissão para finalizar este checklist.')
-            return redirect('insumos:lista_checklists')
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not (
+        _permissao_ou_perfil(
+            request.user, 'insumos.finalizar_checklists', 'admin', 'gestor'
+        )
+        or checklist.responsavel_id == request.user.pk
+    ):
+        raise PermissionDenied
 
     # Verifica se já está finalizado
     if checklist.status == 'FINALIZADO':
@@ -1744,6 +1781,30 @@ def finalizar_checklist(request, pk):
 
     return redirect('insumos:lista_checklists')
 
+
+@login_required
+@require_POST
+def reabrir_checklist(request, pk):
+    checklist = get_object_or_404(
+        ChecklistDiario.objects.select_related(
+            'inventario__base__empresa', 'inventario__cliente'
+        ),
+        pk=pk,
+    )
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not _permissao_ou_perfil(
+        request.user, 'insumos.reabrir_checklists', 'admin'
+    ):
+        raise PermissionDenied
+    try:
+        ChecklistService.reabrir(checklist=checklist, usuario=request.user)
+    except ValueError as exc:
+        messages.error(request, f'Não foi possível reabrir o checklist: {exc}')
+    else:
+        messages.success(request, f'Checklist #{checklist.pk} reaberto com segurança.')
+    return redirect('insumos:checklist_detail', pk=checklist.pk)
+
 @login_required
 def checklist_detail(request, pk):
     checklist = get_object_or_404(
@@ -1756,14 +1817,12 @@ def checklist_detail(request, pk):
     )
 
     perfil = request.user.perfil
-
-    if not perfil.is_admin:
-        if (
-            checklist.inventario.base_id not in perfil.regionais_ids or
-            checklist.inventario.base.empresa_id != perfil.empresa_id
-        ):
-            messages.error(request, 'Você não tem acesso a este checklist.')
-            return redirect('insumos:lista_checklists')
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not _permissao_ou_perfil(
+        request.user, 'insumos.visualizar_checklists', 'admin', 'gestor', 'operador'
+    ):
+        raise PermissionDenied
 
     equipamentos_checklist = list(
         checklist.equipamentos_utilizados
@@ -1782,7 +1841,22 @@ def checklist_detail(request, pk):
         chave = categoria.lower().replace(' ', '_')
         equipamentos_por_categoria[chave].append(item_equip)
 
+    quantitativos = list(
+        checklist.equipamentos_quantitativos.order_by('categoria')
+    )
+    quantitativos_por_chave = {
+        registro.categoria.lower().replace(' ', '_'): registro
+        for registro in quantitativos
+    }
+
     if request.method == 'POST':
+        if not (
+            _permissao_ou_perfil(
+                request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
+            )
+            or checklist.responsavel_id == request.user.pk
+        ):
+            raise PermissionDenied
         if checklist.status == 'FINALIZADO':
             messages.warning(request, 'Este checklist já foi finalizado.')
             return redirect('insumos:checklist_detail', pk=checklist.pk)
@@ -1817,7 +1891,12 @@ def checklist_detail(request, pk):
                             'Quantidade retornada de equipamentos inválida.'
                         )
 
-                    quantidade_enviada = len(itens_categoria)
+                    registro_quantitativo = quantitativos_por_chave.get(chave)
+                    quantidade_enviada = (
+                        registro_quantitativo.quantidade_enviada
+                        if registro_quantitativo
+                        else len(itens_categoria)
+                    )
 
                     if quantidade_retornada < 0 or quantidade_retornada > quantidade_enviada:
                         raise ValueError(
@@ -1832,7 +1911,7 @@ def checklist_detail(request, pk):
 
                     quantidade_divergente = quantidade_enviada - quantidade_retornada
 
-                    if len(ids_ocorrencia) != quantidade_divergente:
+                    if len(ids_ocorrencia) > quantidade_divergente:
                         produto = itens_categoria[0].equipamento.produto
                         categoria_label = (
                             produto.get_categoria_display()
@@ -1841,7 +1920,7 @@ def checklist_detail(request, pk):
                         )
 
                         raise ValueError(
-                            f'Informe exatamente {quantidade_divergente} equipamento(s) com ocorrência em {categoria_label}.'
+                            f'Foram informadas mais ocorrências individualizadas do que a divergência de {categoria_label}.'
                         )
 
                     for item_equip in itens_categoria:
@@ -1879,6 +1958,27 @@ def checklist_detail(request, pk):
                                 observacao='',
                                 usuario=request.user,
                             )
+
+                    if registro_quantitativo:
+                        ChecklistService.atualizar_retorno_equipamentos_quantitativo(
+                            registro=registro_quantitativo,
+                            quantidade=quantidade_retornada,
+                            usuario=request.user,
+                        )
+
+                categorias_com_itens = set(equipamentos_por_categoria)
+                for chave, registro_quantitativo in quantitativos_por_chave.items():
+                    if chave in categorias_com_itens:
+                        continue
+                    valor_retornado = request.POST.get(
+                        f'equip_qtd_retornada_{chave}', ''
+                    ).strip()
+                    if valor_retornado != '':
+                        ChecklistService.atualizar_retorno_equipamentos_quantitativo(
+                            registro=registro_quantitativo,
+                            quantidade=valor_retornado,
+                            usuario=request.user,
+                        )
 
                 # TAGS
                 for item_lote in checklist.lotes_tags_movimentados.select_related('lote'):
@@ -1926,8 +2026,28 @@ def checklist_detail(request, pk):
     )
 
     equipamentos_grupos = []
+    categorias_adicionadas = set()
+
+    for registro in quantitativos:
+        chave = registro.categoria.lower().replace(' ', '_')
+        itens_categoria = equipamentos_por_categoria.get(chave, [])
+        categorias_adicionadas.add(chave)
+        equipamentos_grupos.append({
+            'key': chave,
+            'categoria': registro.get_categoria_display(),
+            'enviados': registro.quantidade_enviada,
+            'identificados': registro.quantidade_identificada,
+            'retornados': (
+                registro.quantidade_retornada
+                if registro.status_retorno == ChecklistEquipamentoQuantidade.StatusRetorno.CONFERIDO
+                else registro.quantidade_enviada
+            ),
+            'itens': itens_categoria,
+        })
 
     for chave, itens_categoria in equipamentos_por_categoria.items():
+        if chave in categorias_adicionadas:
+            continue
         resolvidos = [
             item
             for item in itens_categoria
@@ -1970,6 +2090,9 @@ def checklist_detail(request, pk):
             item.quantidade_utilizada or 0
             for item in tags_insumos
         ),
+        'pode_reabrir': _permissao_ou_perfil(
+            request.user, 'insumos.reabrir_checklists', 'admin'
+        ),
     }
 
     return render(request, 'insumos/checklist_detail.html', context)
@@ -1985,16 +2108,12 @@ def imprimir_checklist(request, pk):
         ),
         pk=pk,
     )
-    perfil = request.user.perfil
-    if (
-        not perfil.is_admin and
-        (
-            checklist.inventario.base_id not in perfil.bases_checklist_ids or
-            checklist.inventario.base.empresa_id != perfil.empresa_id
-        )
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not _permissao_ou_perfil(
+        request.user, 'insumos.imprimir_checklists', 'admin', 'gestor', 'operador'
     ):
-        messages.error(request, 'Você não tem acesso a este checklist.')
-        return redirect('insumos:lista_checklists')
+        raise PermissionDenied
 
     itens = list(
         checklist.itens
@@ -2010,6 +2129,9 @@ def imprimir_checklist(request, pk):
             'equipamento__produto__descricao',
             'equipamento__patrimonio',
         )
+    )
+    equipamentos_quantitativos = list(
+        checklist.equipamentos_quantitativos.order_by('categoria')
     )
     equipamentos_por_categoria = defaultdict(list)
     for item in equipamentos:
@@ -2028,8 +2150,12 @@ def imprimir_checklist(request, pk):
             else 'Insumos'
         )
         grupos_declaracao[categoria] += float(item.quantidade_enviada)
+    categorias_quantitativas = {item.categoria for item in equipamentos_quantitativos}
+    for item in equipamentos_quantitativos:
+        grupos_declaracao[item.categoria] += item.quantidade_enviada
     for categoria, lista in equipamentos_por_categoria.items():
-        grupos_declaracao[categoria] += len(lista)
+        if categoria not in categorias_quantitativas:
+            grupos_declaracao[categoria] += len(lista)
 
     linhas_por_categoria = defaultdict(list)
     for item in itens:
@@ -2054,6 +2180,20 @@ def imprimir_checklist(request, pk):
         'quantidade_enviada': 0,
         'quantidade_retornada': 0,
     })
+    for registro in equipamentos_quantitativos:
+        linhas_por_categoria[registro.categoria].append({
+            'descricao': registro.get_categoria_display(),
+            'quantidade_enviada': registro.quantidade_enviada,
+            'unidade': 'UN',
+            'quantidade_retornada': (
+                registro.quantidade_retornada
+                if registro.status_retorno == ChecklistEquipamentoQuantidade.StatusRetorno.CONFERIDO
+                else None
+            ),
+            'retorno_informado': (
+                registro.status_retorno == ChecklistEquipamentoQuantidade.StatusRetorno.CONFERIDO
+            ),
+        })
     for item in equipamentos:
         produto = item.equipamento.produto
         categoria = (
@@ -2068,6 +2208,8 @@ def imprimir_checklist(request, pk):
             equipamentos_agrupados[chave]['quantidade_retornada'] += 1
 
     for (categoria, descricao), quantidades in equipamentos_agrupados.items():
+        if categoria in categorias_quantitativas:
+            continue
         linhas_por_categoria[categoria].append({
             'descricao': descricao,
             'quantidade_enviada': quantidades['quantidade_enviada'],
@@ -2130,6 +2272,7 @@ def imprimir_checklist(request, pk):
             'itens': itens,
             'equipamentos': equipamentos,
             'equipamentos_por_categoria': dict(equipamentos_por_categoria),
+            'equipamentos_quantitativos': equipamentos_quantitativos,
             'grupos_declaracao': grupos_declaracao,
             'dados_declaracao': dados_declaracao,
             'grupos_checklist': grupos_checklist,
@@ -2146,16 +2289,12 @@ def exportar_checklist_modelo(request, pk):
         ),
         pk=pk,
     )
-    perfil = request.user.perfil
-    if (
-        not perfil.is_admin and
-        (
-            checklist.inventario.base_id not in perfil.bases_checklist_ids or
-            checklist.inventario.base.empresa_id != perfil.empresa_id
-        )
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not _permissao_ou_perfil(
+        request.user, 'insumos.imprimir_checklists', 'admin', 'gestor', 'operador'
     ):
-        messages.error(request, 'Você não tem acesso a este checklist.')
-        return redirect('insumos:lista_checklists')
+        raise PermissionDenied
 
     modelo = (
         Path(settings.BASE_DIR) /
@@ -2200,6 +2339,11 @@ def exportar_checklist_modelo(request, pk):
         ] += item.quantidade_enviada
 
     equipamentos_por_categoria = defaultdict(int)
+    categorias_quantitativas = set()
+    for registro in checklist.equipamentos_quantitativos.all():
+        chave = chave_descricao(registro.categoria)
+        equipamentos_por_categoria[chave] = registro.quantidade_enviada
+        categorias_quantitativas.add(chave)
     for item in checklist.equipamentos_utilizados.select_related(
         'equipamento__produto'
     ):
@@ -2208,7 +2352,9 @@ def exportar_checklist_modelo(request, pk):
             if item.equipamento.produto_id
             else 'Equipamentos'
         )
-        equipamentos_por_categoria[chave_descricao(categoria)] += 1
+        chave_categoria = chave_descricao(categoria)
+        if chave_categoria not in categorias_quantitativas:
+            equipamentos_por_categoria[chave_categoria] += 1
 
     linha_equipamento = {
         'routers': 38,
@@ -2318,16 +2464,15 @@ def editar_itens_checklist(request, pk):
     checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base'), pk=pk)
 
     # Verifica permissão
-    perfil = request.user.perfil
-    if (
-        not perfil.is_admin and
-        (
-            checklist.inventario.base_id not in perfil.regionais_ids or
-            checklist.inventario.base.empresa_id != perfil.empresa_id
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not (
+        _permissao_ou_perfil(
+            request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
         )
+        or checklist.responsavel_id == request.user.pk
     ):
-        messages.error(request, 'Você não tem acesso a este checklist.')
-        return redirect('insumos:lista_checklists')
+        raise PermissionDenied
 
     if checklist.status == 'FINALIZADO':
         messages.warning(request, 'Este checklist já está finalizado.')
@@ -2360,6 +2505,10 @@ def editar_itens_checklist(request, pk):
 
 @login_required
 def ultimo_checklist_por_loja(request):
+    if not _permissao_ou_perfil(
+        request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
+    ):
+        raise PermissionDenied
     inventario_id = request.GET.get('inventario')
     if not inventario_id:
         return JsonResponse({'error': 'Inventário não informado'}, status=400)
@@ -2410,31 +2559,8 @@ def ultimo_checklist_por_loja(request):
             'perdida': float(item.quantidade_perdida or 0),
         })
 
-    # Equipamentos
-    categorias = {
-        'coletores': 'coletor',
-        'coletor': 'coletor',
-        'impressoras': 'impressora',
-        'impressora': 'impressora',
-        'notebooks': 'notebook',
-        'notebook': 'notebook',
-        'routers': 'router',
-        'router': 'router',
-        'roteadores': 'router',
-        'roteador': 'router',
-    }
-    for eq in ultimo.equipamentos_utilizados.select_related('equipamento__produto'):
-        equipamento = eq.equipamento
-        if equipamento.status != 'ATIVO' or equipamento.regional_id != inventario.base_id:
-            continue
-        categoria = categorias.get((equipamento.produto.categoria or '').strip().lower())
-        if not categoria:
-            continue
-        data['equipamentos'].append({
-            'id': equipamento.id,
-            'categoria': categoria,
-            'tag_saida': eq.tag_saida,
-        })
+    # Equipamentos físicos nunca são pré-selecionados. A reutilização do
+    # checklist anterior fica restrita aos insumos, conforme o fluxo operacional.
 
     # Tags (LoteTag) - se houver
     for tag in ultimo.lotes_tags_movimentados.select_related('lote', 'rolo'):
@@ -2457,11 +2583,15 @@ def editar_checklist(request, pk):
     ), pk=pk)
     perfil = request.user.perfil
 
-    # Verifica permissão (admin, gestor, ou responsável)
-    if not perfil.is_admin:
-        if not perfil.is_gestor and checklist.responsavel != request.user:
-            messages.error(request, 'Você não tem permissão para editar este checklist.')
-            return redirect('insumos:lista_checklists')
+    if not _pode_acessar_checklist(request.user, checklist):
+        raise PermissionDenied
+    if not (
+        _permissao_ou_perfil(
+            request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
+        )
+        or checklist.responsavel_id == request.user.pk
+    ):
+        raise PermissionDenied
 
     if checklist.status == 'FINALIZADO':
         messages.warning(request, 'Checklist já finalizado, não pode ser editado.')

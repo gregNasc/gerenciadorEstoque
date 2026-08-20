@@ -33,6 +33,7 @@ backup*.7z
 
 # Static / media
 media/
+private_media/
 staticfiles/
 
 # OS / lixo

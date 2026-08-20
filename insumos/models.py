@@ -619,8 +619,13 @@ class ChecklistDiario(models.Model):
         ]
 
         permissions = [
+            ('visualizar_checklists', 'Pode visualizar checklists'),
             ('gerenciar_checklists', 'Pode gerenciar checklists'),
+            ('preencher_checklists', 'Pode preencher checklists'),
             ('finalizar_checklists', 'Pode finalizar checklists'),
+            ('reabrir_checklists', 'Pode reabrir checklists'),
+            ('imprimir_checklists', 'Pode imprimir checklists'),
+            ('visualizar_historico_checklists', 'Pode visualizar históricos de checklists'),
         ]
 
 class ItemChecklist(models.Model):
@@ -666,6 +671,69 @@ class ChecklistEquipamento(models.Model):
 
     def __str__(self):
         return f"{self.equipamento} - {self.tag_saida}"
+
+
+class ChecklistEquipamentoQuantidade(models.Model):
+    CATEGORIAS = [
+        ('Sistema', 'Sistema'),
+        ('Coletores', 'Coletores'),
+        ('Notebooks', 'Notebooks'),
+        ('Impressoras', 'Impressoras'),
+        ('Routers', 'Routers'),
+    ]
+    class StatusRetorno(models.TextChoices):
+        PENDENTE = 'PENDENTE', 'Pendente'
+        CONFERIDO = 'CONFERIDO', 'Conferido'
+
+    checklist = models.ForeignKey(
+        ChecklistDiario,
+        on_delete=models.CASCADE,
+        related_name='equipamentos_quantitativos',
+    )
+    categoria = models.CharField(max_length=50, choices=CATEGORIAS)
+    quantidade_enviada = models.PositiveIntegerField()
+    quantidade_identificada = models.PositiveIntegerField(default=0)
+    quantidade_retornada = models.PositiveIntegerField(default=0)
+    status_retorno = models.CharField(
+        max_length=20,
+        choices=StatusRetorno.choices,
+        default=StatusRetorno.PENDENTE,
+    )
+    conferido_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='checklists_equipamentos_conferidos',
+    )
+    conferido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['checklist', 'categoria'],
+                name='checklist_categoria_equipamento_unica',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantidade_identificada__lte=models.F('quantidade_enviada')),
+                name='checklist_equip_identificados_lte_enviados',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantidade_retornada__lte=models.F('quantidade_enviada')),
+                name='checklist_equip_retornados_lte_enviados',
+            ),
+        ]
+
+    @property
+    def quantidade_nao_identificada(self):
+        return self.quantidade_enviada - self.quantidade_identificada
+
+    @property
+    def quantidade_divergente(self):
+        return self.quantidade_enviada - self.quantidade_retornada
+
+    def __str__(self):
+        return f'Checklist #{self.checklist_id} · {self.categoria}: {self.quantidade_enviada}'
 
 class ChecklistLoteTag(models.Model):
     checklist = models.ForeignKey('ChecklistDiario', on_delete=models.CASCADE, related_name='lotes_tags_movimentados')

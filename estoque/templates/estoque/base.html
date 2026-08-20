@@ -69,7 +69,7 @@
             {% with perfil=request.user.perfil url_name=request.resolver_match.url_name %}
 
             <ul class="navbar-nav ms-auto align-items-xxl-center">
-                {% if not operador_restrito %}
+                {% if pode_acessar_checklist %}
                 <!-- CHECKLIST -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
@@ -83,6 +83,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="checklistDropdown">
+                        {% if pode_preencher_checklist %}
                         <li>
                             <a class="dropdown-item {% if url_name == 'checklist' %}active{% endif %}"
                                href="{% url 'estoque:checklist' %}">
@@ -90,7 +91,8 @@
                                 {% trans "Novo Checklist" %}
                             </a>
                         </li>
-                        {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                        {% endif %}
+                        {% if pode_visualizar_checklists %}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
@@ -104,7 +106,9 @@
                         {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% if not operador_restrito %}
                 <!-- ESTOQUE -->
                 <li class="nav-item dropdown">
 
@@ -317,12 +321,25 @@
                        href="#" id="chamadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-headset"></i>
                         {% trans "Chamados" %}
-                        {% if chamados_pendentes > 0 %}<span class="badge rounded-pill text-bg-danger ms-1">{{ chamados_pendentes }}</span>{% endif %}
+                        <span id="chamados-badge" class="badge rounded-pill text-bg-danger ms-1 {% if chamados_pendentes <= 0 %}d-none{% endif %}">{{ chamados_pendentes|default:0 }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="chamadosDropdown">
                         <li><a class="dropdown-item" href="{% url 'chamados:lista' %}"><i class="bi bi-list-task me-2"></i>{% if pode_atender_chamados %}Fila de chamados{% else %}Meus chamados{% endif %}</a></li>
                         {% if pode_criar_chamado %}<li><a class="dropdown-item" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-circle me-2"></i>Novo chamado</a></li>{% endif %}
                         {% if pode_dashboard_chamados %}<li><a class="dropdown-item" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart me-2"></i>Dashboard</a></li>{% endif %}
+                        {% if pode_atender_chamados %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button
+                                id="ativar-alertas-chamados"
+                                class="dropdown-item d-flex align-items-center"
+                                type="button"
+                            >
+                                <i id="alertas-chamados-icone" class="bi bi-volume-up me-2"></i>
+                                <span id="alertas-chamados-rotulo">{% trans "Ativar alertas de chamados" %}</span>
+                            </button>
+                        </li>
+                        {% endif %}
                     </ul>
                 </li>
 
@@ -729,12 +746,220 @@ document.addEventListener('DOMContentLoaded', function() {
     <script src="{% static 'js/tory-resultados.js' %}?v=3" defer></script>
     <script src="{% static 'js/tory.js' %}?v=1" defer></script>
 {% endif %}
-{% if request.user.is_authenticated and pode_atender_chamados %}
+{% if request.user.is_authenticated %}
 <script>
 (function () {
     let socket;
     let ping;
     let reconectar;
+    let audioContext;
+    let alertasPendentes = 0;
+    const tituloOriginal = document.title;
+    const usuarioAtualId = Number('{{ request.user.pk }}');
+    const botaoAlertas = document.getElementById('ativar-alertas-chamados');
+    const iconeAlertas = document.getElementById('alertas-chamados-icone');
+    const rotuloAlertas = document.getElementById('alertas-chamados-rotulo');
+
+    function alertasForamAtivados() {
+        try {
+            return localStorage.getItem('chamados-alertas-ativos') === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function guardarAlertasAtivos() {
+        try {
+            localStorage.setItem('chamados-alertas-ativos', '1');
+        } catch (e) {}
+    }
+
+    function atualizarControleAlertas() {
+        if (!botaoAlertas || !iconeAlertas || !rotuloAlertas) return;
+        const notificacaoPermitida = !('Notification' in window)
+            || Notification.permission === 'granted';
+        const ativo = alertasForamAtivados() && notificacaoPermitida;
+        iconeAlertas.className = ativo
+            ? 'bi bi-volume-up-fill text-success me-2'
+            : 'bi bi-volume-up me-2';
+        rotuloAlertas.textContent = ativo
+            ? '{% trans "Alertas de chamados ativos" %}'
+            : '{% trans "Ativar alertas de chamados" %}';
+    }
+
+    function prepararAudio() {
+        try {
+            audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().catch(function () {});
+            }
+        } catch (e) {}
+    }
+
+    function habilitarAlertas() {
+        prepararAudio();
+        window.removeEventListener('pointerdown', habilitarAlertas);
+        window.removeEventListener('keydown', habilitarAlertas);
+    }
+
+    window.addEventListener('pointerdown', habilitarAlertas, {once: true});
+    window.addEventListener('keydown', habilitarAlertas, {once: true});
+
+    function estaNaConversa(evento) {
+        return document.visibilityState === 'visible'
+            && window.location.pathname === evento.url
+            && evento.tipo === 'MENSAGEM';
+    }
+
+    function adquirirAlerta(evento) {
+        const chave = `chamado-alerta-${evento.id}`;
+        const agora = Date.now();
+        const anterior = Number(localStorage.getItem(chave) || 0);
+        if (agora - anterior < 15000) return false;
+        localStorage.setItem(chave, String(agora));
+        return true;
+    }
+
+    function emitirTom(frequencia, inicio, duracao) {
+        const oscilador = audioContext.createOscillator();
+        const ganho = audioContext.createGain();
+        oscilador.type = 'sine';
+        oscilador.frequency.setValueAtTime(frequencia, inicio);
+        ganho.gain.setValueAtTime(0.0001, inicio);
+        ganho.gain.exponentialRampToValueAtTime(0.24, inicio + 0.025);
+        ganho.gain.exponentialRampToValueAtTime(0.0001, inicio + duracao);
+        oscilador.connect(ganho).connect(audioContext.destination);
+        oscilador.start(inicio);
+        oscilador.stop(inicio + duracao + 0.02);
+    }
+
+    function tocar() {
+        prepararAudio();
+        if (!audioContext) return;
+        const executar = function () {
+            const agora = audioContext.currentTime;
+            emitirTom(740, agora, 0.22);
+            emitirTom(988, agora + 0.24, 0.3);
+        };
+        if (audioContext.state === 'running') {
+            executar();
+        } else {
+            audioContext.resume().then(executar).catch(function () {});
+        }
+    }
+
+    async function ativarAlertas() {
+        prepararAudio();
+        guardarAlertasAtivos();
+        if ('Notification' in window && Notification.permission === 'default') {
+            try {
+                await Notification.requestPermission();
+            } catch (e) {}
+        }
+        tocar();
+        atualizarControleAlertas();
+    }
+
+    botaoAlertas?.addEventListener('click', ativarAlertas);
+    atualizarControleAlertas();
+
+    function destacarTitulo(evento) {
+        if (document.visibilityState === 'visible' && document.hasFocus()) return;
+        alertasPendentes += 1;
+        document.title = `(${alertasPendentes}) 🔔 ${evento.protocolo || tituloOriginal}`;
+        if ('setAppBadge' in navigator) {
+            navigator.setAppBadge(alertasPendentes).catch(function () {});
+        }
+    }
+
+    function limparDestaque() {
+        alertasPendentes = 0;
+        document.title = tituloOriginal;
+        if ('clearAppBadge' in navigator) {
+            navigator.clearAppBadge().catch(function () {});
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') limparDestaque();
+    });
+    window.addEventListener('focus', limparDestaque);
+
+    function toast(evento) {
+        let area = document.getElementById('chamados-toast-area');
+        if (!area) {
+            area = document.createElement('div');
+            area.id = 'chamados-toast-area';
+            area.className = 'toast-container position-fixed top-0 end-0 p-3';
+            area.style.zIndex = '1085';
+            document.body.appendChild(area);
+        }
+        const item = document.createElement('a');
+        item.href = evento.url;
+        item.className = 'toast show text-decoration-none border-0 shadow mb-2';
+        item.setAttribute('role', 'alert');
+        const cabecalho = document.createElement('div');
+        cabecalho.className = 'toast-header';
+        const icone = document.createElement('i');
+        icone.className = 'bi bi-headset text-primary me-2';
+        const protocolo = document.createElement('strong');
+        protocolo.className = 'me-auto';
+        protocolo.textContent = evento.protocolo || 'CHAMADO';
+        const fechar = document.createElement('button');
+        fechar.type = 'button';
+        fechar.className = 'btn-close';
+        fechar.setAttribute('aria-label', 'Fechar');
+        const corpo = document.createElement('div');
+        corpo.className = 'toast-body text-body';
+        corpo.textContent = evento.descricao || 'NOVA ATUALIZAÇÃO NO CHAMADO.';
+        cabecalho.append(icone, protocolo, fechar);
+        item.append(cabecalho, corpo);
+        fechar.addEventListener('click', function (e) {
+            e.preventDefault();
+            item.remove();
+        });
+        area.appendChild(item);
+        setTimeout(function () { item.remove(); }, 12000);
+    }
+
+    function atualizarBadge(evento) {
+        if (evento.tipo !== 'ABERTURA') return;
+        const badge = document.getElementById('chamados-badge');
+        if (!badge) return;
+        badge.textContent = String((Number(badge.textContent) || 0) + 1);
+        badge.classList.remove('d-none');
+    }
+
+    function alertar(evento) {
+        atualizarBadge(evento);
+        if (Number(evento.autor_id) === usuarioAtualId) return;
+        if (estaNaConversa(evento)) return;
+        toast(evento);
+        if (!adquirirAlerta(evento)) return;
+        destacarTitulo(evento);
+        tocar();
+        if (
+            'Notification' in window
+            && Notification.permission === 'granted'
+            && (document.hidden || !document.hasFocus())
+        ) {
+            try {
+                const autor = evento.autor ? `${evento.autor}: ` : '';
+                const notificacao = new Notification(evento.protocolo, {
+                    body: `${autor}${evento.descricao}`,
+                    icon: '{% static "images/favicon.svg" %}',
+                    tag: `chamado-${evento.id}`,
+                    renotify: true,
+                    silent: false,
+                });
+                notificacao.onclick = function () {
+                    window.focus();
+                    window.location.href = evento.url;
+                    notificacao.close();
+                };
+            } catch (e) {}
+        }
+    }
 
     function conectarPresenca() {
         const protocolo = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -751,6 +976,13 @@ document.addEventListener('DOMContentLoaded', function() {
             clearInterval(ping);
             clearTimeout(reconectar);
             reconectar = setTimeout(conectarPresenca, 10000);
+        });
+        socket.addEventListener('message', function (event) {
+            let payload;
+            try { payload = JSON.parse(event.data); } catch (e) { return; }
+            if (payload.tipo === 'chamado_evento' && payload.evento) {
+                alertar(payload.evento);
+            }
         });
     }
 

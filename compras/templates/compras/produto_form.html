@@ -1,1 +1,237 @@
-{% extends 'estoque/base.html' %}{% load i18n %}{% block title %}{% trans "Novo item" %}{% endblock %}{% block content %}<div class="container py-4"><div class="card mx-auto" style="max-width:760px"><div class="card-body"><h1 class="h3">{% trans "Incluir item no catalogo" %}</h1><p class="text-secondary">{% trans "O item ativo ficara disponivel nos filtros e cadastros de equipamentos de todo o sistema." %}</p><form method="post">{% csrf_token %}{{ form.as_p }}<div class="d-flex gap-2"><button class="btn btn-primary">{% trans "Salvar item" %}</button><a class="btn btn-outline-secondary" href="{% url 'compras:valores_equipamentos' %}">{% trans "Cancelar" %}</a></div></form></div></div></div>{% endblock %}
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Novo item" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 py-4">
+
+    <div class="mx-auto" style="max-width: 860px;">
+
+        <!-- Navegação -->
+        <div class="mb-3">
+            <a href="{% url 'compras:valores_equipamentos' %}"
+               class="text-decoration-none text-secondary small">
+                <i class="bi bi-arrow-left me-1"></i>
+                {% trans "Voltar para valores de equipamentos" %}
+            </a>
+        </div>
+
+        <!-- Cabeçalho -->
+        <div class="mb-4">
+            <div class="d-flex align-items-start gap-3">
+
+                <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-3 flex-shrink-0"
+                     style="width: 48px; height: 48px;">
+                    <i class="bi bi-box-seam fs-4"></i>
+                </div>
+
+                <div>
+                    <h1 class="h3 fw-semibold mb-1">
+                        {% trans "Incluir item no catálogo" %}
+                    </h1>
+
+                    <p class="text-secondary mb-0">
+                        {% trans "Cadastre um novo modelo de equipamento para disponibilizá-lo nos filtros, cadastros e demais operações do sistema." %}
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Formulário -->
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-lg-5">
+
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                        <div>
+                            <h2 class="h5 fw-semibold mb-1">
+                                {% trans "Dados do item" %}
+                            </h2>
+                            <p class="text-secondary small mb-0">
+                                {% trans "Preencha as informações que identificam este item no catálogo." %}
+                            </p>
+                        </div>
+
+                        <span class="badge text-bg-light border fw-normal text-secondary">
+                            <i class="bi bi-box me-1"></i>
+                            {% trans "Catálogo" %}
+                        </span>
+                    </div>
+
+                    <!-- Erros gerais -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger d-flex align-items-start gap-2 mb-4" role="alert">
+                            <i class="bi bi-exclamation-circle-fill mt-1"></i>
+                            <div>
+                                {% for error in form.non_field_errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="row g-4">
+
+                        {% for field in form %}
+
+                            {% if field.field.widget.input_type == "checkbox" %}
+
+                                <div class="col-12">
+                                    <div class="form-check p-3 ps-5 border rounded-3 bg-light-subtle">
+                                        {{ field }}
+
+                                        <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">
+                                            {{ field.label }}
+                                        </label>
+
+                                        {% if field.help_text %}
+                                            <div class="form-text mt-1">
+                                                {{ field.help_text }}
+                                            </div>
+                                        {% endif %}
+
+                                        {% for error in field.errors %}
+                                            <div class="text-danger small mt-1">
+                                                <i class="bi bi-exclamation-circle me-1"></i>
+                                                {{ error }}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                            {% else %}
+
+                                <div class="col-12">
+                                    <label for="{{ field.id_for_label }}"
+                                           class="form-label fw-semibold">
+
+                                        {{ field.label }}
+
+                                        {% if field.field.required %}
+                                            <span class="text-danger ms-1">*</span>
+                                        {% endif %}
+                                    </label>
+
+                                    {{ field }}
+
+                                    {% if field.help_text %}
+                                        <div class="form-text">
+                                            {{ field.help_text }}
+                                        </div>
+                                    {% endif %}
+
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>
+                                            {{ error }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+
+                            {% endif %}
+
+                        {% endfor %}
+
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="d-flex align-items-start gap-2 text-secondary small">
+                            <i class="bi bi-info-circle mt-1"></i>
+                            <span>
+                                {% trans "Após o cadastro, o item ficará disponível para utilização nos cadastros de equipamentos e demais áreas compatíveis do sistema." %}
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Ações -->
+                <div class="card-footer bg-white border-top px-4 px-lg-5 py-3">
+                    <div class="d-flex flex-column-reverse flex-sm-row justify-content-end gap-2">
+
+                        <a class="btn btn-outline-secondary px-4"
+                           href="{% url 'compras:valores_equipamentos' %}">
+                            {% trans "Cancelar" %}
+                        </a>
+
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-lg me-1"></i>
+                            {% trans "Salvar item" %}
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<style>
+    form input:not([type="checkbox"]):not([type="radio"]),
+    form select,
+    form textarea {
+        display: block;
+        width: 100%;
+        padding: .625rem .75rem;
+        font-size: .95rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--bs-body-color);
+        background-color: var(--bs-body-bg);
+        background-clip: padding-box;
+        border: var(--bs-border-width) solid var(--bs-border-color);
+        appearance: none;
+        border-radius: var(--bs-border-radius);
+        transition:
+            border-color .15s ease-in-out,
+            box-shadow .15s ease-in-out;
+    }
+
+    form input:not([type="checkbox"]):not([type="radio"]):focus,
+    form select:focus,
+    form textarea:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .15);
+    }
+
+    form textarea {
+        min-height: 110px;
+        resize: vertical;
+    }
+
+    form .form-check input[type="checkbox"] {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-top: .15rem;
+    }
+
+    form .errorlist {
+        list-style: none;
+        padding-left: 0;
+        margin-bottom: 0;
+        color: var(--bs-danger);
+        font-size: .875rem;
+    }
+
+    @media (max-width: 575.98px) {
+        .card-body {
+            padding: 1.25rem !important;
+        }
+
+        .card-footer {
+            padding-left: 1.25rem !important;
+            padding-right: 1.25rem !important;
+        }
+
+        .card-footer .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}

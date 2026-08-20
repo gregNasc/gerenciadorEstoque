@@ -185,6 +185,25 @@ def permissoes_especiais(request):
         compras_restrito = ComprasAccessPolicy.restrito(request.user)
         perfil = request.user.perfil
         username = request.user.get_username().strip().lower()
+        pode_preencher_checklist = bool(
+            perfil.is_admin
+            or perfil.is_gestor
+            or request.user.has_perm('insumos.preencher_checklists')
+        )
+        pode_visualizar_checklists = bool(
+            perfil.is_admin
+            or perfil.is_gestor
+            or request.user.has_perm('insumos.visualizar_checklists')
+        )
+        pode_acessar_checklist = bool(
+            pode_preencher_checklist
+            or pode_visualizar_checklists
+            or any(request.user.has_perm(permissao) for permissao in [
+                'insumos.finalizar_checklists', 'insumos.reabrir_checklists',
+                'insumos.imprimir_checklists',
+                'insumos.visualizar_historico_checklists',
+            ])
+        )
         return {
             'pode_realizar_manutencao_sick':
                 pode_realizar_manutencao_sick(request.user),
@@ -218,6 +237,9 @@ def permissoes_especiais(request):
                 perfil.is_admin or perfil.is_gestor or
                 username in {'rafael.ribeiro', 'jose.barboza'}
             ),
+            'pode_preencher_checklist': pode_preencher_checklist,
+            'pode_visualizar_checklists': pode_visualizar_checklists,
+            'pode_acessar_checklist': pode_acessar_checklist,
             'operador_restrito': bool(
                 perfil.is_operador
                 and not perfil.is_funcional_global
@@ -239,5 +261,8 @@ def permissoes_especiais(request):
         'pode_criar_chamado': False,
         'pode_dashboard_chamados': False,
         'pode_ver_os_operacionais': False,
+        'pode_preencher_checklist': False,
+        'pode_visualizar_checklists': False,
+        'pode_acessar_checklist': False,
         'operador_restrito': False,
     }

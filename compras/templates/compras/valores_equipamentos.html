@@ -1,5 +1,5 @@
 {% extends 'estoque/base.html' %}
-{% load i18n %}
+{% load i18n l10n %}
 
 {% block title %}{% trans "Valores de equipamentos" %}{% endblock %}
 
@@ -148,6 +148,27 @@
   .inventory-panel .table { font-size: .86rem; }
   .inventory-panel .table thead th { padding: .8rem 1rem; white-space: nowrap; }
   .inventory-panel .table tbody td { padding: .75rem 1rem; }
+  .inventory-row { cursor: pointer; transition: background-color .15s ease; }
+  .inventory-row:focus { outline: 3px solid rgba(37, 99, 235, .18); outline-offset: -3px; }
+  .inventory-row[aria-expanded="true"] { background: #eff6ff; }
+  .row-chevron { display: inline-block; margin-right: .45rem; color: var(--av-blue); transition: transform .18s ease; }
+  .inventory-row[aria-expanded="true"] .row-chevron { transform: rotate(90deg); }
+  .inventory-detail-row > td { padding: 0 !important; background: #f8fafc; }
+  .inventory-detail {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(360px, 1.2fr);
+    gap: 1rem;
+    padding: 1.15rem;
+    border-top: 1px solid #bfdbfe;
+    border-bottom: 1px solid var(--av-border);
+  }
+  .detail-card { padding: 1rem; border: 1px solid var(--av-border); border-radius: 12px; background: #fff; }
+  .detail-card h3 { margin: 0 0 .85rem; font-size: .92rem; font-weight: 800; }
+  .detail-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1rem; }
+  .detail-fact small { display: block; color: var(--av-muted); font-size: .66rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+  .detail-fact span { display: block; overflow-wrap: anywhere; font-size: .84rem; font-weight: 650; }
+  .price-edit-form .form-label { margin-bottom: .3rem; color: #475569; font-size: .67rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+  .price-scope-note { display: flex; gap: .55rem; padding: .65rem .75rem; border-radius: 9px; color: #1e3a8a; background: #eff6ff; font-size: .76rem; }
   .equipment-name { min-width: 230px; max-width: 380px; }
   .equipment-meta { color: var(--av-muted); font-size: .75rem; }
   .price-pill {
@@ -166,6 +187,7 @@
   @media (max-width: 991.98px) {
     .allocation-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .chart-stage { height: 300px; }
+    .inventory-detail { grid-template-columns: 1fr; }
   }
   @media (max-width: 575.98px) {
     .asset-value-page { padding: 1rem; }
@@ -184,14 +206,18 @@
         <h1 class="h2 fw-bold mt-2 mb-2">{% trans "Valores dos equipamentos" %}</h1>
         <p class="mb-0">{% trans "Acompanhe o valor dos equipamentos, a cobertura de precificacao e onde o patrimonio esta concentrado." %}</p>
       </div>
-      {% if pode_editar %}
+      {% if pode_importar or pode_catalogo %}
       <div class="hero-actions d-flex flex-wrap gap-2">
+        {% if pode_importar %}
         <a class="btn btn-light" href="{% url 'compras:template_precificacao_equipamentos' %}">
           <i class="bi bi-file-earmark-arrow-down me-1"></i> {% trans "Baixar template" %}
         </a>
+        {% endif %}
+        {% if pode_catalogo %}
         <a class="btn btn-outline-light" href="{% url 'compras:criar_produto_catalogo' %}">
           <i class="bi bi-plus-lg me-1"></i> {% trans "Novo item" %}
         </a>
+        {% endif %}
       </div>
       {% endif %}
     </div>
@@ -313,7 +339,7 @@
     </div>
   </div>
 
-  {% if pode_editar %}
+  {% if pode_importar %}
   <details class="import-panel mb-3">
     <summary>
       <span><i class="bi bi-cloud-arrow-up text-success me-2"></i><strong>{% trans "Atualizar precos por planilha" %}</strong> <small class="text-secondary d-none d-md-inline">· {% trans "Use o template oficial para alteracoes em lote" %}</small></span>
@@ -341,13 +367,54 @@
         <thead><tr><th>{% trans "Equipamento" %}</th><th>{% trans "Regional" %}</th><th>{% trans "Identificacao" %}</th><th>{% trans "Status" %}</th><th>{% trans "Valor considerado" %}</th><th>{% trans "Precificacao" %}</th></tr></thead>
         <tbody>
           {% for e in equipamentos %}
-          <tr>
-            <td class="equipment-name"><div class="fw-semibold">{{ e.produto|default:"—" }}</div><div class="equipment-meta">{{ e.produto.get_categoria_display|default:"—" }}</div></td>
+          <tr id="equipamento-{{ e.pk }}" class="inventory-row" tabindex="0" role="button" aria-expanded="false" aria-controls="detalhe-equipamento-{{ e.pk }}" data-detail-target="detalhe-equipamento-{{ e.pk }}">
+            <td class="equipment-name"><div class="fw-semibold"><i class="bi bi-chevron-right row-chevron" aria-hidden="true"></i>{{ e.produto|default:"—" }}</div><div class="equipment-meta ms-4">{{ e.produto.get_categoria_display|default:"—" }}</div></td>
             <td>{{ e.regional }}</td>
             <td><div>{{ e.patrimonio|default:"—" }}</div><div class="equipment-meta">{% trans "Serie" %}: {{ e.numero_serie|default:"—" }}</div></td>
             <td><span class="badge rounded-pill text-bg-light border">{{ e.get_status_display }}</span></td>
-            <td class="fw-semibold text-nowrap">{% if e.custo_aquisicao != None %}R$ {{ e.custo_aquisicao|floatformat:2 }}{% elif e.preco_referencia != None %}R$ {{ e.preco_referencia|floatformat:2 }}{% else %}—{% endif %}</td>
-            <td>{% if e.origem_valor == 'SEM_PRECO_VALIDADO' %}<span class="price-pill pending">{% trans "Pendente" %}</span>{% else %}<span class="price-pill">{{ e.get_origem_valor_display }}</span>{% endif %}</td>
+            <td class="fw-semibold text-nowrap">{% if e.valor_considerado %}R$ {{ e.valor_considerado|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td>{% if e.custo_aquisicao != None %}<span class="price-pill">{% trans "Custo da unidade" %}</span>{% elif e.produto.preco_referencia != None %}<span class="price-pill">{{ e.produto.get_preco_origem_display }}</span>{% elif e.preco_referencia != None %}<span class="price-pill">{{ e.get_origem_valor_display }}</span>{% else %}<span class="price-pill pending">{% trans "Pendente" %}</span>{% endif %}</td>
+          </tr>
+          <tr id="detalhe-equipamento-{{ e.pk }}" class="inventory-detail-row d-none">
+            <td colspan="6">
+              <div class="inventory-detail">
+                <section class="detail-card">
+                  <h3><i class="bi bi-info-circle me-1 text-primary"></i> {% trans "Informacoes completas" %}</h3>
+                  <div class="detail-facts">
+                    <div class="detail-fact"><small>{% trans "Produto" %}</small><span>{{ e.produto.descricao|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Codigo do produto" %}</small><span>{{ e.produto.codigo|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Fabricante / modelo" %}</small><span>{{ e.produto.fabricante|default:"—" }} · {{ e.produto.modelo|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Empresa / regional" %}</small><span>{{ e.regional.empresa|default:"—" }} · {{ e.regional|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Patrimonio" %}</small><span>{{ e.patrimonio|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Numero de serie" %}</small><span>{{ e.numero_serie|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Finalidade / status" %}</small><span>{{ e.get_finalidade_display }} · {{ e.get_status_display }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Custo da unidade" %}</small><span>{% if e.custo_aquisicao != None %}R$ {{ e.custo_aquisicao|floatformat:2 }}{% else %}—{% endif %}</span></div>
+                    <div class="detail-fact"><small>{% trans "Fonte atual" %}</small><span>{{ e.produto.preco_fonte|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Validado por" %}</small><span>{% if e.produto.preco_validado_por %}{{ e.produto.preco_validado_por.get_full_name|default:e.produto.preco_validado_por.username }}{% else %}—{% endif %}{% if e.produto.preco_validado_em %} · {{ e.produto.preco_validado_em|date:'d/m/Y H:i' }}{% endif %}</span></div>
+                  </div>
+                </section>
+                <section class="detail-card">
+                  <h3><i class="bi bi-currency-dollar me-1 text-success"></i> {% trans "Preco de referencia do produto" %}</h3>
+                  {% if e.pode_editar_preco %}
+                  <form method="post" action="{% url 'compras:alterar_preco_produto' e.pk %}" class="price-edit-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="retorno" value="{{ request.get_full_path }}#equipamento-{{ e.pk }}">
+                    <div class="price-scope-note mb-3"><i class="bi bi-info-circle-fill"></i><span>{% trans "Esta alteracao vale para todas as unidades vinculadas ao mesmo produto e gera historico." %}</span></div>
+                    <div class="row g-2">
+                      <div class="col-md-4"><label class="form-label" for="preco-{{ e.pk }}">{% trans "Preco de referencia" %}</label><div class="input-group"><span class="input-group-text">R$</span><input id="preco-{{ e.pk }}" class="form-control" type="number" name="preco_referencia" min="0" step="0.01" value="{% if e.produto.preco_referencia != None %}{{ e.produto.preco_referencia|unlocalize }}{% endif %}" required></div></div>
+                      <div class="col-md-4"><label class="form-label" for="origem-{{ e.pk }}">{% trans "Origem" %}</label><select id="origem-{{ e.pk }}" class="form-select" name="preco_origem" required>{% for valor, rotulo in origens_preco %}{% if valor != 'SEM_PRECO_VALIDADO' %}<option value="{{ valor }}" {% if e.produto.preco_origem == valor %}selected{% endif %}>{{ rotulo }}</option>{% endif %}{% endfor %}</select></div>
+                      <div class="col-md-4"><label class="form-label" for="fornecedor-{{ e.pk }}">{% trans "Fornecedor" %}</label><select id="fornecedor-{{ e.pk }}" class="form-select" name="preco_fornecedor"><option value="">{% trans "Nao informado" %}</option>{% for fornecedor in fornecedores_preco %}<option value="{{ fornecedor.pk }}" {% if e.produto.preco_fornecedor_id == fornecedor.pk %}selected{% endif %}>{{ fornecedor.nome }}</option>{% endfor %}</select></div>
+                      <div class="col-md-6"><label class="form-label" for="fonte-{{ e.pk }}">{% trans "Fonte / documento" %}</label><input id="fonte-{{ e.pk }}" class="form-control" name="preco_fonte" maxlength="255" value="{{ e.produto.preco_fonte }}" placeholder="{% trans 'Ex.: cotacao, nota fiscal ou pesquisa' %}"></div>
+                      <div class="col-md-6"><label class="form-label" for="motivo-{{ e.pk }}">{% trans "Motivo da alteracao" %}</label><input id="motivo-{{ e.pk }}" class="form-control" name="observacao_preco" maxlength="500" required placeholder="{% trans 'Explique por que o valor foi atualizado' %}"></div>
+                      <div class="col-12 d-flex justify-content-end mt-3"><button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> {% trans "Salvar novo preco" %}</button></div>
+                    </div>
+                  </form>
+                  {% else %}
+                  <div class="price-scope-note"><i class="bi bi-lock-fill"></i><span>{% trans "Voce pode consultar estas informacoes, mas nao possui permissao para definir ou alterar precos." %}</span></div>
+                  {% endif %}
+                </section>
+              </div>
+            </td>
           </tr>
           {% empty %}
           <tr><td colspan="6" class="text-center text-secondary py-5"><i class="bi bi-search d-block fs-2 mb-2"></i>{% trans "Nenhum equipamento encontrado para os filtros informados." %}</td></tr>
@@ -418,8 +485,36 @@
   else new Chart(equipamentoCanvas, {
     type: 'bar',
     data: { labels: equipamentos.map(item => item.produto__descricao || '{% trans "Sem descricao" %}'), datasets: [{ label: '{% trans "Valor acumulado" %}', data: values(equipamentos), backgroundColor: equipamentos.map((_, index) => palette[index % palette.length]), borderRadius: 7, borderSkipped: false }] },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false }, plugins: { legend: { display: false }, tooltip }, scales: { x: { grid: { display: false }, ticks: { color: '#475569', maxRotation: 0, autoSkip: false, callback(value) { const label = this.getLabelForValue(value); return label.length > 18 ? `${label.slice(0, 18)}…` : label; } } }, y: { beginAtZero: true, grid, ticks } } }
+    options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false }, plugins: { legend: { display: false }, tooltip }, scales: { x: { grid: { display: false }, ticks: { color: '#475569', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback(value) { const label = this.getLabelForValue(value); return label.length > 14 ? `${label.slice(0, 14)}…` : label; } } }, y: { beginAtZero: true, grid, ticks } } }
   });
+
+  const alternarDetalhe = (linha, forcarAberto = false) => {
+    const detalhe = document.getElementById(linha.dataset.detailTarget);
+    if (!detalhe) return;
+    const abrir = forcarAberto || linha.getAttribute('aria-expanded') !== 'true';
+    linha.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    detalhe.classList.toggle('d-none', !abrir);
+  };
+
+  document.querySelectorAll('.inventory-row[data-detail-target]').forEach(linha => {
+    linha.addEventListener('click', () => alternarDetalhe(linha));
+    linha.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        alternarDetalhe(linha);
+      }
+    });
+  });
+
+  if (window.location.hash.startsWith('#equipamento-')) {
+    const linha = document.querySelector(window.location.hash);
+    if (linha?.matches('.inventory-row')) {
+      const painel = linha.closest('details');
+      if (painel) painel.open = true;
+      alternarDetalhe(linha, true);
+      setTimeout(() => linha.scrollIntoView({block: 'center'}), 50);
+    }
+  }
 })();
 </script>
 {% endblock %}

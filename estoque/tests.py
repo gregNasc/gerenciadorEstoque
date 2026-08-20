@@ -679,6 +679,10 @@ class TransferenciaServiceTests(TestCase):
         self.destino = Base.objects.create(
             nome='Destino', empresa=empresa, grupo_regional=grupo,
         )
+        self.usuario.perfil.role = Perfil.Role.GESTOR
+        self.usuario.perfil.empresa = empresa
+        self.usuario.perfil.save(update_fields=['role', 'empresa'])
+        self.usuario.perfil.regionais.add(self.origem, self.destino)
         produto = Produto.objects.create(
             codigo='PROD-TRANSF',
             descricao='Coletor de teste',
@@ -732,7 +736,7 @@ class TransferenciaServiceTests(TestCase):
         )
         self.assertTrue(
             Comunicado.objects.filter(
-                titulo=f'Transferência {transferencia.protocolo} recebida'
+                titulo__iexact=f'Transferência {transferencia.protocolo} recebida'
             ).exists()
         )
 
@@ -776,7 +780,7 @@ class TransferenciaServiceTests(TestCase):
         self.assertContains(response, transferencia.protocolo)
         self.assertContains(response, 'Divergente')
         self.assertContains(response, 'SERIE-DIVERGENTE')
-        self.assertContains(response, 'Aguardar conferência da etiqueta física.')
+        self.assertContains(response, 'AGUARDAR CONFERÊNCIA DA ETIQUETA FÍSICA.')
 
 class EmprestimoComPendenciaTests(TestCase):
     def setUp(self):
@@ -837,13 +841,13 @@ class EmprestimoComPendenciaTests(TestCase):
         self.assertEqual(emprestimo.status, 'EMPRESTADO')
         self.assertTrue(
             Comunicado.objects.filter(
-                titulo='Divergencia no emprestimo',
+                titulo__iexact='Divergencia no emprestimo',
                 mensagem__contains=emprestimo.protocolo,
             ).exists()
         )
         self.assertFalse(
             Comunicado.objects.filter(
-                titulo='Emprestimo finalizado',
+                titulo__iexact='Emprestimo finalizado',
                 mensagem__contains=emprestimo.regional_origem.nome,
             ).exists()
         )
@@ -919,7 +923,7 @@ class ComunicadoManutencaoTests(TestCase):
         segunda = ComunicadoService.notificar_manutencoes_previstas()
 
         comunicado = Comunicado.objects.get(
-            titulo=f'Manutenção prevista para amanhã — SICK #{self.sick.id}'
+            titulo__iexact=f'Manutenção prevista para amanhã — SICK #{self.sick.id}'
         )
         self.assertEqual(len(primeira), 1)
         self.assertEqual(len(segunda), 0)

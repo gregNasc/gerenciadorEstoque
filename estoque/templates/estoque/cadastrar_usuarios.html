@@ -81,6 +81,41 @@
 
                         <section class="form-section">
                             <div class="section-title">
+                                <i class="bi bi-shield-check"></i>
+                                <span>{% trans "Permissoes operacionais" %}</span>
+                            </div>
+                            <p class="small text-secondary mb-3">
+                                {% trans "O papel define o acesso basico. Estas permissoes complementam o papel sem ampliar o escopo de empresa e bases." %}
+                            </p>
+                            <div class="accordion accordion-flush border rounded" id="permissoesAccordion">
+                                {% for grupo in catalogo_permissoes %}
+                                    <div class="accordion-item">
+                                        <h3 class="accordion-header">
+                                            <button class="accordion-button collapsed py-2 small fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#permissoes-{{ forloop.counter }}">
+                                                {{ grupo.grupo }}
+                                            </button>
+                                        </h3>
+                                        <div id="permissoes-{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#permissoesAccordion">
+                                            <div class="accordion-body py-2">
+                                                <div class="row g-2">
+                                                    {% for permissao in grupo.permissoes %}
+                                                        <div class="col-sm-6">
+                                                            <label class="form-check small">
+                                                                <input class="form-check-input permissao-operacional" type="checkbox" name="permissoes" value="{{ permissao.codigo }}">
+                                                                <span class="form-check-label">{{ permissao.label }}</span>
+                                                            </label>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </section>
+
+                        <section class="form-section">
+                            <div class="section-title">
                                 <i class="bi bi-person"></i>
                                 <span>{% trans "Identificacao" %}</span>
                             </div>
@@ -267,6 +302,7 @@
                                         data-active="{% if usuario.is_active %}1{% else %}0{% endif %}"
                                         data-suporte="{% for grupo in usuario.groups.all %}{% if grupo.name == 'CHAMADOS_SUPORTE' %}1{% endif %}{% endfor %}"
                                         data-sick="{% for grupo in usuario.groups.all %}{% if grupo.name == 'SICK_GERENCIAR' %}1{% endif %}{% endfor %}"
+                                        data-permissoes="{% for permissao in usuario.user_permissions.all %}{{ permissao.content_type.app_label }}.{{ permissao.codename }}{% if not forloop.last %},{% endif %}{% endfor %}"
                                         data-regionais="{% for base in usuario.perfil.regionais.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
                                         data-bases-checklist="{% for base in usuario.perfil.bases_checklist.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                                         <td>
@@ -318,6 +354,28 @@
                                             <button type="button" class="btn btn-light btn-sm btn-editar" title="{% trans 'Editar usuario' %}">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
+                                            {% if usuario != request.user %}
+                                                <form method="post" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                                                    {% if usuario.is_active %}
+                                                        <button class="btn btn-light btn-sm text-warning" name="acao_usuario" value="inativar" title="{% trans 'Inativar usuario' %}">
+                                                            <i class="bi bi-person-dash"></i>
+                                                        </button>
+                                                    {% else %}
+                                                        <button class="btn btn-light btn-sm text-success" name="acao_usuario" value="reativar" title="{% trans 'Reativar usuario' %}">
+                                                            <i class="bi bi-person-check"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                </form>
+                                                <form method="post" class="d-inline" onsubmit="return confirm('{% trans "Excluir e inativar sao operacoes diferentes. Confirma a tentativa de exclusao definitiva?" %}');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                                                    <button class="btn btn-light btn-sm text-danger" name="acao_usuario" value="excluir" title="{% trans 'Excluir usuario' %}">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                 {% empty %}
@@ -358,6 +416,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const modoBadge = document.getElementById('modoBadge');
     const btnSubmitTexto = document.getElementById('btnSubmitTexto');
     const buscaUsuario = document.getElementById('buscaUsuario');
+    const permissionCheckboxes = Array.from(document.querySelectorAll('.permissao-operacional'));
 
     function visibleBaseOptions() {
         return bases.filter(base => base.style.display !== 'none');
@@ -474,6 +533,7 @@ document.addEventListener('DOMContentLoaded', function () {
         active.checked = true;
         document.getElementById('usuario_suporte').checked = false;
         document.getElementById('usuario_sick').checked = false;
+        permissionCheckboxes.forEach(cb => cb.checked = false);
         checkboxes.forEach(cb => cb.checked = false);
         checkboxesChecklist.forEach(cb => cb.checked = false);
         setModoEdicao(false);
@@ -494,6 +554,8 @@ document.addEventListener('DOMContentLoaded', function () {
         active.checked = row.dataset.active === '1';
         document.getElementById('usuario_suporte').checked = row.dataset.suporte === '1';
         document.getElementById('usuario_sick').checked = row.dataset.sick === '1';
+        const permissoes = new Set((row.dataset.permissoes || '').split(',').filter(Boolean));
+        permissionCheckboxes.forEach(cb => cb.checked = permissoes.has(cb.value));
         senha.value = '';
         checkboxes.forEach(cb => cb.checked = false);
         checkboxesChecklist.forEach(cb => cb.checked = false);

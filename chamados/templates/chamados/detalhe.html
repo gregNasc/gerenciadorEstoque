@@ -1,76 +1,224 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
 
-{% block title %}{{ chamado.protocolo }}{% endblock %}
+{% block title %}{{ chamado.protocolo }} · {{ chamado.titulo }}{% endblock %}
 
 
 {% block extra_css %}
 <style>
+  .chamado-page {
+    --ch-border: #e5e7eb;
+    --ch-border-soft: #eef0f3;
+    --ch-muted: #6b7280;
+    --ch-soft: #f8fafc;
+    --ch-soft-2: #f4f6f8;
+    --ch-text: #212529;
+    --ch-primary-soft: #eff6ff;
+    --ch-warning-soft: #fff8e6;
+    --ch-danger-soft: #fff1f2;
+    --ch-success-soft: #eefbf3;
+  }
+
+  .min-w-0 {
+    min-width: 0;
+  }
+
   /* =====================================================
-     CHAMADO - LAYOUT
+     TOPBAR / HEADER
      ===================================================== */
 
-  .chamado-page {
-    --chamado-bg-soft: #f7f8fa;
-    --chamado-border: #e7e9ee;
-    --chamado-muted: #6c757d;
+  .chamado-topbar {
+    margin-bottom: 1rem;
+  }
+
+  .chamado-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    color: var(--ch-muted);
+    font-size: .82rem;
+    text-decoration: none;
+  }
+
+  .chamado-back:hover {
+    color: var(--bs-primary);
   }
 
   .chamado-header {
     background: #fff;
-    border: 1px solid var(--chamado-border);
+    border: 1px solid var(--ch-border);
     border-radius: 1rem;
-    padding: 1.35rem 1.5rem;
+    padding: 1.25rem 1.35rem;
     margin-bottom: 1rem;
   }
 
   .chamado-protocolo {
-    font-size: .78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    color: var(--ch-muted);
+    font-size: .72rem;
     font-weight: 700;
-    letter-spacing: .08em;
+    letter-spacing: .07em;
     text-transform: uppercase;
-    color: var(--chamado-muted);
   }
 
   .chamado-titulo {
+    margin: .3rem 0 .45rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    letter-spacing: -.02em;
+    letter-spacing: -.025em;
+    line-height: 1.25;
   }
 
   .chamado-contexto {
-    color: var(--chamado-muted);
-    font-size: .92rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .9rem;
+    color: var(--ch-muted);
+    font-size: .82rem;
+  }
+
+  .chamado-contexto__item {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
   }
 
   /* =====================================================
-     BADGES
+     STATUS PILLS
      ===================================================== */
 
-  .chamado-badge {
-    padding: .45rem .7rem;
+  .chamado-statusbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-top: 1rem;
+  }
+
+  .chamado-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .68rem;
+    border: 1px solid var(--ch-border);
     border-radius: 50rem;
+    background: var(--ch-soft);
+    color: #495057;
     font-size: .72rem;
     font-weight: 600;
+  }
+
+  .chamado-pill--status {
+    background: #212529;
+    border-color: #212529;
+    color: #fff;
+  }
+
+  .chamado-pill--danger {
+    background: var(--ch-danger-soft);
+    border-color: #fecdd3;
+    color: #b42318;
+  }
+
+  .chamado-pill--warning {
+    background: var(--ch-warning-soft);
+    border-color: #f5daa3;
+    color: #8a5d00;
+  }
+
+  .chamado-pill--success {
+    background: var(--ch-success-soft);
+    border-color: #cdebd8;
+    color: #157347;
+  }
+
+  /* =====================================================
+     ASSUMIR ATENDIMENTO
+     ===================================================== */
+
+  .assumir-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #cfe2ff;
+    border-radius: .9rem;
+    background: var(--ch-primary-soft);
+  }
+
+  .assumir-box__title {
+    font-size: .88rem;
+    font-weight: 650;
+  }
+
+  .assumir-box__text {
+    color: var(--ch-muted);
+    font-size: .76rem;
   }
 
   /* =====================================================
      DESCRIÇÃO
      ===================================================== */
 
-  .chamado-descricao-card {
-    border: 1px solid var(--chamado-border);
+  .descricao-panel {
+    border: 1px solid var(--ch-border);
     border-radius: 1rem;
-    overflow: hidden;
+    background: #fff;
+    margin-bottom: 1rem;
   }
 
-  .chamado-descricao-card .card-body {
-    padding: 1.35rem;
+  .descricao-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1.1rem;
+    border-bottom: 1px solid var(--ch-border-soft);
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+  }
+
+  .section-heading__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border-radius: .6rem;
+    background: var(--ch-soft);
+    color: #495057;
+  }
+
+  .section-heading__title {
+    font-size: .86rem;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  .section-heading__subtitle {
+    color: var(--ch-muted);
+    font-size: .72rem;
+    margin-top: .1rem;
+  }
+
+  .descricao-panel__body {
+    padding: 1.1rem;
   }
 
   .chamado-descricao {
-    white-space: pre-wrap;
+    color: #374151;
+    font-size: .92rem;
     line-height: 1.65;
-    color: #343a40;
+    white-space: pre-wrap;
   }
 
   /* =====================================================
@@ -78,63 +226,208 @@
      ===================================================== */
 
   .chamado-chat {
-    min-height: 32rem;
-    border: 1px solid var(--chamado-border);
+    display: flex;
+    flex-direction: column;
+    min-height: 38rem;
+    border: 1px solid var(--ch-border);
     border-radius: 1rem;
     overflow: hidden;
+    background: #fff;
   }
 
-  .chamado-chat .card-header {
+  .chamado-chat__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .9rem 1.1rem;
+    border-bottom: 1px solid var(--ch-border);
     background: #fff;
-    border-bottom: 1px solid var(--chamado-border);
-    padding: 1rem 1.25rem;
+  }
+
+  .chat-connection {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .55rem;
+    border-radius: 50rem;
+    background: var(--ch-soft);
+    color: var(--ch-muted);
+    font-size: .68rem;
+    font-weight: 600;
+  }
+
+  .chat-connection__dot {
+    width: .45rem;
+    height: .45rem;
+    border-radius: 50%;
+    background: currentColor;
   }
 
   .chamado-chat__mensagens {
-    min-height: 20rem;
-    max-height: 36rem;
+    flex: 1;
+    min-height: 25rem;
+    max-height: 38rem;
     overflow-y: auto;
-    background: var(--chamado-bg-soft);
     padding: 1.25rem;
+    background:
+      linear-gradient(
+        rgba(248, 250, 252, .94),
+        rgba(248, 250, 252, .94)
+      );
+  }
+
+  .chat-row {
+    display: flex;
+    margin-bottom: .85rem;
+  }
+
+  .chat-row--proprio {
+    justify-content: flex-end;
   }
 
   .chamado-chat__item {
-    max-width: 82%;
-    border: 1px solid var(--chamado-border);
-    border-radius: .9rem;
-    box-shadow: 0 .125rem .35rem rgba(0, 0, 0, .035);
+    width: fit-content;
+    max-width: min(78%, 680px);
+  }
+
+  .chat-bubble {
+    padding: .7rem .85rem;
+    border: 1px solid var(--ch-border);
+    border-radius: .95rem .95rem .95rem .25rem;
     background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .035);
   }
 
-  .chamado-chat__item--proprio {
-    margin-left: auto;
-    background: var(--bs-primary-bg-subtle);
-    border-color: var(--bs-primary-border-subtle);
+  .chat-row--proprio .chat-bubble {
+    border-color: #bfdbfe;
+    border-radius: .95rem .95rem .25rem .95rem;
+    background: #eff6ff;
   }
 
-  .chamado-chat__item--interno {
-    background: var(--bs-warning-bg-subtle);
-    border-color: var(--bs-warning-border-subtle);
+  .chat-bubble--interno {
+    border-color: #f0cf87 !important;
+    background: #fff8e6 !important;
   }
 
-  .chamado-chat__autor {
-    font-size: .85rem;
+  .chat-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .25rem;
   }
 
-  .chamado-chat__data {
+  .chat-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--ch-soft-2);
+    color: #64748b;
     font-size: .72rem;
   }
 
-  .chamado-chat__texto {
-    margin-top: .35rem;
+  .chat-author {
+    font-size: .75rem;
+    font-weight: 650;
+  }
+
+  .chat-time {
+    margin-left: auto;
+    color: var(--ch-muted);
+    font-size: .65rem;
+  }
+
+  .chat-text {
+    color: #374151;
+    font-size: .88rem;
     line-height: 1.5;
     white-space: pre-wrap;
   }
 
+  .chat-internal-label {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-bottom: .4rem;
+    color: #8a5d00;
+    font-size: .66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+
+  .chat-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    max-width: 100%;
+    margin-top: .55rem;
+    padding: .35rem .55rem;
+    border: 1px solid var(--ch-border);
+    border-radius: .55rem;
+    background: rgba(255, 255, 255, .65);
+    color: #495057;
+    font-size: .72rem;
+    text-decoration: none;
+  }
+
+  .chat-attachment:hover {
+    border-color: #adb5bd;
+    color: #212529;
+  }
+
+  /* =====================================================
+     COMPOSER
+     ===================================================== */
+
   .chamado-chat__composer {
+    padding: .85rem 1rem 1rem;
+    border-top: 1px solid var(--ch-border);
     background: #fff;
-    border-top: 1px solid var(--chamado-border);
-    padding: 1rem 1.25rem;
+  }
+
+  .composer-box {
+    border: 1px solid #d7dce2;
+    border-radius: .85rem;
+    background: #fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .composer-box:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .08);
+  }
+
+  .composer-box textarea {
+    width: 100%;
+    min-height: 90px;
+    max-height: 220px;
+    padding: .8rem .9rem;
+    border: 0 !important;
+    outline: 0 !important;
+    resize: vertical;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .composer-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem .7rem;
+    border-top: 1px solid var(--ch-border-soft);
+  }
+
+  .composer-hint {
+    color: var(--ch-muted);
+    font-size: .68rem;
   }
 
   /* =====================================================
@@ -142,109 +435,210 @@
      ===================================================== */
 
   .chamado-sidebar-card {
-    border: 1px solid var(--chamado-border);
-    border-radius: 1rem;
     overflow: hidden;
-  }
-
-  .chamado-sidebar-card .card-header {
+    border: 1px solid var(--ch-border);
+    border-radius: .9rem;
     background: #fff;
-    border-bottom: 1px solid var(--chamado-border);
-    padding: .9rem 1rem;
   }
 
-  .chamado-sidebar-card .card-body {
-    padding: 1rem;
+  .chamado-sidebar-card + .chamado-sidebar-card,
+  .chamado-sidebar-card + .chamado-details,
+  .chamado-details + .chamado-details,
+  .chamado-details + .chamado-sidebar-card {
+    margin-top: .75rem;
   }
 
-  .chamado-info {
-    margin-bottom: 0;
+  .sidebar-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .8rem .9rem;
+    border-bottom: 1px solid var(--ch-border-soft);
+    background: #fff;
   }
 
-  .chamado-info__item {
-    padding: .7rem 0;
-    border-bottom: 1px solid #f0f1f3;
+  .sidebar-card-title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: .78rem;
+    font-weight: 650;
   }
 
-  .chamado-info__item:first-child {
+  .sidebar-card-body {
+    padding: .85rem .9rem;
+  }
+
+  /* =====================================================
+     INFO GRID
+     ===================================================== */
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .info-row {
+    display: grid;
+    grid-template-columns: 38% 1fr;
+    gap: .8rem;
+    padding: .6rem 0;
+    border-bottom: 1px solid var(--ch-border-soft);
+  }
+
+  .info-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .info-row:first-child {
     padding-top: 0;
   }
 
-  .chamado-info__item:last-child {
-    padding-bottom: 0;
-    border-bottom: 0;
-  }
-
-  .chamado-info__label {
-    display: block;
-    font-size: .72rem;
+  .info-label {
+    color: var(--ch-muted);
+    font-size: .69rem;
     font-weight: 600;
-    color: var(--chamado-muted);
-    text-transform: uppercase;
-    letter-spacing: .035em;
-    margin-bottom: .15rem;
   }
 
-  .chamado-info__valor {
-    font-size: .9rem;
+  .info-value {
+    min-width: 0;
+    color: var(--ch-text);
+    font-size: .78rem;
     font-weight: 500;
-    color: #212529;
+    text-align: right;
     word-break: break-word;
   }
 
+  .info-subvalue {
+    display: block;
+    margin-top: .15rem;
+    color: var(--ch-muted);
+    font-size: .67rem;
+    font-weight: 400;
+  }
+
   /* =====================================================
-     MÉTRICAS
+     STATUS FORM
      ===================================================== */
 
-  .metric-item {
-    padding: .7rem 0;
-    border-bottom: 1px solid #f0f1f3;
+  .status-action-card {
+    border-color: #cbd5e1;
   }
 
-  .metric-item:last-child {
-    border-bottom: 0;
+  .status-action-card .form-label {
+    margin-bottom: .3rem;
+    color: #495057;
+    font-size: .72rem;
+    font-weight: 600;
   }
 
-  .metric-label {
-    color: var(--chamado-muted);
+  .status-action-card select,
+  .status-action-card textarea,
+  .status-action-card input:not([type="checkbox"]) {
     font-size: .82rem;
   }
 
-  .metric-value {
-    font-weight: 600;
-    font-size: .9rem;
-  }
-
   /* =====================================================
-     DETAILS
+     DETAILS / SECONDARY ACTIONS
      ===================================================== */
 
   .chamado-details {
-    border: 1px solid var(--chamado-border);
-    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid var(--ch-border);
+    border-radius: .9rem;
     background: #fff;
   }
 
   .chamado-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .8rem .9rem;
     cursor: pointer;
     list-style: none;
-    padding: 1rem;
+    font-size: .78rem;
+    font-weight: 650;
   }
 
   .chamado-details summary::-webkit-details-marker {
     display: none;
   }
 
+  .chamado-details summary .details-chevron {
+    transition: transform .15s ease;
+  }
+
   .chamado-details[open] summary {
-    border-bottom: 1px solid var(--chamado-border);
+    border-bottom: 1px solid var(--ch-border-soft);
+  }
+
+  .chamado-details[open] .details-chevron {
+    transform: rotate(180deg);
   }
 
   .chamado-details__body {
-    padding: 1rem;
+    padding: .9rem;
   }
 
   /* =====================================================
-     RESPONSIVO
+     METRICS
+     ===================================================== */
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .55rem;
+  }
+
+  .metric-box {
+    padding: .65rem;
+    border-radius: .7rem;
+    background: var(--ch-soft);
+  }
+
+  .metric-box__label {
+    color: var(--ch-muted);
+    font-size: .64rem;
+    line-height: 1.25;
+  }
+
+  .metric-box__value {
+    margin-top: .2rem;
+    font-size: .82rem;
+    font-weight: 700;
+  }
+
+  /* =====================================================
+     RESOLUTION
+     ===================================================== */
+
+  .resolution-block {
+    padding: .7rem;
+    border-radius: .7rem;
+    background: var(--ch-soft);
+  }
+
+  .resolution-label {
+    margin-bottom: .25rem;
+    color: var(--ch-muted);
+    font-size: .67rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+
+  .resolution-text {
+    font-size: .78rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  /* =====================================================
+     RESPONSIVE
      ===================================================== */
 
   @media (min-width: 1200px) {
@@ -255,10 +649,6 @@
   }
 
   @media (max-width: 767.98px) {
-    .chamado-chat__item {
-      max-width: 94%;
-    }
-
     .chamado-header {
       padding: 1rem;
     }
@@ -266,112 +656,131 @@
     .chamado-chat__mensagens {
       padding: .85rem;
     }
+
+    .chamado-chat__item {
+      max-width: 92%;
+    }
+
+    .info-row {
+      grid-template-columns: 42% 1fr;
+    }
+
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .assumir-box .btn {
+      width: 100%;
+    }
   }
 </style>
 {% endblock %}
 
 
 {% block content %}
-
 <div class="container-fluid px-3 px-lg-4 pb-5 chamado-page">
 
-  <!-- ===================================================
-       CABEÇALHO
-       =================================================== -->
+  <!-- VOLTAR -->
+  <div class="chamado-topbar">
+    <a
+      class="chamado-back"
+      href="{% url 'chamados:lista' %}"
+    >
+      <i class="bi bi-arrow-left"></i>
+      {% trans "Voltar para chamados" %}
+    </a>
+  </div>
+
+
+  <!-- HEADER -->
 
   <section class="chamado-header">
 
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
 
-      <div>
+      <div class="min-w-0">
 
-        <div class="chamado-protocolo mb-1">
+        <div class="chamado-protocolo">
+          <i class="bi bi-ticket-perforated"></i>
           {{ chamado.protocolo }}
         </div>
 
-        <h1 class="h3 chamado-titulo mb-2">
+        <h1 class="chamado-titulo">
           {{ chamado.titulo }}
         </h1>
 
         <div class="chamado-contexto">
 
-          <i class="bi bi-building me-1"></i>
-          {{ chamado.base.nome }}
+          <span class="chamado-contexto__item">
+            <i class="bi bi-building"></i>
+            {{ chamado.base.nome }}
+          </span>
 
           {% if chamado.loja %}
-            <span class="mx-2">•</span>
-            <i class="bi bi-shop me-1"></i>
-            {{ chamado.loja }}
+            <span class="chamado-contexto__item">
+              <i class="bi bi-shop"></i>
+              {{ chamado.loja }}
+            </span>
           {% endif %}
 
           {% if chamado.lider %}
-            <span class="mx-2">•</span>
-            <i class="bi bi-person me-1"></i>
-            {{ chamado.lider }}
+            <span class="chamado-contexto__item">
+              <i class="bi bi-person"></i>
+              {{ chamado.lider }}
+            </span>
           {% endif %}
+
+          <span class="chamado-contexto__item">
+            <i class="bi bi-calendar3"></i>
+            {{ chamado.aberto_em|date:'d/m/Y H:i' }}
+          </span>
 
         </div>
 
       </div>
 
 
-      <div class="d-flex flex-wrap gap-2">
+      {% if chamado.atendente %}
+        <div class="text-end">
 
-        <a
-          class="btn btn-outline-secondary"
-          href="{% url 'chamados:lista' %}"
-        >
-          <i class="bi bi-arrow-left me-1"></i>
-          {% trans "Voltar" %}
-        </a>
+          <div class="small text-secondary mb-1">
+            {% trans "Atendente responsável" %}
+          </div>
 
-        {% if pode_atender and not chamado.atendente_id %}
+          <div class="fw-semibold small">
+            <i class="bi bi-headset me-1 text-primary"></i>
+            {{ chamado.atendente.get_full_name|default:chamado.atendente.username }}
+          </div>
 
-          <form
-            method="post"
-            action="{% url 'chamados:assumir' chamado.pk %}"
-          >
-
-            {% csrf_token %}
-
-            <button class="btn btn-primary">
-              <i class="bi bi-person-check me-1"></i>
-              {% trans "Assumir atendimento" %}
-            </button>
-
-          </form>
-
-        {% endif %}
-
-      </div>
+        </div>
+      {% endif %}
 
     </div>
 
 
-    <!-- STATUS -->
+    <div class="chamado-statusbar">
 
-    <div class="d-flex flex-wrap gap-2 mt-3">
-
-      <span class="badge text-bg-dark chamado-badge">
+      <span class="chamado-pill chamado-pill--status">
         {{ chamado.get_status_display }}
       </span>
 
       {% if chamado.prioridade == 'CRITICA' %}
 
-        <span class="badge text-bg-danger chamado-badge">
-          <i class="bi bi-exclamation-triangle-fill me-1"></i>
-          {% trans "Critica" %}
+        <span class="chamado-pill chamado-pill--danger">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          {% trans "Crítica" %}
         </span>
 
       {% elif chamado.prioridade == 'ALTA' %}
 
-        <span class="badge text-bg-warning chamado-badge">
+        <span class="chamado-pill chamado-pill--warning">
+          <i class="bi bi-arrow-up-circle"></i>
           {% trans "Alta" %}
         </span>
 
       {% else %}
 
-        <span class="badge text-bg-secondary chamado-badge">
+        <span class="chamado-pill">
           {{ chamado.get_prioridade_display }}
         </span>
 
@@ -380,18 +789,26 @@
 
       {% if chamado.sla_vencido %}
 
-        <span class="badge text-bg-danger chamado-badge">
-          <i class="bi bi-clock-history me-1"></i>
+        <span class="chamado-pill chamado-pill--danger">
+          <i class="bi bi-clock-history"></i>
           {% trans "SLA vencido" %}
         </span>
 
       {% elif chamado.prazo_sla_em %}
 
-        <span class="badge bg-light text-dark border chamado-badge">
-          <i class="bi bi-clock me-1"></i>
-          SLA {{ chamado.prazo_sla_em|date:'d/m H:i' }}
+        <span class="chamado-pill">
+          <i class="bi bi-clock"></i>
+          {% trans "SLA" %} {{ chamado.prazo_sla_em|date:'d/m H:i' }}
         </span>
 
+      {% endif %}
+
+
+      {% if chamado.sick %}
+        <span class="chamado-pill chamado-pill--danger">
+          <i class="bi bi-tools"></i>
+          SICK #{{ chamado.sick.pk }}
+        </span>
       {% endif %}
 
     </div>
@@ -399,85 +816,111 @@
   </section>
 
 
+  <!-- ASSUMIR -->
+  {% if pode_atender and not chamado.atendente_id %}
+
+    <section class="assumir-box">
+
+      <div>
+        <div class="assumir-box__title">
+          {% trans "Este chamado ainda não foi assumido" %}
+        </div>
+
+        <div class="assumir-box__text">
+          {% trans "Assuma o atendimento para iniciar a conversa com o solicitante." %}
+        </div>
+      </div>
+
+      <form
+        id="assumir-form"
+        method="post"
+        action="{% url 'chamados:assumir' chamado.pk %}"
+      >
+        {% csrf_token %}
+
+        <button class="btn btn-primary">
+          <i class="bi bi-headset me-1"></i>
+          {% trans "Assumir atendimento" %}
+        </button>
+      </form>
+
+    </section>
+
+  {% endif %}
+
+
   <div class="row g-3">
 
     <!-- =================================================
-         CONTEÚDO PRINCIPAL
+         PRINCIPAL
          ================================================= -->
 
     <div class="col-xl-8">
 
       <!-- DESCRIÇÃO -->
+      <section class="descricao-panel">
 
-      <section class="card chamado-descricao-card mb-3">
+        <div class="descricao-panel__header">
 
-        <div class="card-body">
+          <div class="section-heading">
 
-          <div class="d-flex align-items-center gap-2 mb-3">
-
-            <div>
-              <i class="bi bi-card-text fs-5"></i>
+            <div class="section-heading__icon">
+              <i class="bi bi-card-text"></i>
             </div>
 
             <div>
-              <h2 class="h6 fw-semibold mb-0">
-                {% trans "Descricao do problema" %}
-              </h2>
+              <div class="section-heading__title">
+                {% trans "Descrição do problema" %}
+              </div>
 
-              <small class="text-secondary">
-                {% trans "Informacoes registradas na abertura." %}
-              </small>
+              <div class="section-heading__subtitle">
+                {% trans "Relato informado na abertura do chamado." %}
+              </div>
             </div>
 
           </div>
 
-          <div class="chamado-descricao">
-            {{ chamado.descricao }}
-          </div>
+        </div>
 
+        <div class="descricao-panel__body">
+          <div class="chamado-descricao">{{ chamado.descricao }}</div>
         </div>
 
       </section>
 
 
       <!-- CHAT -->
-
       <section
-        class="card chamado-chat"
+        class="chamado-chat"
         aria-labelledby="titulo-chat-chamado"
       >
 
-        <div
-          class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2"
-        >
+        <div class="chamado-chat__header">
 
-          <div class="d-flex align-items-center gap-2">
+          <div class="section-heading">
 
-            <div>
-              <i class="bi bi-chat-dots fs-5"></i>
+            <div class="section-heading__icon">
+              <i class="bi bi-chat-dots"></i>
             </div>
 
             <div>
-
               <h2
-                class="h6 fw-semibold mb-0"
                 id="titulo-chat-chamado"
+                class="section-heading__title mb-0"
               >
                 {% trans "Atendimento" %}
               </h2>
 
-              <small class="text-secondary">
-                {% trans "Conversa vinculada ao chamado." %}
-              </small>
-
+              <div class="section-heading__subtitle">
+                {% trans "Conversa registrada neste chamado." %}
+              </div>
             </div>
 
           </div>
 
-          <span
-            id="chat-status"
-            class="badge text-bg-secondary"
-          >
+
+          <span id="chat-status" class="chat-connection">
+            <span class="chat-connection__dot"></span>
             {% trans "Conectando" %}
           </span>
 
@@ -485,111 +928,102 @@
 
 
         <!-- MENSAGENS -->
-
         <div
           id="chat-mensagens"
-          class="card-body chamado-chat__mensagens"
+          class="chamado-chat__mensagens"
           aria-live="polite"
         >
 
           <div
             id="chat-vazio"
-            class="text-secondary text-center py-5 {% if mensagens_chamado %}d-none{% endif %}"
+            class="text-center py-5 {% if mensagens_chamado %}d-none{% endif %}"
           >
+            <div class="text-secondary opacity-50 mb-2">
+              <i class="bi bi-chat-square-text fs-2"></i>
+            </div>
 
-            <i class="bi bi-chat-square-text fs-1 d-block mb-2 opacity-50"></i>
-
-            <div class="fw-semibold">
+            <div class="fw-semibold small">
               {% trans "Nenhuma mensagem ainda" %}
             </div>
 
-            <small>
-              {% trans "A conversa aparecera aqui." %}
-            </small>
-
+            <div class="text-secondary small mt-1">
+              {% trans "As mensagens do atendimento aparecerão aqui." %}
+            </div>
           </div>
 
 
           {% for item in mensagens_chamado %}
 
-            <article
-              class="
-                card chamado-chat__item mb-3
-                {% if item.autor_id == request.user.id %}
-                  chamado-chat__item--proprio
-                {% endif %}
-                {% if item.nota_interna %}
-                  chamado-chat__item--interno
-                {% endif %}
-              "
+            <div
+              class="chat-row {% if item.autor_id == request.user.id %}chat-row--proprio{% endif %}"
               data-mensagem-id="{{ item.pk }}"
             >
 
-              <div class="card-body py-2 px-3">
+              <article class="chamado-chat__item">
 
                 <div
-                  class="d-flex justify-content-between align-items-start gap-3"
+                  class="
+                    chat-bubble
+                    {% if item.nota_interna %}chat-bubble--interno{% endif %}
+                  "
                 >
 
-                  <div class="chamado-chat__autor fw-semibold">
-
-                    <i class="bi bi-person-circle me-1"></i>
-
-                    {{ item.autor.get_full_name|default:item.autor.username }}
-
-                  </div>
-
-                  <small
-                    class="text-secondary text-nowrap chamado-chat__data"
-                  >
-                    {{ item.criado_em|date:'d/m/Y H:i' }}
-                  </small>
-
-                </div>
-
-
-                {% if item.nota_interna %}
-
-                  <div class="mt-2">
-
-                    <span class="badge text-bg-warning">
-                      <i class="bi bi-lock me-1"></i>
+                  {% if item.nota_interna %}
+                    <div class="chat-internal-label">
+                      <i class="bi bi-lock-fill"></i>
                       {% trans "Nota interna" %}
+                    </div>
+                  {% endif %}
+
+
+                  <div class="chat-meta">
+
+                    <span class="chat-avatar">
+                      <i class="bi bi-person"></i>
+                    </span>
+
+                    <span class="chat-author">
+                      {{ item.autor.get_full_name|default:item.autor.username }}
+                    </span>
+
+                    <span class="chat-time">
+                      {{ item.criado_em|date:'d/m H:i' }}
                     </span>
 
                   </div>
 
-                {% endif %}
+
+                  <div class="chat-text">
+                    {{ item.texto }}
+                  </div>
 
 
-                <div class="chamado-chat__texto">
-                  {{ item.texto }}
+                  {% for anexo in item.anexos.all %}
+
+                    <a
+                      class="chat-attachment"
+                      href="{% url 'chamados:baixar_anexo' anexo.pk %}"
+                    >
+                      <i class="bi bi-paperclip"></i>
+                      <span class="text-truncate">
+                        {{ anexo.nome_original }}
+                      </span>
+                    </a>
+
+                  {% endfor %}
+
                 </div>
 
+              </article>
 
-                {% for anexo in item.anexos.all %}
-
-                  <a
-                    class="btn btn-sm btn-outline-secondary mt-2"
-                    href="{% url 'chamados:baixar_anexo' anexo.pk %}"
-                  >
-                    <i class="bi bi-paperclip me-1"></i>
-                    {{ anexo.nome_original }}
-                  </a>
-
-                {% endfor %}
-
-              </div>
-
-            </article>
+            </div>
 
           {% endfor %}
 
         </div>
 
 
-        <!-- NOVA MENSAGEM -->
-
+        <!-- COMPOSER -->
         {% if pode_interagir %}
 
           <form
@@ -604,65 +1038,43 @@
 
             {% csrf_token %}
 
-            <label
-              class="form-label fw-semibold"
-              for="{{ mensagem_form.texto.id_for_label }}"
-            >
-              {% trans "Nova mensagem" %}
-            </label>
+            <div class="composer-box">
 
-            {{ mensagem_form.texto }}
+              {{ mensagem_form.texto }}
 
+              <div class="composer-footer">
 
-            <div class="row g-2 mt-2">
+                <div class="d-flex flex-wrap align-items-center gap-3">
 
-              <!--div class="col-md-8">
+                  {% if pode_atender %}
+                    <div class="form-check mb-0">
 
-                <label class="form-label small text-secondary mb-1">
-                  {% trans "Anexo" %}
-                </label>
+                      {{ mensagem_form.nota_interna }}
 
-                {{ mensagem_form.anexo }}
+                      <label
+                        class="form-check-label small"
+                        for="{{ mensagem_form.nota_interna.id_for_label }}"
+                      >
+                        <i class="bi bi-lock me-1"></i>
+                        {% trans "Nota interna" %}
+                      </label>
 
-              </div-->
+                    </div>
+                  {% endif %}
 
-
-              {% if pode_atender %}
-
-                <div class="col-md-4">
-
-                  <div class="form-check mt-md-4 pt-md-1">
-
-                    {{ mensagem_form.nota_interna }}
-
-                    <label
-                      class="form-check-label"
-                      for="{{ mensagem_form.nota_interna.id_for_label }}"
-                    >
-                      {% trans "Nota interna" %}
-                    </label>
-
-                  </div>
+                  <span class="composer-hint d-none d-md-inline">
+                    {% trans "Enter envia · Shift + Enter quebra linha" %}
+                  </span>
 
                 </div>
 
-              {% endif %}
 
-            </div>
+                <button class="btn btn-primary btn-sm px-3">
+                  <i class="bi bi-send me-1"></i>
+                  {% trans "Enviar" %}
+                </button>
 
-
-            <div
-              class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
-            >
-
-              <small class="text-secondary">
-                {% trans "Enter envia. Shift + Enter cria nova linha." %}
-              </small>
-
-              <button class="btn btn-primary px-4">
-                <i class="bi bi-send me-1"></i>
-                {% trans "Enviar" %}
-              </button>
+              </div>
 
             </div>
 
@@ -681,190 +1093,70 @@
 
     <div class="col-xl-4">
 
-      <div class="chamado-sidebar">
-
+      <aside class="chamado-sidebar">
 
         <!-- INFORMAÇÕES -->
+        <section class="chamado-sidebar-card">
 
-        <section class="card chamado-sidebar-card mb-3">
-
-          <div class="card-header fw-semibold">
-
-            <i class="bi bi-info-circle me-1"></i>
-            {% trans "Informacoes" %}
-
+          <div class="sidebar-card-header">
+            <div class="sidebar-card-title">
+              <i class="bi bi-info-circle"></i>
+              {% trans "Contexto do chamado" %}
+            </div>
           </div>
 
-          <div class="card-body">
+          <div class="sidebar-card-body">
 
-            <div class="chamado-info">
+            <div class="info-grid">
 
+              <div class="info-row">
+                <div class="info-label">
+                  {% trans "Inventário" %}
+                </div>
 
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Inventario" %}
-                </span>
-
-                <div class="chamado-info__valor">
+                <div class="info-value">
                   {{ chamado.inventario|default:'—' }}
+
                   {% if chamado.momento_inventario_abertura %}
-                    <div class="small text-secondary mt-1">
-                      {% trans "Momento da abertura:" %} {{ chamado.get_momento_inventario_abertura_display }}
-                    </div>
+                    <span class="info-subvalue">
+                      {{ chamado.get_momento_inventario_abertura_display }}
+                    </span>
                   {% endif %}
                 </div>
-
               </div>
 
 
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Categoria do equipamento" %}
-                </span>
-
-                <div class="chamado-info__valor">
-                  {{ chamado.get_categoria_equipamento_display|default:'—' }}
+              <div class="info-row">
+                <div class="info-label">
+                  {% trans "Categoria" %}
                 </div>
 
+                <div class="info-value">
+                  {{ chamado.get_categoria_equipamento_display|default:'—' }}
+                </div>
               </div>
 
 
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
+              <div class="info-row">
+                <div class="info-label">
                   {% trans "Equipamento" %}
-                </span>
+                </div>
 
-                <div class="chamado-info__valor">
+                <div class="info-value">
 
                   {% if chamado.equipamento %}
 
                     {{ chamado.equipamento.produto.descricao|default:chamado.equipamento }}
 
-                    <div class="small text-secondary mt-1">
+                    {% if chamado.equipamento.patrimonio %}
+                      <span class="info-subvalue">
+                        {% trans "Patrimônio" %}: {{ chamado.equipamento.patrimonio }}
+                      </span>
+                    {% endif %}
 
-                      {% if chamado.equipamento.patrimonio %}
-                        {% trans "Patrimonio:" %}
-                        {{ chamado.equipamento.patrimonio }}
-                      {% endif %}
-
-                      {% if chamado.equipamento.numero_serie %}
-                        <br>
-                        S/N:
-                        {{ chamado.equipamento.numero_serie }}
-                      {% endif %}
-
-                    </div>
-
-                  {% else %}
-
-                    —
-
-                  {% endif %}
-
-                </div>
-
-              </div>
-
-
-              {% if chamado.categoria %}
-
-                <div class="chamado-info__item">
-
-                  <span class="chamado-info__label">
-                    {% trans "Classificacao tecnica" %}
-                  </span>
-
-                  <div class="chamado-info__valor">
-                    {{ chamado.categoria.nome }}
-                  </div>
-
-                </div>
-
-              {% endif %}
-
-
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Lider" %}
-                </span>
-
-                <div class="chamado-info__valor">
-                  {{ chamado.lider|default:'—' }}
-                </div>
-
-              </div>
-
-
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Aberto por" %}
-                </span>
-
-                <div class="chamado-info__valor">
-                  {{ chamado.aberto_por.get_full_name|default:chamado.aberto_por.username }}
-                </div>
-
-              </div>
-
-
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Atendente" %}
-                </span>
-
-                <div class="chamado-info__valor">
-
-                  {% if chamado.atendente %}
-
-                    {{ chamado.atendente.get_full_name|default:chamado.atendente.username }}
-
-                  {% else %}
-
-                    <span class="text-secondary">
-                      {% trans "Aguardando atendimento" %}
-                    </span>
-
-                  {% endif %}
-
-                </div>
-
-              </div>
-
-
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Abertura" %}
-                </span>
-
-                <div class="chamado-info__valor">
-                  {{ chamado.aberto_em|date:'d/m/Y H:i' }}
-                </div>
-
-              </div>
-
-
-              <div class="chamado-info__item">
-
-                <span class="chamado-info__label">
-                  {% trans "Prazo SLA" %}
-                </span>
-
-                <div class="chamado-info__valor">
-
-                  {% if chamado.prazo_sla_em %}
-
-                    {{ chamado.prazo_sla_em|date:'d/m/Y H:i' }}
-
-                    {% if chamado.sla_vencido %}
-                      <span class="badge text-bg-danger ms-1">
-                        {% trans "Vencido" %}
+                    {% if chamado.equipamento.numero_serie %}
+                      <span class="info-subvalue">
+                        S/N: {{ chamado.equipamento.numero_serie }}
                       </span>
                     {% endif %}
 
@@ -873,30 +1165,81 @@
                   {% endif %}
 
                 </div>
-
               </div>
 
 
-              <div class="chamado-info__item">
+              {% if chamado.categoria %}
+                <div class="info-row">
+                  <div class="info-label">
+                    {% trans "Classificação" %}
+                  </div>
 
-                <span class="chamado-info__label">
-                  SICK
-                </span>
+                  <div class="info-value">
+                    {{ chamado.categoria.nome }}
+                  </div>
+                </div>
+              {% endif %}
 
-                <div class="chamado-info__valor">
 
-                  {% if chamado.sick %}
+              <div class="info-row">
+                <div class="info-label">
+                  {% trans "Líder" %}
+                </div>
 
-                    <span class="badge text-bg-danger">
-                      #{{ chamado.sick.pk }}
+                <div class="info-value">
+                  {{ chamado.lider|default:'—' }}
+                </div>
+              </div>
+
+
+              <div class="info-row">
+                <div class="info-label">
+                  {% trans "Aberto por" %}
+                </div>
+
+                <div class="info-value">
+                  {{ chamado.aberto_por.get_full_name|default:chamado.aberto_por.username }}
+                </div>
+              </div>
+
+
+              <div class="info-row">
+                <div class="info-label">
+                  {% trans "Atendente" %}
+                </div>
+
+                <div class="info-value">
+                  {% if chamado.atendente %}
+                    {{ chamado.atendente.get_full_name|default:chamado.atendente.username }}
+                  {% else %}
+                    <span class="text-secondary">
+                      {% trans "Não assumido" %}
                     </span>
+                  {% endif %}
+                </div>
+              </div>
 
+
+              <div class="info-row">
+                <div class="info-label">
+                  {% trans "SLA" %}
+                </div>
+
+                <div class="info-value">
+
+                  {% if chamado.prazo_sla_em %}
+                    {{ chamado.prazo_sla_em|date:'d/m/Y H:i' }}
+
+                    {% if chamado.sla_vencido %}
+                      <span class="info-subvalue text-danger">
+                        {% trans "Prazo vencido" %}
+                      </span>
+                    {% endif %}
                   {% else %}
                     —
                   {% endif %}
 
                 </div>
-
               </div>
 
             </div>
@@ -906,29 +1249,30 @@
         </section>
 
 
-        <!-- ALTERAR STATUS -->
-
+        <!-- ATUALIZAR STATUS -->
         {% if status_permitidos %}
 
           <form
-            class="card chamado-sidebar-card mb-3"
+            class="chamado-sidebar-card status-action-card"
             method="post"
             action="{% url 'chamados:alterar_status' chamado.pk %}"
           >
 
             {% csrf_token %}
 
-            <div class="card-header fw-semibold">
-              <i class="bi bi-arrow-repeat me-1"></i>
-              {% trans "Atualizar atendimento" %}
+            <div class="sidebar-card-header">
+              <div class="sidebar-card-title">
+                <i class="bi bi-arrow-repeat"></i>
+                {% trans "Atualizar atendimento" %}
+              </div>
             </div>
 
-            <div class="card-body">
+            <div class="sidebar-card-body">
 
               <div class="mb-3">
 
                 <label class="form-label">
-                  {% trans "Status" %}
+                  {% trans "Novo status" %}
                 </label>
 
                 {{ status_form.status }}
@@ -944,8 +1288,8 @@
 
                 {{ status_form.causa_raiz }}
 
-                <div class="form-text">
-                  {% trans "Obrigatoria ao resolver o chamado." %}
+                <div class="form-text small">
+                  {% trans "Obrigatória quando o chamado for resolvido." %}
                 </div>
 
               </div>
@@ -954,7 +1298,7 @@
               <div class="mb-3">
 
                 <label class="form-label">
-                  {% trans "Solucao / justificativa" %}
+                  {% trans "Solução / justificativa" %}
                 </label>
 
                 {{ status_form.resolucao }}
@@ -963,8 +1307,8 @@
 
 
               <button class="btn btn-dark w-100">
-                <i class="bi bi-check2-circle me-1"></i>
-                {% trans "Atualizar status" %}
+                <i class="bi bi-check2 me-1"></i>
+                {% trans "Salvar atualização" %}
               </button>
 
             </div>
@@ -975,28 +1319,30 @@
 
 
         <!-- AVALIAÇÃO -->
-
         {% if pode_avaliar %}
 
           <form
-            class="card chamado-sidebar-card mb-3 border-primary"
+            id="avaliacao-form"
+            class="chamado-sidebar-card"
             method="post"
             action="{% url 'chamados:avaliar' chamado.pk %}"
           >
 
             {% csrf_token %}
 
-            <div class="card-header fw-semibold">
-              <i class="bi bi-star me-1"></i>
-              {% trans "Avaliar solucao" %}
+            <div class="sidebar-card-header">
+              <div class="sidebar-card-title">
+                <i class="bi bi-star"></i>
+                {% trans "Avaliar atendimento" %}
+              </div>
             </div>
 
-            <div class="card-body">
+            <div class="sidebar-card-body">
 
               {{ avaliacao_form.as_p }}
 
               <button class="btn btn-primary w-100">
-                {% trans "Enviar avaliacao" %}
+                {% trans "Enviar avaliação" %}
               </button>
 
             </div>
@@ -1005,56 +1351,85 @@
 
         {% endif %}
 
-        {% if avaliacoes_chamado %}
-          <div class="card chamado-sidebar-card mb-3">
-            <div class="card-header fw-semibold">
-              <i class="bi bi-star-fill text-warning me-1"></i>
-              {% trans "Notas dos atendimentos" %}
+
+        <!--
+          IMPORTANTE:
+          pode_ver_avaliacoes deve ser fornecido pela view/policy
+          somente para Admin ou usuário autorizado.
+        -->
+        {% if pode_ver_avaliacoes and avaliacoes_chamado %}
+
+          <section class="chamado-sidebar-card">
+
+            <div class="sidebar-card-header">
+              <div class="sidebar-card-title">
+                <i class="bi bi-star-fill text-warning"></i>
+                {% trans "Avaliações" %}
+              </div>
+
+              <span class="badge bg-light text-dark border">
+                {{ avaliacoes_chamado|length }}
+              </span>
             </div>
+
             <div class="list-group list-group-flush">
+
               {% for avaliacao in avaliacoes_chamado %}
-                <div class="list-group-item py-3">
-                  <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div>
-                      <strong>{{ avaliacao.nota }}/5</strong>
-                      <div class="small text-secondary">
-                        {% trans "Atendente" %}:
-                        {{ avaliacao.atendimento.atendente.get_full_name|default:avaliacao.atendimento.atendente.username }}
-                      </div>
-                    </div>
+
+                <div class="list-group-item px-3 py-3">
+
+                  <div class="d-flex justify-content-between align-items-center gap-2">
+
+                    <strong class="small">
+                      {{ avaliacao.nota }}/5
+                    </strong>
+
                     {% if avaliacao.resolvido %}
-                      <span class="badge text-bg-success">{% trans "Resolvido" %}</span>
+                      <span class="badge text-bg-success">
+                        {% trans "Resolvido" %}
+                      </span>
                     {% else %}
-                      <span class="badge text-bg-warning">{% trans "Reaberto" %}</span>
+                      <span class="badge text-bg-warning">
+                        {% trans "Reaberto" %}
+                      </span>
                     {% endif %}
+
                   </div>
-                  {% if avaliacao.comentario %}<p class="small mb-1 mt-2">{{ avaliacao.comentario }}</p>{% endif %}
-                  <small class="text-secondary">
-                    {% blocktrans with inicio=avaliacao.atendimento.iniciada_em|date:"d/m/Y H:i" fim=avaliacao.atendimento.encerrada_em|date:"d/m/Y H:i" %}Atendimento de {{ inicio }} a {{ fim }}{% endblocktrans %}
-                  </small>
+
+                  <div class="small text-secondary mt-1">
+                    {{ avaliacao.atendimento.atendente.get_full_name|default:avaliacao.atendimento.atendente.username }}
+                  </div>
+
+                  {% if avaliacao.comentario %}
+                    <div class="small mt-2">
+                      {{ avaliacao.comentario }}
+                    </div>
+                  {% endif %}
+
                 </div>
+
               {% endfor %}
+
             </div>
-          </div>
+
+          </section>
+
         {% endif %}
 
 
-        <!-- TRANSFERÊNCIA -->
-
+        <!-- AÇÕES SECUNDÁRIAS -->
         {% if pode_transferir %}
 
-          <details class="chamado-details mb-3">
+          <details class="chamado-details">
 
-            <summary
-              class="d-flex justify-content-between align-items-center fw-semibold"
-            >
+            <summary>
 
               <span>
                 <i class="bi bi-arrow-left-right me-1"></i>
                 {% trans "Transferir atendimento" %}
               </span>
 
-              <i class="bi bi-chevron-down"></i>
+              <i class="bi bi-chevron-down details-chevron"></i>
 
             </summary>
 
@@ -1082,22 +1457,18 @@
         {% endif %}
 
 
-        <!-- SICK -->
-
         {% if pode_converter_sick %}
 
-          <details class="chamado-details mb-3">
+          <details class="chamado-details">
 
-            <summary
-              class="d-flex justify-content-between align-items-center fw-semibold"
-            >
+            <summary>
 
-              <span>
+              <span class="text-danger">
                 <i class="bi bi-tools me-1"></i>
-                {% trans "Converter equipamento em SICK" %}
+                {% trans "Converter em SICK" %}
               </span>
 
-              <i class="bi bi-chevron-down"></i>
+              <i class="bi bi-chevron-down details-chevron"></i>
 
             </summary>
 
@@ -1127,39 +1498,41 @@
 
 
         <!-- RESOLUÇÃO -->
-
         {% if chamado.resolucao %}
 
-          <section class="card chamado-sidebar-card mb-3">
+          <section class="chamado-sidebar-card">
 
-            <div class="card-header fw-semibold">
-              <i class="bi bi-check-circle me-1"></i>
-              {% trans "Resolucao" %}
+            <div class="sidebar-card-header">
+              <div class="sidebar-card-title">
+                <i class="bi bi-check-circle text-success"></i>
+                {% trans "Resolução" %}
+              </div>
             </div>
 
-            <div class="card-body">
+            <div class="sidebar-card-body">
 
-              <div class="mb-3">
+              {% if chamado.causa_raiz %}
+                <div class="resolution-block mb-2">
 
-                <div class="small fw-semibold text-secondary mb-1">
-                  {% trans "Causa raiz" %}
+                  <div class="resolution-label">
+                    {% trans "Causa raiz" %}
+                  </div>
+
+                  <div class="resolution-text">
+                    {{ chamado.causa_raiz }}
+                  </div>
+
+                </div>
+              {% endif %}
+
+
+              <div class="resolution-block">
+
+                <div class="resolution-label">
+                  {% trans "Solução" %}
                 </div>
 
-                <div style="white-space: pre-wrap;">
-                  {{ chamado.causa_raiz }}
-                </div>
-
-              </div>
-
-              <hr>
-
-              <div>
-
-                <div class="small fw-semibold text-secondary mb-1">
-                  {% trans "Solucao" %}
-                </div>
-
-                <div style="white-space: pre-wrap;">
+                <div class="resolution-text">
                   {{ chamado.resolucao }}
                 </div>
 
@@ -1173,74 +1546,64 @@
 
 
         <!-- MÉTRICAS -->
+        <section class="chamado-sidebar-card">
 
-        <section class="card chamado-sidebar-card mb-3">
-
-          <div class="card-header fw-semibold">
-            <i class="bi bi-stopwatch me-1"></i>
-            {% trans "Tempos do atendimento" %}
+          <div class="sidebar-card-header">
+            <div class="sidebar-card-title">
+              <i class="bi bi-stopwatch"></i>
+              {% trans "Métricas" %}
+            </div>
           </div>
 
-          <div class="card-body">
+          <div class="sidebar-card-body">
 
-            <div
-              class="metric-item d-flex justify-content-between gap-3"
-            >
-              <span class="metric-label">
-                {% trans "Primeira resposta" %}
-              </span>
+            <div class="metrics-grid">
 
-              <span class="metric-value">
-                {{ metricas.espera_primeira_resposta|default:'—' }}
-              </span>
-            </div>
+              <div class="metric-box">
+                <div class="metric-box__label">
+                  {% trans "Primeira resposta" %}
+                </div>
+                <div class="metric-box__value">
+                  {{ metricas.espera_primeira_resposta|default:'—' }}
+                </div>
+              </div>
 
-            <div
-              class="metric-item d-flex justify-content-between gap-3"
-            >
-              <span class="metric-label">
-                {% trans "Aceite" %}
-              </span>
+              <div class="metric-box">
+                <div class="metric-box__label">
+                  {% trans "Tempo até aceite" %}
+                </div>
+                <div class="metric-box__value">
+                  {{ metricas.tempo_aceite|default:'—' }}
+                </div>
+              </div>
 
-              <span class="metric-value">
-                {{ metricas.tempo_aceite|default:'—' }}
-              </span>
-            </div>
+              <div class="metric-box">
+                <div class="metric-box__label">
+                  {% trans "Suporte efetivo" %}
+                </div>
+                <div class="metric-box__value">
+                  {{ metricas.suporte_efetivo|default:'—' }}
+                </div>
+              </div>
 
-            <div
-              class="metric-item d-flex justify-content-between gap-3"
-            >
-              <span class="metric-label">
-                {% trans "Suporte efetivo" %}
-              </span>
+              <div class="metric-box">
+                <div class="metric-box__label">
+                  {% trans "Transferências" %}
+                </div>
+                <div class="metric-box__value">
+                  {{ metricas.transferencias }}
+                </div>
+              </div>
 
-              <span class="metric-value">
-                {{ metricas.suporte_efetivo|default:'—' }}
-              </span>
-            </div>
+              <div class="metric-box">
+                <div class="metric-box__label">
+                  {% trans "Reaberturas" %}
+                </div>
+                <div class="metric-box__value">
+                  {{ metricas.reaberturas }}
+                </div>
+              </div>
 
-            <div
-              class="metric-item d-flex justify-content-between gap-3"
-            >
-              <span class="metric-label">
-                {% trans "Transferencias" %}
-              </span>
-
-              <span class="metric-value">
-                {{ metricas.transferencias }}
-              </span>
-            </div>
-
-            <div
-              class="metric-item d-flex justify-content-between gap-3"
-            >
-              <span class="metric-label">
-                {% trans "Reaberturas" %}
-              </span>
-
-              <span class="metric-value">
-                {{ metricas.reaberturas }}
-              </span>
             </div>
 
           </div>
@@ -1249,14 +1612,19 @@
 
 
         <!-- O.S. -->
-
         {% if ordens %}
 
-          <section class="card chamado-sidebar-card">
+          <section class="chamado-sidebar-card">
 
-            <div class="card-header fw-semibold">
-              <i class="bi bi-clipboard-check me-1"></i>
-              {% trans "Ordens de servico" %}
+            <div class="sidebar-card-header">
+              <div class="sidebar-card-title">
+                <i class="bi bi-clipboard-check"></i>
+                {% trans "Ordens de serviço" %}
+              </div>
+
+              <span class="badge bg-light text-dark border">
+                {{ ordens|length }}
+              </span>
             </div>
 
             <div class="list-group list-group-flush">
@@ -1264,11 +1632,11 @@
               {% for ordem in ordens %}
 
                 <a
-                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2 py-2 px-3"
                   href="{% url 'ordens_servico:detalhe' ordem.pk %}"
                 >
 
-                  <span>
+                  <span class="small fw-semibold">
                     {{ ordem.numero }}
                   </span>
 
@@ -1286,51 +1654,70 @@
 
         {% endif %}
 
-      </div>
+      </aside>
 
     </div>
 
   </div>
 
 </div>
-
 {% endblock %}
 
 
 {% block extra_js %}
-
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-  const form =
-    document.getElementById('chat-form');
+  const avaliacaoForm = document.getElementById('avaliacao-form');
+  avaliacaoForm?.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const botao = avaliacaoForm.querySelector('button[type="submit"], button:not([type])');
+    if (botao) botao.disabled = true;
+    try {
+      const resposta = await fetch(avaliacaoForm.action, {
+        method: 'POST',
+        body: new FormData(avaliacaoForm),
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        credentials: 'same-origin'
+      });
+      const contentType = resposta.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('{% trans "O servidor não retornou uma resposta válida para a avaliação." %}');
+      }
+      const dados = await resposta.json();
+      if (!resposta.ok || !dados.ok) throw new Error(dados.erro || 'Verifique os dados da avaliação.');
+      const aviso = document.createElement('div');
+      aviso.className = 'alert alert-success mb-0';
+      aviso.textContent = dados.encerrado
+        ? 'AVALIAÇÃO REGISTRADA E CHAMADO ENCERRADO.'
+        : 'AVALIAÇÃO REGISTRADA E CHAMADO REABERTO.';
+      avaliacaoForm.replaceWith(aviso);
+      document.querySelectorAll('.chamado-pill--status').forEach(function (pill) {
+        pill.textContent = dados.status;
+      });
+    } catch (erro) {
+      alert(erro.message);
+      if (botao) botao.disabled = false;
+    }
+  });
 
-  const lista =
-    document.getElementById('chat-mensagens');
+  const form = document.getElementById('chat-form');
+  const lista = document.getElementById('chat-mensagens');
+  const status = document.getElementById('chat-status');
 
-  const status =
-    document.getElementById('chat-status');
-
-  if (
-    !form ||
-    !lista ||
-    !window.WebSocket
-  ) {
+  if (!form || !lista || !window.WebSocket) {
     return;
   }
-
 
   const scheme =
     window.location.protocol === 'https:'
       ? 'wss'
       : 'ws';
 
-
   const socket =
     new WebSocket(
       `${scheme}://${window.location.host}${form.dataset.wsPath}`
     );
-
 
   const userId =
     Number(form.dataset.userId);
@@ -1345,18 +1732,42 @@ document.addEventListener('DOMContentLoaded', function () {
     form.querySelector('[name="nota_interna"]');
 
 
-  function mudarStatus(
-    rotulo,
-    classe
-  ) {
+  function mudarStatus(rotulo, estado) {
 
-    status.textContent = rotulo;
-    status.className = `badge ${classe}`;
+    status.innerHTML = '';
+
+    const dot =
+      document.createElement('span');
+
+    dot.className =
+      'chat-connection__dot';
+
+    status.appendChild(dot);
+
+    status.appendChild(
+      document.createTextNode(rotulo)
+    );
+
+    status.className =
+      'chat-connection';
+
+    if (estado === 'online') {
+      status.classList.add(
+        'text-success',
+        'bg-success-subtle'
+      );
+    }
+
+    if (estado === 'erro') {
+      status.classList.add(
+        'text-danger',
+        'bg-danger-subtle'
+      );
+    }
   }
 
 
   function rolar() {
-
     lista.scrollTop =
       lista.scrollHeight;
   }
@@ -1378,127 +1789,132 @@ document.addEventListener('DOMContentLoaded', function () {
       ?.classList.add('d-none');
 
 
-    const artigo =
-      document.createElement('article');
+    const row =
+      document.createElement('div');
 
-    artigo.dataset.mensagemId =
+    row.className =
+      'chat-row';
+
+    row.dataset.mensagemId =
       item.id;
 
-    artigo.className =
-      'card chamado-chat__item mb-3';
+
+    const proprio =
+      Number(item.autor_id) === userId;
+
+    if (proprio) {
+      row.classList.add(
+        'chat-row--proprio'
+      );
+    }
 
 
-    if (
-      Number(item.autor_id) === userId
-    ) {
+    const article =
+      document.createElement('article');
 
-      artigo.classList.add(
-        'chamado-chat__item--proprio'
+    article.className =
+      'chamado-chat__item';
+
+
+    const bubble =
+      document.createElement('div');
+
+    bubble.className =
+      'chat-bubble';
+
+    if (item.nota_interna) {
+      bubble.classList.add(
+        'chat-bubble--interno'
       );
     }
 
 
     if (item.nota_interna) {
 
-      artigo.classList.add(
-        'chamado-chat__item--interno'
+      const internal =
+        document.createElement('div');
+
+      internal.className =
+        'chat-internal-label';
+
+      internal.innerHTML =
+        '<i class="bi bi-lock-fill"></i> Nota interna';
+
+      bubble.appendChild(
+        internal
       );
     }
 
 
-    const corpo =
+    const meta =
       document.createElement('div');
 
-    corpo.className =
-      'card-body py-2 px-3';
+    meta.className =
+      'chat-meta';
 
 
-    const cabecalho =
-      document.createElement('div');
+    const avatar =
+      document.createElement('span');
 
-    cabecalho.className =
-      'd-flex justify-content-between align-items-start gap-3';
+    avatar.className =
+      'chat-avatar';
+
+    avatar.innerHTML =
+      '<i class="bi bi-person"></i>';
 
 
     const autor =
-      document.createElement('strong');
+      document.createElement('span');
 
     autor.className =
-      'chamado-chat__autor';
+      'chat-author';
 
     autor.textContent =
       item.autor;
 
 
     const data =
-      document.createElement('small');
+      document.createElement('span');
 
     data.className =
-      'text-secondary text-nowrap chamado-chat__data';
+      'chat-time';
 
     data.textContent =
       item.criado_em;
 
 
-    cabecalho.append(
+    meta.append(
+      avatar,
       autor,
       data
     );
-
-    corpo.appendChild(
-      cabecalho
-    );
-
-
-    if (item.nota_interna) {
-
-      const containerBadge =
-        document.createElement('div');
-
-      containerBadge.className =
-        'mt-2';
-
-
-      const badge =
-        document.createElement('span');
-
-      badge.className =
-        'badge text-bg-warning';
-
-      badge.textContent =
-        'Nota interna';
-
-
-      containerBadge.appendChild(
-        badge
-      );
-
-      corpo.appendChild(
-        containerBadge
-      );
-    }
 
 
     const mensagem =
       document.createElement('div');
 
     mensagem.className =
-      'chamado-chat__texto';
+      'chat-text';
 
     mensagem.textContent =
       item.texto;
 
-    corpo.appendChild(
+
+    bubble.append(
+      meta,
       mensagem
     );
 
+    article.appendChild(
+      bubble
+    );
 
-    artigo.appendChild(
-      corpo
+    row.appendChild(
+      article
     );
 
     lista.appendChild(
-      artigo
+      row
     );
 
     rolar();
@@ -1509,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'open',
     () => mudarStatus(
       'Online',
-      'text-bg-success'
+      'online'
     )
   );
 
@@ -1517,8 +1933,7 @@ document.addEventListener('DOMContentLoaded', function () {
   socket.addEventListener(
     'close',
     () => mudarStatus(
-      'Modo formulário',
-      'text-bg-secondary'
+      'Modo formulário'
     )
   );
 
@@ -1526,8 +1941,8 @@ document.addEventListener('DOMContentLoaded', function () {
   socket.addEventListener(
     'error',
     () => mudarStatus(
-      'Modo formulário',
-      'text-bg-secondary'
+      'Falha de conexão',
+      'erro'
     )
   );
 
@@ -1542,7 +1957,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (
         payload.tipo === 'mensagem'
       ) {
-        adicionar(payload.item);
+        adicionar(
+          payload.item
+        );
       }
 
       if (
@@ -1550,7 +1967,7 @@ document.addEventListener('DOMContentLoaded', function () {
       ) {
         mudarStatus(
           payload.mensagem,
-          'text-bg-danger'
+          'erro'
         );
       }
     }
@@ -1562,8 +1979,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function (event) {
 
       if (
-        socket.readyState
-          !== WebSocket.OPEN
+        socket.readyState !== WebSocket.OPEN
         ||
         (
           anexo
@@ -1579,6 +1995,7 @@ document.addEventListener('DOMContentLoaded', function () {
         texto.value.trim();
 
       if (!valor) {
+        texto.focus();
         return;
       }
 
@@ -1594,11 +2011,12 @@ document.addEventListener('DOMContentLoaded', function () {
       );
 
       texto.value = '';
+      texto.focus();
     }
   );
 
 
-  texto.addEventListener(
+  texto?.addEventListener(
     'keydown',
     function (event) {
 
@@ -1606,9 +2024,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.key === 'Enter'
         && !event.shiftKey
       ) {
-
         event.preventDefault();
-
         form.requestSubmit();
       }
     }
@@ -1618,5 +2034,4 @@ document.addEventListener('DOMContentLoaded', function () {
   rolar();
 });
 </script>
-
 {% endblock %}

@@ -1,5 +1,5 @@
 import uuid
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from zipfile import BadZipFile
 
 from django.contrib import messages
@@ -7,21 +7,24 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db import transaction
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.utils.translation import gettext as _
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
 from compras.forms import AquisicaoForm, ImportacaoPrecificacaoForm, ItemAquisicaoForm, RemessaForm
 from compras.models import Aquisicao, CodigoCatalogo, ItemRemessaCompra, RemessaCompra
 from compras.policies import AquisicaoAccessPolicy
-from compras.services import AquisicaoService, RemessaCompraService
+from compras.services import AquisicaoService, ProdutoPrecoService, RemessaCompraService
 from estoque.forms import ProdutoForm
 from estoque.models import Base, Equipamento, Produto
 from estoque.policies.compras import ComprasAccessPolicy
-from insumos.models import CategoriaInsumo, Insumo, SaldoInsumoBase
+from insumos.models import CategoriaInsumo, FornecedorInsumo, Insumo, SaldoInsumoBase
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
@@ -303,11 +306,16 @@ def valores_equipamentos(request):
             | Q(codigo__icontains=busca)
             | Q(regional__nome__icontains=busca)
         )
-    valor = Coalesce('custo_aquisicao', 'preco_referencia', 0, output_field=DecimalField())
+    valor = Coalesce(
+        'custo_aquisicao', 'produto__preco_referencia', 'preco_referencia', 0,
+        output_field=DecimalField(),
+    )
+    equipamentos = equipamentos.annotate(valor_considerado=valor)
     total_equipamentos = equipamentos.count()
     sem_preco = equipamentos.filter(
-        Q(custo_aquisicao=None, preco_referencia=None)
-        | Q(origem_valor=Equipamento.OrigemValor.SEM_PRECO_VALIDADO)
+        custo_aquisicao=None,
+        produto__preco_referencia=None,
+        preco_referencia=None,
     ).count()
     precificados = total_equipamentos - sem_preco
     total = equipamentos.aggregate(v=Sum(valor))['v'] or Decimal('0')
@@ -324,6 +332,16 @@ def valores_equipamentos(request):
         'regional__nome', 'produto__descricao', 'patrimonio'
     )
     page_obj = Paginator(equipamentos_ordenados, 20).get_page(request.GET.get('page'))
+    pode_definir_preco = ComprasAccessPolicy.pode_definir_preco_produto(request.user)
+    pode_alterar_preco = ComprasAccessPolicy.pode_alterar_preco_produto(request.user)
+    for equipamento in page_obj.object_list:
+        equipamento.pode_editar_preco = bool(
+            equipamento.produto_id
+            and (
+                (equipamento.produto.preco_referencia is None and pode_definir_preco)
+                or (equipamento.produto.preco_referencia is not None and pode_alterar_preco)
+            )
+        )
     query_params = request.GET.copy()
     query_params.pop('page', None)
     produtos = Produto.objects.filter(ativo=True)
@@ -342,6 +360,9 @@ def valores_equipamentos(request):
         'valor_medio': valor_medio,
         'categorias_valor': categorias,
         'pode_editar': ComprasAccessPolicy.pode_editar_precos(request.user),
+        'pode_editar_preco_direto': pode_definir_preco or pode_alterar_preco,
+        'pode_importar': ComprasAccessPolicy.pode_importar_precos(request.user),
+        'pode_catalogo': ComprasAccessPolicy.pode_gerenciar_catalogo(request.user),
         'categorias': Produto.CATEGORIAS,
         'produtos': produtos.order_by('categoria', 'descricao'),
         'filtros': {
@@ -358,12 +379,82 @@ def valores_equipamentos(request):
             equipamentos.values('produto__descricao').annotate(total=Sum(valor)).order_by('-total')[:10]
         ),
         'importacao_form': ImportacaoPrecificacaoForm(),
+        'origens_preco': Produto.OrigemPreco.choices,
+        'fornecedores_preco': (
+            FornecedorInsumo.objects.filter(ativo=True).order_by('nome')
+            if pode_definir_preco or pode_alterar_preco
+            else FornecedorInsumo.objects.none()
+        ),
     })
 
 
 @login_required
+@require_POST
+def alterar_preco_produto(request, equipamento_id):
+    equipamentos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
+        Equipamento.objects.select_related('produto', 'regional__empresa')
+    )
+    if not request.user.perfil.is_admin:
+        equipamentos = equipamentos.filter(regional__in=ComprasAccessPolicy.bases(request.user))
+    equipamento = get_object_or_404(equipamentos, pk=equipamento_id)
+
+    retorno = request.POST.get('retorno', '').strip()
+    if not url_has_allowed_host_and_scheme(
+        retorno,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        retorno = reverse('compras:valores_equipamentos')
+
+    if not equipamento.produto_id:
+        messages.error(request, _('O equipamento não possui produto de catálogo vinculado.'))
+        return redirect(retorno)
+    pode_editar = (
+        ComprasAccessPolicy.pode_definir_preco_produto(request.user)
+        if equipamento.produto.preco_referencia is None
+        else ComprasAccessPolicy.pode_alterar_preco_produto(request.user)
+    )
+    if not pode_editar:
+        raise PermissionDenied
+
+    try:
+        valor_texto = request.POST.get('preco_referencia', '').strip().replace(',', '.')
+        valor = Decimal(valor_texto)
+        observacao = request.POST.get('observacao_preco', '').strip()
+        if not observacao:
+            raise ValidationError(_('Informe o motivo da alteração do preço.'))
+        fornecedor_id = request.POST.get('preco_fornecedor', '').strip()
+        fornecedor = None
+        if fornecedor_id:
+            fornecedor = get_object_or_404(
+                FornecedorInsumo.objects.filter(ativo=True), pk=fornecedor_id
+            )
+        ProdutoPrecoService.definir(
+            produto=equipamento.produto,
+            usuario=request.user,
+            valor=valor,
+            origem=request.POST.get('preco_origem', '').strip(),
+            fonte=request.POST.get('preco_fonte', '').strip(),
+            fornecedor=fornecedor,
+            observacao=observacao,
+        )
+    except (InvalidOperation, ValueError):
+        messages.error(request, _('Informe um preço de referência válido.'))
+    except (PermissionDenied, ValidationError) as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(
+            request,
+            _('Preço de %(produto)s atualizado com histórico e rastreabilidade.') % {
+                'produto': equipamento.produto.descricao,
+            },
+        )
+    return redirect(retorno)
+
+
+@login_required
 def template_precificacao_equipamentos(request):
-    if not ComprasAccessPolicy.pode_editar_precos(request.user):
+    if not ComprasAccessPolicy.pode_importar_precos(request.user):
         raise PermissionDenied
     equipamentos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
         Equipamento.objects.select_related('produto', 'regional')
@@ -378,10 +469,20 @@ def template_precificacao_equipamentos(request):
         'NUMERO_SERIE', 'CUSTO_AQUISICAO', 'PRECO_REFERENCIA', 'ORIGEM_VALOR', 'MOTIVO',
     ])
     for item in equipamentos.order_by('regional__nome', 'produto__descricao', 'patrimonio'):
+        referencia = (
+            item.produto.preco_referencia
+            if item.produto_id and item.produto.preco_referencia is not None
+            else item.preco_referencia
+        )
+        origem = (
+            item.produto.preco_origem
+            if item.produto_id and item.produto.preco_referencia is not None
+            else item.origem_valor
+        )
         planilha.append([
             item.pk, item.regional.nome, item.produto.categoria if item.produto else '',
             item.produto.descricao if item.produto else '', item.patrimonio, item.numero_serie,
-            item.custo_aquisicao, item.preco_referencia, item.origem_valor, '',
+            item.custo_aquisicao, referencia, origem, '',
         ])
     resposta = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -394,7 +495,7 @@ def template_precificacao_equipamentos(request):
 @login_required
 @require_POST
 def importar_precificacao_equipamentos(request):
-    if not ComprasAccessPolicy.pode_editar_precos(request.user):
+    if not ComprasAccessPolicy.pode_importar_precos(request.user):
         raise PermissionDenied
     form = ImportacaoPrecificacaoForm(request.POST, request.FILES)
     if not form.is_valid():
@@ -494,16 +595,38 @@ def importar_precificacao_equipamentos(request):
 def criar_produto_catalogo(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied
-    form = ProdutoForm(request.POST or None)
+    form = ProdutoForm(request.POST or None, user=request.user)
     if request.method == 'POST' and form.is_valid():
-        produto = form.save(commit=False)
-        produto.criado_por = request.user
-        produto.save()
-        messages.success(
-            request,
-            _('Novo item incluído no catálogo e disponibilizado nos filtros.'),
-        )
-        return redirect('compras:valores_equipamentos')
+        try:
+            with transaction.atomic():
+                produto = form.save(commit=False)
+                produto.criado_por = request.user
+                produto.save()
+                preco = form.cleaned_data.get('preco_referencia_inicial')
+                if preco is not None:
+                    ProdutoPrecoService.definir(
+                        produto=produto,
+                        usuario=request.user,
+                        valor=preco,
+                        origem=form.cleaned_data.get('preco_origem'),
+                        fonte=form.cleaned_data.get('preco_fonte', ''),
+                        fornecedor=form.cleaned_data.get('preco_fornecedor'),
+                        observacao='PREÇO DEFINIDO NO CADASTRO DO PRODUTO',
+                        somente_inicial=True,
+                    )
+        except (PermissionDenied, ValidationError) as exc:
+            form.add_error(None, exc)
+        else:
+            messages.success(
+                request,
+                _('Novo item incluído no catálogo e disponibilizado nos filtros.'),
+            )
+            destino = (
+                'compras:valores_equipamentos'
+                if ComprasAccessPolicy.pode_visualizar_valores(request.user)
+                else 'estoque:cadastrar_equipamento'
+            )
+            return redirect(destino)
     return render(request, 'compras/produto_form.html', {'form': form})
 
 

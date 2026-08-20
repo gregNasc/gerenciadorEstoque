@@ -61,6 +61,7 @@ class ComunicadoService:
         permitir_limpar=True,
         expira_em=None,
         incluir_admins=True,
+        incluir_autor=True,
         dados=None,
         url='',
     ):
@@ -92,13 +93,14 @@ class ComunicadoService:
         else:
             # Toda acao notifica autor, envolvidos e administradores. Essa
             # relacao alimenta o badge de comunicados nao lidos do menu.
-            destinatarios_ids = {usuario.pk}
-            destinatarios_ids.update(
-                User.objects.filter(
-                    is_active=True,
-                    perfil__role='admin',
-                ).values_list('pk', flat=True)
-            )
+            destinatarios_ids = {usuario.pk} if incluir_autor else set()
+            if incluir_admins:
+                destinatarios_ids.update(
+                    User.objects.filter(
+                        is_active=True,
+                        perfil__role='admin',
+                    ).values_list('pk', flat=True)
+                )
             if usuarios is not None:
                 if hasattr(usuarios, 'values_list'):
                     destinatarios_ids.update(usuarios.values_list('pk', flat=True))
@@ -274,7 +276,7 @@ class ComunicadoService:
             titulo = (
                 f'Manutenção prevista para amanhã — SICK #{sick.id}'
             )
-            if Comunicado.objects.filter(titulo=titulo).exists():
+            if Comunicado.objects.filter(titulo__iexact=titulo).exists():
                 continue
 
             equipamento = sick.equipamento

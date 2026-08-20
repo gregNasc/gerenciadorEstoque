@@ -48,7 +48,11 @@ class ChamadoAccessPolicy:
 
     @classmethod
     def pode_supervisionar(cls, user):
-        return cls.e_admin(user) or cls._grupo(user, GruposChamados.SUPERVISOR)
+        return bool(
+            cls.e_admin(user)
+            or user.has_perm('chamados.supervisionar_chamado')
+            or cls._grupo(user, GruposChamados.SUPERVISOR)
+        )
 
     @classmethod
     def pode_dashboard(cls, user):
@@ -56,10 +60,7 @@ class ChamadoAccessPolicy:
             cls.e_admin(user)
             or user.has_perm('chamados.visualizar_dashboard_chamado')
             or user.has_perm('chamados.exportar_chamados')
-            or cls._grupo(
-                user, GruposChamados.SUPORTE, GruposChamados.DASHBOARD,
-                GruposChamados.SUPERVISOR,
-            )
+            or cls._grupo(user, GruposChamados.DASHBOARD, GruposChamados.SUPERVISOR)
         )
 
     @classmethod
@@ -88,7 +89,11 @@ class ChamadoAccessPolicy:
         if cls.e_admin(user):
             return Chamado.objects.all()
         perfil = cls.perfil(user)
-        if cls.pode_atender(user) or (perfil and perfil.is_gestor):
+        if (
+            cls.pode_atender(user)
+            or user.has_perm('chamados.visualizar_todos_chamados')
+            or (perfil and perfil.is_gestor)
+        ):
             return Chamado.objects.filter(base__in=cls.bases(user)).distinct()
         return Chamado.objects.filter(aberto_por=user)
 
@@ -98,7 +103,11 @@ class ChamadoAccessPolicy:
         return bool(
             perfil
             and not cls.e_admin(user)
-            and (perfil.is_gestor or perfil.is_operador)
+            and (
+                perfil.is_gestor
+                or perfil.is_operador
+                or user.has_perm('chamados.abrir_chamado')
+            )
             and cls.bases(user).filter(pk=base.pk).exists()
         )
 
@@ -109,9 +118,12 @@ class ChamadoAccessPolicy:
     @classmethod
     def pode_interagir(cls, user, chamado):
         return bool(
-            chamado.aberto_por_id == getattr(user, 'pk', None)
-            or chamado.atendente_id == getattr(user, 'pk', None)
-            or cls.pode_supervisionar(user)
+            chamado.atendente_id
+            and (
+                chamado.aberto_por_id == getattr(user, 'pk', None)
+                or chamado.atendente_id == getattr(user, 'pk', None)
+                or cls.pode_supervisionar(user)
+            )
         )
 
     @classmethod
@@ -151,14 +163,18 @@ class ChamadoAccessPolicy:
 
     @classmethod
     def pode_converter_sick(cls, user, chamado):
-        perfil = cls.perfil(user)
         return bool(
             chamado.equipamento_id
             and cls.pode_ver(user, chamado)
             and (
                 cls.e_admin(user)
-                or cls.pode_atender(user)
-                or user.has_perm('chamados.converter_chamado_sick')
-                or (perfil and perfil.is_gestor and cls.bases(user).filter(pk=chamado.base_id).exists())
+                or cls.pode_supervisionar(user)
+                or (
+                    chamado.atendente_id == getattr(user, 'pk', None)
+                    and (
+                        cls.pode_atender(user)
+                        or user.has_perm('chamados.converter_chamado_sick')
+                    )
+                )
             )
         )

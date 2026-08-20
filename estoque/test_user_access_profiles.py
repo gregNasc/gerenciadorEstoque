@@ -1,9 +1,9 @@
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, Permission, User
 from django.test import TestCase
 from django.urls import reverse
 
 from chamados.policies import GruposChamados
-from estoque.models import Base, Empresa, Perfil
+from estoque.models import AuditoriaPermissaoUsuario, Base, Empresa, Perfil
 from estoque.policies.compras import GruposCorporativos
 
 
@@ -38,7 +38,7 @@ class CadastroCapacidadesUsuarioTests(TestCase):
         self.assertEqual(resposta.status_code, 302)
         usuario = User.objects.get(username='operador.capacidade')
         self.assertTrue(usuario.groups.filter(name=GruposChamados.SUPORTE).exists())
-        self.assertTrue(usuario.groups.filter(name=GruposChamados.DASHBOARD).exists())
+        self.assertFalse(usuario.groups.filter(name=GruposChamados.DASHBOARD).exists())
         self.assertFalse(usuario.groups.filter(name=GruposCorporativos.SICK_GERENCIAR).exists())
 
         resposta = self.client.post(
@@ -56,11 +56,40 @@ class CadastroCapacidadesUsuarioTests(TestCase):
         self.client.force_login(usuario)
         self.assertEqual(self.client.get(reverse('estoque:sick')).status_code, 200)
 
+    def test_permissao_delegada_e_auditada_e_status_e_acao_separada(self):
+        codigo = 'chamados.atender_chamado'
+        resposta = self.client.post(
+            reverse('estoque:cadastrar_usuario'),
+            self._dados(permissoes=[codigo]),
+        )
+        self.assertEqual(resposta.status_code, 302)
+        usuario = User.objects.get(username='operador.capacidade')
+        self.assertTrue(usuario.has_perm(codigo))
+        auditoria = AuditoriaPermissaoUsuario.objects.get(usuario=usuario, permissao=codigo)
+        self.assertFalse(auditoria.valor_anterior)
+        self.assertTrue(auditoria.valor_novo)
+        self.assertEqual(auditoria.alterado_por, self.admin)
+
+        self.client.post(
+            reverse('estoque:cadastrar_usuario'),
+            {'acao_usuario': 'inativar', 'usuario_id': usuario.pk},
+        )
+        usuario.refresh_from_db()
+        self.assertFalse(usuario.is_active)
+        self.assertTrue(User.objects.filter(pk=usuario.pk).exists())
+        self.client.post(
+            reverse('estoque:cadastrar_usuario'),
+            {'acao_usuario': 'reativar', 'usuario_id': usuario.pk},
+        )
+        usuario.refresh_from_db()
+        self.assertTrue(usuario.is_active)
+
 
 class EscopoOperadorTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa Operador')
         base = Base.objects.create(empresa=empresa, nome='Base Operador')
+        self.base = base
         self.operador = User.objects.create_user('operador.restrito', password='SenhaForte123!')
         self.operador.perfil.empresa = empresa
         self.operador.perfil.role = Perfil.Role.OPERADOR
@@ -79,10 +108,29 @@ class EscopoOperadorTests(TestCase):
 
     def test_dashboard_exige_usuario_de_suporte(self):
         self.assertEqual(self.client.get(reverse('chamados:dashboard')).status_code, 403)
-        self.operador.groups.add(Group.objects.get(name=GruposChamados.SUPORTE))
+        suporte, _ = Group.objects.get_or_create(name=GruposChamados.SUPORTE)
+        self.operador.groups.add(suporte)
+        self.assertEqual(self.client.get(reverse('chamados:dashboard')).status_code, 403)
+        self.operador.user_permissions.add(Permission.objects.get(
+            codename='visualizar_dashboard_chamado', content_type__app_label='chamados'
+        ))
         self.assertEqual(self.client.get(reverse('chamados:dashboard')).status_code, 200)
 
     def test_tecnico_de_manutencao_sick_acessa_tela_sick(self):
         grupo, _ = Group.objects.get_or_create(name=GruposCorporativos.SICK_MANUTENCAO)
         self.operador.groups.add(grupo)
         self.assertEqual(self.client.get(reverse('estoque:sick')).status_code, 200)
+
+    def test_permissoes_de_checklist_exibem_menu_para_operador(self):
+        self.operador.user_permissions.add(*Permission.objects.filter(
+            content_type__app_label='insumos',
+            codename__in=['preencher_checklists', 'visualizar_checklists'],
+        ))
+        self.operador.perfil.bases_checklist.add(self.base)
+
+        response = self.client.get(reverse('estoque:checklist'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="checklistDropdown"')
+        self.assertContains(response, reverse('estoque:checklist'))
+        self.assertContains(response, reverse('insumos:lista_checklists'))

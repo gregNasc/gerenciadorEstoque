@@ -157,6 +157,15 @@
         </div>
 
         <div class="d-flex flex-wrap gap-2">
+            {% if checklist.status == 'FINALIZADO' and pode_reabrir %}
+            <form method="post" action="{% url 'insumos:reabrir_checklist' checklist.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning"
+                        onclick="return confirm('Reabrir o checklist #{{ checklist.id }} para correção? Os efeitos da finalização serão estornados de forma controlada.')">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reabrir
+                </button>
+            </form>
+            {% endif %}
             <a href="{% url 'insumos:imprimir_checklist' checklist.pk %}" class="btn btn-primary">
                 <i class="bi bi-printer"></i> Check-List / Declaração
             </a>
@@ -291,7 +300,12 @@
                                             <strong>{{ grupo.categoria }}</strong>
                                         </td>
 
-                                        <td>{{ grupo.enviados }}</td>
+                                        <td>
+                                            {{ grupo.enviados }}
+                                            {% if grupo.identificados != None %}
+                                                <small class="d-block text-muted">{{ grupo.identificados }} identificado(s)</small>
+                                            {% endif %}
+                                        </td>
 
                                         <td>
                                             <input type="number"
@@ -315,7 +329,7 @@
                                     <tr data-equip-occurrence-panel data-key="{{ grupo.key }}">
                                         <td colspan="4">
                                             <div class="small text-muted mb-2">
-                                                Marque exatamente os equipamentos que tiveram ocorrência e informe motivo e observação.
+                                                Marque os equipamentos identificados que tiveram ocorrência. Divergências sem patrimônio permanecem registradas quantitativamente.
                                             </div>
 
                                             <div class="table-responsive">

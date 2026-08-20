@@ -63,6 +63,17 @@ APP_BASE_URL = (
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured('ALLOWED_HOSTS deve ser configurado em produção.')
 
+# Render e proxies equivalentes terminam TLS antes do Django. Em produção,
+# cookies e redirecionamentos permanecem seguros por padrão, com possibilidade
+# de ajuste explícito por variável de ambiente.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', not DEBUG)
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000' if not DEBUG else '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', not DEBUG)
+SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', False)
+
 LOGIN_URL = 'estoque:login'
 LOGIN_REDIRECT_URL = 'estoque:index'
 LOGOUT_REDIRECT_URL = 'estoque:login'
@@ -217,6 +228,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT') or BASE_DIR / 'media')
+PRIVATE_MEDIA_ROOT = Path(os.getenv('PRIVATE_MEDIA_ROOT') or BASE_DIR / 'private_media')
 
 USE_S3 = env_bool('USE_S3', False)
 STORAGES = {
@@ -253,9 +265,30 @@ if USE_S3:
             'object_parameters': AWS_S3_OBJECT_PARAMETERS,
         },
     }
+    STORAGES['private'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': AWS_STORAGE_BUCKET_NAME,
+            'region_name': AWS_S3_REGION_NAME,
+            'endpoint_url': AWS_S3_ENDPOINT_URL,
+            'custom_domain': AWS_S3_CUSTOM_DOMAIN,
+            'default_acl': 'private',
+            'querystring_auth': True,
+            'file_overwrite': False,
+            'location': 'private',
+            'object_parameters': AWS_S3_OBJECT_PARAMETERS,
+        },
+    }
 else:
     STORAGES['default'] = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    }
+    STORAGES['private'] = {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'OPTIONS': {
+            'location': PRIVATE_MEDIA_ROOT,
+            'base_url': None,
+        },
     }
 
 # Default primary key field type

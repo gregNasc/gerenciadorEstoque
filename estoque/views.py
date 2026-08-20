@@ -36,7 +36,7 @@ from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 from collections import OrderedDict
 from django.contrib.auth.decorators import login_required
-from .decorators import role_required
+from .decorators import permission_or_role_required, role_required
 from datetime import date
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -703,8 +703,13 @@ def cadastrar_usuario(request):
 @login_required
 @role_required('admin')
 def gerenciar_usuarios(request):
-    from django.contrib.auth.models import Group, User
-    from .models import Perfil, Empresa, Base
+    from django.contrib.auth.models import Group, Permission, User
+    from django.db.models.deletion import ProtectedError
+    from .models import AuditoriaPermissaoUsuario, Perfil, Empresa, Base
+    from .permission_catalog import (
+        PERMISSOES_DELEGAVEIS,
+        catalogo_com_ids,
+    )
     from django.db import transaction
     from insumos.constants import GruposInsumos
     from chamados.policies import GruposChamados
@@ -724,6 +729,35 @@ def gerenciar_usuarios(request):
     if request.method == 'POST':
         try:
             with transaction.atomic():
+                acao_usuario = request.POST.get('acao_usuario', '').strip().lower()
+                if acao_usuario in {'inativar', 'reativar', 'excluir'}:
+                    alvo = get_object_or_404(User, pk=request.POST.get('usuario_id'))
+                    if alvo == request.user and acao_usuario in {'inativar', 'excluir'}:
+                        messages.error(request, 'Você não pode inativar ou excluir o próprio usuário.')
+                        return redirect('estoque:cadastrar_usuario')
+                    if acao_usuario == 'inativar':
+                        alvo.is_active = False
+                        alvo.save(update_fields=['is_active'])
+                        messages.success(request, f"Usuário '{alvo.username}' inativado. O histórico foi preservado.")
+                    elif acao_usuario == 'reativar':
+                        alvo.is_active = True
+                        alvo.save(update_fields=['is_active'])
+                        messages.success(request, f"Usuário '{alvo.username}' reativado.")
+                    else:
+                        identificacao = alvo.username
+                        try:
+                            alvo.delete()
+                        except ProtectedError as exc:
+                            objetos = len(exc.protected_objects)
+                            messages.error(
+                                request,
+                                f"O usuário '{identificacao}' não pode ser excluído porque possui "
+                                f'{objetos} vínculo(s) histórico(s) protegido(s). Inative-o para preservar a auditoria.',
+                            )
+                        else:
+                            messages.success(request, f"Usuário '{identificacao}' excluído.")
+                    return redirect('estoque:cadastrar_usuario')
+
                 usuario_id = request.POST.get('usuario_id', '').strip()
                 username = request.POST.get('username', '').strip()
                 password = request.POST.get('password', '')
@@ -826,7 +860,11 @@ def gerenciar_usuarios(request):
                 user.first_name = first_name
                 user.last_name = last_name
                 user.email = email
-                user.is_active = is_active
+                # Ativação é um fluxo explícito e distinto da edição cadastral.
+                # No cadastro, o usuário nasce conforme o campo; na edição o
+                # status corrente é preservado e os botões dedicados tratam a ação.
+                if not editando:
+                    user.is_active = is_active
                 if password:
                     user.set_password(password)
                 user.save()
@@ -854,9 +892,46 @@ def gerenciar_usuarios(request):
                 }
                 user.groups.remove(*grupos_funcionais.values())
                 if usuario_suporte:
-                    user.groups.add(grupos_funcionais['suporte'], grupos_funcionais['dashboard'])
+                    user.groups.add(grupos_funcionais['suporte'])
                 if usuario_sick:
                     user.groups.add(grupos_funcionais['sick'])
+
+                permissoes_antes = {
+                    f'{permissao.content_type.app_label}.{permissao.codename}'
+                    for permissao in user.user_permissions.select_related('content_type')
+                    if f'{permissao.content_type.app_label}.{permissao.codename}' in PERMISSOES_DELEGAVEIS
+                }
+                codigos_solicitados = {
+                    codigo for codigo in request.POST.getlist('permissoes')
+                    if codigo in PERMISSOES_DELEGAVEIS
+                }
+                permissoes_disponiveis = {
+                    f'{permissao.content_type.app_label}.{permissao.codename}': permissao
+                    for permissao in Permission.objects.select_related('content_type').filter(
+                        content_type__app_label__in={'estoque', 'insumos', 'chamados'},
+                    )
+                    if f'{permissao.content_type.app_label}.{permissao.codename}' in PERMISSOES_DELEGAVEIS
+                }
+                user.user_permissions.remove(*[
+                    permissao for codigo, permissao in permissoes_disponiveis.items()
+                    if codigo in permissoes_antes
+                ])
+                user.user_permissions.add(*[
+                    permissoes_disponiveis[codigo]
+                    for codigo in codigos_solicitados
+                    if codigo in permissoes_disponiveis
+                ])
+                alteracoes = [
+                    AuditoriaPermissaoUsuario(
+                        usuario=user,
+                        permissao=codigo,
+                        valor_anterior=codigo in permissoes_antes,
+                        valor_novo=codigo in codigos_solicitados,
+                        alterado_por=request.user,
+                    )
+                    for codigo in sorted(permissoes_antes ^ codigos_solicitados)
+                ]
+                AuditoriaPermissaoUsuario.objects.bulk_create(alteracoes)
 
                 if not acesso_global:
                     perfil.regionais.set(regionais)
@@ -881,9 +956,14 @@ def gerenciar_usuarios(request):
         'usuarios': (
             User.objects
             .select_related('perfil', 'perfil__empresa')
-            .prefetch_related('perfil__regionais', 'perfil__bases_checklist', 'groups')
+            .prefetch_related(
+                'perfil__regionais', 'perfil__bases_checklist', 'groups',
+                'user_permissions__content_type',
+            )
             .order_by('first_name', 'username')
         ),
+        'catalogo_permissoes': catalogo_com_ids(),
+        'permissoes_delegaveis': PERMISSOES_DELEGAVEIS,
     }
 
     return render(request, 'estoque/cadastrar_usuarios.html', context)
@@ -967,8 +1047,10 @@ def verificar_consistencia_api(request):
 
 # ----------------- CADASTRAR PRODUTO -----------------
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.cadastrar_equipamentos', 'admin', 'gestor')
 def cadastrar_equipamento_view(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissão para cadastrar equipamentos.')
     base_selecionada = _base_contexto_usuario(request)
 
     if request.method == 'POST':
@@ -1041,7 +1123,7 @@ def produtos_por_categoria(request):
 
 # ----------------- ESTOQUE -----------------
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.visualizar_equipamentos', 'admin', 'gestor')
 def estoque_view(request):
 
     perfil = request.user.perfil
@@ -1199,7 +1281,7 @@ def estoque_view(request):
 
 # ----------------- DETALHES DO PRODUTO -----------------
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.visualizar_equipamentos', 'admin', 'gestor')
 def detalhes_produto_view(request, produto_id, regional_id):
 
     perfil = request.user.perfil
@@ -1268,7 +1350,7 @@ def detalhes_produto_view(request, produto_id, regional_id):
             return redirect(request.path)
 
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.visualizar_equipamentos', 'admin', 'gestor')
 def detalhes_produto(request, produto_id):
 
     perfil = request.user.perfil
@@ -2134,7 +2216,7 @@ def detalhes_sick(request, sick_id):
 
 # ----------------- HISTÓRICO -----------------
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.visualizar_historico_equipamentos', 'admin', 'gestor')
 def historico_view(request):
     tipo_acao = request.GET.get('tipo_acao')
     equipamento_query = request.GET.get('equipamento')
@@ -3801,6 +3883,7 @@ def caixa_solicitacoes(request):
 #    })
 
 @login_required
+@permission_or_role_required('estoque.visualizar_transferencias', 'admin', 'gestor')
 def transferencia_selecionados(request, id):
 
     transferencia = get_object_or_404(
@@ -3813,6 +3896,11 @@ def transferencia_selecionados(request, id):
         ),
         id=id
     )
+    perfil = request.user.perfil
+    if not perfil.is_admin and not perfil.regionais.filter(
+        id__in=[transferencia.regional_origem_id, transferencia.regional_destino_id]
+    ).exists():
+        raise PermissionDenied
 
     return render(
         request,
@@ -4120,7 +4208,7 @@ def finalizar_transferencia(transferencia, user):
     )
 
 @login_required
-@role_required('gestor', 'operador', 'admin')
+@permission_or_role_required('estoque.transferir_equipamentos', 'gestor', 'operador', 'admin')
 def transferencia_detalhe(request, id):
     transferencia = get_object_or_404(
         Transferencia.objects
@@ -4397,7 +4485,7 @@ def solicitar_transferencia_lote(request):
         )
 
 @login_required
-@role_required('gestor', 'operador', 'admin')
+@permission_or_role_required('estoque.receber_transferencias', 'gestor', 'operador', 'admin')
 def receber_transferencia(request, transferencia_id):
 
     transferencia = get_object_or_404(
@@ -4706,7 +4794,7 @@ def receber_transferencia(request, transferencia_id):
     )
 
 @login_required
-@role_required('gestor','admin')
+@permission_or_role_required('estoque.cancelar_transferencias', 'gestor', 'admin')
 def cancelar_transferencia(request, transferencia_id):
     transferencia = get_object_or_404(
         secure_queryset(
@@ -4728,7 +4816,7 @@ def cancelar_transferencia(request, transferencia_id):
     return redirect('estoque:lista_transferencias')
 
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.visualizar_transferencias', 'admin', 'gestor')
 def lista_transferencias(request):
 
     perfil = request.user.perfil
@@ -4864,7 +4952,7 @@ def equipamentos_por_regional(request, produto_id, regional_id):
     return JsonResponse(data)
 
 @login_required
-@role_required('admin', 'gestor')
+@permission_or_role_required('estoque.editar_equipamentos', 'admin', 'gestor')
 def editar_equipamento(request, equipamento_id):
 
     equipamento = get_object_or_404(
@@ -5280,6 +5368,7 @@ def detalhes_transferencia(transferencia, equipamento=None, usuario=None, evento
     return detalhes
 
 @login_required
+@permission_or_role_required('insumos.preencher_checklists', 'admin', 'gestor')
 def checklist_view(request):
     # --- POST: Criar checklist ---
     if request.method == 'POST':
@@ -5313,27 +5402,32 @@ def checklist_view(request):
             )
 
             # Captura equipamentos selecionados
-            categorias_equipamentos = ['router', 'coletor', 'notebook', 'impressora']
+            categorias_equipamentos = {
+                'router': 'Routers',
+                'coletor': 'Coletores',
+                'notebook': 'Notebooks',
+                'impressora': 'Impressoras',
+            }
             equipamentos_ids = []
-            for categoria in categorias_equipamentos:
-                equipamentos_ids.extend(request.POST.getlist(f'equipamentos_{categoria}'))
-
-            if inventario.pessoas is not None:
-                limite_coletores = inventario.pessoas + 5
-                total_coletores = (
-                    Equipamento.objects
-                    .filter(
-                        id__in=equipamentos_ids,
-                        regional_id=inventario.base_id,
-                        produto__categoria='Coletores',
-                    )
-                    .count()
-                )
-                if total_coletores > limite_coletores:
+            equipamentos_por_categoria = {}
+            quantidades_equipamentos = {}
+            for chave, categoria in categorias_equipamentos.items():
+                ids_categoria = request.POST.getlist(f'equipamentos_{chave}')
+                equipamentos_por_categoria[categoria] = ids_categoria
+                equipamentos_ids.extend(ids_categoria)
+                valor = request.POST.get(f'quantidade_equipamento_{chave}', '').strip()
+                try:
+                    quantidade = int(valor or len(ids_categoria))
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError(f'Informe uma quantidade válida para {categoria}.') from exc
+                if quantidade < len(set(ids_categoria)):
                     raise ValidationError(
-                        f'Este inventário permite no máximo {limite_coletores} '
-                        f'coletores ({inventario.pessoas} pessoas + 5 de backup).'
+                        f'A quantidade de {categoria} não pode ser menor que os '
+                        'equipamentos identificados individualmente.'
                     )
+                if quantidade < 0:
+                    raise ValidationError(f'A quantidade de {categoria} não pode ser negativa.')
+                quantidades_equipamentos[categoria] = quantidade
 
             # Captura insumos enviados pela tabela carregada via JavaScript.
             insumos_payload = []
@@ -5351,7 +5445,7 @@ def checklist_view(request):
                 if numero_inicial:
                     tags_payload.append((rolo_id, numero_inicial, modo_rolo))
 
-            if not equipamentos_ids and not insumos_payload and not tags_payload:
+            if not any(quantidades_equipamentos.values()) and not insumos_payload and not tags_payload:
                 messages.error(request, 'Selecione ao menos um equipamento, informe um insumo ou adicione um lote de TAG.')
                 return redirect('estoque:checklist')
 
@@ -5457,13 +5551,14 @@ def checklist_view(request):
                     declaracao_dados=declaracao_dados,
                 )
 
-                if equipamentos_ids:
-                    equipamentos = Equipamento.objects.select_related('regional', 'produto').filter(id__in=equipamentos_ids)
-                    for equipamento in equipamentos:
-                        ChecklistService.adicionar_equipamento(
+                for categoria, quantidade in quantidades_equipamentos.items():
+                    if quantidade:
+                        ChecklistService.registrar_envio_equipamentos(
                             checklist=checklist,
-                            equipamento=equipamento,
-                            usuario=request.user
+                            categoria=categoria,
+                            quantidade=quantidade,
+                            equipamentos=equipamentos_por_categoria[categoria],
+                            usuario=request.user,
                         )
 
                 if insumos_payload:

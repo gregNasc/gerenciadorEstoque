@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/insumos-por-base/', api.insumos_por_base, name='api_insumos_por_base'),
     path('checklists/', api.lista_checklists, name='lista_checklists'),
     path('checklist/<int:pk>/finalizar/', api.finalizar_checklist, name='finalizar_checklist'),
+    path('checklist/<int:pk>/reabrir/', api.reabrir_checklist, name='reabrir_checklist'),
     path('checklist/<int:pk>/', api.checklist_detail, name='checklist_detail'),
     path('checklist/<int:pk>/imprimir/', api.imprimir_checklist, name='imprimir_checklist'),
     path('checklist/<int:pk>/modelo.xlsx', api.exportar_checklist_modelo, name='exportar_checklist_modelo'),

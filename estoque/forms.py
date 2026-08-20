@@ -2,8 +2,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import DeclaracaoCorreios, DeclaracaoCorreiosItem, Produto, Equipamento, Transferencia, Sick, Base
-from estoque.models import Base
 from django.utils.translation import gettext_lazy as _
+from insumos.models import FornecedorInsumo
 
 
 class DeclaracaoCorreiosForm(forms.ModelForm):
@@ -64,6 +64,59 @@ DeclaracaoCorreiosItemFormSet = forms.inlineformset_factory(
 
 # ================= PRODUTO =================
 class ProdutoForm(forms.ModelForm):
+    preco_referencia_inicial = forms.DecimalField(
+        label=_('Preço de referência'),
+        required=False,
+        min_value=0,
+        max_digits=14,
+        decimal_places=4,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': '0.01'}),
+        help_text=_('Opcional. Itens futuros deste produto reutilizarão este valor.'),
+    )
+    preco_origem = forms.ChoiceField(
+        label=_('Origem do preço'),
+        required=False,
+        choices=Produto.OrigemPreco.choices,
+        initial=Produto.OrigemPreco.INFORMADO_COMPRAS,
+    )
+    preco_fonte = forms.CharField(
+        label=_('Fonte'), required=False, max_length=255,
+        help_text=_('Documento, pesquisa ou referência utilizada.'),
+    )
+    preco_fornecedor = forms.ModelChoiceField(
+        label=_('Fornecedor'), required=False, queryset=FornecedorInsumo.objects.none(),
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from estoque.policies.compras import ComprasAccessPolicy
+
+        self.user = user
+        self.fields['preco_fornecedor'].queryset = FornecedorInsumo.objects.filter(
+            ativo=True
+        ).order_by('nome')
+        pode_definir = bool(
+            user
+            and not ComprasAccessPolicy.restrito(user)
+            and (
+                ComprasAccessPolicy.pode_definir_preco_produto(user)
+            )
+        )
+        if not pode_definir:
+            for nome in (
+                'preco_referencia_inicial', 'preco_origem',
+                'preco_fonte', 'preco_fornecedor',
+            ):
+                self.fields.pop(nome, None)
+
+    def clean(self):
+        dados = super().clean()
+        if 'preco_referencia_inicial' in self.fields and dados.get('preco_referencia_inicial') is not None:
+            dados['preco_origem'] = (
+                dados.get('preco_origem') or Produto.OrigemPreco.INFORMADO_COMPRAS
+            )
+        return dados
+
     class Meta:
         model = Produto
         fields = [

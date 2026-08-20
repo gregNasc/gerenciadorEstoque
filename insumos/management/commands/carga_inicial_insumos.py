@@ -70,7 +70,7 @@ class Command(BaseCommand):
             },
             {
                 'descricao': 'Luva',
-                'unidade': 'PAR',
+                'unidade': 'UN',
                 'tipo': 'QUANTIDADE',
             },
             {
@@ -252,24 +252,40 @@ class Command(BaseCommand):
 
         for categoria_nome, itens in self.DADOS.items():
 
-            categoria, created = CategoriaInsumo.objects.get_or_create(
-                nome=categoria_nome
-            )
+            categoria = CategoriaInsumo.objects.filter(nome__iexact=categoria_nome).first()
+            created = categoria is None
+            if created:
+                categoria = CategoriaInsumo.objects.create(nome=categoria_nome)
 
             if created:
                 total_categorias += 1
 
             for item in itens:
 
-                _, created = Insumo.objects.get_or_create(
-                    descricao=item['descricao'],
-                    categoria=categoria,
-                    defaults={
-                        'unidade_medida': item['unidade'],
-                        'tipo_controle': item['tipo'],
-                        'ativo': True,
-                    }
-                )
+                insumo = Insumo.objects.filter(
+                    descricao__iexact=item['descricao'], categoria=categoria,
+                ).first()
+                created = insumo is None
+                if created:
+                    insumo = Insumo.objects.create(
+                        descricao=item['descricao'], categoria=categoria,
+                        unidade_medida=item['unidade'],
+                        tipo_controle=item['tipo'],
+                        ativo=True,
+                    )
+                else:
+                    campos = []
+                    if insumo.unidade_medida != item['unidade']:
+                        insumo.unidade_medida = item['unidade']
+                        campos.append('unidade_medida')
+                    if insumo.tipo_controle != item['tipo']:
+                        insumo.tipo_controle = item['tipo']
+                        campos.append('tipo_controle')
+                    if not insumo.ativo:
+                        insumo.ativo = True
+                        campos.append('ativo')
+                    if campos:
+                        insumo.save(update_fields=campos)
 
                 if created:
                     total_insumos += 1

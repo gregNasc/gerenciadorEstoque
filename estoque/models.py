@@ -95,6 +95,17 @@ class Perfil(models.Model):
     whatsapp_consentimento_origem = models.CharField(max_length=100, blank=True)
     whatsapp_revogado_em = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        permissions = [
+            ('visualizar_usuarios', 'Pode visualizar usuários'),
+            ('cadastrar_usuarios', 'Pode cadastrar usuários'),
+            ('editar_usuarios', 'Pode editar usuários'),
+            ('alterar_permissoes_usuario', 'Pode alterar permissões de usuários'),
+            ('inativar_usuario', 'Pode inativar usuários'),
+            ('reativar_usuario', 'Pode reativar usuários'),
+            ('excluir_usuario', 'Pode excluir usuários'),
+        ]
+
     @property
     def grupos_insumos(self):
 
@@ -211,6 +222,33 @@ class Perfil(models.Model):
     def pode_marcar_sick(self):
         return self.is_admin or self.is_gestor or self.is_operador
 
+
+class AuditoriaPermissaoUsuario(models.Model):
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='auditorias_permissoes_recebidas',
+    )
+    permissao = models.CharField(max_length=150, db_index=True)
+    valor_anterior = models.BooleanField()
+    valor_novo = models.BooleanField()
+    alterado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='auditorias_permissoes_realizadas',
+    )
+    alterado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-alterado_em', '-id']
+        indexes = [
+            models.Index(fields=['usuario', 'alterado_em']),
+        ]
+
+    def __str__(self):
+        acao = 'CONCEDIDA' if self.valor_novo else 'REVOGADA'
+        return f'{self.usuario} · {self.permissao} · {acao}'
+
 class GrupoRegional(models.Model):
 
     nome = models.CharField(max_length=100, unique=True)
@@ -228,6 +266,13 @@ class GrupoRegional(models.Model):
 
 # ---------------- PRODUTO ----------------
 class Produto(models.Model):
+
+    class OrigemPreco(models.TextChoices):
+        DOCUMENTO_COMPRA = 'DOCUMENTO_COMPRA', _('Documento de compra')
+        INFORMADO_COMPRAS = 'INFORMADO_COMPRAS', _('Informado por Compras')
+        ESTIMATIVA_MERCADO = 'ESTIMATIVA_MERCADO', _('Estimativa de mercado')
+        LEGADO = 'LEGADO', _('Valor legado')
+        SEM_PRECO_VALIDADO = 'SEM_PRECO_VALIDADO', _('Sem preço validado')
 
     CATEGORIAS = [
         ('Sistema', _('Sistema')),
@@ -249,10 +294,44 @@ class Produto(models.Model):
     quantidade_embalagem = models.DecimalField(max_digits=12, decimal_places=4, default=1)
     especificacoes_tecnicas = models.JSONField(default=dict, blank=True)
     ativo = models.BooleanField(default=True, db_index=True)
+    preco_referencia = models.DecimalField(
+        max_digits=14, decimal_places=4, null=True, blank=True,
+    )
+    preco_origem = models.CharField(
+        max_length=30,
+        choices=OrigemPreco.choices,
+        default=OrigemPreco.SEM_PRECO_VALIDADO,
+        db_index=True,
+    )
+    preco_fonte = models.CharField(max_length=255, blank=True)
+    preco_fornecedor = models.ForeignKey(
+        'insumos.FornecedorInsumo',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='produtos_precificados',
+    )
+    preco_validado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='produtos_precos_validados',
+    )
+    preco_validado_em = models.DateTimeField(null=True, blank=True)
     criado_por = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.PROTECT, related_name='produtos_criados'
     )
     atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        permissions = [
+            ('visualizar_preco_produto', 'Pode visualizar preços de produtos'),
+            ('definir_preco_produto', 'Pode definir preço inicial de produtos'),
+            ('alterar_preco_produto', 'Pode alterar preços de produtos'),
+            ('importar_preco_produto', 'Pode importar preços de produtos em lote'),
+            ('visualizar_historico_preco_produto', 'Pode visualizar histórico de preços de produtos'),
+        ]
 
     def __str__(self):
         return self.descricao
@@ -279,6 +358,15 @@ class Equipamento(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['regional']),
             models.Index(fields=['data_cadastro']),
+        ]
+        permissions = [
+            ('visualizar_equipamentos', 'Pode visualizar equipamentos'),
+            ('cadastrar_equipamentos', 'Pode cadastrar equipamentos'),
+            ('editar_equipamentos', 'Pode editar equipamentos'),
+            ('baixar_equipamentos', 'Pode baixar equipamentos'),
+            ('transferir_equipamentos', 'Pode transferir equipamentos'),
+            ('visualizar_historico_equipamentos', 'Pode visualizar histórico de equipamentos'),
+            ('gerenciar_sick_equipamentos', 'Pode gerenciar SICK de equipamentos'),
         ]
     STATUS_CHOICES = [
         ('ATIVO', _('Ativo')),
@@ -332,9 +420,22 @@ class Equipamento(models.Model):
     qr_code = models.ImageField(upload_to="qrcodes/", null=True, blank=True)
 
     def __str__(self):
-        return f"{self.numero_serie} - {self.produto.descricao}"
+        descricao = self.produto.descricao if self.produto_id else 'SEM PRODUTO'
+        return f"{self.numero_serie} - {descricao}"
 
     def save(self, *args, **kwargs):
+        if self._state.adding and self.produto_id and self.preco_referencia is None:
+            produto = Produto.objects.only(
+                'preco_referencia', 'preco_origem', 'preco_fornecedor_id',
+            ).get(pk=self.produto_id)
+            self.preco_referencia = produto.preco_referencia
+            if produto.preco_referencia is not None:
+                self.origem_valor = (
+                    produto.preco_origem
+                    if produto.preco_origem in Equipamento.OrigemValor.values
+                    else Equipamento.OrigemValor.INFORMADO_COMPRAS
+                )
+                self.fornecedor_id = self.fornecedor_id or produto.preco_fornecedor_id
         if not self.codigo:
             ultimo = Equipamento.objects.order_by('-id').first()
             proximo = (ultimo.id + 1) if ultimo else 1
@@ -519,6 +620,15 @@ class Transferencia(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     protocolo = models.CharField(max_length=50, unique=True)
     codigo_rastreio = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        permissions = [
+            ('visualizar_transferencias', 'Pode visualizar transferências'),
+            ('criar_transferencias', 'Pode criar transferências'),
+            ('aprovar_transferencias', 'Pode aprovar transferências'),
+            ('receber_transferencias', 'Pode receber transferências'),
+            ('cancelar_transferencias', 'Pode cancelar transferências'),
+        ]
 
     @property
     def url_rastreio(self):

@@ -171,6 +171,29 @@ class HistoricoValorEquipamento(models.Model):
         ordering = ['-alterado_em', '-id']
 
 
+class HistoricoPrecoProduto(models.Model):
+    produto = models.ForeignKey(
+        'estoque.Produto',
+        on_delete=models.PROTECT,
+        related_name='historico_precos',
+    )
+    valor_anterior = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    valor_novo = models.DecimalField(max_digits=14, decimal_places=4)
+    origem_anterior = models.CharField(max_length=30, blank=True)
+    origem_nova = models.CharField(max_length=30)
+    fonte = models.CharField(max_length=255, blank=True)
+    fornecedor = models.ForeignKey(
+        'insumos.FornecedorInsumo', null=True, blank=True, on_delete=models.PROTECT,
+    )
+    observacao = models.TextField(blank=True)
+    alterado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    alterado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-alterado_em', '-id']
+        indexes = [models.Index(fields=['produto', 'alterado_em'])]
+
+
 class RemessaCompra(models.Model):
     class Fluxo(models.TextChoices):
         FORNECEDOR_DIRETO = 'FORNECEDOR_DIRETO', 'Fornecedor para base'

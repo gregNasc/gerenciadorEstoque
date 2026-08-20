@@ -12,6 +12,18 @@ class GruposCorporativos:
 
 
 class ComprasAccessPolicy:
+    PERMISSOES_OPERACIONAIS = (
+        'insumos.visualizar_valores_estoque',
+        'insumos.gerenciar_precos',
+        'insumos.gerenciar_fornecedores',
+        'insumos.criar_remessa_compra',
+        'estoque.visualizar_preco_produto',
+        'estoque.definir_preco_produto',
+        'estoque.alterar_preco_produto',
+        'estoque.importar_preco_produto',
+        'estoque.cadastrar_equipamentos',
+    )
+
     @staticmethod
     def _autenticado(user):
         return bool(user and user.is_authenticated)
@@ -57,6 +69,7 @@ class ComprasAccessPolicy:
         return bool(
             cls._admin_ou_compras(user)
             or user.has_perm('insumos.visualizar_valores_estoque')
+            or user.has_perm('estoque.visualizar_preco_produto')
             or (
                 perfil
                 and (perfil.is_financeiro_insumos or perfil.is_executivo_insumos)
@@ -69,11 +82,73 @@ class ComprasAccessPolicy:
             cls._autenticado(user)
             and not cls.restrito(user)
             and user.has_perm('insumos.gerenciar_precos')
+        ) or (
+            cls._autenticado(user)
+            and not cls.restrito(user)
+            and (
+                user.has_perm('estoque.definir_preco_produto')
+                or user.has_perm('estoque.alterar_preco_produto')
+                or user.has_perm('estoque.importar_preco_produto')
+            )
+        )
+
+    @classmethod
+    def pode_definir_preco_produto(cls, user):
+        return bool(
+            cls._admin_ou_compras(user)
+            or (
+                cls._autenticado(user)
+                and not cls.restrito(user)
+                and (
+                    user.has_perm('insumos.gerenciar_precos')
+                    or user.has_perm('estoque.definir_preco_produto')
+                )
+            )
+        )
+
+    @classmethod
+    def _possui_escopo_delegado(cls, user):
+        return bool(
+            cls._autenticado(user)
+            and not cls.restrito(user)
+            and any(user.has_perm(permissao) for permissao in cls.PERMISSOES_OPERACIONAIS)
+        )
+
+    @classmethod
+    def pode_alterar_preco_produto(cls, user):
+        return bool(
+            cls._admin_ou_compras(user)
+            or (
+                cls._autenticado(user)
+                and not cls.restrito(user)
+                and (
+                    user.has_perm('insumos.gerenciar_precos')
+                    or user.has_perm('estoque.alterar_preco_produto')
+                )
+            )
+        )
+
+    @classmethod
+    def pode_importar_precos(cls, user):
+        return bool(
+            cls._admin_ou_compras(user)
+            or (
+                cls._autenticado(user)
+                and not cls.restrito(user)
+                and (
+                    user.has_perm('insumos.gerenciar_precos')
+                    or user.has_perm('estoque.importar_preco_produto')
+                )
+            )
         )
 
     @classmethod
     def pode_gerenciar_catalogo(cls, user):
-        return cls._admin_ou_compras(user)
+        return cls._admin_ou_compras(user) or (
+            cls._autenticado(user)
+            and not cls.restrito(user)
+            and user.has_perm('estoque.cadastrar_equipamentos')
+        )
 
     @classmethod
     def pode_gerenciar_fornecedores(cls, user):
@@ -93,7 +168,7 @@ class ComprasAccessPolicy:
 
     @classmethod
     def empresas(cls, user):
-        if not cls._admin_ou_compras(user):
+        if not (cls._admin_ou_compras(user) or cls._possui_escopo_delegado(user)):
             return Empresa.objects.none()
         perfil = user.perfil
         if user.is_superuser or perfil.is_admin:
@@ -105,7 +180,7 @@ class ComprasAccessPolicy:
 
     @classmethod
     def bases(cls, user):
-        if not cls._admin_ou_compras(user):
+        if not (cls._admin_ou_compras(user) or cls._possui_escopo_delegado(user)):
             return Base.objects.none()
         perfil = user.perfil
         if user.is_superuser or perfil.is_admin:

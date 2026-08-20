@@ -6,7 +6,9 @@ from django.core.exceptions import ValidationError
 from insumos.models import (
     ChecklistDiario,
     ChecklistEquipamento,
+    ChecklistEquipamentoQuantidade,
     ChecklistLoteTag,
+    ConsumoInsumo,
     HistoricoInsumo,
     ItemChecklist,
     MovimentacaoTag,
@@ -170,6 +172,127 @@ class ChecklistService:
 
 
     # EQUIPAMENTOS
+    @staticmethod
+    def saldo_equipamentos_categoria(base, categoria):
+        ativos = Equipamento.objects.filter(
+            regional=base,
+            produto__categoria=categoria,
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
+        ).count()
+        reservado_sem_identificacao = 0
+        registros = (
+            ChecklistEquipamentoQuantidade.objects
+            .filter(
+                checklist__inventario__base=base,
+                checklist__status__in=['ABERTO', 'EM_EXECUCAO'],
+                categoria=categoria,
+            )
+            .select_related('checklist')
+        )
+        for registro in registros:
+            identificados_retornados = registro.checklist.equipamentos_utilizados.filter(
+                equipamento__produto__categoria=categoria,
+                status_retorno='RETORNADO',
+            ).count()
+            retornados_sem_identificacao = (
+                max(0, registro.quantidade_retornada - identificados_retornados)
+                if registro.status_retorno == ChecklistEquipamentoQuantidade.StatusRetorno.CONFERIDO
+                else 0
+            )
+            reservado_sem_identificacao += max(
+                0,
+                registro.quantidade_nao_identificada - retornados_sem_identificacao,
+            )
+        return max(0, ativos - reservado_sem_identificacao)
+
+    @staticmethod
+    @transaction.atomic
+    def registrar_envio_equipamentos(
+        *, checklist, categoria, quantidade, equipamentos, usuario,
+    ):
+        quantidade = int(quantidade or 0)
+        if quantidade <= 0:
+            return None
+        categorias_validas = {codigo for codigo, _ in ChecklistEquipamentoQuantidade.CATEGORIAS}
+        if categoria not in categorias_validas or categoria == 'Sistema':
+            raise ValueError('Categoria de equipamento inválida para o checklist.')
+
+        base_model = checklist.inventario.base.__class__
+        base = base_model.objects.select_for_update().get(pk=checklist.inventario.base_id)
+        ids = [getattr(item, 'pk', item) for item in equipamentos]
+        ids = list(dict.fromkeys(int(item) for item in ids if item))
+        if len(ids) > quantidade:
+            raise ValueError('A quantidade identificada não pode exceder a quantidade enviada.')
+
+        selecionados = list(
+            Equipamento.objects.select_for_update().select_related('produto').filter(
+                pk__in=ids,
+                regional=base,
+                produto__categoria=categoria,
+                status='ATIVO',
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
+            )
+        )
+        if len(selecionados) != len(ids):
+            raise ValueError('Há equipamento identificado indisponível ou fora da categoria/base.')
+
+        saldo = ChecklistService.saldo_equipamentos_categoria(base, categoria)
+        if quantidade > saldo:
+            raise ValueError(
+                f'A quantidade de {categoria} excede o saldo disponível. '
+                f'Disponível: {saldo}. Solicitado: {quantidade}.'
+            )
+        if categoria == 'Coletores' and checklist.inventario.pessoas is not None:
+            limite = min(checklist.inventario.pessoas + 5, saldo)
+            if quantidade > limite:
+                raise ValueError(
+                    f'Este inventário permite no máximo {limite} coletores '
+                    f'({checklist.inventario.pessoas} pessoas + 5, limitado pelo saldo).'
+                )
+
+        registro = ChecklistEquipamentoQuantidade.objects.create(
+            checklist=checklist,
+            categoria=categoria,
+            quantidade_enviada=quantidade,
+            quantidade_identificada=len(selecionados),
+        )
+        for equipamento in selecionados:
+            ChecklistService.adicionar_equipamento(
+                checklist=checklist,
+                equipamento=equipamento,
+                usuario=usuario,
+            )
+        HistoricoInsumo.objects.create(
+            tipo='CHECKLIST',
+            usuario=usuario,
+            descricao=f'{quantidade} equipamento(s) de {categoria} enviado(s) no checklist {checklist.id}.',
+            dados={
+                'checklist': checklist.id,
+                'categoria': categoria,
+                'quantidade': quantidade,
+                'identificados': len(selecionados),
+            },
+        )
+        return registro
+
+    @staticmethod
+    @transaction.atomic
+    def atualizar_retorno_equipamentos_quantitativo(*, registro, quantidade, usuario):
+        registro = ChecklistEquipamentoQuantidade.objects.select_for_update().get(pk=registro.pk)
+        quantidade = int(quantidade)
+        if quantidade < 0 or quantidade > registro.quantidade_enviada:
+            raise ValueError('A quantidade retornada deve ficar entre zero e a quantidade enviada.')
+        registro.quantidade_retornada = quantidade
+        registro.status_retorno = ChecklistEquipamentoQuantidade.StatusRetorno.CONFERIDO
+        registro.conferido_por = usuario
+        registro.conferido_em = timezone.now()
+        registro.save(update_fields=[
+            'quantidade_retornada', 'status_retorno',
+            'conferido_por', 'conferido_em',
+        ])
+        return registro
+
     @staticmethod
     @transaction.atomic
     def adicionar_equipamento(*, checklist, equipamento, usuario):
@@ -479,6 +602,111 @@ class ChecklistService:
     # FINALIZAÇÃO
     @staticmethod
     @transaction.atomic
+    def reabrir(*, checklist, usuario):
+        checklist = ChecklistDiario.objects.select_for_update().select_related(
+            'inventario__base'
+        ).get(pk=checklist.pk)
+        if checklist.status != 'FINALIZADO':
+            raise ValueError('Somente checklists finalizados podem ser reabertos.')
+
+        base = checklist.inventario.base
+        # Desfaz somente os efeitos consolidados na finalização. O envio
+        # original continua válido enquanto o checklist volta a EM_EXECUÇÃO.
+        for item in checklist.itens.select_for_update().select_related('insumo'):
+            if item.quantidade_retornada > 0:
+                MovimentacaoService.saida(
+                    base=base,
+                    insumo=item.insumo,
+                    quantidade=item.quantidade_retornada,
+                    usuario=usuario,
+                    observacao=f'ESTORNO DE REABERTURA DO CHECKLIST {checklist.pk}',
+                )
+            ConsumoInsumo.objects.filter(item_checklist=item).delete()
+            item.status_retorno = 'PENDENTE'
+            item.save(update_fields=['status_retorno'])
+
+        for item in checklist.equipamentos_utilizados.select_for_update().select_related('equipamento'):
+            if item.status_retorno == 'RETORNADO':
+                equipamento = item.equipamento
+                equipamento.status = 'EM_USO'
+                equipamento.save(update_fields=['status', 'data_atualizacao'])
+                item.status_retorno = 'PENDENTE'
+                item.data_retorno = None
+                item.resolvido_por = None
+                item.resolvido_em = None
+                item.save(update_fields=[
+                    'status_retorno', 'data_retorno', 'resolvido_por', 'resolvido_em',
+                ])
+
+        checklist.equipamentos_quantitativos.update(
+            status_retorno=ChecklistEquipamentoQuantidade.StatusRetorno.PENDENTE,
+            conferido_por=None,
+            conferido_em=None,
+        )
+
+        for item_lote in checklist.lotes_tags_movimentados.select_for_update(
+            of=('self',)
+        ).select_related(
+            'lote', 'rolo'
+        ):
+            if item_lote.numero_final_utilizado is None:
+                continue
+            if item_lote.rolo_id:
+                esperado = min(item_lote.numero_final_utilizado + 1, item_lote.lote.numero_final)
+                if item_lote.rolo.numero_atual != esperado:
+                    raise ValueError(
+                        f'O rolo {item_lote.rolo.codigo} já possui movimentação posterior; '
+                        'a reabertura foi bloqueada para preservar o saldo.'
+                    )
+            movimento = MovimentacaoTag.objects.filter(
+                inventario=checklist.inventario,
+                lote=item_lote.lote,
+                tipo='UTILIZACAO',
+                numero_inicial=item_lote.numero_inicial_utilizado,
+                numero_final=item_lote.numero_final_utilizado,
+            ).order_by('-pk').first()
+            if movimento:
+                movimento.delete()
+            if item_lote.rolo_id:
+                item_lote.rolo.numero_atual = item_lote.numero_inicial_utilizado
+                item_lote.rolo.status = 'EM_USO'
+                item_lote.rolo.save(update_fields=['numero_atual', 'status'])
+            item_lote.numero_final_utilizado = None
+            item_lote.save(update_fields=['numero_final_utilizado'])
+
+        agora = timezone.now()
+        checklist.status = 'EM_EXECUCAO'
+        checklist.data_fim = None
+        checklist.finalizado_em = None
+        checklist.finalizado_por = None
+        checklist.save(update_fields=[
+            'status', 'data_fim', 'finalizado_em', 'finalizado_por',
+        ])
+        inventario = checklist.inventario.__class__.objects.select_for_update().get(
+            pk=checklist.inventario_id
+        )
+        inventario.status = 'EM_ANDAMENTO'
+        inventario.fim_real = None
+        inventario.save(update_fields=['status', 'fim_real'])
+        HistoricoInsumo.objects.create(
+            tipo='CHECKLIST',
+            usuario=usuario,
+            descricao=f'Checklist {checklist.pk} reaberto para correção.',
+            dados={'checklist': checklist.pk, 'reaberto_em': agora.isoformat()},
+        )
+        ComunicadoService.criar_acao(
+            titulo=f'CHECKLIST #{checklist.pk} REABERTO',
+            mensagem='O CHECKLIST FOI REABERTO PARA CORREÇÃO COM ESTORNO CONTROLADO.',
+            usuario=usuario,
+            bases=[base],
+            empresa=base.empresa,
+            dados={'checklist_id': checklist.pk, 'acao': 'REABERTO'},
+            url=f'/insumos/checklist/{checklist.pk}/',
+        )
+        return checklist
+
+    @staticmethod
+    @transaction.atomic
     def finalizar(*, checklist, usuario):
         if checklist.status == 'FINALIZADO':
             raise ValueError('Checklist já finalizado.')
@@ -529,6 +757,15 @@ class ChecklistService:
             raise ValueError(
                 f'O checklist não pode ser finalizado pois os seguintes equipamentos '
                 f'não tiveram o retorno confirmado: {pendentes}'
+            )
+
+        quantitativos_pendentes = checklist.equipamentos_quantitativos.filter(
+            status_retorno=ChecklistEquipamentoQuantidade.StatusRetorno.PENDENTE,
+        )
+        if quantitativos_pendentes.exists():
+            categorias = ', '.join(quantitativos_pendentes.values_list('categoria', flat=True))
+            raise ValueError(
+                f'O retorno quantitativo ainda não foi conferido para: {categorias}.'
             )
 
         for item_equip in checklist.equipamentos_utilizados.select_related('equipamento'):
@@ -608,7 +845,11 @@ class ChecklistService:
                 'base': checklist.inventario.base.nome,
                 'data_inicio': str(checklist.data_inicio),
                 'itens': checklist.itens.count(),
-                'equipamentos': checklist.equipamentos_utilizados.count(),
+                'equipamentos': sum(
+                    checklist.equipamentos_quantitativos.values_list(
+                        'quantidade_enviada', flat=True
+                    )
+                ) or checklist.equipamentos_utilizados.count(),
                 'lotes_tags': checklist.lotes_tags_movimentados.count(),
             },
         )

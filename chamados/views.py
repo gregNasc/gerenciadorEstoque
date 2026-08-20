@@ -284,6 +284,9 @@ def detalhe(request, pk):
         'sick_form': ChamadoSickForm(),
         'status_permitidos': status_permitidos,
         'pode_atender': pode_atender,
+        # Evaluations are management data. They are deliberately unavailable
+        # to both the requester and the attendant after submission.
+        'pode_ver_avaliacoes': ChamadoAccessPolicy.e_admin(request.user),
         'pode_interagir': ChamadoAccessPolicy.pode_interagir(request.user, chamado),
         'pode_avaliar': chamado.aberto_por_id == request.user.pk and chamado.status == Chamado.Status.AVALIACAO,
         'pode_transferir': chamado.atendente_id and ChamadoAccessPolicy.pode_transferir(request.user, chamado),
@@ -353,11 +356,24 @@ def avaliar(request, pk):
     form = ChamadoAvaliacaoForm(request.POST)
     if form.is_valid():
         try:
-            ChamadoService.avaliar(chamado, request.user, **form.cleaned_data)
+            avaliacao = ChamadoService.avaliar(chamado, request.user, **form.cleaned_data)
             messages.success(request, 'AVALIAÇÃO REGISTRADA.')
         except (PermissionDenied, ValidationError) as exc:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': False, 'erro': str(exc)}, status=400)
             messages.error(request, str(exc))
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                chamado.refresh_from_db(fields=['status'])
+                return JsonResponse({
+                    'ok': True,
+                    'avaliacao_id': avaliacao.pk,
+                    'status': chamado.get_status_display(),
+                    'encerrado': chamado.status == Chamado.Status.ENCERRADO,
+                })
     else:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'erros': form.errors.get_json_data()}, status=400)
         messages.error(request, 'VERIFIQUE A NOTA E A CONFIRMAÇÃO DA SOLUÇÃO.')
     return redirect('chamados:detalhe', pk=pk)
 
@@ -398,7 +414,15 @@ def baixar_anexo(request, pk):
         raise PermissionDenied
     if anexo.mensagem and anexo.mensagem.nota_interna and not ChamadoAccessPolicy.pode_atender(request.user):
         raise PermissionDenied
-    return FileResponse(anexo.arquivo.open('rb'), as_attachment=True, filename=anexo.nome_original)
+    resposta = FileResponse(
+        anexo.arquivo.open('rb'),
+        as_attachment=True,
+        filename=anexo.nome_original,
+        content_type='application/octet-stream',
+    )
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    resposta['Content-Security-Policy'] = "sandbox; default-src 'none'"
+    return resposta
 
 def _media_duracoes(duracoes):
     segundos = [

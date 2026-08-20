@@ -346,6 +346,120 @@
         background: #fff5f5;
     }
 
+    /* Experiência de preenchimento */
+    .checklist-page {
+        --ck-ink: #0f172a;
+        --ck-muted: #64748b;
+        --ck-border: #dbe3ee;
+        --ck-primary: #1d4ed8;
+        margin-top: -1rem;
+        padding: 18px clamp(10px, 2vw, 28px) 28px;
+        color: var(--ck-ink);
+        background: #f4f7fb;
+    }
+
+    .checklist-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin: 0 auto 16px;
+        max-width: 1180px;
+        padding: 22px 24px;
+        border-radius: 18px;
+        color: #fff;
+        background: linear-gradient(125deg, #0f172a, #172554 55%, #2563eb);
+        box-shadow: 0 14px 32px rgba(15, 23, 42, .14);
+    }
+
+    .checklist-hero h1 { margin: 4px 0; color: #fff !important; font-size: clamp(1.35rem, 3vw, 2rem); font-weight: 850; }
+    .checklist-hero p { margin: 0; color: #dbeafe; font-size: .9rem; }
+    .checklist-kicker { color: #bfdbfe; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .workflow-steps { display: flex; gap: 8px; flex-wrap: wrap; }
+    .workflow-step { padding: 7px 10px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; background: rgba(255,255,255,.09); font-size: .76rem; white-space: nowrap; }
+    .workflow-step strong { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 5px; border-radius: 50%; color: #1e3a8a; background: #fff; }
+
+    .document-switcher {
+        position: sticky;
+        top: 8px;
+        z-index: 20;
+        max-width: 1180px;
+        margin: 0 auto 12px;
+        padding: 5px;
+        border: 1px solid var(--ck-border);
+        border-radius: 12px;
+        background: rgba(255,255,255,.96);
+        box-shadow: 0 5px 18px rgba(15, 23, 42, .07);
+        backdrop-filter: blur(8px);
+    }
+    .document-switcher button { flex: 1; border: 0; border-radius: 8px; color: #475569; background: transparent; }
+    .document-switcher button.active { color: #fff; background: var(--ck-primary); box-shadow: 0 4px 10px rgba(37,99,235,.2); }
+
+    .editable-document {
+        border: 1px solid var(--ck-border);
+        border-radius: 16px;
+        box-shadow: 0 8px 26px rgba(15, 23, 42, .07);
+        overflow: hidden;
+    }
+    #checklist-document > h1 { margin: -24px -24px 18px; border-bottom-color: #60a5fa; }
+    .official-meta-grid { border-radius: 10px; background: #f8fafc; }
+    .official-checklist-grid { overflow: hidden; border: 1px solid var(--ck-border); border-radius: 10px; }
+    .official-checklist-grid .table-wrap { max-height: 64vh; overflow: auto; }
+    .official-checklist-table thead { position: sticky; top: 0; z-index: 5; }
+    .official-checklist-table tbody tr:not(.insumo-group-row):hover td { background: #eff6ff; }
+    .official-checklist-table tbody tr.has-value td { background: #ecfdf5; }
+    .official-checklist-table .input-cell input[type="number"],
+    .equipment-official-row input[type="number"] {
+        min-height: 38px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: .9rem;
+        font-weight: 800;
+    }
+    .official-checklist-table .input-cell input[type="number"]:focus,
+    .equipment-official-row input[type="number"]:focus { border-color: var(--ck-primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .insumo-help { margin-top: 2px; color: var(--ck-muted); font-size: .68rem; font-weight: 700; }
+    .insumo-group-row td { padding: 0 !important; border-color: #bfdbfe !important; background: #eff6ff !important; }
+    .insumo-group-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 12px; border: 0; color: #1e3a8a; background: transparent; font-size: .72rem; font-weight: 850; letter-spacing: .05em; text-align: left; }
+    .insumo-group-toggle i { transition: transform .18s ease; }
+    .insumo-group-toggle[aria-expanded="false"] i { transform: rotate(-90deg); }
+    .insumo-category-placeholder { width: 8%; color: #94a3b8; }
+    .btn-selecionar { margin: 5px 6px 3px 0; border-radius: 7px; background: #1e40af; }
+
+    .checklist-action-bar {
+        position: static;
+        width: 100%;
+        z-index: 25;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 16px;
+        max-width: 1180px;
+        margin: 16px auto 0;
+        padding: 12px 14px;
+        border: 1px solid var(--ck-border);
+        border-radius: 14px;
+        background: rgba(255,255,255,.96);
+        box-shadow: 0 12px 28px rgba(15,23,42,.15);
+        backdrop-filter: blur(8px);
+    }
+    .checklist-action-copy strong { display: block; font-size: .88rem; }
+    .checklist-action-copy small { color: var(--ck-muted); }
+    .checklist-action-bar .print-btn { margin: 0; min-width: 170px; border-radius: 10px; background: var(--ck-primary); font-weight: 800; }
+    .checklist-action-bar .print-btn-secondary { color: #1e3a8a; border: 1px solid #bfdbfe; background: #fff; }
+    .checklist-action-bar .print-btn-save {
+        color: #fff !important;
+        border: 1px solid #15803d !important;
+        background: #15803d !important;
+        box-shadow: 0 5px 14px rgba(21, 128, 61, .24);
+    }
+    .checklist-action-bar .print-btn-save:hover,
+    .checklist-action-bar .print-btn-save:focus {
+        color: #fff !important;
+        border-color: #166534 !important;
+        background: #166534 !important;
+    }
+
     @media (max-width: 992px) {
         .equipment-grid {
             grid-template-columns: repeat(2, minmax(180px, 1fr));
@@ -353,6 +467,7 @@
     }
 
     @media (max-width: 576px) {
+        .checklist-page { padding-bottom: 28px; }
         .equipment-grid {
             grid-template-columns: 1fr;
         }
@@ -361,6 +476,12 @@
         .logistics-grid {
             grid-template-columns: 1fr;
         }
+
+        .checklist-hero { align-items: flex-start; flex-direction: column; padding: 18px; }
+        .workflow-steps { display: none; }
+        .document-switcher { position: static; flex-direction: column; }
+        .checklist-action-bar { align-items: stretch; flex-direction: column; width: 100%; }
+        .checklist-action-bar .print-btn { width: 100%; }
     }
 
     /* ================================
@@ -884,10 +1005,35 @@
         .declaration-row.three-fields { grid-template-columns: 140px minmax(180px, 1fr); }
     }
 
+    /* Mantém os refinamentos de tela acima do estilo documental legado. */
+    .checklist-page .document-switcher {
+        position: sticky;
+        top: 8px;
+        z-index: 20;
+        max-width: 1180px;
+        margin: 0 auto 12px;
+        padding: 5px;
+        border-radius: 12px;
+        background: rgba(255,255,255,.96);
+        box-shadow: 0 5px 18px rgba(15,23,42,.07);
+    }
+    .checklist-page .document-switcher button { flex: 1; border: 0; border-radius: 8px; color: #475569; background: transparent; }
+    .checklist-page .document-switcher button.active { color: #fff; background: #1d4ed8; }
+    .checklist-page .editable-document { border-radius: 16px; border-color: #dbe3ee; box-shadow: 0 8px 26px rgba(15,23,42,.07); overflow: hidden; }
+    .checklist-page .official-checklist-grid { overflow: hidden; border: 1px solid #dbe3ee; border-radius: 10px; }
+    .checklist-page .official-checklist-grid .table-wrap { max-height: 64vh; overflow: auto; }
+
+    @media (max-width: 576px) {
+        .checklist-page .document-switcher { position: static; flex-direction: column; }
+    }
+
     /* ================================
        PRINT
     =================================*/
     @media print {
+        .checklist-hero,
+        .checklist-action-bar,
+        .insumo-group-row,
         .document-switcher,
         .support-controls,
         .print-btn,
@@ -895,6 +1041,8 @@
         .custom-modal-overlay {
             display: none !important;
         }
+
+        .insumo-item-row[hidden] { display: table-row !important; }
 
         .editable-document {
             display: none !important;
@@ -911,6 +1059,18 @@
 
 {% block content %}
 <div class="container checklist-page">
+    <header class="checklist-hero">
+        <div>
+            <span class="checklist-kicker"><i class="bi bi-clipboard2-check me-1"></i> {% trans "Preparação do inventário" %}</span>
+            <h1>{% trans "Checklist de equipamentos e insumos" %}</h1>
+            <p>{% trans "Selecione o inventário, registre somente o que será enviado e confira antes de salvar." %}</p>
+        </div>
+        <div class="workflow-steps" aria-label="Etapas do preenchimento">
+            <span class="workflow-step"><strong>1</strong>{% trans "Inventário" %}</span>
+            <span class="workflow-step"><strong>2</strong>{% trans "Quantidades" %}</span>
+            <span class="workflow-step"><strong>3</strong>{% trans "Declaração" %}</span>
+        </div>
+    </header>
     <form method="POST"
           id="checklistForm"
           action="{% if editando %}{% url 'insumos:editar_checklist' checklist.id %}{% else %}{% url 'estoque:checklist' %}{% endif %}">
@@ -958,10 +1118,10 @@
                         </thead>
                         <tbody id="insumosBody"><tr><td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td></tr></tbody>
                         <tbody>
-                            <tr class="equipment-official-row"><td rowspan="4">EQUIPAMENTOS</td><td><strong>ROTEADORES</strong><button type="button" class="btn-selecionar" onclick="abrirModal('router')">Selecionar</button><span id="router-contador" class="contador">0 selecionados</span><div id="router-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="router">0</td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>COLETORES DE DADOS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Selecionar</button><span id="coletor-contador" class="contador">0 selecionados</span><div id="coletor-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="coletor">0</td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>NOTEBOOKS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Selecionar</button><span id="notebook-contador" class="contador">0 selecionados</span><div id="notebook-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="notebook">0</td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>IMPRESSORAS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Selecionar</button><span id="impressora-contador" class="contador">0 selecionados</span><div id="impressora-selecionados" class="resumo-selecionados"></div></td><td data-equipment-count="impressora">0</td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td rowspan="4">EQUIPAMENTOS</td><td><strong>ROTEADORES</strong><button type="button" class="btn-selecionar" onclick="abrirModal('router')">Identificar patrimônios (opcional)</button><span id="router-contador" class="contador">0 identificados</span><div id="router-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_router" data-equipment-count="router" min="0" step="1" value="0" aria-label="Quantidade de routers"><small data-equipment-available="router"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>COLETORES DE DADOS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Identificar patrimônios (opcional)</button><span id="coletor-contador" class="contador">0 identificados</span><div id="coletor-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_coletor" data-equipment-count="coletor" min="0" step="1" value="0" aria-label="Quantidade de coletores"><small data-equipment-available="coletor"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>NOTEBOOKS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Identificar patrimônios (opcional)</button><span id="notebook-contador" class="contador">0 identificados</span><div id="notebook-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_notebook" data-equipment-count="notebook" min="0" step="1" value="0" aria-label="Quantidade de notebooks"><small data-equipment-available="notebook"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>IMPRESSORAS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Identificar patrimônios (opcional)</button><span id="impressora-contador" class="contador">0 identificados</span><div id="impressora-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_impressora" data-equipment-count="impressora" min="0" step="1" value="0" aria-label="Quantidade de impressoras"><small data-equipment-available="impressora"></small></td><td></td><td></td><td></td><td></td></tr>
                         </tbody>
                     </table>
                     <div id="insumosAlert" class="alert-inline error"></div>
@@ -1118,7 +1278,10 @@
         </div>
 
         <!-- BOTÕES -->
-        <button type="submit" class="print-btn">💾 Salvar</button>
+        <div class="checklist-action-bar">
+            <!--button type="button" class="print-btn print-btn-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i> {% trans "Imprimir" %}</button-->
+            <button type="submit" class="print-btn print-btn-save"><i class="bi bi-check2-circle me-1"></i> {% trans "Salvar checklist" %}</button>
+        </div>
         <!--<button type="button" class="print-btn" onclick="window.print()">🖨️ Imprimir</button>-->
 
     </form>
@@ -1208,10 +1371,12 @@ function obterContainerInsumos() {
 function criarLinhaInsumo(insumo) {
     const tr = document.createElement('tr');
     const ehTag = isCategoriaTags(insumo.categoria || '');
+    tr.className = 'insumo-item-row';
+    tr.dataset.categoria = insumo.categoria || 'SEM CATEGORIA';
 
     tr.innerHTML = `
-        <td class="insumo-categoria">${insumo.categoria || 'SEM CATEGORIA'}</td>
-        <td class="desc-col"><strong>${insumo.descricao}</strong><span class="insumo-help">${insumo.unidade || '-'} · saldo ${insumo.saldo}</span></td>
+        <td class="insumo-category-placeholder"><i class="bi bi-box-seam"></i></td>
+        <td class="desc-col"><strong>${insumo.descricao}</strong><span class="insumo-help">${insumo.unidade || '-'}</span></td>
         <td class="input-cell">
             ${ehTag ? `
                 <select
@@ -1242,6 +1407,7 @@ function criarLinhaInsumo(insumo) {
 
     input.addEventListener('input', function() {
         validarInputInsumo(this, true);
+        atualizarEstadoLinha(this);
         atualizarResumoDeclaracao();
     });
 
@@ -1283,19 +1449,38 @@ function renderizarInsumosAgrupados(insumos) {
         const itens = grupos.get(categoria).sort((a, b) =>
             String(a.descricao || '').localeCompare(String(b.descricao || ''))
         );
-        itens.forEach((insumo, index) => {
+        const grupoId = `grupo-insumos-${normalizarTexto(categoria).replace(/[^a-z0-9]+/g, '-')}`;
+        const cabecalho = document.createElement('tr');
+        cabecalho.className = 'insumo-group-row';
+        cabecalho.innerHTML = `
+            <td colspan="7">
+                <button type="button" class="insumo-group-toggle" aria-expanded="true" aria-controls="${grupoId}">
+                    <span>${categoria} <span class="badge rounded-pill text-bg-light ms-1">${itens.length}</span></span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+            </td>`;
+        tbody.appendChild(cabecalho);
+
+        const linhasGrupo = [];
+        itens.forEach(insumo => {
             const linha = criarLinhaInsumo(insumo);
-            const categoriaCell = linha.querySelector('.insumo-categoria');
-            if (index === 0) {
-                categoriaCell.rowSpan = itens.length;
-            } else {
-                categoriaCell.remove();
-            }
+            linha.dataset.grupo = grupoId;
+            linhasGrupo.push(linha);
             tbody.appendChild(linha);
+        });
+
+        cabecalho.querySelector('.insumo-group-toggle').addEventListener('click', function() {
+            const expandido = this.getAttribute('aria-expanded') === 'true';
+            this.setAttribute('aria-expanded', expandido ? 'false' : 'true');
+            linhasGrupo.forEach(linha => { linha.hidden = expandido; });
         });
     });
 
     atualizarResumoDeclaracao();
+}
+
+function atualizarEstadoLinha(input) {
+    input.closest('tr')?.classList.toggle('has-value', parseDecimal(input.value) > 0);
 }
 
 function validarInputInsumo(input, corrigir = false) {
@@ -1432,6 +1617,7 @@ function preencherInsumosDoChecklist(lista) {
             const quantidadeAnterior = parseDecimal(item.enviada || item.quantidade_enviada || 0);
             const limite = parseDecimal(inputEnviado.max);
             inputEnviado.value = limite > 0 ? Math.min(quantidadeAnterior, limite) : quantidadeAnterior;
+            atualizarEstadoLinha(inputEnviado);
         }
     });
 }
@@ -1510,7 +1696,8 @@ function carregarUltimoChecklist(inventarioId) {
 
             const ultimo = data.dados;
             preencherInsumosDoChecklist(ultimo.insumos || []);
-            preencherEquipamentosDoChecklist(ultimo.equipamentos || []);
+            // O checklist anterior pré-preenche somente insumos. Equipamentos
+            // físicos nunca são selecionados automaticamente.
             preencherTagsDoChecklist(ultimo.tags || []);
             info.textContent = `${textoPreenchidoHistorico} #${ultimo.checklist_id} (${ultimo.data}).`;
             info.classList.remove('d-none');
@@ -1530,6 +1717,7 @@ function limparPreenchimentoAnterior() {
         selecionados[categoria] = [];
         atualizarResumoCategoria(categoria);
     });
+    document.querySelectorAll('.equipment-quantity').forEach(input => input.value = '0');
     document.querySelectorAll('.tag-lote-check:checked').forEach(check => {
         check.checked = false;
         alternarCampoTag(check);
@@ -1664,7 +1852,7 @@ function atualizarResumoCategoria(categoria) {
 
     const contador = document.getElementById(categoria + '-contador');
     if (contador) {
-        contador.textContent = ids.length + ' selecionado' + (ids.length !== 1 ? 's' : '');
+        contador.textContent = ids.length + ' identificado' + (ids.length !== 1 ? 's' : '');
     }
 
     const resumo = document.getElementById(categoria + '-selecionados');
@@ -1679,8 +1867,11 @@ function atualizarResumoCategoria(categoria) {
         resumo.textContent = nomes.join(', ');
     }
 
-    const quantidadeCell = document.querySelector(`[data-equipment-count="${categoria}"]`);
-    if (quantidadeCell) quantidadeCell.textContent = ids.length;
+    const quantidadeInput = document.querySelector(`[data-equipment-count="${categoria}"]`);
+    if (quantidadeInput && Number(quantidadeInput.value || 0) < ids.length) {
+        quantidadeInput.value = String(ids.length);
+    }
+    if (quantidadeInput) atualizarEstadoLinha(quantidadeInput);
     atualizarResumoDeclaracao();
 }
 
@@ -1881,6 +2072,20 @@ function carregarDadosInventario(inventarioId) {
             quantidadePessoasInventario = data.pessoas;
             limiteColetores = data.limite_coletores;
 
+            Object.entries(data.saldos_equipamentos || {}).forEach(([categoria, saldo]) => {
+                const input = document.querySelector(`[data-equipment-count="${categoria}"]`);
+                const ajuda = document.querySelector(`[data-equipment-available="${categoria}"]`);
+                let limite = Number(saldo || 0);
+                if (categoria === 'coletor' && limiteColetores !== null) {
+                    limite = Math.min(limite, Number(limiteColetores));
+                }
+                if (input) {
+                    input.max = String(limite);
+                    if (Number(input.value || 0) > limite) input.value = String(limite);
+                }
+                if (ajuda) ajuda.textContent = `Disponível: ${limite}`;
+            });
+
             if (
                 limiteColetores !== null &&
                 (selecionados.coletor || []).length > limiteColetores
@@ -1952,7 +2157,8 @@ function existeAlgumEnvioNoChecklist() {
     const algumInsumo = Array.from(document.querySelectorAll('.insumo-enviado'))
         .some(input => parseDecimal(input.value) > 0);
 
-    const algumEquipamento = Object.values(selecionados).some(lista => lista && lista.length > 0);
+    const algumEquipamento = Array.from(document.querySelectorAll('.equipment-quantity'))
+        .some(input => Number(input.value || 0) > 0);
 
     const algumaTag = document.querySelector('.tag-lote-check:checked') !== null;
 
@@ -1987,6 +2193,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     atualizarResumoDeclaracao();
+    document.querySelectorAll('.equipment-quantity').forEach(input => {
+        input.addEventListener('input', function() {
+            atualizarEstadoLinha(this);
+        });
+    });
 
     document.querySelectorAll('.declaration-quantity-input').forEach(campo => {
         campo.addEventListener('input', function() {
@@ -2037,6 +2248,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         atualizarInputsEquipamentosETags();
 
+        for (const input of document.querySelectorAll('.equipment-quantity')) {
+            const categoria = input.dataset.equipmentCount;
+            const quantidade = Number(input.value || 0);
+            const maximo = Number(input.max || 0);
+            const identificados = (selecionados[categoria] || []).length;
+            if (!Number.isInteger(quantidade) || quantidade < identificados || quantidade > maximo) {
+                e.preventDefault();
+                alert(`Revise a quantidade de ${categoria}: deve ser inteira, respeitar o saldo e não ser menor que os patrimônios identificados.`);
+                return;
+            }
+        }
+
         if (!existeAlgumEnvioNoChecklist()) {
             e.preventDefault();
             alert('Preencha ao menos um item no checklist: insumo, equipamento ou lote de TAG.');
@@ -2051,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (
             limiteColetores !== null &&
-            (selecionados.coletor || []).length > limiteColetores
+            Number(document.querySelector('[data-equipment-count="coletor"]')?.value || 0) > limiteColetores
         ) {
             e.preventDefault();
             alert(

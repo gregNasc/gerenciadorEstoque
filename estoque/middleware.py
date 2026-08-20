@@ -68,6 +68,28 @@ class OperatorScopeMiddleware:
         'logout',
     }
     USUARIOS_COM_OS = {'rafael.ribeiro', 'jose.barboza'}
+    PERMISSOES_POR_ROTA = {
+        ('compras', 'criar_produto_catalogo'): 'estoque.cadastrar_equipamentos',
+        ('compras', 'valores_equipamentos'): 'estoque.visualizar_preco_produto',
+        ('compras', 'template_precificacao_equipamentos'): 'estoque.importar_preco_produto',
+        ('compras', 'importar_precificacao_equipamentos'): 'estoque.importar_preco_produto',
+        ('compras', 'alterar_preco_produto'): (
+            'estoque.definir_preco_produto', 'estoque.alterar_preco_produto',
+        ),
+        ('estoque', 'checklist'): 'insumos.preencher_checklists',
+        ('insumos', 'lista_checklists'): 'insumos.visualizar_checklists',
+        ('insumos', 'checklist_detail'): 'insumos.visualizar_checklists',
+        ('insumos', 'finalizar_checklist'): 'insumos.finalizar_checklists',
+        ('insumos', 'reabrir_checklist'): 'insumos.reabrir_checklists',
+        ('insumos', 'imprimir_checklist'): 'insumos.imprimir_checklists',
+        ('insumos', 'exportar_checklist_modelo'): 'insumos.imprimir_checklists',
+        ('insumos', 'editar_itens_checklist'): 'insumos.preencher_checklists',
+        ('insumos', 'editar_checklist'): 'insumos.preencher_checklists',
+        ('insumos', 'api_ultimo_checklist'): 'insumos.preencher_checklists',
+        ('insumos', 'api_insumos_por_base'): 'insumos.preencher_checklists',
+        ('insumos', 'inventario_detalhes'): 'insumos.preencher_checklists',
+        ('integracao', 'planning_mappings'): 'integracao.gerenciar_mapeamentos_planning',
+    }
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -87,6 +109,18 @@ class OperatorScopeMiddleware:
         namespace = match.namespace if match else ''
         url_name = match.url_name if match else ''
         username = user.get_username().strip().lower()
+
+        permissao_view = getattr(view_func, 'required_operational_permission', None)
+        permissao_rota = self.PERMISSOES_POR_ROTA.get((namespace, url_name))
+        permissoes_rota = (
+            permissao_rota if isinstance(permissao_rota, (tuple, list, set))
+            else (permissao_rota,) if permissao_rota else ()
+        )
+        if (
+            (permissao_view and user.has_perm(permissao_view))
+            or any(user.has_perm(permissao) for permissao in permissoes_rota)
+        ):
+            return None
 
         if namespace == 'chamados':
             return None

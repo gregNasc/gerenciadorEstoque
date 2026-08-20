@@ -2,10 +2,12 @@ from datetime import timedelta
 from pathlib import Path
 import re
 import unicodedata
+from uuid import uuid4
 from estoque.models import Base, Empresa, Equipamento, Produto, Sick
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
+from django.core.files.storage import storages
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -15,6 +17,9 @@ MIMES_ANEXO_PERMITIDOS = {
     'application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'text/plain',
     'text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/octet-stream', 'application/x-msdownload',
+    'application/vnd.microsoft.portable-executable',
+    'application/vnd.rar', 'application/x-rar-compressed', 'application/zip',
 }
 
 
@@ -36,8 +41,28 @@ def validar_mime_anexo(arquivo):
         raise ValidationError('O TIPO DE CONTEÚDO DO ANEXO NÃO É PERMITIDO.')
 
 
+def validar_assinatura_anexo(arquivo):
+    """Bloqueia disfarces triviais sem tentar executar ou extrair o arquivo."""
+    extensao = Path(getattr(arquivo, 'name', '')).suffix.lower()
+    posicao = arquivo.tell() if hasattr(arquivo, 'tell') else 0
+    cabecalho = arquivo.read(8)
+    if hasattr(arquivo, 'seek'):
+        arquivo.seek(posicao)
+    if extensao == '.exe' and not cabecalho.startswith(b'MZ'):
+        raise ValidationError('O CONTEÚDO NÃO CORRESPONDE A UM EXECUTÁVEL WINDOWS VÁLIDO.')
+    if extensao == '.rar' and not (
+        cabecalho.startswith(b'Rar!\x1a\x07\x00') or cabecalho.startswith(b'Rar!\x1a\x07\x01')
+    ):
+        raise ValidationError('O CONTEÚDO NÃO CORRESPONDE A UM ARQUIVO RAR VÁLIDO.')
+
+
 def caminho_anexo(instance, filename):
-    return f'chamados/{instance.chamado_id}/{Path(filename).name}'
+    sufixo = Path(filename).suffix.lower()
+    return f'chamados/{instance.chamado_id}/{uuid4().hex}{sufixo}'
+
+
+def armazenamento_privado_chamados():
+    return storages['private']
 
 
 class CategoriaChamado(models.Model):
@@ -199,6 +224,7 @@ class Chamado(models.Model):
     class Meta:
         ordering = ['-aberto_em', '-id']
         permissions = [
+            ('abrir_chamado', 'Pode abrir chamados'),
             ('atender_chamado', 'Pode atender chamados'),
             ('visualizar_todos_chamados', 'Pode visualizar todos os chamados'),
             ('exportar_chamados', 'Pode exportar chamados'),
@@ -206,6 +232,7 @@ class Chamado(models.Model):
             ('visualizar_dashboard_chamado', 'Pode visualizar dashboard de chamados'),
             ('configurar_chamado', 'Pode configurar chamados e vínculos'),
             ('converter_chamado_sick', 'Pode converter chamado em SICK'),
+            ('reabrir_chamado', 'Pode reabrir chamados'),
         ]
         indexes = [
             models.Index(fields=['empresa', 'status', 'aberto_em']),
@@ -281,12 +308,14 @@ class ChamadoAnexo(models.Model):
     )
     arquivo = models.FileField(
         upload_to=caminho_anexo,
+        storage=armazenamento_privado_chamados,
         validators=[
             FileExtensionValidator(
-                ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'xlsx', 'docx']
+                ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'xlsx', 'docx', 'rar', 'exe']
             ),
             validar_tamanho_anexo,
             validar_mime_anexo,
+            validar_assinatura_anexo,
         ],
     )
     nome_original = models.CharField(max_length=255)

@@ -8,6 +8,7 @@ from django.utils.translation import gettext as _
 from compras.models import (
     Aquisicao,
     EventoCompra,
+    HistoricoPrecoProduto,
     HistoricoValorEquipamento,
     ItemAquisicao,
     ItemRemessaCompra,
@@ -17,12 +18,89 @@ from compras.models import (
     VinculoEquipamentoAquisicao,
 )
 from compras.policies import AquisicaoAccessPolicy
-from estoque.models import Equipamento
+from estoque.models import Equipamento, Produto
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.services.comunicado_service import ComunicadoService
 from insumos.models import SaldoInsumoBase
 from insumos.services.movimentacao_service import MovimentacaoService
 from insumos.services.saldo_service import SaldoInsumoService
+
+
+class ProdutoPrecoService:
+    @staticmethod
+    def _origem_produto(origem):
+        mapa = {
+            Equipamento.OrigemValor.DOCUMENTO_COMPRA: Produto.OrigemPreco.DOCUMENTO_COMPRA,
+            Equipamento.OrigemValor.INFORMADO_COMPRAS: Produto.OrigemPreco.INFORMADO_COMPRAS,
+            Equipamento.OrigemValor.ESTIMATIVA_MERCADO: Produto.OrigemPreco.ESTIMATIVA_MERCADO,
+            Equipamento.OrigemValor.LEGADO_SEM_DOCUMENTO: Produto.OrigemPreco.LEGADO,
+            Equipamento.OrigemValor.SEM_PRECO_VALIDADO: Produto.OrigemPreco.SEM_PRECO_VALIDADO,
+        }
+        return mapa.get(origem, origem)
+
+    @classmethod
+    @transaction.atomic
+    def definir(
+        cls, *, produto, usuario, valor, origem, fonte='', fornecedor=None,
+        observacao='', somente_inicial=False, comunicar=True,
+    ):
+        produto = Produto.objects.select_for_update().get(pk=produto.pk)
+        valor = Decimal(str(valor))
+        if valor < 0:
+            raise ValidationError('O preço de referência não pode ser negativo.')
+        inicial = produto.preco_referencia is None
+        if somente_inicial and not inicial:
+            raise ValidationError('O produto já possui preço; use a ação específica de alteração.')
+        permitido = (
+            ComprasAccessPolicy.pode_definir_preco_produto(usuario)
+            if inicial else ComprasAccessPolicy.pode_alterar_preco_produto(usuario)
+        )
+        if (
+            ComprasAccessPolicy.restrito(usuario)
+            or not permitido
+        ):
+            raise PermissionDenied('Sem permissão para definir ou alterar preços de produtos.')
+        origem = cls._origem_produto(origem)
+        if origem not in Produto.OrigemPreco.values:
+            raise ValidationError('Origem do preço inválida.')
+        fonte = str(fonte or '').strip()
+        if (
+            produto.preco_referencia == valor
+            and produto.preco_origem == origem
+            and produto.preco_fonte == fonte
+            and produto.preco_fornecedor_id == getattr(fornecedor, 'pk', None)
+        ):
+            return produto
+        HistoricoPrecoProduto.objects.create(
+            produto=produto,
+            valor_anterior=produto.preco_referencia,
+            valor_novo=valor,
+            origem_anterior=produto.preco_origem,
+            origem_nova=origem,
+            fonte=fonte,
+            fornecedor=fornecedor,
+            observacao=str(observacao or '').strip(),
+            alterado_por=usuario,
+        )
+        produto.preco_referencia = valor
+        produto.preco_origem = origem
+        produto.preco_fonte = fonte
+        produto.preco_fornecedor = fornecedor
+        produto.preco_validado_por = usuario
+        produto.preco_validado_em = timezone.now()
+        produto.save(update_fields=[
+            'preco_referencia', 'preco_origem', 'preco_fonte', 'preco_fornecedor',
+            'preco_validado_por', 'preco_validado_em', 'atualizado_em',
+        ])
+        if comunicar:
+            transaction.on_commit(lambda: ComunicadoService.criar_acao(
+                titulo=f'Preço de referência de {produto.descricao} atualizado',
+                mensagem='O preço do catálogo foi atualizado com histórico e rastreabilidade.',
+                usuario=usuario,
+                dados={'produto_id': produto.pk, 'acao': 'PRECO_PRODUTO_ATUALIZADO'},
+                url='/compras/valores/equipamentos/',
+            ))
+        return produto
 
 
 class AquisicaoService:
@@ -156,6 +234,16 @@ class AquisicaoService:
             'documento_compra', 'data_aquisicao', 'valor_validado_por',
             'valor_validado_em', 'data_atualizacao',
         ])
+        if equipamento.produto_id and referencia is not None:
+            ProdutoPrecoService.definir(
+                produto=equipamento.produto,
+                usuario=usuario,
+                valor=referencia,
+                origem=origem,
+                fonte=documento,
+                fornecedor=fornecedor,
+                observacao=motivo,
+            )
         transaction.on_commit(lambda: ComunicadoService.criar_acao(
             titulo=f'Valor do equipamento {equipamento.codigo} atualizado',
             mensagem=f'O valor patrimonial foi atualizado. Motivo: {motivo}',
@@ -170,7 +258,7 @@ class AquisicaoService:
     @staticmethod
     @transaction.atomic
     def atualizar_valores_equipamentos_em_lote(*, itens, usuario):
-        if not ComprasAccessPolicy.pode_editar_precos(usuario):
+        if not ComprasAccessPolicy.pode_importar_precos(usuario):
             raise PermissionDenied('Sem permissão para editar valores de equipamentos.')
         if not itens:
             return 0, 0
@@ -270,6 +358,28 @@ class AquisicaoService:
             'custo_aquisicao', 'preco_referencia', 'origem_valor',
             'valor_validado_por', 'valor_validado_em', 'data_atualizacao',
         ])
+        referencias_por_produto = {}
+        for equipamento in atualizados:
+            if not equipamento.produto_id or equipamento.preco_referencia is None:
+                continue
+            atual = (equipamento.preco_referencia, equipamento.origem_valor)
+            anterior = referencias_por_produto.get(equipamento.produto_id)
+            if anterior and anterior != atual:
+                raise ValidationError(
+                    'A planilha possui preços de referência conflitantes para o mesmo produto.'
+                )
+            referencias_por_produto[equipamento.produto_id] = atual
+        produtos = Produto.objects.in_bulk(referencias_por_produto)
+        for produto_id, (valor, origem) in referencias_por_produto.items():
+            ProdutoPrecoService.definir(
+                produto=produtos[produto_id],
+                usuario=usuario,
+                valor=valor,
+                origem=origem,
+                fonte='IMPORTAÇÃO XLSX',
+                observacao='PRECIFICAÇÃO EM LOTE',
+                comunicar=False,
+            )
         atualizados_ids = [equipamento.pk for equipamento in atualizados]
         empresa = next(iter(empresas.values())) if len(empresas) == 1 else None
         quantidade = len(atualizados)
@@ -406,9 +516,14 @@ class RemessaCompraService:
             observacao=str(observacao or '').strip(),
         )
         for dados_linha in linhas:
-            item = ItemRemessaCompra.objects.select_for_update().select_related(
-                'insumo', 'equipamento'
-            ).get(pk=dados_linha['item_id'], remessa=remessa)
+            # Both item targets are nullable and therefore use outer joins.
+            # PostgreSQL can only lock the concrete remittance-item row here.
+            item = (
+                ItemRemessaCompra.objects
+                .select_for_update(of=('self',))
+                .select_related('insumo', 'equipamento')
+                .get(pk=dados_linha['item_id'], remessa=remessa)
+            )
             qtd = Decimal(str(dados_linha.get('quantidade_recebida', 0)))
             avaria = Decimal(str(dados_linha.get('quantidade_avariada', 0)))
             falta = Decimal(str(dados_linha.get('quantidade_faltante', 0)))

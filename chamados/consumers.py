@@ -9,27 +9,46 @@ from chamados.services import ChamadoService
 
 
 class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
-    """Mantem a presenca de atendentes autenticados enquanto a aplicacao esta aberta."""
+    """Presença de suporte e canal global de eventos do usuário autenticado."""
 
     async def connect(self):
         user = self.scope.get('user')
-        if not user or not user.is_authenticated or not await self._pode_atender():
+        if not user or not user.is_authenticated:
             await self.close(code=4403)
             return
-        await self._registrar_presenca()
+        self.e_atendente = await self._pode_atender()
+        self.grupos_presenca = [f'chamados_usuario_{user.pk}']
+        if self.e_atendente:
+            self.grupos_presenca.append('chamados_atendentes')
+            await self._registrar_presenca()
+        if await self._e_admin():
+            self.grupos_presenca.append('chamados_admins')
+        for grupo in self.grupos_presenca:
+            await self.channel_layer.group_add(grupo, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self._remover_presenca()
+        for grupo in getattr(self, 'grupos_presenca', []):
+            await self.channel_layer.group_discard(grupo, self.channel_name)
+        if getattr(self, 'e_atendente', False):
+            await self._remover_presenca()
 
     async def receive_json(self, content, **kwargs):
         if content.get('tipo') == 'ping':
-            await self._atualizar_presenca()
+            if getattr(self, 'e_atendente', False):
+                await self._atualizar_presenca()
             await self.send_json({'tipo': 'pong'})
+
+    async def chamado_evento(self, event):
+        await self.send_json({'tipo': 'chamado_evento', 'evento': event['payload']})
 
     @database_sync_to_async
     def _pode_atender(self):
         return ChamadoAccessPolicy.pode_atender(self.scope['user'])
+
+    @database_sync_to_async
+    def _e_admin(self):
+        return ChamadoAccessPolicy.e_admin(self.scope['user'])
 
     @database_sync_to_async
     def _registrar_presenca(self):

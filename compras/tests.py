@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 from io import BytesIO
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -11,11 +11,12 @@ from openpyxl import Workbook
 
 from compras.models import (
     Aquisicao,
+    HistoricoPrecoProduto,
     HistoricoValorEquipamento,
     ItemAquisicao,
     RemessaCompra,
 )
-from compras.services import AquisicaoService, RemessaCompraService
+from compras.services import AquisicaoService, ProdutoPrecoService, RemessaCompraService
 from estoque.models import Base, Comunicado, Empresa, Equipamento, Perfil, Produto
 from estoque.policies.compras import GruposCorporativos
 from estoque.services.sick_service import SickService
@@ -428,3 +429,159 @@ class ManutencaoMatrizExclusivaTests(TestCase):
         SickService.confirmar_recebimento(sick_id=sick.pk, usuario=self.rafael)
         sick.refresh_from_db()
         self.assertEqual(sick.etapa, 'RECEBIDO')
+
+
+@override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class PrecificacaoProdutoTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa preço produto')
+        self.base = Base.objects.create(nome='Base preço produto', empresa=self.empresa)
+        self.admin = User.objects.create_user('admin_preco_produto', password='senha-forte')
+        self.admin.perfil.role = Perfil.Role.ADMIN
+        self.admin.perfil.save(update_fields=['role'])
+        self.operador = User.objects.create_user('operador_catalogo', password='senha-forte')
+        self.operador.perfil.role = Perfil.Role.OPERADOR
+        self.operador.perfil.empresa = self.empresa
+        self.operador.perfil.save(update_fields=['role', 'empresa'])
+        self.operador.perfil.regionais.add(self.base)
+        self.operador.user_permissions.add(
+            Permission.objects.get(codename='cadastrar_equipamentos', content_type__app_label='estoque')
+        )
+
+    @staticmethod
+    def dados_produto(codigo):
+        return {
+            'codigo': codigo,
+            'descricao': 'Coletor de dados',
+            'nome_resumido': 'Coletor',
+            'fabricante': 'Zebra',
+            'modelo': 'TC22',
+            'sku_fabricante': '',
+            'categoria': 'Coletores',
+            'subcategoria': '',
+            'unidade_medida': 'UN',
+            'quantidade_embalagem': '1',
+            'especificacoes_tecnicas': '{}',
+            'ativo': 'on',
+        }
+
+    def test_admin_cadastra_produto_com_preco_e_historico(self):
+        self.client.force_login(self.admin)
+        dados = self.dados_produto('PROD-PRECO-1')
+        dados.update({
+            'preco_referencia_inicial': '1850.00',
+            'preco_origem': Produto.OrigemPreco.ESTIMATIVA_MERCADO,
+            'preco_fonte': 'Pesquisa de mercado',
+        })
+        resposta = self.client.post(reverse('compras:criar_produto_catalogo'), dados)
+        self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
+        produto = Produto.objects.get(codigo='PROD-PRECO-1')
+        self.assertEqual(produto.preco_referencia, Decimal('1850.00'))
+        self.assertEqual(produto.historico_precos.count(), 1)
+
+    def test_usuario_sem_preco_nao_define_valores_por_post_manual(self):
+        self.client.force_login(self.operador)
+        dados = self.dados_produto('PROD-SEM-PERM')
+        dados['preco_referencia_inicial'] = '9999.00'
+        resposta = self.client.post(reverse('compras:criar_produto_catalogo'), dados)
+        self.assertRedirects(resposta, reverse('estoque:cadastrar_equipamento'))
+        produto = Produto.objects.get(codigo='PROD-SEM-PERM')
+        self.assertIsNone(produto.preco_referencia)
+
+    def test_nova_unidade_reutiliza_preco_sem_alterar_produto(self):
+        produto = Produto.objects.create(
+            codigo='PROD-HERDA', descricao='Notebook', fabricante='Dell',
+            modelo='3420', categoria='Notebooks', preco_referencia=Decimal('2500'),
+            preco_origem=Produto.OrigemPreco.ESTIMATIVA_MERCADO,
+        )
+        equipamento = Equipamento.objects.create(
+            produto=produto, numero_serie='SER-HERDA', patrimonio='PAT-HERDA',
+            regional=self.base, codigo='EQ-HERDA',
+        )
+        produto.refresh_from_db()
+        self.assertEqual(equipamento.preco_referencia, Decimal('2500'))
+        self.assertEqual(produto.preco_referencia, Decimal('2500'))
+        self.assertFalse(HistoricoPrecoProduto.objects.filter(produto=produto).exists())
+
+    def test_alteracao_explicita_preserva_historico(self):
+        produto = Produto.objects.create(
+            codigo='PROD-ALTERA', descricao='Router', fabricante='Cisco',
+            modelo='R1', categoria='Routers', preco_referencia=Decimal('500'),
+            preco_origem=Produto.OrigemPreco.LEGADO,
+        )
+        ProdutoPrecoService.definir(
+            produto=produto, usuario=self.admin, valor='650',
+            origem=Produto.OrigemPreco.INFORMADO_COMPRAS,
+            fonte='Cotação', observacao='Atualização controlada', comunicar=False,
+        )
+        historico = HistoricoPrecoProduto.objects.get(produto=produto)
+        self.assertEqual(historico.valor_anterior, Decimal('500'))
+        self.assertEqual(historico.valor_novo, Decimal('650'))
+
+    def test_painel_expansivel_altera_preco_sem_planilha(self):
+        produto = Produto.objects.create(
+            codigo='PROD-PAINEL', descricao='Notebook painel', fabricante='Dell',
+            modelo='P1', categoria='Notebooks', preco_referencia=Decimal('1200'),
+            preco_origem=Produto.OrigemPreco.LEGADO,
+        )
+        equipamento = Equipamento.objects.create(
+            produto=produto, numero_serie='SER-PAINEL', patrimonio='PAT-PAINEL',
+            regional=self.base, codigo='EQ-PAINEL',
+        )
+        self.client.force_login(self.admin)
+
+        pagina = self.client.get(reverse('compras:valores_equipamentos'))
+        self.assertContains(pagina, f'id="detalhe-equipamento-{equipamento.pk}"')
+        self.assertContains(
+            pagina,
+            reverse('compras:alterar_preco_produto', args=[equipamento.pk]),
+        )
+
+        resposta = self.client.post(
+            reverse('compras:alterar_preco_produto', args=[equipamento.pk]),
+            {
+                'preco_referencia': '1450.50',
+                'preco_origem': Produto.OrigemPreco.INFORMADO_COMPRAS,
+                'preco_fonte': 'Cotação direta',
+                'observacao_preco': 'Atualização pelo painel detalhado',
+                'retorno': reverse('compras:valores_equipamentos'),
+            },
+        )
+
+        self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
+        produto.refresh_from_db()
+        self.assertEqual(produto.preco_referencia, Decimal('1450.50'))
+        historico = produto.historico_precos.latest('alterado_em')
+        self.assertEqual(historico.valor_anterior, Decimal('1200'))
+        self.assertEqual(historico.valor_novo, Decimal('1450.50'))
+        self.assertEqual(historico.observacao, 'ATUALIZAÇÃO PELO PAINEL DETALHADO')
+
+    def test_operador_com_permissao_delegada_altera_preco_pelo_painel(self):
+        self.operador.user_permissions.add(*Permission.objects.filter(
+            content_type__app_label='estoque',
+            codename__in=['visualizar_preco_produto', 'alterar_preco_produto'],
+        ))
+        produto = Produto.objects.create(
+            codigo='PROD-DELEGADO', descricao='Coletor delegado', fabricante='Zebra',
+            modelo='D1', categoria='Coletores', preco_referencia=Decimal('800'),
+            preco_origem=Produto.OrigemPreco.LEGADO,
+        )
+        equipamento = Equipamento.objects.create(
+            produto=produto, numero_serie='SER-DELEGADO', patrimonio='PAT-DELEGADO',
+            regional=self.base, codigo='EQ-DELEGADO',
+        )
+        self.client.force_login(self.operador)
+
+        resposta = self.client.post(
+            reverse('compras:alterar_preco_produto', args=[equipamento.pk]),
+            {
+                'preco_referencia': '875.00',
+                'preco_origem': Produto.OrigemPreco.INFORMADO_COMPRAS,
+                'observacao_preco': 'Revisão autorizada',
+                'retorno': reverse('compras:valores_equipamentos'),
+            },
+        )
+
+        self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
+        produto.refresh_from_db()
+        self.assertEqual(produto.preco_referencia, Decimal('875.00'))

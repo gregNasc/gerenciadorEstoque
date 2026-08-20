@@ -4,7 +4,7 @@ from io import BytesIO
 
 import openpyxl
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import connection
@@ -98,11 +98,11 @@ class CargaInicialTagsTests(TestCase):
             .values_list('descricao', flat=True)
         )
 
-        self.assertEqual(descricoes, list(TAG_DESCRICOES))
+        self.assertEqual(descricoes, [descricao.upper() for descricao in TAG_DESCRICOES])
         self.assertFalse(
             Insumo.objects.filter(
                 categoria__nome='DEPARTAMENTO PESSOAL',
-                descricao__startswith='Etiqueta Setor ',
+                descricao__startswith='ETIQUETA SETOR ',
             ).exists()
         )
 
@@ -163,7 +163,7 @@ class SolicitacaoInsumoFluxoTests(TestCase):
         self.assertContains(lista, 'INS-PROPRIA')
         self.assertNotContains(lista, 'INS-ALHEIA')
         self.assertNotContains(lista, '<th>Solicitante</th>', html=True)
-        self.assertContains(detalhe, 'Conteúdo operacional do pedido.')
+        self.assertContains(detalhe, 'CONTEÚDO OPERACIONAL DO PEDIDO.')
         self.assertContains(detalhe, propria.get_status_display())
         self.assertNotContains(detalhe, 'Análise interna de Compras.')
         self.assertEqual(detalhe_alheio.status_code, 404)
@@ -246,9 +246,11 @@ class EstoqueInsumosDesempenhoTests(TestCase):
         self.assertTrue(sem_base.context['aguardando_filtro_base'])
         self.assertEqual(sem_base.context['estoque'], [])
         self.assertLess(len(sem_base.content), 250000)
-        self.assertLess(len(consultas), 30)
-        self.assertTrue(por_item['Item crítico']['critico'])
-        self.assertFalse(por_item['Item normal']['critico'])
+        # Inclui os context processors globais de comunicados e chamados em
+        # tempo real; permanece constante e sem N+1 por item.
+        self.assertLess(len(consultas), 35)
+        self.assertTrue(por_item['ITEM CRÍTICO']['critico'])
+        self.assertFalse(por_item['ITEM NORMAL']['critico'])
         self.assertContains(resposta, 'id="formAjusteEstoque"', count=1)
         self.assertNotContains(resposta, 'data-ajuste-row')
         self.assertNotContains(resposta, 'modalAjusteEstoque')
@@ -278,6 +280,9 @@ class UltimoChecklistPorLojaTests(TestCase):
         perfil_operador.role = Perfil.Role.OPERADOR
         perfil_operador.save(update_fields=['empresa', 'role'])
         perfil_operador.bases_checklist.add(self.outra_base)
+        self.operador.user_permissions.add(Permission.objects.get(
+            codename='preencher_checklists', content_type__app_label='insumos'
+        ))
         self.cliente = Cliente.objects.create(sigla='OXX', nome='Mercado OXXO')
 
         self.inventario_antigo = self._inventario(date(2026, 7, 1))
@@ -498,8 +503,8 @@ class ChecklistModeloOficialTests(TestCase):
         self.assertContains(resposta, 'Conferência Loja')
         self.assertContains(resposta, 'Retorno<br>Logística')
         self.assertContains(resposta, 'DEPARTAMENTO PESSOAL')
-        self.assertContains(resposta, 'Toner Impressora Laser')
-        self.assertContains(resposta, 'Coletor de Dados')
+        self.assertContains(resposta, 'TONER IMPRESSORA LASER')
+        self.assertContains(resposta, 'COLETOR DE DADOS')
         self.assertContains(resposta, 'QUANTIDADE DE VOLUMES')
         self.assertContains(resposta, 'Assinatura do Coordenador')
 
@@ -641,8 +646,8 @@ class ChecklistModeloOficialTests(TestCase):
         self.assertEqual(checklist.declaracao_quantidades['balanca'], 6)
         self.assertEqual(checklist.declaracao_dados['cliente'], 'Cliente livre')
         self.assertEqual(checklist.declaracao_dados['endereco'], 'Rua livre, 10')
-        self.assertEqual(checklist.transporte, 'Van da operação')
-        self.assertEqual(self.inventario.ponto_encontro, 'Portaria de serviço')
+        self.assertEqual(checklist.transporte, 'VAN DA OPERAÇÃO')
+        self.assertEqual(self.inventario.ponto_encontro, 'PORTARIA DE SERVIÇO')
         self.assertEqual(self.inventario.horario_ponto.strftime('%H:%M'), '07:30')
         self.assertEqual(self.inventario.horario_inicio.strftime('%H:%M'), '08:15')
 
@@ -696,8 +701,8 @@ class ChecklistModeloOficialTests(TestCase):
         self.assertEqual(checklist.quantidade_volumes, 5)
         self.assertEqual(checklist.declaracao_quantidades['coletor_dados'], 3)
         self.assertEqual(checklist.declaracao_dados['cliente'], 'Cliente criação')
-        self.assertEqual(checklist.transporte, 'Caminhão 01')
-        self.assertEqual(self.inventario.ponto_encontro, 'Doca principal')
+        self.assertEqual(checklist.transporte, 'CAMINHÃO 01')
+        self.assertEqual(self.inventario.ponto_encontro, 'DOCA PRINCIPAL')
         self.assertEqual(self.inventario.horario_ponto.strftime('%H:%M'), '06:45')
         self.assertEqual(self.inventario.horario_inicio.strftime('%H:%M'), '07:10')
 
