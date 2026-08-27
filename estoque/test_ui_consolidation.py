@@ -45,6 +45,8 @@ class UIConsolidationTests(TestCase):
                 self.assertContains(resposta, 'data-bs-display="static"')
                 self.assertContains(resposta, 'id="estoqueDropdownMenu"')
                 self.assertContains(resposta, "estoqueToggle?.addEventListener('click'")
+                self.assertContains(resposta, "if (typeof bootstrap === 'undefined')")
+                self.assertContains(resposta, 'function definirDropdownAberto')
                 self.assertContains(resposta, 'bootstrap.Tooltip.getOrCreateInstance')
                 self.assertNotContains(resposta, 'id="appSidebarToggle"')
                 self.assertNotContains(resposta, 'class="top-navbar app-topbar"')

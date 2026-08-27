@@ -762,6 +762,8 @@
     const desktop = window.matchMedia('(min-width: 992px)');
     if (!sidebar || !mobileToggle) return;
 
+    const dropdownToggles = sidebar.querySelectorAll('[data-bs-toggle="dropdown"]');
+
     const destinos = sidebar.querySelectorAll(
         'a[href]:not([href="#"]):not(.dropdown-toggle), button.app-sidebar-logout'
     );
@@ -823,23 +825,43 @@
         estoqueToggle.setAttribute('aria-expanded', String(aberto));
     }
 
-    function fecharDropdowns() {
+    function menuDoDropdown(toggle) {
+        const controlado = toggle.getAttribute('aria-controls');
+        if (controlado) {
+            const menu = document.getElementById(controlado);
+            if (menu) return menu;
+        }
+        return toggle.parentElement?.querySelector(':scope > .dropdown-menu') || null;
+    }
+
+    function definirDropdownAberto(toggle, aberto) {
+        const menu = menuDoDropdown(toggle);
+        toggle.classList.toggle('show', aberto);
+        menu?.classList.toggle('show', aberto);
+        toggle.setAttribute('aria-expanded', String(aberto));
+    }
+
+    function fecharDropdowns(excecao) {
         if (typeof bootstrap !== 'undefined') {
-            sidebar.querySelectorAll('[data-bs-toggle="dropdown"].show').forEach(function (toggle) {
-                bootstrap.Dropdown.getInstance(toggle)?.hide();
+            dropdownToggles.forEach(function (toggle) {
+                if (toggle !== excecao && toggle.classList.contains('show')) {
+                    bootstrap.Dropdown.getInstance(toggle)?.hide();
+                }
             });
         }
-        definirEstoqueAberto(false);
+        dropdownToggles.forEach(function (toggle) {
+            if (toggle !== excecao) definirDropdownAberto(toggle, false);
+        });
     }
 
     estoqueToggle?.addEventListener('click', function (event) {
         if (desktop.matches) return;
 
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
 
         const deveAbrir = !estoqueMenu?.classList.contains('show');
-        fecharDropdowns();
+        fecharDropdowns(estoqueToggle);
         definirEstoqueAberto(deveAbrir);
         if (deveAbrir && !desktop.matches) {
             window.requestAnimationFrame(function () {
@@ -848,13 +870,30 @@
         }
     });
 
-    sidebar.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (toggle) {
+    dropdownToggles.forEach(function (toggle) {
         toggle.addEventListener('show.bs.dropdown', function () {
             if (toggle !== estoqueToggle) {
                 definirEstoqueAberto(false);
             }
         });
     });
+
+    // O bundle do Bootstrap vem de CDN. Se ele estiver indisponível, mantém a
+    // navegação funcional com um controle local e sem Popper.
+    if (typeof bootstrap === 'undefined') {
+        dropdownToggles.forEach(function (toggle) {
+            toggle.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const deveAbrir = !menuDoDropdown(toggle)?.classList.contains('show');
+                fecharDropdowns(toggle);
+                definirDropdownAberto(toggle, deveAbrir);
+            });
+        });
+        document.addEventListener('click', function (event) {
+            if (!sidebar.contains(event.target)) fecharDropdowns();
+        });
+    }
 
     if (desktop.matches && estavaRecolhida()) {
         body.classList.add('app-sidebar-collapsed');
