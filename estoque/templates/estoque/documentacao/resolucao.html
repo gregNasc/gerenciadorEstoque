@@ -5,9 +5,90 @@
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 pb-5">
   <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #b45309!important">
-    <div class="card-body p-4 p-lg-5"><span class="small fw-bold text-uppercase text-secondary"><i class="bi bi-tools me-2"></i>Procedimentos internos</span><h1 class="h3 fw-bold mt-2 mb-2">Resolução de problemas</h1><p class="text-secondary mb-0">Pesquise pelo equipamento ou sintoma. Confirme o modelo antes de executar qualquer procedimento.</p></div>
+    <div class="card-body p-4 p-lg-5">
+      <span class="small fw-bold text-uppercase text-secondary">
+        <i class="bi bi-tools me-2" aria-hidden="true"></i>Procedimentos internos
+      </span>
+      <h1 class="h3 fw-bold mt-2 mb-2">Resolução de problemas</h1>
+      <p class="text-secondary mb-0">
+        Pesquise pelo equipamento ou sintoma. Confirme o modelo antes de executar qualquer procedimento.
+      </p>
+    </div>
   </section>
-  <form method="get" class="card border shadow-sm mb-4" role="search"><div class="card-body p-4"><div class="row g-3 align-items-end"><div class="col-12 col-lg-7"><label for="resolution-query" class="form-label fw-semibold">Equipamento ou sintoma</label><input id="resolution-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Ex.: USB, não puxa papel, offline, toner, código 43"></div><div class="col-8 col-lg-3"><label for="resolution-maker" class="form-label fw-semibold">Fabricante</label><select id="resolution-maker" class="form-select" name="fabricante"><option value="">Todos</option>{% for fabricante in fabricantes %}<option value="{{ fabricante }}" {% if filtros.fabricante == fabricante %}selected{% endif %}>{{ fabricante }}</option>{% endfor %}</select></div><div class="col-4 col-lg-2 d-grid"><button class="btn btn-primary" type="submit">Pesquisar</button></div></div></div></form>
-  {% if documentos %}<div class="row g-4">{% for documento in documentos %}{% include 'estoque/documentacao/_documento_card.html' %}{% endfor %}</div>{% else %}<div class="card border shadow-sm"><div class="card-body p-5 text-center"><i class="bi bi-wrench-adjustable-circle fs-1 text-secondary"></i><h2 class="h5 mt-3">Nenhum procedimento encontrado</h2><p class="text-secondary">Remova os filtros ou tente outro termo.</p><a class="btn btn-outline-dark" href="{% url 'estoque:documentacao_resolucao' %}">Limpar filtros</a></div></div>{% endif %}
+
+  <form method="get" class="card border shadow-sm mb-4" role="search">
+    <div class="card-body p-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-7">
+          <label for="resolution-query" class="form-label fw-semibold">Equipamento ou sintoma</label>
+          <input id="resolution-query" class="form-control" type="search" name="q"
+                 value="{{ filtros.q }}" placeholder="Ex.: Wi-Fi, scanner, offline, travamento">
+        </div>
+        <div class="col-8 col-lg-3">
+          <label for="resolution-maker" class="form-label fw-semibold">Fabricante</label>
+          <select id="resolution-maker" class="form-select" name="fabricante">
+            <option value="">Todos</option>
+            {% for fabricante in fabricantes %}
+              <option value="{{ fabricante }}" {% if filtros.fabricante == fabricante %}selected{% endif %}>{{ fabricante }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-4 col-lg-2 d-grid">
+          <button class="btn btn-primary" type="submit">Pesquisar</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-4 align-items-start">
+    <div class="col-12 {% if pode_gerenciar_documentacao %}col-xl-8{% endif %}">
+      {% if documentos %}
+        <div class="row g-4">
+          {% for documento in documentos %}
+            {% include 'estoque/documentacao/_documento_card.html' %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card border shadow-sm">
+          <div class="card-body p-5 text-center">
+            <i class="bi bi-wrench-adjustable-circle fs-1 text-secondary" aria-hidden="true"></i>
+            <h2 class="h5 mt-3">Nenhum procedimento encontrado</h2>
+            <p class="text-secondary">Remova os filtros ou tente outro termo.</p>
+            <a class="btn btn-outline-dark" href="{% url 'estoque:documentacao_resolucao' %}">Limpar filtros</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if pode_gerenciar_documentacao %}
+      <aside class="col-12 col-xl-4">
+        <section class="card border shadow-sm" aria-labelledby="titulo-upload-resolucao">
+          <div class="card-header bg-body px-4 py-3">
+            <h2 class="h5 mb-1" id="titulo-upload-resolucao">Enviar relatório de resolução</h2>
+            <p class="text-secondary small mb-0">Somente PDF, com limite de 20 MB.</p>
+          </div>
+          <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data" novalidate>
+              {% csrf_token %}
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+              {% endif %}
+              {% for campo in form %}
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                  {{ campo }}
+                  {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
+                  {% for erro in campo.errors %}<div class="app-field-error">{{ erro }}</div>{% endfor %}
+                </div>
+              {% endfor %}
+              <button class="btn btn-primary w-100" type="submit">
+                <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>Enviar relatório
+              </button>
+            </form>
+          </div>
+        </section>
+      </aside>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

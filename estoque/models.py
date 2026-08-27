@@ -1,5 +1,6 @@
 from datetime import timedelta
 import uuid
+from pathlib import Path
 from urllib.parse import quote
 
 from django.db import models
@@ -9,9 +10,20 @@ from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
+from django.core.files.storage import storages
+from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from insumos.constants import GruposInsumos
+
+
+def resolucao_documento_storage():
+    return storages['private']
+
+
+def resolucao_documento_upload_to(instance, filename):
+    extensao = Path(filename).suffix.lower()
+    return f'documentacao/resolucao/{uuid.uuid4().hex}{extensao}'
 
 
 def _url_rastreamento_correios(codigo):
@@ -1248,6 +1260,42 @@ class VideoDocumentacao(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class ResolucaoDocumento(models.Model):
+    titulo = models.CharField(max_length=200)
+    fabricante = models.CharField(max_length=120)
+    modelo = models.CharField(max_length=120, db_index=True)
+    categoria = models.CharField(max_length=100, default='Coletores')
+    resumo = models.TextField(blank=True)
+    tags = models.CharField(max_length=500, blank=True)
+    arquivo = models.FileField(
+        upload_to=resolucao_documento_upload_to,
+        storage=resolucao_documento_storage,
+        validators=[FileExtensionValidator(
+            allowed_extensions=['pdf'],
+            message='Envie um arquivo PDF.',
+        )],
+    )
+    nome_original = models.CharField(max_length=255)
+    ativo = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='resolucoes_documentacao_criadas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['fabricante', 'modelo', 'titulo']
+        verbose_name = 'relatório de resolução de problemas'
+        verbose_name_plural = 'relatórios de resolução de problemas'
+
+    def __str__(self):
+        return f'{self.fabricante} {self.modelo} - {self.titulo}'
 
 @receiver([post_save, post_delete], sender=Equipamento)
 def limpar_cache_estoque(sender, instance, **kwargs):

@@ -46,6 +46,14 @@
         {% if documento.tipo_documento == 'VIDEO' and pode_gerenciar_documentacao %}
           <form method="post" action="{% url 'estoque:documentacao_video_desativar' documento.objeto_id %}">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-2"></i>Desativar</button></form>
         {% endif %}
+        {% if documento.resolucao_upload and pode_gerenciar_documentacao %}
+          <form method="post" action="{% url 'estoque:documentacao_resolucao_desativar' documento.objeto_id %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger" type="submit">
+              <i class="bi bi-x-circle me-2" aria-hidden="true"></i>Desativar
+            </button>
+          </form>
+        {% endif %}
       </div>
     </div>
   </article>

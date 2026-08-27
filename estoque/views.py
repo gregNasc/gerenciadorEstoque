@@ -15,7 +15,11 @@ from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
 from .services.manual_service import ManualService
 from .services.documentation_service import DocumentationService
-from .forms_documentacao import ClienteChecklistUploadForm, VideoDocumentacaoForm
+from .forms_documentacao import (
+    ClienteChecklistUploadForm,
+    ResolucaoDocumentoForm,
+    VideoDocumentacaoForm,
+)
 from .services.assistente.response_builder import construir_erro, construir_resposta
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
@@ -493,6 +497,25 @@ def documentacao_view(request):
 
 @login_required
 def documentacao_resolucao_view(request):
+    pode_gerenciar = _pode_gerenciar_documentacao(request.user)
+    form = ResolucaoDocumentoForm(
+        request.POST or None,
+        request.FILES or None,
+    ) if pode_gerenciar else None
+    if request.method == 'POST':
+        if not pode_gerenciar:
+            raise PermissionDenied
+        if form.is_valid():
+            documento = form.save(commit=False)
+            documento.nome_original = Path(request.FILES['arquivo'].name).name
+            documento.criado_por = request.user
+            documento.save()
+            messages.success(
+                request,
+                'Relatório de resolução adicionado à Central de Documentação.',
+            )
+            return redirect('estoque:documentacao_resolucao')
+
     filtros = {
         'q': request.GET.get('q', '').strip(),
         'fabricante': request.GET.get('fabricante', '').strip(),
@@ -508,14 +531,24 @@ def documentacao_resolucao_view(request):
             'documentos': documentos,
             'fabricantes': sorted({item['fabricante'] for item in catalogo}),
             'filtros': filtros,
+            'form': form,
+            'pode_gerenciar_documentacao': pode_gerenciar,
         },
     )
 
 
-def _pode_gerenciar_documentacao_cliente(user):
+def _pode_gerenciar_documentacao(user):
     perfil = getattr(user, 'perfil', None)
-    return bool(perfil and perfil.is_admin) or user.has_perm(
-        'insumos.gerenciar_documentacao'
+    return bool(
+        user.is_superuser
+        or (perfil and perfil.is_admin)
+        or user.has_perm('estoque.gerenciar_documentacao')
+    )
+
+
+def _pode_gerenciar_documentacao_cliente(user):
+    return _pode_gerenciar_documentacao(user) or user.has_perm(
+        'insumos.gerenciar_documentacao',
     )
 
 
@@ -666,12 +699,44 @@ def documentacao_cliente_arquivo_view(request, cliente_id):
 
 
 @login_required
+@xframe_options_sameorigin
+def documentacao_resolucao_arquivo_view(request, documento_id):
+    from estoque.models import ResolucaoDocumento
+
+    documento = get_object_or_404(
+        ResolucaoDocumento,
+        pk=documento_id,
+        ativo=True,
+    )
+    nome = documento.nome_original or Path(documento.arquivo.name).name
+    resposta = FileResponse(
+        documento.arquivo.open('rb'),
+        as_attachment=request.GET.get('download') == '1',
+        filename=nome,
+        content_type='application/pdf',
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    return resposta
+
+
+@login_required
+@require_POST
+def documentacao_resolucao_desativar_view(request, documento_id):
+    from estoque.models import ResolucaoDocumento
+
+    if not _pode_gerenciar_documentacao(request.user):
+        raise PermissionDenied
+    documento = get_object_or_404(ResolucaoDocumento, pk=documento_id, ativo=True)
+    documento.ativo = False
+    documento.save(update_fields=['ativo', 'atualizado_em'])
+    messages.success(request, 'Relatório removido da área ativa.')
+    return redirect('estoque:documentacao_resolucao')
+
+
+@login_required
 def documentacao_videos_view(request):
     termo = request.GET.get('q', '').strip()
-    pode_gerenciar = (
-        request.user.perfil.is_admin
-        or request.user.has_perm('estoque.gerenciar_documentacao')
-    )
+    pode_gerenciar = _pode_gerenciar_documentacao(request.user)
     form = VideoDocumentacaoForm(request.POST or None) if pode_gerenciar else None
     if request.method == 'POST':
         if not pode_gerenciar:
@@ -699,10 +764,7 @@ def documentacao_videos_view(request):
 def documentacao_video_desativar_view(request, video_id):
     from estoque.models import VideoDocumentacao
 
-    if not (
-        request.user.perfil.is_admin
-        or request.user.has_perm('estoque.gerenciar_documentacao')
-    ):
+    if not _pode_gerenciar_documentacao(request.user):
         raise PermissionDenied
     video = get_object_or_404(VideoDocumentacao, pk=video_id)
     video.ativo = False

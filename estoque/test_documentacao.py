@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from estoque.models import Base, Empresa, VideoDocumentacao
+from estoque.models import Base, Empresa, ResolucaoDocumento, VideoDocumentacao
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.documentation_service import DocumentationService
 from insumos.models import (
@@ -34,11 +34,13 @@ def _docx_minimo(texto):
 
 
 class DocumentationServiceTests(TestCase):
-    def test_primeira_onda_tem_seis_procedimentos_locais(self):
+    def test_catalogo_tem_treze_procedimentos_locais(self):
         resolucoes = DocumentationService.listar(tipo='RESOLUCAO')
-        self.assertEqual(len(resolucoes), 6)
+        self.assertEqual(len(resolucoes), 13)
         self.assertTrue(all(item['arquivo_disponivel'] for item in resolucoes))
         self.assertTrue(all(item['arquivo_url'].endswith('.pdf') for item in resolucoes))
+        self.assertTrue(DocumentationService.listar(termo='Skorpio X4'))
+        self.assertTrue(DocumentationService.listar(termo='MobyData M52'))
 
     def test_pesquisa_por_modelo_sintoma_e_driver_retorna_tipos_corretos(self):
         tipos_m2020 = {
@@ -78,6 +80,11 @@ class DocumentationViewsTests(TestCase):
         self.campo_arquivo.storage = FileSystemStorage(
             location=self.diretorio_temporario.name
         )
+        self.campo_resolucao = ResolucaoDocumento._meta.get_field('arquivo')
+        self.storage_resolucao_original = self.campo_resolucao.storage
+        self.campo_resolucao.storage = FileSystemStorage(
+            location=self.diretorio_temporario.name
+        )
         self.user = User.objects.create_user(username='operador-documentacao', password='segura-123')
         self.empresa = Empresa.objects.create(nome='Empresa documentação')
         self.base = Base.objects.create(nome='Base documentação', empresa=self.empresa)
@@ -88,6 +95,7 @@ class DocumentationViewsTests(TestCase):
 
     def tearDown(self):
         self.campo_arquivo.storage = self.storage_original
+        self.campo_resolucao.storage = self.storage_resolucao_original
         self.diretorio_temporario.cleanup()
         super().tearDown()
 
@@ -341,6 +349,77 @@ class DocumentationViewsTests(TestCase):
         video.refresh_from_db()
         self.assertFalse(video.ativo)
         self.assertFalse(DocumentationService.listar(tipo='VIDEO'))
+
+    def test_admin_envia_abre_e_desativa_relatorio_de_resolucao(self):
+        admin = User.objects.create_user(
+            username='admin-resolucoes',
+            password='segura-123',
+        )
+        admin.perfil.role = 'admin'
+        admin.perfil.save()
+        self.client.force_login(admin)
+        url = reverse('estoque:documentacao_resolucao')
+        conteudo_pdf = b'%PDF-1.4 relatorio de teste'
+
+        resposta = self.client.post(url, {
+            'titulo': 'M52 - Solução de comunicação',
+            'fabricante': 'MobyData',
+            'modelo': 'M52',
+            'categoria': 'Coletores',
+            'resumo': 'Passo a passo validado pelo suporte.',
+            'tags': 'wi-fi, servidor',
+            'arquivo': SimpleUploadedFile(
+                'resolucao-m52.pdf',
+                conteudo_pdf,
+                content_type='application/pdf',
+            ),
+        })
+        self.assertRedirects(resposta, url)
+        documento = ResolucaoDocumento.objects.get()
+        self.assertEqual(documento.nome_original, 'resolucao-m52.pdf')
+        self.assertEqual(documento.criado_por, admin)
+
+        pagina = self.client.get(url, {'q': 'Solução de comunicação'})
+        self.assertContains(pagina, documento.titulo)
+        self.assertContains(pagina, 'Desativar')
+        arquivo_url = reverse(
+            'estoque:documentacao_resolucao_arquivo',
+            args=[documento.pk],
+        )
+        self.assertContains(pagina, arquivo_url)
+        arquivo = self.client.get(arquivo_url)
+        self.assertEqual(arquivo.status_code, 200)
+        self.assertEqual(arquivo['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertIn('inline', arquivo['Content-Disposition'])
+        self.assertEqual(b''.join(arquivo.streaming_content), conteudo_pdf)
+
+        desativar_url = reverse(
+            'estoque:documentacao_resolucao_desativar',
+            args=[documento.pk],
+        )
+        self.assertRedirects(self.client.post(desativar_url), url)
+        documento.refresh_from_db()
+        self.assertFalse(documento.ativo)
+        self.assertEqual(self.client.get(arquivo_url).status_code, 404)
+
+    def test_operador_nao_pode_enviar_relatorio_de_resolucao(self):
+        self.client.force_login(self.user)
+        url = reverse('estoque:documentacao_resolucao')
+        pagina = self.client.get(url)
+        self.assertNotContains(pagina, 'Enviar relatório de resolução')
+        resposta = self.client.post(url, {
+            'titulo': 'Envio negado',
+            'fabricante': 'Teste',
+            'modelo': 'Teste',
+            'categoria': 'Coletores',
+            'arquivo': SimpleUploadedFile(
+                'negado.pdf',
+                b'%PDF-1.4 negado',
+                content_type='application/pdf',
+            ),
+        })
+        self.assertEqual(resposta.status_code, 403)
+        self.assertFalse(ResolucaoDocumento.objects.exists())
 
 
 class ToryDocumentationTests(TestCase):

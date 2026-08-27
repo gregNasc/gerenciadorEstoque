@@ -53,6 +53,7 @@ TECHNICAL_MODEL_FIELDS = {
     ('estoque.ComunicadoEntrega', 'template_codigo'),
     ('estoque.ComunicadoEntrega', 'ultimo_erro'),
     ('estoque.MensagemArquivo', 'nome_original'),
+    ('estoque.ResolucaoDocumento', 'nome_original'),
     ('insumos.AlteracaoCalendario', 'arquivo'),
     ('insumos.ClienteChecklistDocumento', 'nome_original'),
     ('insumos.HistoricoCadastroInsumo', 'campo'),

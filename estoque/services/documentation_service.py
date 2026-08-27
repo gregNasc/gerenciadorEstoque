@@ -93,6 +93,7 @@ class DocumentationService:
     def _preparar_item(cls, item_original):
         item = dict(item_original)
         arquivo = item.get('arquivo', '')
+        arquivo_url_privado = item.get('arquivo_url', '')
         arquivo_relativo = ''
         if arquivo:
             try:
@@ -103,8 +104,11 @@ class DocumentationService:
                     arquivo_relativo = relativo.as_posix()
             except (OSError, ValueError):
                 arquivo_relativo = ''
-        item['arquivo_disponivel'] = bool(arquivo_relativo)
-        item['arquivo_url'] = static(arquivo_relativo) if arquivo_relativo else ''
+        item['arquivo_disponivel'] = bool(arquivo_relativo or arquivo_url_privado)
+        item['arquivo_url'] = (
+            arquivo_url_privado
+            or (static(arquivo_relativo) if arquivo_relativo else '')
+        )
         item['tipo_label'] = cls.TIPOS.get(item.get('tipo_documento'), item.get('tipo_documento', ''))
         item['revisao_interna'] = item.get('status') == 'pronto_revisao_interna'
         item['pendente'] = item.get('status') in {'identificacao_pendente', 'indisponivel'}
@@ -221,6 +225,39 @@ class DocumentationService:
         } for video in VideoDocumentacao.objects.filter(ativo=True)]
 
     @classmethod
+    def _resolucoes_upload(cls):
+        from estoque.models import ResolucaoDocumento
+
+        return [{
+            'id': f'resolucao-upload-{documento.pk}',
+            'tipo_documento': 'RESOLUCAO',
+            'produto_codigo': '',
+            'produto': '',
+            'cliente_sigla': '',
+            'categoria': documento.categoria,
+            'fabricante': documento.fabricante,
+            'modelo': documento.modelo,
+            'titulo': documento.titulo,
+            'resumo': documento.resumo,
+            'arquivo': '',
+            'arquivo_url': reverse(
+                'estoque:documentacao_resolucao_arquivo', args=[documento.pk]
+            ),
+            'fonte_url': '',
+            'idioma': 'Português (Brasil)',
+            'status': 'disponivel',
+            'versao_documento': '',
+            'atualizado_em': documento.atualizado_em.date().isoformat(),
+            'aliases': [
+                documento.fabricante, documento.modelo, documento.titulo,
+                documento.nome_original,
+            ],
+            'tags': [tag.strip() for tag in documento.tags.split(',') if tag.strip()],
+            'objeto_id': documento.pk,
+            'resolucao_upload': True,
+        } for documento in ResolucaoDocumento.objects.filter(ativo=True)]
+
+    @classmethod
     def listar(
         cls, termo='', tipo='', categoria='', fabricante='', modelo='', cliente='', idioma='',
         user=None,
@@ -236,6 +273,7 @@ class DocumentationService:
         termo_normalizado = ManualService.normalizar(termo)
         resultado = []
         catalogo = list(cls._dados_catalogo())
+        catalogo.extend(cls._resolucoes_upload())
         catalogo.extend(cls._videos_catalogo())
         if user is not None:
             catalogo.extend(cls._checklists_cliente(user))
@@ -285,7 +323,11 @@ class DocumentationService:
         codigo = str(getattr(produto, 'codigo', '') or '').strip()
         if not codigo:
             return []
-        catalogo = list(cls._dados_catalogo()) + cls._videos_catalogo()
+        catalogo = (
+            list(cls._dados_catalogo())
+            + cls._resolucoes_upload()
+            + cls._videos_catalogo()
+        )
         documentos = [
             cls._preparar_item(item)
             for item in catalogo
@@ -301,7 +343,7 @@ class DocumentationService:
     def _item_da_pergunta(cls, pergunta, tipo_preferido=''):
         texto = ManualService.normalizar(pergunta)
         candidatos = []
-        for item in cls._dados_catalogo():
+        for item in list(cls._dados_catalogo()) + cls._resolucoes_upload():
             if tipo_preferido and item.get('tipo_documento') != tipo_preferido:
                 continue
             melhor_alias = 0
