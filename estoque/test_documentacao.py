@@ -350,6 +350,44 @@ class DocumentationViewsTests(TestCase):
         self.assertFalse(video.ativo)
         self.assertFalse(DocumentationService.listar(tipo='VIDEO'))
 
+    def test_video_do_youtube_e_incorporado_na_pagina(self):
+        admin = User.objects.create_user(username='admin-youtube', password='segura-123')
+        admin.perfil.role = 'admin'
+        admin.perfil.save()
+        self.client.force_login(admin)
+
+        VideoDocumentacao.objects.create(
+            titulo='Configuração em vídeo',
+            url='https://youtu.be/dQw4w9WgXcQ?t=10',
+            origem='FABRICANTE',
+            criado_por=admin,
+        )
+
+        pagina = self.client.get(reverse('estoque:documentacao_videos'))
+        self.assertContains(
+            pagina,
+            'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"',
+        )
+        self.assertContains(pagina, 'allowfullscreen')
+        self.assertNotContains(pagina, 'href="https://youtu.be/dQw4w9WgXcQ?t=10"')
+
+    def test_url_nao_incorporavel_mantem_link_externo(self):
+        admin = User.objects.create_user(username='admin-video-link', password='segura-123')
+        admin.perfil.role = 'admin'
+        admin.perfil.save()
+        self.client.force_login(admin)
+
+        VideoDocumentacao.objects.create(
+            titulo='Vídeo interno',
+            url='https://example.com/videos/configuracao',
+            origem='INTERNO',
+            criado_por=admin,
+        )
+
+        pagina = self.client.get(reverse('estoque:documentacao_videos'))
+        self.assertContains(pagina, 'href="https://example.com/videos/configuracao"')
+        self.assertNotContains(pagina, 'youtube-nocookie.com/embed/')
+
     def test_admin_envia_abre_e_desativa_relatorio_de_resolucao(self):
         admin = User.objects.create_user(
             username='admin-resolucoes',

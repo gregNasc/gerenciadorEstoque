@@ -2,7 +2,7 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, urlparse
 
 from django.conf import settings
 from django.templatetags.static import static
@@ -33,6 +33,34 @@ class DocumentationService:
         'relatorio do cliente', 'relatorios do cliente', 'checklist do cliente',
     )
     CLIENTE_ALIASES = {'oxxo': 'oxx', 'assai': 'asi'}
+
+    @staticmethod
+    def _youtube_embed_url(url):
+        """Converte URLs conhecidas do YouTube em uma URL segura de incorporação."""
+        try:
+            parsed = urlparse(url)
+        except (TypeError, ValueError):
+            return ''
+
+        host = (parsed.hostname or '').lower().rstrip('.')
+        path_parts = [part for part in parsed.path.split('/') if part]
+        video_id = ''
+
+        if host in {'youtu.be', 'www.youtu.be'} and path_parts:
+            video_id = path_parts[0]
+        elif host in {
+            'youtube.com', 'www.youtube.com', 'm.youtube.com',
+            'music.youtube.com', 'youtube-nocookie.com',
+            'www.youtube-nocookie.com',
+        }:
+            if parsed.path.rstrip('/') == '/watch':
+                video_id = parse_qs(parsed.query).get('v', [''])[0]
+            elif len(path_parts) >= 2 and path_parts[0] in {'embed', 'shorts', 'live'}:
+                video_id = path_parts[1]
+
+        if not re.fullmatch(r'[A-Za-z0-9_-]{11}', video_id):
+            return ''
+        return f'https://www.youtube-nocookie.com/embed/{video_id}'
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -212,6 +240,7 @@ class DocumentationService:
             'resumo': video.descricao,
             'arquivo': '',
             'fonte_url': video.url,
+            'embed_url': cls._youtube_embed_url(video.url),
             'origem': video.get_origem_display(),
             'idioma': 'Português (Brasil)',
             'status': 'disponivel',
