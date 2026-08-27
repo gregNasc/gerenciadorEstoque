@@ -42,6 +42,7 @@ class UIConsolidationTests(TestCase):
                 self.assertContains(resposta, "sidebar.addEventListener('click'")
                 self.assertContains(resposta, "mobileClose?.addEventListener('click', fecharMobile)")
                 self.assertContains(resposta, 'data-app-sidebar-submenu="estoque"')
+                self.assertContains(resposta, 'data-bs-display="static"')
                 self.assertContains(resposta, 'id="estoqueDropdownMenu"')
                 self.assertContains(resposta, "estoqueToggle?.addEventListener('click'")
                 self.assertContains(resposta, 'bootstrap.Tooltip.getOrCreateInstance')

@@ -120,6 +120,8 @@
                        href="#"
                        id="navbarEstoque"
                        role="button"
+                       data-bs-toggle="dropdown"
+                       data-bs-display="static"
                        data-app-sidebar-submenu="estoque"
                        aria-controls="estoqueDropdownMenu"
                        aria-expanded="false">
@@ -831,8 +833,10 @@
     }
 
     estoqueToggle?.addEventListener('click', function (event) {
+        if (desktop.matches) return;
+
         event.preventDefault();
-        if (desktop.matches && body.classList.contains('app-sidebar-collapsed')) return;
+        event.stopPropagation();
 
         const deveAbrir = !estoqueMenu?.classList.contains('show');
         fecharDropdowns();
@@ -846,7 +850,9 @@
 
     sidebar.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (toggle) {
         toggle.addEventListener('show.bs.dropdown', function () {
-            definirEstoqueAberto(false);
+            if (toggle !== estoqueToggle) {
+                definirEstoqueAberto(false);
+            }
         });
     });
 
