@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 pb-5">
-  <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #6d28d9!important"><div class="card-body p-4 p-lg-5"><span class="small fw-bold text-uppercase text-secondary"><i class="bi bi-play-btn me-2"></i>Conteúdo audiovisual</span><h1 class="h3 fw-bold mt-2 mb-2">Vídeos de apoio</h1><p class="text-secondary mb-0">Vídeos do YouTube podem ser assistidos nesta página, sem armazenar arquivos grandes no projeto.</p></div></section>
+  <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #6d28d9!important"><div class="card-body p-4 p-lg-5"><span class="small fw-bold text-uppercase text-secondary"><i class="bi bi-play-btn me-2"></i>Conteúdo audiovisual</span><h1 class="h3 fw-bold mt-2 mb-2">Vídeos de apoio</h1><p class="text-secondary mb-0">Vídeos de apoio para resolução de problemas comuns </p></div></section>
   <form method="get" class="card border shadow-sm mb-4" role="search"><div class="card-body p-4"><div class="input-group"><input class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Equipamento ou assunto"><button class="btn btn-primary" type="submit"><i class="bi bi-search me-2"></i>Pesquisar</button></div></div></form>
   <div class="row g-4">
     <div class="col-12 {% if pode_gerenciar_documentacao %}col-xl-8{% endif %}">
