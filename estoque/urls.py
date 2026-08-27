@@ -23,6 +23,13 @@ urlpatterns = [
     # ---------------- ESTOQUE ----------------
     path('estoque/', views.estoque_view, name='estoque'),
     path('manuais/', views.manuais_view, name='manuais'),
+    path('documentacao/', views.documentacao_view, name='documentacao'),
+    path('documentacao/resolucao/', views.documentacao_resolucao_view, name='documentacao_resolucao'),
+    path('documentacao/clientes/', views.documentacao_clientes_view, name='documentacao_clientes'),
+    path('documentacao/clientes/<int:cliente_id>/', views.documentacao_cliente_detalhe_view, name='documentacao_cliente_detalhe'),
+    path('documentacao/clientes/<int:cliente_id>/arquivo/', views.documentacao_cliente_arquivo_view, name='documentacao_cliente_arquivo'),
+    path('documentacao/videos/', views.documentacao_videos_view, name='documentacao_videos'),
+    path('documentacao/videos/<int:video_id>/desativar/', views.documentacao_video_desativar_view, name='documentacao_video_desativar'),
     path('cadastrar-produto/', views.cadastrar_equipamento_view, name='cadastrar_equipamento'),
     path('produtos-por-categoria/', views.produtos_por_categoria, name='produtos_por_categoria'),
     path('detalhes-produto/<int:produto_id>/', views.detalhes_produto, name='detalhes_produto'),

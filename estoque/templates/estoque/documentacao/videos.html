@@ -1,0 +1,18 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Vídeos de apoio{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5">
+  <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #6d28d9!important"><div class="card-body p-4 p-lg-5"><span class="small fw-bold text-uppercase text-secondary"><i class="bi bi-play-btn me-2"></i>Conteúdo audiovisual</span><h1 class="h3 fw-bold mt-2 mb-2">Vídeos de apoio</h1><p class="text-secondary mb-0">Links internos e oficiais serão publicados aqui sem armazenar arquivos grandes no projeto.</p></div></section>
+  <form method="get" class="card border shadow-sm mb-4" role="search"><div class="card-body p-4"><div class="input-group"><input class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Equipamento ou assunto"><button class="btn btn-primary" type="submit"><i class="bi bi-search me-2"></i>Pesquisar</button></div></div></form>
+  <div class="row g-4">
+    <div class="col-12 {% if pode_gerenciar_documentacao %}col-xl-8{% endif %}">
+      {% if documentos %}<div class="row g-4">{% for documento in documentos %}{% include 'estoque/documentacao/_documento_card.html' %}{% endfor %}</div>{% else %}<div class="card border shadow-sm"><div class="card-body p-5 text-center"><i class="bi bi-camera-video fs-1 text-secondary"></i><h2 class="h5 mt-3">Nenhum vídeo publicado</h2><p class="text-secondary mb-0">A área está pronta para receber URLs de conteúdo interno ou do fabricante.</p></div></div>{% endif %}
+    </div>
+    {% if pode_gerenciar_documentacao %}
+    <div class="col-12 col-xl-4"><section class="card border shadow-sm"><div class="card-header bg-dark text-white px-4 py-3"><h2 class="h6 fw-bold mb-0"><i class="bi bi-plus-circle me-2"></i>Adicionar vídeo por URL</h2></div><div class="card-body p-4"><p class="small text-secondary">Cadastre somente o link; nenhum arquivo de vídeo será armazenado no projeto.</p><form method="post" novalidate>{% csrf_token %}{{ form.non_field_errors }}{% for campo in form %}<div class="mb-3"><label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% for erro in campo.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}</div>{% endfor %}<button class="btn btn-primary w-100" type="submit">Publicar link</button></form></div></section></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

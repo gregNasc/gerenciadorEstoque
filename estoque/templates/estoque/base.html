@@ -29,7 +29,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet"
-          href="{% static 'css/style.css' %}?v=5">
+          href="{% static 'css/style.css' %}?v=10">
     {% if request.user.is_authenticated %}
     <link rel="stylesheet"
           href="{% static 'css/tory.css' %}?v=3">
@@ -37,38 +37,35 @@
     {% block extra_css %}{% endblock %}
 
 </head>
-<body>
+<body{% if request.user.is_authenticated %} class="app-shell"{% endif %}>
 
 {% if request.user.is_authenticated %}
-<nav class="navbar navbar-expand-xxl navbar-dark bg-dark shadow-sm mb-4">
-    <div class="container-fluid">
+<div class="app-shell-layout">
+<aside id="appSidebar" class="navbar navbar-dark bg-dark app-sidebar" aria-label="{% trans 'Navegação principal' %}">
+    <div class="container-fluid app-sidebar-inner">
 
-        <!-- LOGO -->
-        <a class="navbar-brand fw-bold"
-           href="{% url 'estoque:index' %}">
+        <div class="app-sidebar-header">
+            <!-- LOGO -->
+            <a class="navbar-brand fw-bold"
+               href="{% url 'estoque:index' %}">
+                <i class="bi bi-box-seam"></i>
+                <span class="app-sidebar-label">{% trans "Gerenciador de Estoque" %}</span>
+            </a>
+        </div>
 
-            <i class="bi bi-box-seam"></i>
-            {% trans "Dashboard de Ativos" %}
-
-        </a>
-
-        <!-- MOBILE -->
-        <button class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#navbarNav"
-                aria-controls="navbarNav"
-                aria-expanded="false"
-                aria-label="Toggle navigation">
-
-            <span class="navbar-toggler-icon"></span>
-
-        </button>
-        <div class="collapse navbar-collapse"
+        <div class="navbar-collapse app-sidebar-nav"
              id="navbarNav">
             {% with perfil=request.user.perfil url_name=request.resolver_match.url_name %}
 
-            <ul class="navbar-nav ms-auto align-items-xxl-center">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link {% if url_name == 'index' %}active{% endif %}"
+                       href="{% url 'estoque:index' %}">
+                        <i class="bi bi-speedometer2"></i>
+                        {% trans "Dashboard de Ativos" %}
+                    </a>
+                </li>
+
                 {% if pode_acessar_checklist %}
                 <!-- CHECKLIST -->
                 <li class="nav-item dropdown">
@@ -305,6 +302,7 @@
                     </a>
                 </li>
                 -->
+                <!--
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.namespace == 'ordens_servico' %}active{% endif %}"
                        href="{% url 'ordens_servico:lista' %}">
@@ -312,6 +310,7 @@
                         {% trans "O.S." %}
                     </a>
                 </li>
+                -->
                 {% endif %}
 
                 {% endif %}
@@ -615,17 +614,26 @@
                 </li>
                 {% endif %}
 
-                <!-- MANUAIS -->
-                <li class="nav-item">
-                    <a class="nav-link {% if url_name == 'manuais' %}active{% endif %}"
-                       href="{% url 'estoque:manuais' %}">
+                <!-- DOCUMENTAÇÃO -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if url_name == 'documentacao' or url_name == 'manuais' or url_name == 'documentacao_resolucao' or url_name == 'documentacao_clientes' or url_name == 'documentacao_videos' %}active{% endif %}"
+                       href="#" id="documentacaoDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-journal-bookmark"></i>
-                        {% trans "Manuais" %}
+                        {% trans "Documentação" %}
                     </a>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
+                        aria-labelledby="documentacaoDropdown">
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao' %}"><i class="bi bi-collection"></i> Biblioteca</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> Manuais de equipamentos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i> Resolução de problemas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i> Checklist de clientes</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i> Vídeos</a></li>
+                    </ul>
                 </li>
 
                 <!-- USUÁRIOS -->
-                {% if perfil.role == 'admin' and request.user.id == 1 %}
+                {% if perfil.is_admin %}
                 <li class="nav-item">
 
                     <a class="nav-link {% if url_name == 'cadastrar_usuario' %}active{% endif %}"
@@ -639,41 +647,46 @@
                 </li>
                 {% endif %}
 
-                <!-- USER -->
-                <li class="nav-item ms-xxl-3">
-                    <a class="nav-link text-light {% if url_name == 'preferencias_whatsapp' %}active{% endif %}" href="{% url 'estoque:preferencias_whatsapp' %}" title="{% trans 'Preferências de comunicação' %}">
-                        <i class="bi bi-person-circle"></i>
-                        {{ request.user.username }}
-                    </a>
-                </li>
-
-                <!-- LOGOUT -->
-                <li class="nav-item">
-
-                    <form method="post"
-                          action="{% url 'estoque:logout' %}"
-                          class="d-inline">
-
-                        {% csrf_token %}
-
-                        <button type="submit"
-                                class="btn btn-link nav-link text-danger border-0 bg-transparent">
-
-                            <i class="bi bi-box-arrow-right"></i>
-                            {% trans "Sair" %}
-
-                        </button>
-
-                    </form>
-
-                </li>
             </ul>
 
             {% endwith %}
+        </div>
 
+        <div class="app-sidebar-account" id="appSidebarAccount">
+                <div class="app-sidebar-user" title="{{ request.user.username }}">
+                    <i class="bi bi-person-circle" aria-hidden="true"></i>
+                    <span class="app-sidebar-account-label">
+                        <small>{% trans "Usuário" %}</small>
+                        <strong>{{ request.user.username }}</strong>
+                    </span>
+                </div>
+                <a class="nav-link {% if request.resolver_match.url_name == 'preferencias_whatsapp' %}active{% endif %}"
+                   href="{% url 'estoque:preferencias_whatsapp' %}">
+                    <i class="bi bi-sliders" aria-hidden="true"></i>
+                    <span class="app-sidebar-account-label">{% trans "Preferências" %}</span>
+                </a>
+                <form method="post" action="{% url 'estoque:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-link app-sidebar-logout">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                        <span class="app-sidebar-account-label">{% trans "Sair" %}</span>
+                    </button>
+                </form>
         </div>
     </div>
-</nav>
+</aside>
+
+<button id="appSidebarBackdrop" class="app-sidebar-backdrop" type="button" aria-label="{% trans 'Fechar menu' %}" tabindex="-1"></button>
+
+<div class="app-shell-content">
+<button id="appMobileSidebarToggle"
+        class="btn btn-dark btn-icon app-mobile-sidebar-toggle"
+        type="button"
+        aria-controls="appSidebar"
+        aria-expanded="false"
+        aria-label="{% trans 'Abrir menu principal' %}">
+    <i class="bi bi-list" aria-hidden="true"></i>
+</button>
 
 {% endif %}
 
@@ -717,10 +730,137 @@
 
 </main>
 
+{% if request.user.is_authenticated %}
+</div>
+</div>
+{% endif %}
+
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+
+(function () {
+    const body = document.body;
+    const sidebar = document.getElementById('appSidebar');
+    const mobileToggle = document.getElementById('appMobileSidebarToggle');
+    const backdrop = document.getElementById('appSidebarBackdrop');
+    const desktop = window.matchMedia('(min-width: 992px)');
+    if (!sidebar || !mobileToggle) return;
+
+    const destinos = sidebar.querySelectorAll(
+        'a[href]:not([href="#"]):not(.dropdown-toggle), button.app-sidebar-logout'
+    );
+    const itensComIcone = sidebar.querySelectorAll(
+        '.navbar-brand, .nav-link, .app-sidebar-user'
+    );
+    const tooltips = [];
+
+    itensComIcone.forEach(function (item) {
+        const nome = item.textContent.replace(/\s+/g, ' ').trim();
+        if (!nome || typeof bootstrap === 'undefined') return;
+        item.setAttribute('title', nome);
+        tooltips.push(bootstrap.Tooltip.getOrCreateInstance(item, {
+            container: 'body',
+            placement: 'right',
+            trigger: 'hover focus'
+        }));
+    });
+
+    function guardarRecolhida(recolhida) {
+        try {
+            localStorage.setItem('app-sidebar-collapsed', recolhida ? '1' : '0');
+        } catch (e) {}
+    }
+
+    function estavaRecolhida() {
+        try {
+            return localStorage.getItem('app-sidebar-collapsed') === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function aplicarEstado() {
+        const recolhida = desktop.matches && body.classList.contains('app-sidebar-collapsed');
+        mobileToggle.setAttribute(
+            'aria-expanded',
+            String(!desktop.matches && body.classList.contains('app-sidebar-open'))
+        );
+        tooltips.forEach(function (tooltip) {
+            if (recolhida) {
+                tooltip.enable();
+            } else {
+                tooltip.hide();
+                tooltip.disable();
+            }
+        });
+    }
+
+    function fecharDropdowns() {
+        if (typeof bootstrap === 'undefined') return;
+        sidebar.querySelectorAll('.dropdown-toggle.show').forEach(function (toggle) {
+            bootstrap.Dropdown.getInstance(toggle)?.hide();
+        });
+    }
+
+    if (desktop.matches && estavaRecolhida()) {
+        body.classList.add('app-sidebar-collapsed');
+    } else if (!desktop.matches) {
+        body.classList.remove('app-sidebar-collapsed');
+    }
+    aplicarEstado();
+
+    sidebar.addEventListener('click', function (event) {
+        if (!desktop.matches || !body.classList.contains('app-sidebar-collapsed')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        body.classList.remove('app-sidebar-collapsed');
+        guardarRecolhida(false);
+        aplicarEstado();
+    }, true);
+
+    destinos.forEach(function (destino) {
+        destino.addEventListener('click', function () {
+            if (desktop.matches) {
+                fecharDropdowns();
+                body.classList.add('app-sidebar-collapsed');
+                guardarRecolhida(true);
+            } else {
+                body.classList.remove('app-sidebar-open');
+            }
+            aplicarEstado();
+        });
+    });
+
+    mobileToggle.addEventListener('click', function () {
+        body.classList.add('app-sidebar-open');
+        aplicarEstado();
+    });
+
+    function fecharMobile() {
+        fecharDropdowns();
+        body.classList.remove('app-sidebar-open');
+        aplicarEstado();
+        mobileToggle?.focus();
+    }
+
+    backdrop?.addEventListener('click', fecharMobile);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && body.classList.contains('app-sidebar-open')) {
+            fecharMobile();
+        }
+    });
+    desktop.addEventListener('change', function () {
+        fecharDropdowns();
+        body.classList.remove('app-sidebar-open');
+        body.classList.toggle(
+            'app-sidebar-collapsed',
+            desktop.matches && estavaRecolhida()
+        );
+        aplicarEstado();
+    });
+})();
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -783,8 +923,8 @@ document.addEventListener('DOMContentLoaded', function() {
             ? 'bi bi-volume-up-fill text-success me-2'
             : 'bi bi-volume-up me-2';
         rotuloAlertas.textContent = ativo
-            ? '{% trans "Alertas de chamados ativos" %}'
-            : '{% trans "Ativar alertas de chamados" %}';
+            ? '{% trans "Notificações do navegador ativas" %}'
+            : '{% trans "Ativar notificações do navegador" %}';
     }
 
     function prepararAudio() {
@@ -933,11 +1073,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function alertar(evento) {
         atualizarBadge(evento);
         if (Number(evento.autor_id) === usuarioAtualId) return;
-        if (estaNaConversa(evento)) return;
-        toast(evento);
+        const naConversa = estaNaConversa(evento);
+        if (!naConversa) toast(evento);
         if (!adquirirAlerta(evento)) return;
-        destacarTitulo(evento);
         tocar();
+        if (naConversa) return;
+        destacarTitulo(evento);
         if (
             'Notification' in window
             && Notification.permission === 'granted'

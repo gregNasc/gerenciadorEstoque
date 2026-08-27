@@ -60,6 +60,12 @@ class OperatorScopeMiddleware:
 
     ROTAS_ESTOQUE_PERMITIDAS = {
         'manuais',
+        'documentacao',
+        'documentacao_resolucao',
+        'documentacao_clientes',
+        'documentacao_cliente_detalhe',
+        'documentacao_cliente_arquivo',
+        'documentacao_videos',
         'caixa_comunicados',
         'detalhe_comunicado',
         'baixar_arquivo_comunicado',
@@ -77,6 +83,7 @@ class OperatorScopeMiddleware:
             'estoque.definir_preco_produto', 'estoque.alterar_preco_produto',
         ),
         ('estoque', 'checklist'): 'insumos.preencher_checklists',
+        ('estoque', 'documentacao_video_desativar'): 'estoque.gerenciar_documentacao',
         ('insumos', 'lista_checklists'): 'insumos.visualizar_checklists',
         ('insumos', 'checklist_detail'): 'insumos.visualizar_checklists',
         ('insumos', 'finalizar_checklist'): 'insumos.finalizar_checklists',

@@ -84,6 +84,32 @@ class CadastroCapacidadesUsuarioTests(TestCase):
         usuario.refresh_from_db()
         self.assertTrue(usuario.is_active)
 
+    def test_qualquer_admin_visualiza_menu_e_pode_criar_usuario(self):
+        outro_admin = User.objects.create_user(
+            'outro.admin',
+            password='SenhaForte123!',
+            is_staff=False,
+        )
+        outro_admin.perfil.role = Perfil.Role.ADMIN
+        outro_admin.perfil.save(update_fields=['role'])
+        self.assertNotEqual(outro_admin.pk, 1)
+        self.assertFalse(outro_admin.is_superuser)
+        self.client.force_login(outro_admin)
+
+        url = reverse('estoque:cadastrar_usuario')
+        resposta = self.client.get(url)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, f'href="{url}"')
+
+        resposta = self.client.post(
+            url,
+            self._dados(username='criado.por.outro.admin'),
+        )
+        self.assertRedirects(resposta, url)
+        self.assertTrue(
+            User.objects.filter(username='criado.por.outro.admin').exists()
+        )
+
 
 class EscopoOperadorTests(TestCase):
     def setUp(self):

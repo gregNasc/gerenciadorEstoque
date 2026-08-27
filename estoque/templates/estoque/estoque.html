@@ -11,27 +11,24 @@
         <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>{{ mensagem_auditoria }}
     </div>
     {% endif %}
-    <div class="card border-0 shadow-sm">
-
-        <!-- HEADER -->
-        <div class="card-header bg-white border-0 pt-4 pb-0">
-            <h2 class="h4 fw-semibold mb-0">{% trans "📋 Estoque Geral" %}</h2>
-            <p class="text-secondary small mt-1">
+    <header class="app-page-header">
+        <div class="app-page-header__content">
+            <h1><i class="bi bi-box-seam me-2" aria-hidden="true"></i>{% trans "Estoque Geral" %}</h1>
+            <p class="app-page-header__description">
                 {% trans "Gestão de equipamentos por regional" %}
             </p>
         </div>
+    </header>
+    <div class="card">
 
         <div class="card-body">
 
             <!-- RELATÓRIOS ADMIN -->
             {% if request.user.perfil.role == 'admin' %}
-            <div class="bg-light p-3 rounded mb-4 border">
-                <h6 class="fw-semibold mb-3">
-                    {% trans "📊 Relatórios Administrativos" %}
-                </h6>
-
-                <form method="get" class="row g-3 align-items-end">
-                    <div class="col-auto">
+            <div class="app-action-toolbar mb-4">
+                <div><strong class="d-block">{% trans "Relatórios" %}</strong><small class="text-secondary">{% trans "Exportação administrativa do histórico." %}</small></div>
+                <form method="get" class="d-flex flex-wrap align-items-end gap-2">
+                    <div>
                         <label class="form-label small mb-1">
                             {% trans "Regional" %}
                         </label>
@@ -39,7 +36,7 @@
                         <select
                             name="regional"
                             class="form-select form-select-sm"
-                            style="width: 200px;"
+                            aria-label="{% trans 'Regional do relatório' %}"
                         >
                             <option value="">
                                 {% trans "Todas as regionais" %}
@@ -56,13 +53,13 @@
                         </select>
                     </div>
 
-                    <div class="col-auto d-flex gap-2">
+                    <div class="d-flex gap-2">
                         <button
                             type="submit"
                             formaction="{% url 'estoque:exportar_historico_excel' %}"
-                            class="btn btn-success btn-sm"
+                            class="btn btn-outline-secondary btn-sm"
                         >
-                            📊 Excel
+                            <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>{% trans "Exportar Excel" %}
                         </button>
                     </div>
                 </form>

@@ -23,9 +23,7 @@
     min-width: 0;
   }
 
-  /* =====================================================
-     TOPBAR / HEADER
-     ===================================================== */
+  /*TOPBAR / HEADER*/
 
   .chamado-topbar {
     margin-bottom: 1rem;
@@ -85,9 +83,7 @@
     gap: .3rem;
   }
 
-  /* =====================================================
-     STATUS PILLS
-     ===================================================== */
+  /*STATUS PILLS*/
 
   .chamado-statusbar {
     display: flex;
@@ -133,9 +129,7 @@
     color: #157347;
   }
 
-  /* =====================================================
-     ASSUMIR ATENDIMENTO
-     ===================================================== */
+  /*ASSUMIR ATENDIMENTO*/
 
   .assumir-box {
     display: flex;
@@ -160,9 +154,7 @@
     font-size: .76rem;
   }
 
-  /* =====================================================
-     DESCRIÇÃO
-     ===================================================== */
+  /*DESCRIÇÃO*/
 
   .descricao-panel {
     border: 1px solid var(--ch-border);
@@ -221,9 +213,7 @@
     white-space: pre-wrap;
   }
 
-  /* =====================================================
-     CHAT
-     ===================================================== */
+  /*CHAT*/
 
   .chamado-chat {
     display: flex;
@@ -381,9 +371,7 @@
     color: #212529;
   }
 
-  /* =====================================================
-     COMPOSER
-     ===================================================== */
+  /*COMPOSER*/
 
   .chamado-chat__composer {
     padding: .85rem 1rem 1rem;
@@ -401,6 +389,21 @@
   .composer-box:focus-within {
     border-color: #86b7fe;
     box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .08);
+  }
+
+  .composer-box.is-internal {
+    border-color: #d8c28f;
+    background: var(--warning-soft);
+  }
+
+  .composer-box.is-internal textarea {
+    background: var(--warning-soft) !important;
+  }
+
+  .composer-internal-notice {
+    color: var(--warning-dark);
+    font-size: .76rem;
+    font-weight: 650;
   }
 
   .composer-box textarea {
@@ -430,9 +433,7 @@
     font-size: .68rem;
   }
 
-  /* =====================================================
-     SIDEBAR
-     ===================================================== */
+  /*SIDEBAR*/
 
   .chamado-sidebar-card {
     overflow: hidden;
@@ -470,9 +471,7 @@
     padding: .85rem .9rem;
   }
 
-  /* =====================================================
-     INFO GRID
-     ===================================================== */
+  /*INFO GRID*/
 
   .info-grid {
     display: grid;
@@ -520,9 +519,7 @@
     font-weight: 400;
   }
 
-  /* =====================================================
-     STATUS FORM
-     ===================================================== */
+  /*STATUS*/
 
   .status-action-card {
     border-color: #cbd5e1;
@@ -541,9 +538,7 @@
     font-size: .82rem;
   }
 
-  /* =====================================================
-     DETAILS / SECONDARY ACTIONS
-     ===================================================== */
+  /*DETAILS / SECONDARY ACTIONS*/
 
   .chamado-details {
     overflow: hidden;
@@ -584,9 +579,7 @@
     padding: .9rem;
   }
 
-  /* =====================================================
-     METRICS
-     ===================================================== */
+  /*METRICS*/
 
   .metrics-grid {
     display: grid;
@@ -612,9 +605,7 @@
     font-weight: 700;
   }
 
-  /* =====================================================
-     RESOLUTION
-     ===================================================== */
+  /*RESOLUTION*/
 
   .resolution-block {
     padding: .7rem;
@@ -637,9 +628,7 @@
     white-space: pre-wrap;
   }
 
-  /* =====================================================
-     RESPONSIVE
-     ===================================================== */
+  /* RESPONSIVE*/
 
   @media (min-width: 1200px) {
     .chamado-sidebar {
@@ -1060,6 +1049,9 @@
                       </label>
 
                     </div>
+                    <span id="nota-interna-aviso" class="composer-internal-notice d-none" role="status">
+                      {% trans "Nota interna — visível somente para a equipe" %}
+                    </span>
                   {% endif %}
 
                   <span class="composer-hint d-none d-md-inline">
@@ -1069,9 +1061,9 @@
                 </div>
 
 
-                <button class="btn btn-primary btn-sm px-3">
+                <button id="chat-submit" class="btn btn-primary btn-sm px-3">
                   <i class="bi bi-send me-1"></i>
-                  {% trans "Enviar" %}
+                  <span id="chat-submit-label">{% trans "Enviar" %}</span>
                 </button>
 
               </div>
@@ -1248,6 +1240,42 @@
 
         </section>
 
+        {% if documentacao_contextual %}
+        <section class="chamado-sidebar-card">
+          <div class="sidebar-card-header">
+            <div class="sidebar-card-title">
+              <i class="bi bi-journal-bookmark"></i>
+              {% trans "Documentação do equipamento" %}
+            </div>
+          </div>
+          <div class="sidebar-card-body">
+            <div class="alert alert-light border small mb-3">
+              {% trans "Sugestões vinculadas ao modelo. Confirme o diagnóstico antes de aplicar um procedimento." %}
+            </div>
+            <div class="d-grid gap-2">
+              {% for documento in documentacao_contextual %}
+              <div class="border rounded p-3">
+                <span class="badge text-bg-secondary mb-2">{{ documento.tipo_label }}</span>
+                <div class="fw-semibold small mb-2">{{ documento.titulo }}</div>
+                <div class="d-flex flex-wrap gap-2">
+                  {% if documento.arquivo_disponivel %}
+                  <a class="btn btn-primary btn-sm" href="{{ documento.arquivo_url }}" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-file-earmark-text me-1"></i>{% trans "Abrir" %}
+                  </a>
+                  {% endif %}
+                  {% if documento.fonte_url %}
+                  <a class="btn btn-outline-secondary btn-sm" href="{{ documento.fonte_url }}" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>{% trans "Fonte oficial" %}
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
 
         <!-- ATUALIZAR STATUS -->
         {% if status_permitidos %}
@@ -1338,8 +1366,22 @@
             </div>
 
             <div class="sidebar-card-body">
-
-              {{ avaliacao_form.as_p }}
+              <div id="avaliacao-feedback" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
+              <div class="mb-3">
+                <label class="form-label" for="{{ avaliacao_form.nota.id_for_label }}">{% trans "Nota" %} *</label>
+                {{ avaliacao_form.nota }}
+                {% for erro in avaliacao_form.nota.errors %}<div class="app-field-error">{{ erro }}</div>{% endfor %}
+              </div>
+              <fieldset class="mb-3">
+                <legend class="form-label">{% trans "O problema foi resolvido?" %} *</legend>
+                {{ avaliacao_form.resolvido }}
+                {% for erro in avaliacao_form.resolvido.errors %}<div class="app-field-error">{{ erro }}</div>{% endfor %}
+              </fieldset>
+              <div class="mb-3">
+                <label class="form-label" for="{{ avaliacao_form.comentario.id_for_label }}">{% trans "Comentário" %}</label>
+                {{ avaliacao_form.comentario }}
+                {% for erro in avaliacao_form.comentario.errors %}<div class="app-field-error">{{ erro }}</div>{% endfor %}
+              </div>
 
               <button class="btn btn-primary w-100">
                 {% trans "Enviar avaliação" %}
@@ -1696,7 +1738,11 @@ document.addEventListener('DOMContentLoaded', function () {
         pill.textContent = dados.status;
       });
     } catch (erro) {
-      alert(erro.message);
+      const feedback = document.getElementById('avaliacao-feedback');
+      if (feedback) {
+        feedback.textContent = erro.message;
+        feedback.classList.remove('d-none');
+      }
       if (botao) botao.disabled = false;
     }
   });
@@ -1730,6 +1776,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const notaInterna =
     form.querySelector('[name="nota_interna"]');
+
+  const composerBox = form.querySelector('.composer-box');
+  const notaInternaAviso = document.getElementById('nota-interna-aviso');
+  const chatSubmitLabel = document.getElementById('chat-submit-label');
+
+  function atualizarModoNotaInterna() {
+    const ativa = Boolean(notaInterna?.checked);
+    composerBox?.classList.toggle('is-internal', ativa);
+    notaInternaAviso?.classList.toggle('d-none', !ativa);
+    if (chatSubmitLabel) {
+      chatSubmitLabel.textContent = ativa ? 'Adicionar nota interna' : 'Enviar';
+    }
+  }
+
+  notaInterna?.addEventListener('change', atualizarModoNotaInterna);
+  atualizarModoNotaInterna();
 
 
   function mudarStatus(rotulo, estado) {

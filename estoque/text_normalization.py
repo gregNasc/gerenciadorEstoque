@@ -54,6 +54,7 @@ TECHNICAL_MODEL_FIELDS = {
     ('estoque.ComunicadoEntrega', 'ultimo_erro'),
     ('estoque.MensagemArquivo', 'nome_original'),
     ('insumos.AlteracaoCalendario', 'arquivo'),
+    ('insumos.ClienteChecklistDocumento', 'nome_original'),
     ('insumos.HistoricoCadastroInsumo', 'campo'),
     ('integracao.InventoryPlanningSyncRun', 'data_source'),
     ('integracao.InventoryPlanningSyncRun', 'error_code'),

@@ -15,7 +15,7 @@ from django.utils.dateparse import parse_date
 
 from estoque.models import Base, Equipamento, GrupoRegional, Historico, Produto, Transferencia
 from estoque.security import secure_queryset
-from estoque.services.manual_service import ManualService
+from estoque.services.documentation_service import DocumentationService
 
 
 @dataclass
@@ -147,16 +147,19 @@ class AssistenteOperacionalService:
 
     @classmethod
     def responder(cls, user, pergunta, contexto=None):
-        resposta_manual = ManualService.tentar_responder(pergunta)
-        if resposta_manual:
-            resposta_manual = cls._ocultar_terminologia_hierarquia(resposta_manual)
-            resposta_manual['resposta'] = cls._personalizar_resposta(
-                user,
-                resposta_manual['resposta'],
-                pergunta=pergunta,
-                intencao='manuais',
+        resposta_documentacao = DocumentationService.tentar_responder(pergunta, user=user)
+        if resposta_documentacao:
+            resposta_documentacao = cls._ocultar_terminologia_hierarquia(resposta_documentacao)
+            intencao_documentacao = resposta_documentacao.get('interpretacao', {}).get(
+                'intencao', 'manuais'
             )
-            return resposta_manual
+            resposta_documentacao['resposta'] = cls._personalizar_resposta(
+                user,
+                resposta_documentacao['resposta'],
+                pergunta=pergunta,
+                intencao=intencao_documentacao,
+            )
+            return resposta_documentacao
 
         interpretacao = cls.interpretar(user, pergunta, contexto=contexto)
 

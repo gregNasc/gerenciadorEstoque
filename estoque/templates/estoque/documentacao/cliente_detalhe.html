@@ -1,0 +1,171 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{{ cliente.sigla }} · {% trans "Checklist do cliente" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5">
+  <header class="app-page-header mb-4">
+    <div class="app-page-header__content">
+      <span class="app-page-header__eyebrow">
+        <i class="bi bi-card-checklist" aria-hidden="true"></i>{% trans "Checklist do cliente" %}
+      </span>
+      <h1>{{ cliente.sigla }} · {{ cliente.nome }}</h1>
+      <p class="app-page-header__description">
+        {% trans "Documento com os arquivos e relatórios que devem ser gerados ao final do inventário." %}
+      </p>
+    </div>
+    <div class="app-page-header__actions">
+      <a class="btn btn-outline-secondary" href="{% url 'estoque:documentacao_clientes' %}">
+        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>{% trans "Voltar" %}
+      </a>
+      {% if documento %}
+        <a class="btn btn-primary" href="#visualizador-checklist">
+          <i class="bi bi-eye me-1" aria-hidden="true"></i>{% trans "Visualizar" %}
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'estoque:documentacao_cliente_arquivo' cliente.pk %}?download=1">
+          <i class="bi bi-download me-1" aria-hidden="true"></i>{% trans "Baixar" %}
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="row g-4 align-items-start">
+    <div class="col-12 {% if pode_gerenciar_documentacao %}col-xl-7{% endif %}">
+      <section class="card border shadow-sm">
+        <div class="card-body p-4 p-lg-5">
+          {% if documento %}
+            <div class="d-flex flex-column flex-md-row align-items-md-start gap-3">
+              <div class="app-empty-state__icon mb-0"><i class="bi bi-file-earmark-check" aria-hidden="true"></i></div>
+              <div class="flex-grow-1">
+                <span class="app-status app-status-success mb-2">{% trans "Arquivo disponível" %}</span>
+                <h2 class="h5 fw-bold">{{ documento.nome_original }}</h2>
+                <dl class="row small mb-0">
+                  <dt class="col-sm-4 text-secondary">{% trans "Atualizado em" %}</dt>
+                  <dd class="col-sm-8">{{ documento.atualizado_em|date:"d/m/Y H:i" }}</dd>
+                  <dt class="col-sm-4 text-secondary">{% trans "Enviado por" %}</dt>
+                  <dd class="col-sm-8 mb-0">{{ documento.enviado_por.get_full_name|default:documento.enviado_por.username }}</dd>
+                </dl>
+              </div>
+            </div>
+          {% else %}
+            <div class="app-empty-state border-0 shadow-none">
+              <div class="app-empty-state__icon"><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i></div>
+              <h2 class="h5">{% trans "Checklist ainda não enviado" %}</h2>
+              <p class="text-secondary mb-0">
+                {% if pode_gerenciar_documentacao %}
+                  {% trans "Envie um documento PDF ou Word no formulário ao lado." %}
+                {% else %}
+                  {% trans "O administrador ainda não disponibilizou o checklist deste cliente." %}
+                {% endif %}
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if documento %}
+        <section class="card border shadow-sm mt-4" id="visualizador-checklist" aria-labelledby="titulo-visualizador-checklist">
+          <div class="card-header bg-body px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+              <h2 class="h5 mb-1" id="titulo-visualizador-checklist">{% trans "Visualizar sem baixar" %}</h2>
+              <p class="text-secondary small mb-0">{{ documento.nome_original }}</p>
+            </div>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'estoque:documentacao_cliente_arquivo' cliente.pk %}?download=1">
+              <i class="bi bi-download me-1" aria-hidden="true"></i>{% trans "Baixar arquivo" %}
+            </a>
+          </div>
+          <div class="card-body p-0">
+            {% if documento_preview_tipo == 'pdf' %}
+              <iframe class="app-document-viewer-frame"
+                      src="{% url 'estoque:documentacao_cliente_arquivo' cliente.pk %}"
+                      title="{% blocktrans with nome=documento.nome_original %}Visualização de {{ nome }}{% endblocktrans %}"></iframe>
+            {% elif documento_preview_tipo == 'docx' and documento_preview_paragrafos %}
+              <article class="app-document-text-preview">
+                <div class="alert alert-light border small" role="note">
+                  {% trans "Prévia textual do Word. Imagens e formatação avançada podem não aparecer." %}
+                </div>
+                {% for paragrafo in documento_preview_paragrafos %}
+                  <p>{{ paragrafo|linebreaksbr }}</p>
+                {% endfor %}
+              </article>
+            {% else %}
+              <div class="app-empty-state border-0 shadow-none m-3">
+                <div class="app-empty-state__icon"><i class="bi bi-file-earmark-word" aria-hidden="true"></i></div>
+                <h3 class="h6">{% trans "Pré-visualização indisponível" %}</h3>
+                <p class="text-secondary mb-3">
+                  {% if documento_preview_erro %}
+                    {{ documento_preview_erro }}
+                  {% else %}
+                    {% trans "Este formato antigo do Word não pode ser exibido com segurança no navegador. Prefira PDF ou DOCX." %}
+                  {% endif %}
+                </p>
+                <a class="btn btn-outline-secondary" href="{% url 'estoque:documentacao_cliente_arquivo' cliente.pk %}?download=1">
+                  <i class="bi bi-download me-1" aria-hidden="true"></i>{% trans "Baixar arquivo" %}
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="card border shadow-sm mt-4" aria-labelledby="titulo-relatorios-cliente">
+        <div class="card-header bg-body px-4 py-3">
+          <h2 class="h5 mb-1" id="titulo-relatorios-cliente">{% trans "Relatórios previstos" %}</h2>
+          <p class="text-secondary small mb-0">{% trans "Entregáveis cadastrados especificamente para este cliente." %}</p>
+        </div>
+        <div class="card-body p-4">
+          {% if relatorios_cliente %}
+            <ul class="list-group list-group-flush">
+              {% for relatorio in relatorios_cliente %}
+                <li class="list-group-item px-0 d-flex flex-column flex-md-row justify-content-between gap-2">
+                  <div>
+                    <strong>{{ relatorio.tipo_relatorio.nome }}</strong>
+                    {% if relatorio.observacao %}<p class="text-secondary small mb-0 mt-1">{{ relatorio.observacao }}</p>{% endif %}
+                  </div>
+                  {% if relatorio.obrigatorio %}
+                    <span class="app-status app-status-warning align-self-start">{% trans "Obrigatório" %}</span>
+                  {% else %}
+                    <span class="app-status app-status-neutral align-self-start">{% trans "Opcional" %}</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-secondary mb-0">{% trans "Nenhum relatório específico foi cadastrado para este cliente." %}</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    {% if pode_gerenciar_documentacao %}
+      <div class="col-12 col-xl-5">
+        <section class="card border shadow-sm" aria-labelledby="titulo-upload-checklist">
+          <div class="card-header bg-body px-4 py-3">
+            <h2 class="h5 mb-1" id="titulo-upload-checklist">
+              {% if documento %}{% trans "Substituir checklist" %}{% else %}{% trans "Enviar checklist" %}{% endif %}
+            </h2>
+            <p class="text-secondary small mb-0">{% trans "Formatos aceitos: PDF, DOC e DOCX. Limite de 20 MB." %}</p>
+          </div>
+          <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data" novalidate>
+              {% csrf_token %}
+              {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+              <div class="mb-4">
+                <label class="form-label fw-semibold" for="{{ form.arquivo.id_for_label }}">{{ form.arquivo.label }}</label>
+                {{ form.arquivo }}
+                {% for erro in form.arquivo.errors %}<div class="app-field-error">{{ erro }}</div>{% endfor %}
+                <div class="form-text">{% trans "O novo envio substituirá o arquivo atual deste cliente." %}</div>
+              </div>
+              <button class="btn btn-primary w-100" type="submit">
+                <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>
+                {% if documento %}{% trans "Substituir arquivo" %}{% else %}{% trans "Enviar arquivo" %}{% endif %}
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

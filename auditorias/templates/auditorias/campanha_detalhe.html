@@ -1,23 +1,33 @@
 {% extends 'estoque/base.html' %}{% load i18n %}
 {% block content %}
 <div class="container py-4">
-  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'auditorias:campanha_lista' %}">← {% trans "Voltar" %}</a>
-  <div class="d-flex flex-wrap justify-content-between gap-3 align-items-start">
-    <div>
-      <h2>{{ campanha.nome }}</h2>
-      <p>{{ campanha.empresa }} · <span class="badge text-bg-secondary">{{ campanha.get_status_display }}</span></p>
+  <header class="app-page-header">
+    <div class="app-page-header__content">
+      <div class="app-page-header__eyebrow">{% trans "Auditoria" %}</div>
+      <h1>{{ campanha.nome }}</h1>
+      <p class="app-page-header__description">{{ campanha.empresa }} · <span class="app-status {% if campanha.status == 'ENCERRADA' %}app-status-success{% elif campanha.status == 'CANCELADA' %}app-status-danger{% elif campanha.status == 'EM_ANDAMENTO' %}app-status-info{% elif campanha.status == 'AGENDADA' %}app-status-warning{% else %}app-status-neutral{% endif %}">{{ campanha.get_status_display }}</span></p>
       {% if campanha.descricao %}<p>{{ campanha.descricao }}</p>{% endif %}
     </div>
+    <div class="app-page-header__actions">
+    <a class="btn btn-outline-secondary" href="{% url 'auditorias:campanha_lista' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>{% trans "Voltar" %}</a>
     {% if pode_editar %}
       <a class="btn btn-outline-primary" href="{% url 'auditorias:campanha_editar' campanha.id %}">{% trans "Editar campanha" %}</a>
     {% endif %}
-  </div>
+    </div>
+  </header>
 
   {% if pode_exportar_campanha or pode_agendar or pode_encerrar %}
   <div class="d-flex flex-wrap gap-2 mb-3">
-    {% if pode_exportar_campanha %}<a class="btn btn-sm btn-outline-success" href="{% url 'auditorias:relatorio_campanha' campanha.id 'xlsx' %}">XLSX</a>{% endif %}
-    {% if pode_agendar %}<form method="post" action="{% url 'auditorias:campanha_agendar' campanha.id %}">{% csrf_token %}<button class="btn btn-sm btn-success">{% trans "Agendar campanha" %}</button></form>{% endif %}
+    {% if pode_exportar_campanha %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'auditorias:relatorio_campanha' campanha.id 'xlsx' %}"><i class="bi bi-download me-1" aria-hidden="true"></i>XLSX</a>{% endif %}
+    {% if pode_agendar %}<form method="post" action="{% url 'auditorias:campanha_agendar' campanha.id %}">{% csrf_token %}<button class="btn btn-sm btn-primary">{% trans "Agendar campanha" %}</button></form>{% endif %}
     {% if pode_encerrar %}<form method="post" action="{% url 'auditorias:campanha_encerrar' campanha.id %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% trans "Encerrar campanha" %}</button></form>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if total_bases %}
+  <div class="app-action-toolbar mb-3" role="status">
+    <span><strong>{{ bases_finalizadas }}</strong> {% blocktrans count total=total_bases %}de {{ total }} base finalizada{% plural %}de {{ total }} bases finalizadas{% endblocktrans %}</span>
+    <span class="text-secondary small">{% trans "O detalhamento por base está disponível na tabela abaixo." %}</span>
   </div>
   {% endif %}
 
@@ -30,7 +40,7 @@
           <td>{{ auditoria.base.nome }}</td>
           <td>{{ auditoria.inicio_em }}</td>
           <td>{{ auditoria.fim_em }}</td>
-          <td>{% if not pode_exportar_campanha and auditoria.snapshot_criado_em and not auditoria.finalizada_em and auditoria.status != 'EM_ANDAMENTO' and auditoria.status != 'REABERTA' %}{% trans "Em apuração" %}{% else %}{{ auditoria.get_status_display }}{% endif %}</td>
+          <td><span class="app-status {% if auditoria.status == 'FINALIZADA' %}app-status-success{% elif auditoria.status == 'EXPIRADA' or auditoria.status == 'COM_DIVERGENCIAS' %}app-status-danger{% elif auditoria.status == 'REABERTA' or auditoria.status == 'EM_REGULARIZACAO' %}app-status-warning{% elif auditoria.status == 'EM_ANDAMENTO' or auditoria.status == 'ENVIADA' %}app-status-info{% else %}app-status-neutral{% endif %}">{% if not pode_exportar_campanha and auditoria.snapshot_criado_em and not auditoria.finalizada_em and auditoria.status != 'EM_ANDAMENTO' and auditoria.status != 'REABERTA' %}{% trans "Em apuração" %}{% else %}{{ auditoria.get_status_display }}{% endif %}</span></td>
           <td>
             <a class="btn btn-sm btn-link" href="{% url 'auditorias:coleta' auditoria.id %}">{% trans "Abrir" %}</a>
             {% if pode_editar %}
@@ -56,7 +66,7 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="5" class="text-muted">{% trans "Nenhuma base incluída." %}</td></tr>
+        <tr><td colspan="5"><div class="app-empty-state"><i class="bi bi-building app-empty-state__icon" aria-hidden="true"></i>{% trans "Nenhuma base incluída." %}</div></td></tr>
       {% endfor %}
       </tbody>
     </table>

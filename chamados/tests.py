@@ -135,6 +135,24 @@ class ChamadosIntegracaoTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_detalhe_exibe_documentacao_vinculada_ao_produto_sem_inferir_solucao(self):
+        self.produto.codigo = 'IMP-BR-XR'
+        self.produto.fabricante = 'Xerox'
+        self.produto.modelo = 'Phaser 3020'
+        self.produto.categoria = 'Impressoras'
+        self.produto.save()
+        chamado = self.abrir()
+        self.client.force_login(self.solicitante)
+
+        response = self.client.get(reverse('chamados:detalhe', args=[chamado.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Documentação do equipamento')
+        self.assertContains(response, 'Xerox Phaser 3020 - Guia interno')
+        self.assertContains(response, 'Guia do usuário Phaser 3020')
+        self.assertContains(response, 'Confirme o diagnóstico')
+        self.assertContains(response, 'rel="noopener noreferrer"')
+
     def test_atendente_assume_conversa_e_resolve_com_historico(self):
         chamado = self.abrir()
         ChamadoService.assumir(chamado, self.atendente)

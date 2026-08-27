@@ -80,9 +80,14 @@ def campanha_detalhe(request, campanha_id):
         CampanhaAuditoria.Status.ENCERRADA,
         CampanhaAuditoria.Status.CANCELADA,
     }
+    auditorias = campanha.auditorias_bases.select_related('base')
+    total_bases = auditorias.count()
+    bases_finalizadas = auditorias.filter(status=AuditoriaBase.Status.FINALIZADA).count()
     return render(request, 'auditorias/campanha_detalhe.html', {
         'campanha': campanha,
-        'auditorias': campanha.auditorias_bases.select_related('base'),
+        'auditorias': auditorias,
+        'total_bases': total_bases,
+        'bases_finalizadas': bases_finalizadas,
         'eventos': campanha.eventos.select_related('usuario').order_by('-criado_em', '-id')[:100],
         'form_base': form_base,
         'pode_editar': admin and status_aberto,

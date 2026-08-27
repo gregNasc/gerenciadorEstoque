@@ -1,13 +1,25 @@
 from decimal import Decimal
+from pathlib import Path
+from uuid import uuid4
 
 from django.db import models
 from estoque.models import Base
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.files.storage import storages
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db.models import F, Q
 from django.utils import timezone
+
+
+def checklist_cliente_storage():
+    return storages['private']
+
+
+def checklist_cliente_upload_to(instance, filename):
+    extensao = Path(filename).suffix.lower()
+    return f'checklists_clientes/{instance.cliente_id}/{uuid4().hex}{extensao}'
 
 class CategoriaInsumo(models.Model):
     nome = models.CharField(max_length=100, unique=True)
@@ -372,6 +384,84 @@ class Cliente(models.Model):
 
     def __str__(self):
         return f'{self.sigla} - {self.nome}'
+
+
+class TipoRelatorioCliente(models.Model):
+    nome = models.CharField(max_length=120, unique=True)
+    descricao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'tipo de relatório de cliente'
+        verbose_name_plural = 'tipos de relatório de cliente'
+
+    def __str__(self):
+        return self.nome
+
+
+class ClienteRelatorio(models.Model):
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.CASCADE,
+        related_name='relatorios_requeridos',
+    )
+    tipo_relatorio = models.ForeignKey(TipoRelatorioCliente, on_delete=models.PROTECT)
+    obrigatorio = models.BooleanField(default=True)
+    observacao = models.TextField(blank=True)
+    ordem = models.PositiveIntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['ordem', 'tipo_relatorio__nome']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cliente', 'tipo_relatorio'],
+                name='cliente_tipo_relatorio_unico',
+            )
+        ]
+        permissions = [
+            ('gerenciar_documentacao', 'Pode gerenciar a documentação de clientes'),
+        ]
+        verbose_name = 'relatório requerido por cliente'
+        verbose_name_plural = 'relatórios requeridos por cliente'
+
+    def __str__(self):
+        return f'{self.cliente.sigla} - {self.tipo_relatorio.nome}'
+
+
+class ClienteChecklistDocumento(models.Model):
+    cliente = models.OneToOneField(
+        Cliente,
+        on_delete=models.CASCADE,
+        related_name='checklist_documento',
+    )
+    arquivo = models.FileField(
+        upload_to=checklist_cliente_upload_to,
+        storage=checklist_cliente_storage,
+        validators=[FileExtensionValidator(
+            allowed_extensions=['pdf', 'doc', 'docx'],
+            message='Envie um arquivo PDF ou Word (.pdf, .doc ou .docx).',
+        )],
+    )
+    nome_original = models.CharField(max_length=255)
+    enviado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='checklists_clientes_enviados',
+    )
+    enviado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'arquivo de checklist do cliente'
+        verbose_name_plural = 'arquivos de checklist dos clientes'
+
+    def __str__(self):
+        return f'{self.cliente.sigla} - {self.nome_original}'
 
 class Inventario(models.Model):
 

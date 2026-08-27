@@ -1,0 +1,49 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Central de Documentação{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5 documentation-library">
+  <section class="card border-0 shadow-sm mb-4 documentation-hero">
+    <div class="card-body p-4 p-lg-5">
+      <span class="documentation-eyebrow"><i class="bi bi-collection-fill me-2"></i>Conhecimento operacional</span>
+      <h1 class="h3 fw-bold mt-2 mb-2">Central de Documentação</h1>
+      <p class="text-secondary mb-0">Manuais oficiais, procedimentos internos, checklists de clientes e vídeos em uma única pesquisa.</p>
+    </div>
+  </section>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i><span>Manuais</span><strong>{{ estatisticas.manuais }}</strong></a></div>
+    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i><span>Resolução</span><strong>{{ estatisticas.resolucoes }}</strong></a></div>
+    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i><span>Checklist de clientes</span><strong>{{ estatisticas.checklists }}</strong></a></div>
+    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i><span>Vídeos</span><strong>{{ estatisticas.videos }}</strong></a></div>
+  </div>
+
+  <form method="get" class="card border shadow-sm mb-4" role="search">
+    <div class="card-header bg-dark text-white border-0 px-4 py-3"><h2 class="h6 fw-bold mb-0"><i class="bi bi-search me-2"></i>Pesquisar em toda a central</h2></div>
+    <div class="card-body p-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-xl-4"><label for="doc-query" class="form-label fw-semibold">Modelo, sintoma ou assunto</label><input id="doc-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Ex.: M2020, código 43, toner, driver"></div>
+        <div class="col-6 col-md-3 col-xl-2"><label for="doc-type" class="form-label fw-semibold">Tipo</label><select id="doc-type" class="form-select" name="tipo"><option value="">Todos</option>{% for valor, label in tipos.items %}<option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-3 col-xl-2"><label for="doc-category" class="form-label fw-semibold">Categoria</label><select id="doc-category" class="form-select" name="categoria"><option value="">Todas</option>{% for categoria in categorias %}<option value="{{ categoria }}" {% if filtros.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-3 col-xl-2"><label for="doc-maker" class="form-label fw-semibold">Fabricante</label><select id="doc-maker" class="form-select" name="fabricante"><option value="">Todos</option>{% for fabricante in fabricantes %}<option value="{{ fabricante }}" {% if filtros.fabricante == fabricante %}selected{% endif %}>{{ fabricante }}</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-3 col-xl-2 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-2"></i>Pesquisar</button></div>
+      </div>
+    </div>
+  </form>
+
+  <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 fw-bold mb-0">Documentos encontrados</h2><span class="badge text-bg-light border">{{ documentos|length }} resultado{{ documentos|length|pluralize }}</span></div>
+  {% if documentos %}<div class="row g-4">{% for documento in documentos %}{% include 'estoque/documentacao/_documento_card.html' %}{% endfor %}</div>
+  {% else %}<div class="card border shadow-sm"><div class="card-body p-5 text-center"><i class="bi bi-search fs-1 text-secondary"></i><h2 class="h5 mt-3">Nenhum documento encontrado</h2><p class="text-secondary">Tente pesquisar apenas pelo modelo ou remova um filtro.</p><a class="btn btn-outline-dark" href="{% url 'estoque:documentacao' %}">Limpar filtros</a></div></div>{% endif %}
+</div>
+
+<style>
+.documentation-library { color: #212529; }
+.documentation-hero { border-left: 5px solid #343a40 !important; }
+.documentation-eyebrow { color: #495057; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.documentation-area { min-height: 115px; padding: 1.15rem; border: 1px solid #dee2e6; border-radius: .75rem; background: #fff; color: #343a40; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .75rem; text-decoration: none; }
+.documentation-area:hover { border-color: #6c757d; box-shadow: 0 .25rem .75rem rgba(0,0,0,.08); color: #212529; }
+.documentation-area i { font-size: 1.6rem; }.documentation-area span { font-weight: 700; }.documentation-area strong { font-size: 1.6rem; }
+.documentation-card { border-top: 4px solid #343a40 !important; }.documentation-meta dt { color: #6c757d; }.documentation-meta dd { margin-bottom: .35rem; }
+</style>
+{% endblock %}

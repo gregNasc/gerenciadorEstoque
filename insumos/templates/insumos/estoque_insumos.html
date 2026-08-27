@@ -6,17 +6,15 @@
 {% block content %}
 
 <div class="container-fluid px-4">
-    <div class="card border-0 shadow-sm">
-
-        <!-- HEADER -->
-        <div class="card-header bg-white border-0 pt-4 pb-0">
-            <h2 class="h4 fw-semibold mb-0">
-                {% trans "📋 Estoque de Insumos" %}
-            </h2>
-            <p class="text-secondary small mt-1">
+    <header class="app-page-header">
+        <div class="app-page-header__content">
+            <h1><i class="bi bi-boxes me-2" aria-hidden="true"></i>{% trans "Estoque de Insumos" %}</h1>
+            <p class="app-page-header__description">
                 {% trans "Saldos disponíveis por base e categoria" %}
             </p>
         </div>
+    </header>
+    <div class="card">
 
         <div class="card-body">
 
@@ -234,6 +232,13 @@
                                 class="text-secondary ms-1"
                                 id="contadorItensVisiveis"
                             ></span>
+                        </div>
+                    </div>
+                    <div class="app-search-control flex-grow-1 flex-md-grow-0">
+                        <label class="form-label" for="buscaInsumo">{% trans "Buscar insumo" %}</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <input id="buscaInsumo" class="form-control" type="search" placeholder="{% trans 'Descrição ou código' %}" autocomplete="off">
                         </div>
                     </div>
                 </div>
@@ -862,19 +867,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const botoesFiltro = document.querySelectorAll(
         '[data-estoque-filter]'
     );
+    const buscaInsumo = document.getElementById('buscaInsumo');
+    let somenteCriticosAtivo = false;
+
+    function normalizarBusca(valor) {
+        return (valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    }
+
+    function aplicarFiltrosItens() {
+        const termo = normalizarBusca(buscaInsumo?.value);
+        document.querySelectorAll('[data-estoque-item]').forEach(function (row) {
+            const foraDoStatus = somenteCriticosAtivo && row.dataset.critico !== 'true';
+            const foraDaBusca = termo && !normalizarBusca(row.textContent).includes(termo);
+            row.hidden = Boolean(foraDoStatus || foraDaBusca);
+        });
+        atualizarLinhasVazias();
+        atualizarContadorItens();
+    }
 
     botoesFiltro.forEach(function (button) {
         button.addEventListener('click', function () {
-            const somenteCriticos =
+            somenteCriticosAtivo =
                 button.dataset.estoqueFilter === 'criticos';
-
-            document
-                .querySelectorAll('[data-estoque-item]')
-                .forEach(function (row) {
-                    row.hidden =
-                        somenteCriticos &&
-                        row.dataset.critico !== 'true';
-                });
 
             botoesFiltro.forEach(function (item) {
                 const ativo = item === button;
@@ -889,15 +903,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const info = document.getElementById('filtroEstoqueInfo');
 
             if (info) {
-                info.innerHTML = somenteCriticos
+                info.innerHTML = somenteCriticosAtivo
                     ? '<span class="badge bg-danger">{% trans "Filtro: Críticos" %}</span>'
                     : '<span class="badge bg-primary">{% trans "Filtro: Todos" %}</span>';
             }
-
-            atualizarLinhasVazias();
-            atualizarContadorItens();
+            aplicarFiltrosItens();
         });
     });
+
+    buscaInsumo?.addEventListener('input', aplicarFiltrosItens);
 
     const cardBase = document.querySelector(
         '[data-estoque-action="base"]'

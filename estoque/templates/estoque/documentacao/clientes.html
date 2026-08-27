@@ -1,0 +1,137 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Checklist de clientes" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5">
+  <header class="app-page-header mb-4">
+    <div class="app-page-header__content">
+      <span class="app-page-header__eyebrow">
+        <i class="bi bi-card-checklist" aria-hidden="true"></i>
+        {% trans "Orientações finais por cliente" %}
+      </span>
+      <h1>{% trans "Checklist de clientes" %}</h1>
+      <p class="app-page-header__description">
+        {% trans "Consulte o documento com os arquivos e relatórios que devem ser gerados ao final do inventário." %}
+      </p>
+    </div>
+  </header>
+
+  {% if pode_gerenciar_documentacao %}
+    <div class="alert alert-primary d-flex align-items-start gap-3 mb-4" role="status">
+      <i class="bi bi-cloud-arrow-up fs-5" aria-hidden="true"></i>
+      <div>
+        <strong class="d-block">{% trans "Upload disponível para administradores" %}</strong>
+        <span>{% trans "Use o botão de envio em cada cliente para incluir ou substituir o checklist em PDF ou Word." %}</span>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="get" class="app-filter-panel mb-4" role="search">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-lg-9">
+        <label class="form-label" for="filtro-cliente">{% trans "Cliente" %}</label>
+        <input class="form-control" id="filtro-cliente" type="search" name="q"
+               value="{{ filtros.q }}" placeholder="{% trans 'Sigla ou nome do cliente' %}">
+      </div>
+      <div class="col-12 col-lg-3 d-flex gap-2">
+        <button class="btn btn-primary flex-grow-1" type="submit">
+          <i class="bi bi-search me-1" aria-hidden="true"></i>{% trans "Pesquisar" %}
+        </button>
+        {% if filtros.q %}
+          <a class="btn btn-outline-secondary" href="{% url 'estoque:documentacao_clientes' %}">{% trans "Limpar" %}</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  {% if clientes %}
+    <div class="row g-3">
+      {% for cliente in clientes %}
+        <div class="col-12 col-xl-6">
+          <article class="card h-100 border shadow-sm">
+            <div class="card-body p-4 d-flex flex-column">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                  <span class="app-status app-status-neutral mb-2">{{ cliente.sigla }}</span>
+                  <h2 class="h5 fw-bold mb-0">{{ cliente.nome }}</h2>
+                </div>
+                {% if cliente.checklist_documento %}
+                  <span class="app-status app-status-success">
+                    <i class="bi bi-check-circle" aria-hidden="true"></i>{% trans "Disponível" %}
+                  </span>
+                {% else %}
+                  <span class="app-status app-status-warning">
+                    <i class="bi bi-clock" aria-hidden="true"></i>{% trans "Aguardando arquivo" %}
+                  </span>
+                {% endif %}
+              </div>
+
+              {% if cliente.checklist_documento %}
+                <p class="text-secondary small mb-4">
+                  <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>
+                  {{ cliente.checklist_documento.nome_original }}
+                </p>
+              {% else %}
+                <p class="text-secondary mb-4">{% trans "O checklist deste cliente ainda não foi enviado." %}</p>
+              {% endif %}
+
+              {% if cliente.relatorios_documentacao %}
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                  {% for relatorio in cliente.relatorios_documentacao %}
+                    <span class="badge text-bg-light border">
+                      {{ relatorio.tipo_relatorio.nome }}{% if relatorio.obrigatorio %} · {% trans "obrigatório" %}{% endif %}
+                    </span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="mt-auto d-flex flex-wrap gap-2 justify-content-end">
+                {% if cliente.checklist_documento %}
+                  <a class="btn btn-primary" href="{% url 'estoque:documentacao_cliente_detalhe' cliente.pk %}#visualizador-checklist">
+                    <i class="bi bi-eye me-1" aria-hidden="true"></i>{% trans "Visualizar" %}
+                  </a>
+                  <a class="btn btn-outline-secondary" href="{% url 'estoque:documentacao_cliente_arquivo' cliente.pk %}?download=1">
+                    <i class="bi bi-download me-1" aria-hidden="true"></i>{% trans "Baixar" %}
+                  </a>
+                {% else %}
+                  <button class="btn btn-primary" type="button" disabled>
+                    <i class="bi bi-eye me-1" aria-hidden="true"></i>{% trans "Visualizar" %}
+                  </button>
+                {% endif %}
+                {% if pode_gerenciar_documentacao %}
+                  <a class="btn btn-outline-secondary" href="{% url 'estoque:documentacao_cliente_detalhe' cliente.pk %}">
+                    <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>
+                    {% if cliente.checklist_documento %}{% trans "Substituir arquivo" %}{% else %}{% trans "Enviar arquivo" %}{% endif %}
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if clientes.paginator.num_pages > 1 %}
+      <nav class="mt-4" aria-label="{% trans 'Paginação de clientes' %}">
+        <ul class="pagination justify-content-center flex-wrap">
+          <li class="page-item {% if not clientes.has_previous %}disabled{% endif %}">
+            <a class="page-link" href="?q={{ filtros.q|urlencode }}&page={% if clientes.has_previous %}{{ clientes.previous_page_number }}{% else %}1{% endif %}">{% trans "Anterior" %}</a>
+          </li>
+          <li class="page-item disabled"><span class="page-link">{% blocktrans with atual=clientes.number total=clientes.paginator.num_pages %}Página {{ atual }} de {{ total }}{% endblocktrans %}</span></li>
+          <li class="page-item {% if not clientes.has_next %}disabled{% endif %}">
+            <a class="page-link" href="?q={{ filtros.q|urlencode }}&page={% if clientes.has_next %}{{ clientes.next_page_number }}{% else %}{{ clientes.paginator.num_pages }}{% endif %}">{% trans "Próxima" %}</a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+  {% else %}
+    <section class="app-empty-state">
+      <div class="app-empty-state__icon"><i class="bi bi-card-checklist" aria-hidden="true"></i></div>
+      <h2 class="h5">{% trans "Nenhum cliente disponível" %}</h2>
+      <p class="text-secondary mb-0">{% trans "Não há clientes no seu escopo ou a pesquisa não encontrou resultados." %}</p>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

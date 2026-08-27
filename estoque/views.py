@@ -1,3 +1,6 @@
+import mimetypes
+from pathlib import Path
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -11,12 +14,15 @@ from .services.comunicado_service import ComunicadoService
 from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
 from .services.manual_service import ManualService
+from .services.documentation_service import DocumentationService
+from .forms_documentacao import ClienteChecklistUploadForm, VideoDocumentacaoForm
 from .services.assistente.response_builder import construir_erro, construir_resposta
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
 from django.db import transaction
 from .forms import EquipamentoForm
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
 from .models import (PendenciaTransferencia, DivergenciaTransferencia)
@@ -95,10 +101,8 @@ def _base_contexto_usuario(request):
         request.session['estoque_base_contexto_id'] = base.pk
     return base
 
-
 def _base_em_auditoria(base_id):
     return VisibilidadeEstoqueAuditoriaService.base_bloqueada(base_id)
-
 
 def _resposta_base_em_auditoria():
     return JsonResponse(
@@ -455,6 +459,256 @@ def manuais_view(request):
             'filtros': filtros,
         },
     )
+
+@login_required
+def documentacao_view(request):
+    filtros = {
+        'q': request.GET.get('q', '').strip(),
+        'tipo': request.GET.get('tipo', '').strip(),
+        'categoria': request.GET.get('categoria', '').strip(),
+        'fabricante': request.GET.get('fabricante', '').strip(),
+        'idioma': request.GET.get('idioma', '').strip(),
+    }
+    catalogo = DocumentationService.listar(user=request.user)
+    documentos = DocumentationService.listar(
+        termo=filtros['q'],
+        tipo=filtros['tipo'],
+        categoria=filtros['categoria'],
+        fabricante=filtros['fabricante'],
+        idioma=filtros['idioma'],
+        user=request.user,
+    )
+    return render(
+        request,
+        'estoque/documentacao/index.html',
+        {
+            'documentos': documentos,
+            'estatisticas': DocumentationService.estatisticas(catalogo),
+            'categorias': sorted({item['categoria'] for item in catalogo if item.get('categoria')}),
+            'fabricantes': sorted({item['fabricante'] for item in catalogo if item.get('fabricante')}),
+            'tipos': DocumentationService.TIPOS,
+            'filtros': filtros,
+        },
+    )
+
+@login_required
+def documentacao_resolucao_view(request):
+    filtros = {
+        'q': request.GET.get('q', '').strip(),
+        'fabricante': request.GET.get('fabricante', '').strip(),
+    }
+    catalogo = DocumentationService.listar(tipo='RESOLUCAO')
+    documentos = DocumentationService.listar(
+        termo=filtros['q'], tipo='RESOLUCAO', fabricante=filtros['fabricante']
+    )
+    return render(
+        request,
+        'estoque/documentacao/resolucao.html',
+        {
+            'documentos': documentos,
+            'fabricantes': sorted({item['fabricante'] for item in catalogo}),
+            'filtros': filtros,
+        },
+    )
+
+
+def _pode_gerenciar_documentacao_cliente(user):
+    perfil = getattr(user, 'perfil', None)
+    return bool(perfil and perfil.is_admin) or user.has_perm(
+        'insumos.gerenciar_documentacao'
+    )
+
+
+@login_required
+def documentacao_clientes_view(request):
+    clientes = DocumentationService._clientes_autorizados(request.user)
+    termo = request.GET.get('q', '').strip()
+    if termo:
+        clientes = clientes.filter(Q(sigla__icontains=termo) | Q(nome__icontains=termo))
+    clientes = clientes.order_by('sigla')
+    pagina_clientes = Paginator(clientes, 24).get_page(request.GET.get('page'))
+    return render(
+        request,
+        'estoque/documentacao/clientes.html',
+        {
+            'clientes': pagina_clientes,
+            'filtros': {'q': termo},
+            'pode_gerenciar_documentacao': _pode_gerenciar_documentacao_cliente(
+                request.user
+            ),
+        },
+    )
+
+@login_required
+def documentacao_cliente_detalhe_view(request, cliente_id):
+    cliente = get_object_or_404(
+        DocumentationService._clientes_autorizados(request.user),
+        pk=cliente_id,
+    )
+    pode_gerenciar = _pode_gerenciar_documentacao_cliente(request.user)
+    documento = getattr(cliente, 'checklist_documento', None)
+    relatorios_cliente = DocumentationService._relatorios_do_cliente(cliente)
+    documento_preview_tipo = ''
+    documento_preview_paragrafos = []
+    documento_preview_erro = ''
+    if documento:
+        nome_documento = documento.nome_original or documento.arquivo.name
+        extensao_documento = Path(nome_documento).suffix.lower()
+        if extensao_documento == '.pdf':
+            documento_preview_tipo = 'pdf'
+        elif extensao_documento == '.docx':
+            documento_preview_tipo = 'docx'
+            documento_preview_paragrafos, documento_preview_erro = (
+                _extrair_preview_docx(documento)
+            )
+        else:
+            documento_preview_tipo = 'indisponivel'
+    form = None
+
+    if request.method == 'POST':
+        if not pode_gerenciar:
+            raise PermissionDenied
+        form = ClienteChecklistUploadForm(
+            request.POST,
+            request.FILES,
+            instance=documento,
+        )
+        if form.is_valid():
+            arquivo_anterior = documento.arquivo if documento and documento.arquivo else None
+            checklist = form.save(commit=False)
+            checklist.cliente = cliente
+            checklist.nome_original = Path(request.FILES['arquivo'].name).name
+            checklist.enviado_por = request.user
+            checklist.save()
+            if arquivo_anterior and arquivo_anterior.name != checklist.arquivo.name:
+                transaction.on_commit(
+                    lambda arquivo=arquivo_anterior: arquivo.storage.delete(arquivo.name)
+                )
+            messages.success(request, 'Checklist do cliente enviado com sucesso.')
+            return redirect('estoque:documentacao_cliente_detalhe', cliente_id=cliente.pk)
+    elif pode_gerenciar:
+        form = ClienteChecklistUploadForm(instance=documento)
+
+    return render(
+        request,
+        'estoque/documentacao/cliente_detalhe.html',
+        {
+            'cliente': cliente,
+            'documento': documento,
+            'relatorios_cliente': relatorios_cliente,
+            'documento_preview_tipo': documento_preview_tipo,
+            'documento_preview_paragrafos': documento_preview_paragrafos,
+            'documento_preview_erro': documento_preview_erro,
+            'form': form,
+            'pode_gerenciar_documentacao': pode_gerenciar,
+        },
+    )
+
+
+def _extrair_preview_docx(documento):
+    """Extrai somente texto de DOCX; não executa conteúdo incorporado."""
+    import zipfile
+    from xml.etree import ElementTree
+
+    namespace_word = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+    tag_paragrafo = f'{{{namespace_word}}}p'
+    tag_texto = f'{{{namespace_word}}}t'
+    tag_tab = f'{{{namespace_word}}}tab'
+    tag_quebra = f'{{{namespace_word}}}br'
+    limite_xml = 5 * 1024 * 1024
+
+    try:
+        with documento.arquivo.open('rb') as arquivo:
+            with zipfile.ZipFile(arquivo) as pacote:
+                info = pacote.getinfo('word/document.xml')
+                if info.file_size > limite_xml:
+                    return [], 'O conteúdo do documento é grande demais para a pré-visualização.'
+                raiz = ElementTree.fromstring(pacote.read(info))
+    except (KeyError, OSError, ValueError, zipfile.BadZipFile, ElementTree.ParseError):
+        return [], 'Não foi possível gerar a pré-visualização deste arquivo Word.'
+
+    paragrafos = []
+    for paragrafo in raiz.iter(tag_paragrafo):
+        partes = []
+        for elemento in paragrafo.iter():
+            if elemento.tag == tag_texto and elemento.text:
+                partes.append(elemento.text)
+            elif elemento.tag == tag_tab:
+                partes.append('\t')
+            elif elemento.tag == tag_quebra:
+                partes.append('\n')
+        texto = ''.join(partes).strip()
+        if texto:
+            paragrafos.append(texto)
+    return paragrafos, ''
+
+
+@login_required
+@xframe_options_sameorigin
+def documentacao_cliente_arquivo_view(request, cliente_id):
+    from insumos.models import ClienteChecklistDocumento
+
+    cliente = get_object_or_404(
+        DocumentationService._clientes_autorizados(request.user),
+        pk=cliente_id,
+    )
+    documento = get_object_or_404(ClienteChecklistDocumento, cliente=cliente)
+    nome = documento.nome_original or Path(documento.arquivo.name).name
+    content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    resposta = FileResponse(
+        documento.arquivo.open('rb'),
+        as_attachment=request.GET.get('download') == '1',
+        filename=nome,
+        content_type=content_type,
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    return resposta
+
+
+@login_required
+def documentacao_videos_view(request):
+    termo = request.GET.get('q', '').strip()
+    pode_gerenciar = (
+        request.user.perfil.is_admin
+        or request.user.has_perm('estoque.gerenciar_documentacao')
+    )
+    form = VideoDocumentacaoForm(request.POST or None) if pode_gerenciar else None
+    if request.method == 'POST':
+        if not pode_gerenciar:
+            raise PermissionDenied
+        if form.is_valid():
+            video = form.save(commit=False)
+            video.criado_por = request.user
+            video.save()
+            messages.success(request, 'Vídeo adicionado à Central de Documentação.')
+            return redirect('estoque:documentacao_videos')
+    return render(
+        request,
+        'estoque/documentacao/videos.html',
+        {
+            'documentos': DocumentationService.listar(termo=termo, tipo='VIDEO'),
+            'filtros': {'q': termo},
+            'form': form,
+            'pode_gerenciar_documentacao': pode_gerenciar,
+        },
+    )
+
+
+@login_required
+@require_POST
+def documentacao_video_desativar_view(request, video_id):
+    from estoque.models import VideoDocumentacao
+
+    if not (
+        request.user.perfil.is_admin
+        or request.user.has_perm('estoque.gerenciar_documentacao')
+    ):
+        raise PermissionDenied
+    video = get_object_or_404(VideoDocumentacao, pk=video_id)
+    video.ativo = False
+    video.save(update_fields=['ativo', 'atualizado_em'])
+    messages.success(request, 'Vídeo removido da área ativa.')
+    return redirect('estoque:documentacao_videos')
 
 @login_required
 def api_kpis_json(request):
@@ -1092,7 +1346,7 @@ def cadastrar_equipamento_view(request):
                 request,
                 "Equipamento cadastrado com sucesso."
             )
-            return redirect('estoque:index')
+            return redirect('estoque:cadastrar_equipamento')
 
     else:
         form = EquipamentoForm(

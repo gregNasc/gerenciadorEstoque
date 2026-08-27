@@ -1212,6 +1212,43 @@ class MensagemArquivo(models.Model):
     arquivo = models.FileField(upload_to='mensagens/')
     nome_original = models.CharField(max_length=255)
 
+
+class VideoDocumentacao(models.Model):
+    class Origem(models.TextChoices):
+        INTERNO = 'INTERNO', 'Interno'
+        FABRICANTE = 'FABRICANTE', 'Fabricante'
+
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True)
+    url = models.URLField(max_length=500)
+    origem = models.CharField(max_length=20, choices=Origem.choices)
+    produto_codigo = models.CharField(max_length=50, blank=True, db_index=True)
+    categoria = models.CharField(max_length=100, blank=True)
+    tags = models.CharField(max_length=500, blank=True)
+    duracao = models.CharField(max_length=20, blank=True)
+    publicado_em = models.DateField(null=True, blank=True)
+    ativo = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='videos_documentacao_criados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-publicado_em', '-criado_em', 'titulo']
+        permissions = [
+            ('gerenciar_documentacao', 'Pode gerenciar a Central de Documentação'),
+        ]
+        verbose_name = 'vídeo de documentação'
+        verbose_name_plural = 'vídeos de documentação'
+
+    def __str__(self):
+        return self.titulo
+
 @receiver([post_save, post_delete], sender=Equipamento)
 def limpar_cache_estoque(sender, instance, **kwargs):
     cache_keys = [

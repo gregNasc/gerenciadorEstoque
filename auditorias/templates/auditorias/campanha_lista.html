@@ -1,7 +1,39 @@
-{% extends 'estoque/base.html' %}{% load i18n %}
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Auditorias" %}{% endblock %}
 {% block content %}
-<div class="container py-4">
-  <a class="btn btn-sm btn-outline-secondary mb-3" href="{% url 'estoque:index' %}">← {% trans "Voltar" %}</a>
-  <div class="d-flex justify-content-between align-items-center"><h2>{% trans "Auditorias" %}</h2>{% if pode_criar %}<a class="btn btn-primary" href="{% url 'auditorias:campanha_criar' %}">{% trans "Nova campanha" %}</a>{% endif %}</div>
-  <div class="list-group mt-3">{% for campanha in campanhas %}<a class="list-group-item list-group-item-action" href="{% url 'auditorias:campanha_detalhe' campanha.id %}"><strong>{{ campanha.nome }}</strong><span class="badge bg-secondary float-end">{{ campanha.get_status_display }}</span><br><small>{{ campanha.empresa.nome }}</small></a>{% empty %}<p class="text-muted">{% trans "Nenhuma campanha disponível." %}</p>{% endfor %}</div>
-</div>{% endblock %}
+<div class="container-fluid">
+  <header class="app-page-header">
+    <div class="app-page-header__content">
+      <div class="app-page-header__eyebrow">{% trans "Controle" %}</div>
+      <h1>{% trans "Auditorias" %}</h1>
+      <p class="app-page-header__description">{% trans "Acompanhe campanhas e a conferência dos equipamentos por base." %}</p>
+    </div>
+    <div class="app-page-header__actions">
+      <a class="btn btn-outline-secondary" href="{% url 'estoque:index' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>{% trans "Voltar" %}</a>
+      {% if pode_criar %}<a class="btn btn-primary" href="{% url 'auditorias:campanha_criar' %}"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>{% trans "Nova campanha" %}</a>{% endif %}
+    </div>
+  </header>
+  <div class="audit-campaign-list">
+    {% for campanha in campanhas %}
+      <article class="audit-campaign-row">
+        <div class="audit-campaign-row__main">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <h2 class="h5 mb-0">{{ campanha.nome }}</h2>
+            <span class="app-status {% if campanha.status == 'ENCERRADA' %}app-status-success{% elif campanha.status == 'CANCELADA' %}app-status-danger{% elif campanha.status == 'EM_ANDAMENTO' %}app-status-info{% elif campanha.status == 'AGENDADA' %}app-status-warning{% else %}app-status-neutral{% endif %}">{{ campanha.get_status_display }}</span>
+          </div>
+          {% if campanha.descricao %}<p class="text-secondary small mb-2">{{ campanha.descricao|truncatechars:180 }}</p>{% endif %}
+          <dl class="audit-campaign-meta">
+            <div><dt>{% trans "Empresa" %}</dt><dd>{{ campanha.empresa.nome }}</dd></div>
+            <div><dt>{% trans "Criada em" %}</dt><dd>{{ campanha.criado_em|date:'d/m/Y H:i' }}</dd></div>
+            <div><dt>{% trans "Bases" %}</dt><dd>{{ campanha.auditorias_bases.count }}</dd></div>
+          </dl>
+        </div>
+        <a class="btn btn-outline-primary" href="{% url 'auditorias:campanha_detalhe' campanha.id %}">{% trans "Ver campanha" %}</a>
+      </article>
+    {% empty %}
+      <div class="app-empty-state"><i class="bi bi-clipboard-check app-empty-state__icon" aria-hidden="true"></i><p class="mb-0">{% trans "Nenhuma campanha disponível." %}</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

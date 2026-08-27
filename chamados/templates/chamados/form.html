@@ -8,11 +8,11 @@
 <div class="row justify-content-center">
   <div class="col-xl-9">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <h1 class="h3 mb-1">{% trans "Novo chamado" %}</h1>
-        <p class="text-secondary mb-0">
-          {% trans "Registre um problema relacionado ao inventario em andamento." %}
+    <header class="app-page-header">
+      <div class="app-page-header__content">
+        <h1>{% trans "Novo chamado" %}</h1>
+        <p class="app-page-header__description">
+          {% trans "Registre um problema relacionado ao inventário em andamento." %}
         </p>
       </div>
 
@@ -22,15 +22,15 @@
       >
         {% trans "Voltar" %}
       </a>
-    </div>
+    </header>
 
-    <div class="alert alert-info" role="status">
-      <strong>{% trans "Atendentes on-line:" %}</strong>
-      {% for atendente in atendentes_online %}
-        {{ atendente.get_full_name|default:atendente.username }}{% if not forloop.last %}, {% endif %}
-      {% empty %}
-        nenhum atendente está on-line neste momento. O chamado ainda poderá ser registrado.
-      {% endfor %}
+    <div class="app-presence-summary mb-3" role="status">
+      {% if atendentes_online %}
+        <span class="app-status app-status-success"><i class="bi bi-circle-fill" aria-hidden="true"></i>{% blocktrans count total=atendentes_online|length %}{{ total }} atendente disponível{% plural %}{{ total }} atendentes disponíveis{% endblocktrans %}</span>
+      {% else %}
+        <span class="app-status app-status-neutral"><i class="bi bi-circle" aria-hidden="true"></i>{% trans "Nenhum atendente disponível agora" %}</span>
+        <span class="small text-secondary">{% trans "O chamado será registrado normalmente." %}</span>
+      {% endif %}
     </div>
 
     <form method="post" class="card card-body">
@@ -43,6 +43,8 @@
         </div>
       {% endif %}
 
+      <section class="app-form-section" aria-labelledby="contexto-inventario-title">
+      <div class="app-section-header"><div><h2 id="contexto-inventario-title" class="h5">{% trans "Contexto do inventário" %}</h2><p class="small text-secondary mb-0">{% trans "Identifique onde e quando o atendimento é necessário." %}</p></div></div>
       <!-- CONTEXTO DO CHAMADO -->
       <div class="row g-3 mb-4">
 
@@ -81,7 +83,7 @@
             class="form-label"
             for="{{ form.inventario.id_for_label }}"
           >
-            {% trans "Inventario" %}
+            {% trans "Inventário" %}
           </label>
 
           {{ form.inventario }}
@@ -93,7 +95,7 @@
           {% endfor %}
 
           <div class="form-text">
-            {% trans "Somente inventarios de hoje e em andamento sao exibidos." %}
+            {% trans "Somente inventários de hoje e em andamento são exibidos." %}
           </div>
         </div>
 
@@ -102,7 +104,7 @@
             class="form-label"
             for="{{ form.lider.id_for_label }}"
           >
-            {% trans "Lider" %}
+            {% trans "Líder" %}
           </label>
 
           {{ form.lider }}
@@ -114,14 +116,15 @@
           {% endfor %}
 
           <div class="form-text">
-            {% trans "Preenchido automaticamente pelo inventario. Pode ser alterado se necessario." %}
+            {% trans "Preenchido automaticamente pelo inventário. Pode ser alterado se necessário." %}
           </div>
         </div>
 
       </div>
+      </section>
 
-      <hr>
-
+      <section class="app-form-section mt-4" aria-labelledby="problema-title">
+      <div class="app-section-header"><div><h2 id="problema-title" class="h5">{% trans "Problema" %}</h2><p class="small text-secondary mb-0">{% trans "Descreva o equipamento e o impacto observado." %}</p></div></div>
       <!-- DADOS DO PROBLEMA -->
       <div class="row g-3 mt-1">
 
@@ -142,7 +145,7 @@
           {% endfor %}
 
           <div class="form-text">
-            {% trans "Selecione Sistema para software ou a categoria do equipamento fisico." %}
+            {% trans "Selecione Sistema para software ou a categoria do equipamento físico." %}
           </div>
         </div>
 
@@ -162,8 +165,8 @@
             </div>
           {% endfor %}
 
-          <div class="form-text">
-            {% trans "Obrigatorio para categorias fisicas; opcional para Sistema." %}
+          <div id="equipamento-feedback" class="form-text" aria-live="polite">
+            {% trans "Obrigatório para categorias físicas; opcional para Sistema." %}
           </div>
         </div>
 
@@ -189,7 +192,7 @@
             class="form-label"
             for="{{ form.titulo.id_for_label }}"
           >
-            {% trans "Titulo" %}
+            {% trans "Título" %} *
           </label>
 
           {{ form.titulo }}
@@ -206,7 +209,7 @@
             class="form-label"
             for="{{ form.descricao.id_for_label }}"
           >
-            {% trans "Descricao" %}
+            {% trans "Descrição" %} *
           </label>
 
           {{ form.descricao }}
@@ -219,8 +222,10 @@
         </div>
 
       </div>
+      </section>
 
-      <div class="d-flex justify-content-end mt-4">
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <a class="btn btn-outline-secondary" href="{% url 'chamados:lista' %}">{% trans "Cancelar" %}</a>
         <button class="btn btn-primary">
           <i class="bi bi-send"></i>
           {% trans "Abrir chamado" %}
@@ -324,6 +329,9 @@ document.addEventListener('DOMContentLoaded', function () {
             '{{ form.base.id_for_label }}'
         );
 
+    const equipamentoFeedback =
+        document.getElementById('equipamento-feedback');
+
     if (
         categoriaSelect &&
         equipamentoSelect &&
@@ -358,6 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
 
                 equipamentoSelect.disabled = true;
+                if (equipamentoFeedback) equipamentoFeedback.textContent = 'Selecione uma categoria para carregar os equipamentos.';
 
                 return;
             }
@@ -367,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Não se aplica — chamado de software';
                 equipamentoSelect.appendChild(opcaoInicial);
                 equipamentoSelect.disabled = true;
+                if (equipamentoFeedback) equipamentoFeedback.textContent = 'Equipamento opcional para chamados de software.';
                 return;
             }
 
@@ -378,6 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
             );
 
             equipamentoSelect.disabled = true;
+            if (equipamentoFeedback) equipamentoFeedback.innerHTML = '<span class="app-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Carregando equipamentos...</span></span>';
 
             try {
 
@@ -421,6 +432,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     );
 
                     equipamentoSelect.disabled = true;
+                    if (equipamentoFeedback) equipamentoFeedback.textContent = 'Nenhum equipamento disponível para a categoria e a base selecionadas.';
 
                     return;
                 }
@@ -453,6 +465,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
 
                 equipamentoSelect.disabled = false;
+                if (equipamentoFeedback) equipamentoFeedback.textContent = `${dados.equipamentos.length} equipamento${dados.equipamentos.length === 1 ? '' : 's'} disponível${dados.equipamentos.length === 1 ? '' : 'is'}.`;
 
             } catch (erro) {
 
@@ -473,6 +486,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
 
                 equipamentoSelect.disabled = true;
+                if (equipamentoFeedback) {
+                    equipamentoFeedback.innerHTML = 'Não foi possível carregar os equipamentos. <button type="button" class="btn btn-sm btn-link p-0 align-baseline" id="tentar-equipamentos">Tentar novamente</button>';
+                    document.getElementById('tentar-equipamentos')?.addEventListener('click', carregarEquipamentos);
+                }
             }
         }
 
@@ -503,6 +520,7 @@ document.addEventListener('DOMContentLoaded', function () {
             );
 
             equipamentoSelect.disabled = true;
+            if (equipamentoFeedback) equipamentoFeedback.textContent = 'Selecione uma categoria para carregar os equipamentos.';
         }
     }
 

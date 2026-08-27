@@ -1,0 +1,13 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Resolução de problemas{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5">
+  <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #b45309!important">
+    <div class="card-body p-4 p-lg-5"><span class="small fw-bold text-uppercase text-secondary"><i class="bi bi-tools me-2"></i>Procedimentos internos</span><h1 class="h3 fw-bold mt-2 mb-2">Resolução de problemas</h1><p class="text-secondary mb-0">Pesquise pelo equipamento ou sintoma. Confirme o modelo antes de executar qualquer procedimento.</p></div>
+  </section>
+  <form method="get" class="card border shadow-sm mb-4" role="search"><div class="card-body p-4"><div class="row g-3 align-items-end"><div class="col-12 col-lg-7"><label for="resolution-query" class="form-label fw-semibold">Equipamento ou sintoma</label><input id="resolution-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Ex.: USB, não puxa papel, offline, toner, código 43"></div><div class="col-8 col-lg-3"><label for="resolution-maker" class="form-label fw-semibold">Fabricante</label><select id="resolution-maker" class="form-select" name="fabricante"><option value="">Todos</option>{% for fabricante in fabricantes %}<option value="{{ fabricante }}" {% if filtros.fabricante == fabricante %}selected{% endif %}>{{ fabricante }}</option>{% endfor %}</select></div><div class="col-4 col-lg-2 d-grid"><button class="btn btn-primary" type="submit">Pesquisar</button></div></div></div></form>
+  {% if documentos %}<div class="row g-4">{% for documento in documentos %}{% include 'estoque/documentacao/_documento_card.html' %}{% endfor %}</div>{% else %}<div class="card border shadow-sm"><div class="card-body p-5 text-center"><i class="bi bi-wrench-adjustable-circle fs-1 text-secondary"></i><h2 class="h5 mt-3">Nenhum procedimento encontrado</h2><p class="text-secondary">Remova os filtros ou tente outro termo.</p><a class="btn btn-outline-dark" href="{% url 'estoque:documentacao_resolucao' %}">Limpar filtros</a></div></div>{% endif %}
+</div>
+{% endblock %}

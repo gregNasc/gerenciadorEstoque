@@ -2,33 +2,49 @@
 {% load i18n %}
 {% block title %}{% trans "Chamados" %}{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-  <div><h1 class="h3 mb-1">{% trans "Chamados" %}</h1><p class="text-secondary mb-0">{% trans "Suporte rastreavel por empresa, base e inventario." %}</p></div>
-  <div class="d-flex gap-2">
+<header class="app-page-header">
+  <div class="app-page-header__content"><h1>{% trans "Chamados" %}</h1><p class="app-page-header__description">{% trans "Suporte operacional relacionado aos inventários." %}</p></div>
+  <div class="app-page-header__actions">
     {% if pode_dashboard %}<a class="btn btn-outline-secondary" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart"></i> {% trans "Dashboard" %}</a>{% endif %}
-    {% if pode_exportar %}<a class="btn btn-outline-success" href="{% url 'chamados:exportar' %}"><i class="bi bi-file-earmark-excel"></i> {% trans "Exportar" %}</a>{% endif %}
+    {% if pode_exportar %}<a class="btn btn-outline-secondary" href="{% url 'chamados:exportar' %}"><i class="bi bi-download"></i> {% trans "Exportar" %}</a>{% endif %}
     {% if pode_criar %}<a class="btn btn-primary" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-lg"></i> {% trans "Novo chamado" %}</a>{% endif %}
   </div>
-</div>
-<form method="get" class="card card-body mb-3">
-  <div class="row g-2">
-    <div class="col-lg-4"><input class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Protocolo, título, descrição ou loja"></div>
-    <div class="col-md-3 col-lg-2"><select class="form-select" name="status"><option value="">{% trans "Todos os status" %}</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-    <div class="col-md-3 col-lg-2"><select class="form-select" name="prioridade"><option value="">{% trans "Todas as prioridades" %}</option>{% for value,label in prioridade_choices %}<option value="{{ value }}" {% if request.GET.prioridade == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-    <div class="col-md-4 col-lg-3"><select class="form-select" name="base"><option value="">{% trans "Todas as bases" %}</option>{% for base in bases %}<option value="{{ base.pk }}" {% if request.GET.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
-    <div class="col-md-2 col-lg-1 d-grid"><button class="btn btn-dark">{% trans "Filtrar" %}</button></div>
+</header>
+<form method="get" class="app-filter-panel mb-3">
+  <div class="row g-3 align-items-end">
+    <div class="col-lg-4"><label class="form-label" for="chamados-q">{% trans "Buscar" %}</label><input id="chamados-q" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="{% trans 'Protocolo, título, descrição ou loja' %}"></div>
+    <div class="col-md-3 col-lg-2"><label class="form-label" for="chamados-status">{% trans "Status" %}</label><select id="chamados-status" class="form-select" name="status"><option value="">{% trans "Todos" %}</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-3 col-lg-2"><label class="form-label" for="chamados-prioridade">{% trans "Prioridade" %}</label><select id="chamados-prioridade" class="form-select" name="prioridade"><option value="">{% trans "Todas" %}</option>{% for value,label in prioridade_choices %}<option value="{{ value }}" {% if request.GET.prioridade == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-4 col-lg-2"><label class="form-label" for="chamados-base">{% trans "Base" %}</label><select id="chamados-base" class="form-select" name="base"><option value="">{% trans "Todas" %}</option>{% for base in bases %}<option value="{{ base.pk }}" {% if request.GET.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
+    <div class="col-md-2 col-lg-2 d-flex gap-2"><a class="btn btn-outline-secondary flex-fill" href="{% url 'chamados:lista' %}">{% trans "Limpar" %}</a><button class="btn btn-secondary flex-fill" type="submit">{% trans "Aplicar" %}</button></div>
   </div>
 </form>
+{% if request.GET %}<p class="small text-secondary" role="status">{% blocktrans count total=chamados|length %}{{ total }} chamado encontrado{% plural %}{{ total }} chamados encontrados{% endblocktrans %}</p>{% endif %}
 <div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-  <thead><tr><th>{% trans "Protocolo" %}</th><th>{% trans "Chamado" %}</th><th>{% trans "Base / Loja" %}</th><th>{% trans "Prioridade" %}</th><th>{% trans "Status" %}</th><th>{% trans "Atendente" %}</th><th>{% trans "Abertura" %}</th></tr></thead>
-  <tbody>{% for chamado in chamados %}<tr>
+  <thead><tr><th>{% trans "Protocolo" %}</th><th>{% trans "Chamado" %}</th><th>{% trans "Base / Loja" %}</th><th>{% trans "Prioridade" %}</th><th>{% trans "Status" %}</th><th class="d-none d-lg-table-cell">{% trans "Atendente" %}</th><th class="d-none d-xl-table-cell">{% trans "Abertura" %}</th></tr></thead>
+  <tbody>{% for chamado in chamados %}<tr class="app-clickable-row" tabindex="0" data-href="{% url 'chamados:detalhe' chamado.pk %}" aria-label="{% blocktrans with protocolo=chamado.protocolo %}Abrir chamado {{ protocolo }}{% endblocktrans %}">
     <td><a class="fw-semibold" href="{% url 'chamados:detalhe' chamado.pk %}">{{ chamado.protocolo }}</a></td>
     <td><div>{{ chamado.titulo }}</div><small class="text-secondary">{{ chamado.categoria.nome }}</small></td>
     <td><div>{{ chamado.base.nome }}</div><small class="text-secondary">{{ chamado.loja|default:'—' }}</small></td>
-    <td><span class="badge {% if chamado.prioridade == 'CRITICA' %}text-bg-danger{% elif chamado.prioridade == 'ALTA' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ chamado.get_prioridade_display }}</span></td>
-    <td>{{ chamado.get_status_display }}{% if chamado.sla_vencido %}<div><span class="badge text-bg-danger">{% trans "SLA vencido" %}</span></div>{% endif %}</td>
-    <td>{% if chamado.atendente %}{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}{% else %}Não atribuído{% endif %}</td>
-    <td>{{ chamado.aberto_em|date:'d/m/Y H:i' }}</td>
-  </tr>{% empty %}<tr><td colspan="7" class="text-center text-secondary py-5">{% trans "Nenhum chamado encontrado." %}</td></tr>{% endfor %}</tbody>
+    <td><span class="app-status {% if chamado.prioridade == 'CRITICA' %}app-status-danger{% elif chamado.prioridade == 'ALTA' %}app-status-warning{% else %}app-status-neutral{% endif %}">{{ chamado.get_prioridade_display }}</span></td>
+    <td><span class="app-status {% if chamado.status == 'RESOLVIDO' or chamado.status == 'ENCERRADO' %}app-status-success{% elif chamado.status == 'AGUARDANDO_ATENDIMENTO' or chamado.status == 'AGUARDANDO_SOLICITANTE' or chamado.status == 'AGUARDANDO_TERCEIRO' %}app-status-warning{% elif chamado.status == 'CANCELADO' %}app-status-danger{% else %}app-status-info{% endif %}">{{ chamado.get_status_display }}</span>{% if chamado.sla_vencido %}<div class="mt-1"><span class="app-status app-status-danger">{% trans "SLA vencido" %}</span></div>{% endif %}</td>
+    <td class="d-none d-lg-table-cell">{% if chamado.atendente %}{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}{% else %}{% trans "Não atribuído" %}{% endif %}</td>
+    <td class="d-none d-xl-table-cell">{{ chamado.aberto_em|date:'d/m/Y H:i' }}</td>
+  </tr>{% empty %}<tr><td colspan="7"><div class="app-empty-state m-3"><i class="bi bi-search app-empty-state__icon" aria-hidden="true"></i><p>{% trans "Nenhum chamado encontrado para os filtros selecionados." %}</p>{% if request.GET %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'chamados:lista' %}">{% trans "Limpar filtros" %}</a>{% endif %}</div></td></tr>{% endfor %}</tbody>
 </table></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.app-clickable-row[data-href]').forEach(function (row) {
+  function abrir(event) {
+    if (event?.target.closest('a, button, input, select, textarea')) return;
+    window.location.href = row.dataset.href;
+  }
+  row.addEventListener('click', abrir);
+  row.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') abrir(event);
+  });
+});
+</script>
 {% endblock %}

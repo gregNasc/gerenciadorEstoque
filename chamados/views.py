@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 from estoque.models import Equipamento, Produto
 from estoque.security import secure_queryset
+from estoque.services.documentation_service import DocumentationService
 from chamados.forms import (
     ChamadoAvaliacaoForm,
     ChamadoForm,
@@ -268,6 +269,11 @@ def detalhe(request, pk):
         mensagens_qs = mensagens_qs.filter(nota_interna=False)
     status_permitidos = ChamadoService.status_permitidos(chamado, request.user)
     ordens = OrdemServico.objects.filter(chamado_referencia=chamado.protocolo).order_by('-aberto_em')
+    documentacao_contextual = (
+        DocumentationService.para_produto(chamado.equipamento.produto)
+        if chamado.equipamento_id and chamado.equipamento.produto_id
+        else []
+    )
     return render(request, 'chamados/detalhe.html', {
         'chamado': chamado,
         'mensagens_chamado': mensagens_qs,
@@ -293,6 +299,7 @@ def detalhe(request, pk):
         'pode_converter_sick': not chamado.sick_id and ChamadoAccessPolicy.pode_converter_sick(request.user, chamado),
         'metricas': ChamadoService.metricas(chamado),
         'ordens': ordens,
+        'documentacao_contextual': documentacao_contextual,
     })
 
 @login_required
@@ -832,7 +839,7 @@ def exportar(request):
             chamado.protocolo,
             chamado.base.nome,
             chamado.loja,
-            chamado.categoria.nome,
+            chamado.categoria_equipamento,
             chamado.titulo,
             chamado.get_prioridade_display(),
             chamado.get_status_display(),

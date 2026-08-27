@@ -187,7 +187,11 @@ class CadastroInsumoForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if user:
-            self.fields['base'].queryset = user.perfil.regionais.all()
+            from estoque.policies.compras import ComprasAccessPolicy
+
+            self.fields['base'].queryset = ComprasAccessPolicy.bases(user).order_by('nome')
+        else:
+            self.fields['base'].queryset = Base.objects.none()
 
         # GET
         if self.data.get('categoria'):
