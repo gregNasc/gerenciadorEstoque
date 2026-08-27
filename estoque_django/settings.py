@@ -228,9 +228,23 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT') or BASE_DIR / 'media')
-PRIVATE_MEDIA_ROOT = Path(os.getenv('PRIVATE_MEDIA_ROOT') or BASE_DIR / 'private_media')
-
 USE_S3 = env_bool('USE_S3', False)
+PRIVATE_MEDIA_ROOT_CONFIGURED = os.getenv('PRIVATE_MEDIA_ROOT', '').strip()
+PRIVATE_MEDIA_ROOT = Path(PRIVATE_MEDIA_ROOT_CONFIGURED or BASE_DIR / 'private_media')
+
+# Arquivos enviados por usuários não podem ficar no filesystem efêmero em
+# produção. Obrigar uma escolha explícita evita que o banco preserve apenas o
+# nome de um checklist cujo arquivo desapareceu no deploy seguinte.
+if not DEBUG and not USE_S3 and not PRIVATE_MEDIA_ROOT_CONFIGURED:
+    raise ImproperlyConfigured(
+        'Configure PRIVATE_MEDIA_ROOT em um disco persistente ou ative USE_S3 '
+        'para armazenar os arquivos enviados por usuários.'
+    )
+if not DEBUG and not USE_S3 and not PRIVATE_MEDIA_ROOT.is_absolute():
+    raise ImproperlyConfigured(
+        'PRIVATE_MEDIA_ROOT deve ser um caminho absoluto para o disco persistente.'
+    )
+
 STORAGES = {
     'staticfiles': {
         'BACKEND': (
@@ -272,7 +286,9 @@ if USE_S3:
             'region_name': AWS_S3_REGION_NAME,
             'endpoint_url': AWS_S3_ENDPOINT_URL,
             'custom_domain': AWS_S3_CUSTOM_DOMAIN,
-            'default_acl': 'private',
+            # Buckets modernos normalmente desabilitam ACLs. O acesso privado
+            # deve ser garantido pela política do bucket e pela autenticação.
+            'default_acl': None,
             'querystring_auth': True,
             'file_overwrite': False,
             'location': 'private',

@@ -29,7 +29,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet"
-          href="{% static 'css/style.css' %}?v=10">
+          href="{% static 'css/style.css' %}?v=12">
     {% if request.user.is_authenticated %}
     <link rel="stylesheet"
           href="{% static 'css/tory.css' %}?v=3">
@@ -51,6 +51,12 @@
                 <i class="bi bi-box-seam"></i>
                 <span class="app-sidebar-label">{% trans "Gerenciador de Estoque" %}</span>
             </a>
+            <button id="appMobileSidebarClose"
+                    class="btn btn-dark btn-icon app-mobile-sidebar-close"
+                    type="button"
+                    aria-label="{% trans 'Fechar menu principal' %}">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
         </div>
 
         <div class="navbar-collapse app-sidebar-nav"
@@ -114,7 +120,8 @@
                        href="#"
                        id="navbarEstoque"
                        role="button"
-                       data-bs-toggle="dropdown"
+                       data-app-sidebar-submenu="estoque"
+                       aria-controls="estoqueDropdownMenu"
                        aria-expanded="false">
 
                         <i class="bi bi-box-seam"></i>
@@ -122,7 +129,9 @@
 
                     </a>
 
-                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                    <ul id="estoqueDropdownMenu"
+                        class="dropdown-menu dropdown-menu-dark app-sidebar-stock-menu"
+                        aria-labelledby="navbarEstoque">
 
                         <li>
 
@@ -744,7 +753,10 @@
     const body = document.body;
     const sidebar = document.getElementById('appSidebar');
     const mobileToggle = document.getElementById('appMobileSidebarToggle');
+    const mobileClose = document.getElementById('appMobileSidebarClose');
     const backdrop = document.getElementById('appSidebarBackdrop');
+    const estoqueToggle = document.getElementById('navbarEstoque');
+    const estoqueMenu = document.getElementById('estoqueDropdownMenu');
     const desktop = window.matchMedia('(min-width: 992px)');
     if (!sidebar || !mobileToggle) return;
 
@@ -783,10 +795,15 @@
 
     function aplicarEstado() {
         const recolhida = desktop.matches && body.classList.contains('app-sidebar-collapsed');
+        const mobileAberta = !desktop.matches && body.classList.contains('app-sidebar-open');
         mobileToggle.setAttribute(
             'aria-expanded',
-            String(!desktop.matches && body.classList.contains('app-sidebar-open'))
+            String(mobileAberta)
         );
+        sidebar.setAttribute('aria-hidden', String(!desktop.matches && !mobileAberta));
+        if ('inert' in sidebar) {
+            sidebar.inert = !desktop.matches && !mobileAberta;
+        }
         tooltips.forEach(function (tooltip) {
             if (recolhida) {
                 tooltip.enable();
@@ -797,12 +814,41 @@
         });
     }
 
-    function fecharDropdowns() {
-        if (typeof bootstrap === 'undefined') return;
-        sidebar.querySelectorAll('.dropdown-toggle.show').forEach(function (toggle) {
-            bootstrap.Dropdown.getInstance(toggle)?.hide();
-        });
+    function definirEstoqueAberto(aberto) {
+        if (!estoqueToggle || !estoqueMenu) return;
+        estoqueToggle.classList.toggle('show', aberto);
+        estoqueMenu.classList.toggle('show', aberto);
+        estoqueToggle.setAttribute('aria-expanded', String(aberto));
     }
+
+    function fecharDropdowns() {
+        if (typeof bootstrap !== 'undefined') {
+            sidebar.querySelectorAll('[data-bs-toggle="dropdown"].show').forEach(function (toggle) {
+                bootstrap.Dropdown.getInstance(toggle)?.hide();
+            });
+        }
+        definirEstoqueAberto(false);
+    }
+
+    estoqueToggle?.addEventListener('click', function (event) {
+        event.preventDefault();
+        if (desktop.matches && body.classList.contains('app-sidebar-collapsed')) return;
+
+        const deveAbrir = !estoqueMenu?.classList.contains('show');
+        fecharDropdowns();
+        definirEstoqueAberto(deveAbrir);
+        if (deveAbrir && !desktop.matches) {
+            window.requestAnimationFrame(function () {
+                estoqueToggle.scrollIntoView({block: 'nearest'});
+            });
+        }
+    });
+
+    sidebar.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (toggle) {
+        toggle.addEventListener('show.bs.dropdown', function () {
+            definirEstoqueAberto(false);
+        });
+    });
 
     if (desktop.matches && estavaRecolhida()) {
         body.classList.add('app-sidebar-collapsed');
@@ -833,10 +879,17 @@
         });
     });
 
-    mobileToggle.addEventListener('click', function () {
+    function abrirMobile() {
+        if (desktop.matches) return;
         body.classList.add('app-sidebar-open');
+        sidebar.scrollTop = 0;
         aplicarEstado();
-    });
+        window.requestAnimationFrame(function () {
+            mobileClose?.focus({preventScroll: true});
+        });
+    }
+
+    mobileToggle.addEventListener('click', abrirMobile);
 
     function fecharMobile() {
         fecharDropdowns();
@@ -845,6 +898,7 @@
         mobileToggle?.focus();
     }
 
+    mobileClose?.addEventListener('click', fecharMobile);
     backdrop?.addEventListener('click', fecharMobile);
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && body.classList.contains('app-sidebar-open')) {

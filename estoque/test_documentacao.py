@@ -314,6 +314,27 @@ class DocumentationViewsTests(TestCase):
         self.assertEqual(invalido.status_code, 200)
         self.assertContains(invalido, 'Envie um arquivo PDF ou Word')
 
+    def test_checklist_cujo_arquivo_sumiu_retorna_404_em_vez_de_500(self):
+        cliente = Cliente.objects.create(sigla='AUS', nome='Arquivo ausente')
+        Inventario.objects.create(
+            cliente=cliente, loja='Loja 1', base=self.base,
+            data_inicio='2026-08-20', criado_por=self.user,
+        )
+        documento = ClienteChecklistDocumento.objects.create(
+            cliente=cliente,
+            arquivo=SimpleUploadedFile('temporario.pdf', b'%PDF-1.4 temporario'),
+            nome_original='temporario.pdf',
+            enviado_por=self.user,
+        )
+        documento.arquivo.storage.delete(documento.arquivo.name)
+        self.client.force_login(self.user)
+
+        resposta = self.client.get(reverse(
+            'estoque:documentacao_cliente_arquivo', args=[cliente.pk]
+        ))
+
+        self.assertEqual(resposta.status_code, 404)
+
     def test_admin_gerencia_videos_da_documentacao(self):
         admin = User.objects.create_user(username='admin-videos', password='segura-123')
         admin.perfil.role = 'admin'

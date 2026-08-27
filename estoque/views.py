@@ -25,7 +25,7 @@ from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
 from django.db import transaction
 from .forms import EquipamentoForm
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
@@ -688,8 +688,14 @@ def documentacao_cliente_arquivo_view(request, cliente_id):
     documento = get_object_or_404(ClienteChecklistDocumento, cliente=cliente)
     nome = documento.nome_original or Path(documento.arquivo.name).name
     content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    try:
+        arquivo = documento.arquivo.open('rb')
+    except (FileNotFoundError, OSError):
+        raise Http404(
+            'O arquivo deste checklist não está mais disponível no armazenamento.'
+        )
     resposta = FileResponse(
-        documento.arquivo.open('rb'),
+        arquivo,
         as_attachment=request.GET.get('download') == '1',
         filename=nome,
         content_type=content_type,
