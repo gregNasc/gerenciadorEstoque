@@ -1522,6 +1522,18 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
     display: none;
 }
 
+.app-sidebar-collapse {
+    display: inline-flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    color: #fff;
+}
+
 .app-mobile-sidebar-close {
     display: none;
 }
@@ -1590,10 +1602,21 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
     }
 
     body.app-sidebar-collapsed .app-sidebar .navbar-brand {
-        flex: 0 0 auto;
-        width: 100%;
-        justify-content: center;
+        flex: 0 0 20px;
+        width: 20px;
+        justify-content: flex-start;
         padding-inline: 0;
+        overflow: hidden;
+    }
+
+    body.app-sidebar-collapsed .app-sidebar-header {
+        gap: 0;
+    }
+
+    body.app-sidebar-collapsed .app-sidebar-collapse {
+        flex-basis: 28px;
+        width: 28px;
+        border-color: transparent;
     }
 
     body.app-sidebar-collapsed .app-sidebar-user {
@@ -1639,6 +1662,10 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
 
     .app-sidebar-header {
         gap: 0.35rem;
+    }
+
+    .app-sidebar-collapse {
+        display: none;
     }
 
     .app-mobile-sidebar-close {

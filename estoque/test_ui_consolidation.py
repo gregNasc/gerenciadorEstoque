@@ -37,12 +37,14 @@ class UIConsolidationTests(TestCase):
                 resposta = self.client.get(url)
                 self.assertEqual(resposta.status_code, 200)
                 self.assertContains(resposta, 'id="appSidebar"')
+                self.assertContains(resposta, 'id="appSidebarCollapse"')
                 self.assertContains(resposta, 'id="appMobileSidebarToggle"')
                 self.assertContains(resposta, 'id="appMobileSidebarClose"')
                 self.assertContains(resposta, 'id="appSidebarAccount"')
                 self.assertContains(resposta, 'Dashboard de Ativos')
                 self.assertContains(resposta, 'Preferências')
                 self.assertContains(resposta, "sidebar.addEventListener('click'")
+                self.assertContains(resposta, "collapseToggle?.addEventListener('click'")
                 self.assertContains(resposta, "mobileClose?.addEventListener('click', fecharMobile)")
                 self.assertContains(resposta, 'id="navbarEstoque"')
                 self.assertContains(resposta, 'data-bs-toggle="dropdown"')
@@ -75,6 +77,12 @@ class UIConsolidationTests(TestCase):
         self.assertIn('if (!desktop.matches)', bloco_destinos)
         self.assertIn("body.classList.remove('app-sidebar-open')", bloco_destinos)
         self.assertIn('aplicarEstado()', bloco_destinos)
+
+        self.assertIn(
+            "body.classList.toggle('app-sidebar-collapsed', recolher)",
+            conteudo,
+        )
+        self.assertIn('guardarRecolhida(recolher)', conteudo)
 
     def test_sidebar_mantem_um_unico_scroll_e_nao_quebra_itens_no_mobile(self):
         css = (
