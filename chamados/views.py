@@ -1,4 +1,3 @@
-from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -7,7 +6,6 @@ from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from openpyxl import Workbook
 from estoque.models import Equipamento, Produto
 from estoque.security import secure_queryset
 from estoque.services.documentation_service import DocumentationService
@@ -815,6 +813,12 @@ def dashboard(request):
 
 @login_required
 def exportar(request):
+    # openpyxl é pesado e esta view não participa do fluxo normal nem do chat.
+    # O import local evita carregá-lo no startup de todos os processos ASGI.
+    from io import BytesIO
+
+    from openpyxl import Workbook
+
     if not (
         ChamadoAccessPolicy.e_admin(request.user)
         or request.user.has_perm('chamados.exportar_chamados')

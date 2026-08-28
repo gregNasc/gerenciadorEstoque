@@ -1,10 +1,19 @@
+from io import BytesIO
+from tempfile import gettempdir
+from unittest.mock import patch
+
 from asgiref.sync import async_to_sync
 from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, TransactionTestCase
+from django.core.files.uploadedfile import (
+    InMemoryUploadedFile,
+    SimpleUploadedFile,
+    TemporaryUploadedFile,
+)
+from django.core.handlers.asgi import ASGIHandler
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -19,6 +28,9 @@ from chamados.models import (
     ChamadoMensagem,
     ChamadoSessaoAtendimento,
     PendenciaVinculoLider,
+    validar_assinatura_anexo,
+    validar_mime_anexo,
+    validar_tamanho_anexo,
 )
 from chamados.policies import ChamadoAccessPolicy, GruposChamados
 from chamados.routing import websocket_urlpatterns
@@ -26,6 +38,27 @@ from chamados.services import ChamadoService
 from estoque.models import Base, Comunicado, Empresa, Equipamento, Perfil, Produto, Sick
 from insumos.models import Cliente, Inventario
 from ordens_servico.models import OrdemServico
+
+
+class ChamadosUploadASGITests(SimpleTestCase):
+    @override_settings(FILE_UPLOAD_MAX_MEMORY_SIZE=1024 * 1024)
+    def test_corpo_asgi_acima_do_limiar_e_movido_para_disco(self):
+        mensagens = iter([
+            {
+                'type': 'http.request',
+                'body': b'x' * (1024 * 1024 + 1),
+                'more_body': False,
+            },
+        ])
+
+        async def receber():
+            return next(mensagens)
+
+        arquivo = async_to_sync(ASGIHandler().read_body)(receber)
+        try:
+            self.assertTrue(arquivo._rolled)
+        finally:
+            arquivo.close()
 
 
 class ChamadosIntegracaoTests(TestCase):
@@ -292,6 +325,81 @@ class ChamadosIntegracaoTests(TestCase):
             chamado, self.atendente, 'Evidências compactadas.', anexo=rar,
         )
         self.assertEqual(ChamadoAnexo.objects.count(), 2)
+
+    def test_validadores_rar_leem_so_o_cabecalho_e_restauram_o_cursor(self):
+        class UploadRastreado(BytesIO):
+            name = 'evidencias.rar'
+            content_type = 'application/octet-stream'
+
+            def __init__(self, conteudo):
+                super().__init__(conteudo)
+                self.tamanhos_lidos = []
+
+            @property
+            def size(self):
+                return len(self.getbuffer())
+
+            def read(self, tamanho=-1):
+                self.tamanhos_lidos.append(tamanho)
+                return super().read(tamanho)
+
+        arquivo = UploadRastreado(b'xxxRar!\x1a\x07\x00' + b'conteudo')
+        arquivo.seek(3)
+
+        validar_tamanho_anexo(arquivo)
+        validar_mime_anexo(arquivo)
+        validar_assinatura_anexo(arquivo)
+
+        self.assertEqual(arquivo.tamanhos_lidos, [8])
+        self.assertEqual(arquivo.tell(), 3)
+
+    def test_rar_invalido_e_arquivo_acima_de_50_mb_sao_rejeitados_sem_copia(self):
+        rar_invalido = SimpleUploadedFile(
+            'renomeado.rar', b'isto nao e rar', content_type='application/octet-stream',
+        )
+        with self.assertRaisesMessage(
+            ValidationError,
+            'O CONTEÚDO NÃO CORRESPONDE A UM ARQUIVO RAR VÁLIDO.',
+        ):
+            validar_assinatura_anexo(rar_invalido)
+        self.assertEqual(rar_invalido.tell(), 0)
+
+        class ArquivoGrande:
+            size = 50 * 1024 * 1024 + 1
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            'O ANEXO NÃO PODE ULTRAPASSAR 50 MB.',
+        ):
+            validar_tamanho_anexo(ArquivoGrande())
+
+    @override_settings(
+        FILE_UPLOAD_MAX_MEMORY_SIZE=1024 * 1024,
+        FILE_UPLOAD_TEMP_DIR=gettempdir(),
+    )
+    def test_multipart_respeita_limiar_de_memoria_do_django(self):
+        chamado = self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        self.client.force_login(self.atendente)
+        url = reverse('chamados:mensagem', args=[chamado.pk])
+
+        pequeno = SimpleUploadedFile(
+            'pequeno.rar', b'Rar!\x1a\x07\x00' + b'x' * (100 * 1024),
+            content_type='application/octet-stream',
+        )
+        with patch('chamados.views.ChamadoService.adicionar_mensagem') as adicionar:
+            resposta = self.client.post(url, {'texto': 'Arquivo pequeno', 'anexo': pequeno})
+        self.assertEqual(resposta.status_code, 302)
+        self.assertIsInstance(adicionar.call_args.kwargs['anexo'], InMemoryUploadedFile)
+
+        grande = SimpleUploadedFile(
+            'grande.rar', b'Rar!\x1a\x07\x00' + b'x' * (1024 * 1024 + 1),
+            content_type='application/octet-stream',
+        )
+        with patch('chamados.views.ChamadoService.adicionar_mensagem') as adicionar:
+            resposta = self.client.post(url, {'texto': 'Arquivo grande', 'anexo': grande})
+        self.assertEqual(resposta.status_code, 302)
+        self.assertIsInstance(adicionar.call_args.kwargs['anexo'], TemporaryUploadedFile)
 
     def test_rotas_de_lista_dashboard_e_exportacao_respeitam_perfis(self):
         self.abrir()

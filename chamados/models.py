@@ -45,9 +45,11 @@ def validar_assinatura_anexo(arquivo):
     """Bloqueia disfarces triviais sem tentar executar ou extrair o arquivo."""
     extensao = Path(getattr(arquivo, 'name', '')).suffix.lower()
     posicao = arquivo.tell() if hasattr(arquivo, 'tell') else 0
-    cabecalho = arquivo.read(8)
-    if hasattr(arquivo, 'seek'):
-        arquivo.seek(posicao)
+    try:
+        cabecalho = arquivo.read(8)
+    finally:
+        if hasattr(arquivo, 'seek'):
+            arquivo.seek(posicao)
     if extensao == '.exe' and not cabecalho.startswith(b'MZ'):
         raise ValidationError('O CONTEÚDO NÃO CORRESPONDE A UM EXECUTÁVEL WINDOWS VÁLIDO.')
     if extensao == '.rar' and not (

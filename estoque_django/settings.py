@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import tempfile
 import warnings
 from pathlib import Path
 
@@ -180,12 +181,16 @@ if CHANNEL_REDIS_URL:
             'CONFIG': {'hosts': [CHANNEL_REDIS_URL]},
         },
     }
-else:
+elif DEBUG:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
+else:
+    raise ImproperlyConfigured(
+        'CHANNEL_REDIS_URL deve ser configurada em produção.'
+    )
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -229,6 +234,26 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT') or BASE_DIR / 'media')
+
+# Mantém apenas uploads pequenos em memória. Acima deste limite, os handlers
+# do Django usam um arquivo temporário e entregam o mesmo stream ao storage.
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.getenv(
+        'FILE_UPLOAD_MAX_MEMORY_SIZE',
+        str(1 * 1024 * 1024),
+    )
+)
+if FILE_UPLOAD_MAX_MEMORY_SIZE <= 0:
+    raise ImproperlyConfigured(
+        'FILE_UPLOAD_MAX_MEMORY_SIZE deve ser maior que zero.'
+    )
+
+DEFAULT_FILE_UPLOAD_TEMP_DIR = '/tmp' if not DEBUG else tempfile.gettempdir()
+FILE_UPLOAD_TEMP_DIR = (
+    os.getenv('FILE_UPLOAD_TEMP_DIR', '').strip()
+    or DEFAULT_FILE_UPLOAD_TEMP_DIR
+)
+
 USE_S3 = env_bool('USE_S3', False)
 PRIVATE_MEDIA_ROOT_CONFIGURED = os.getenv('PRIVATE_MEDIA_ROOT', '').strip()
 PRIVATE_MEDIA_ROOT = Path(PRIVATE_MEDIA_ROOT_CONFIGURED or BASE_DIR / 'private_media')
