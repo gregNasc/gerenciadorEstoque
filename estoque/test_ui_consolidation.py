@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -41,16 +44,50 @@ class UIConsolidationTests(TestCase):
                 self.assertContains(resposta, 'Preferências')
                 self.assertContains(resposta, "sidebar.addEventListener('click'")
                 self.assertContains(resposta, "mobileClose?.addEventListener('click', fecharMobile)")
-                self.assertContains(resposta, 'data-app-sidebar-submenu="estoque"')
-                self.assertContains(resposta, 'data-bs-display="static"')
+                self.assertContains(resposta, 'id="navbarEstoque"')
+                self.assertContains(resposta, 'data-bs-toggle="dropdown"')
                 self.assertContains(resposta, 'id="estoqueDropdownMenu"')
-                self.assertContains(resposta, "estoqueToggle?.addEventListener('click'")
+                self.assertContains(resposta, 'aria-labelledby="navbarEstoque"')
+                self.assertContains(resposta, "if (typeof bootstrap !== 'undefined')")
                 self.assertContains(resposta, "if (typeof bootstrap === 'undefined')")
-                self.assertContains(resposta, 'function definirDropdownAberto')
+                self.assertContains(resposta, "toggle.addEventListener('click'")
+                self.assertContains(resposta, 'bootstrap.Dropdown.getOrCreateInstance(toggle).hide()')
                 self.assertContains(resposta, 'bootstrap.Tooltip.getOrCreateInstance')
+                self.assertNotContains(resposta, 'data-app-sidebar-submenu="estoque"')
+                self.assertNotContains(resposta, 'data-bs-display="static"')
+                self.assertNotContains(resposta, 'app-sidebar-stock-menu')
+                self.assertNotContains(resposta, "estoqueToggle?.addEventListener('click'")
+                self.assertNotContains(resposta, 'function definirEstoqueAberto')
+                self.assertNotContains(resposta, 'function definirDropdownAberto')
+                self.assertNotContains(resposta, 'event.stopImmediatePropagation()')
                 self.assertNotContains(resposta, 'id="appSidebarToggle"')
                 self.assertNotContains(resposta, 'class="top-navbar app-topbar"')
                 self.assertNotContains(resposta, 'id="perfilDropdown"')
+
+    def test_navegacao_nao_recolhe_sidebar_no_desktop_e_fecha_no_mobile(self):
+        conteudo = self.client.get(reverse('estoque:index')).content.decode()
+        inicio = conteudo.index('destinos.forEach(function (destino)')
+        fim = conteudo.index('function abrirMobile()', inicio)
+        bloco_destinos = conteudo[inicio:fim]
+
+        self.assertNotIn("body.classList.add('app-sidebar-collapsed')", bloco_destinos)
+        self.assertNotIn('guardarRecolhida(true)', bloco_destinos)
+        self.assertIn('if (!desktop.matches)', bloco_destinos)
+        self.assertIn("body.classList.remove('app-sidebar-open')", bloco_destinos)
+        self.assertIn('aplicarEstado()', bloco_destinos)
+
+    def test_sidebar_mantem_um_unico_scroll_e_nao_quebra_itens_no_mobile(self):
+        css = (
+            Path(settings.BASE_DIR) / 'estoque' / 'static' / 'css' / 'style.css'
+        ).read_text(encoding='utf-8')
+
+        self.assertIn('.app-sidebar > .app-sidebar-inner {', css)
+        self.assertIn('flex-wrap: nowrap;', css)
+        self.assertIn('.app-sidebar-nav {', css)
+        self.assertIn('overflow-y: auto;', css)
+        self.assertIn('.app-sidebar .dropdown-menu {', css)
+        self.assertIn('position: static !important;', css)
+        self.assertNotIn('.app-sidebar .app-sidebar-stock-menu', css)
 
     def test_dashboard_usa_filtros_explicitos_e_bootstrap_modal(self):
         resposta = self.client.get(reverse('estoque:index'))

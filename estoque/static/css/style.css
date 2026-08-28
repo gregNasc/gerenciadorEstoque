@@ -1351,10 +1351,12 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
     transition: width 0.18s ease, transform 0.18s ease;
 }
 
-.app-sidebar-inner {
+.app-sidebar > .app-sidebar-inner {
     display: flex;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
+    justify-content: flex-start;
     width: 100%;
     min-width: 0;
     height: 100vh;
@@ -1453,10 +1455,6 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
     border-radius: 4px;
     font-size: 0.82rem;
     white-space: normal;
-}
-
-.app-sidebar .app-sidebar-stock-menu {
-    inset: auto !important;
 }
 
 .app-shell-content {
@@ -1641,14 +1639,6 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
 
     .app-sidebar-header {
         gap: 0.35rem;
-    }
-
-    .app-sidebar .app-sidebar-stock-menu {
-        max-height: min(52vh, 420px);
-        overflow-x: hidden;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
     }
 
     .app-mobile-sidebar-close {

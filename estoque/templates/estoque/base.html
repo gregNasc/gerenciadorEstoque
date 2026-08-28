@@ -29,7 +29,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet"
-          href="{% static 'css/style.css' %}?v=12">
+          href="{% static 'css/style.css' %}?v=13">
     {% if request.user.is_authenticated %}
     <link rel="stylesheet"
           href="{% static 'css/tory.css' %}?v=3">
@@ -121,9 +121,6 @@
                        id="navbarEstoque"
                        role="button"
                        data-bs-toggle="dropdown"
-                       data-bs-display="static"
-                       data-app-sidebar-submenu="estoque"
-                       aria-controls="estoqueDropdownMenu"
                        aria-expanded="false">
 
                         <i class="bi bi-box-seam"></i>
@@ -132,7 +129,7 @@
                     </a>
 
                     <ul id="estoqueDropdownMenu"
-                        class="dropdown-menu dropdown-menu-dark app-sidebar-stock-menu"
+                        class="dropdown-menu dropdown-menu-dark"
                         aria-labelledby="navbarEstoque">
 
                         <li>
@@ -757,8 +754,6 @@
     const mobileToggle = document.getElementById('appMobileSidebarToggle');
     const mobileClose = document.getElementById('appMobileSidebarClose');
     const backdrop = document.getElementById('appSidebarBackdrop');
-    const estoqueToggle = document.getElementById('navbarEstoque');
-    const estoqueMenu = document.getElementById('estoqueDropdownMenu');
     const desktop = window.matchMedia('(min-width: 992px)');
     if (!sidebar || !mobileToggle) return;
 
@@ -818,76 +813,35 @@
         });
     }
 
-    function definirEstoqueAberto(aberto) {
-        if (!estoqueToggle || !estoqueMenu) return;
-        estoqueToggle.classList.toggle('show', aberto);
-        estoqueMenu.classList.toggle('show', aberto);
-        estoqueToggle.setAttribute('aria-expanded', String(aberto));
-    }
-
-    function menuDoDropdown(toggle) {
-        const controlado = toggle.getAttribute('aria-controls');
-        if (controlado) {
-            const menu = document.getElementById(controlado);
-            if (menu) return menu;
-        }
-        return toggle.parentElement?.querySelector(':scope > .dropdown-menu') || null;
-    }
-
-    function definirDropdownAberto(toggle, aberto) {
-        const menu = menuDoDropdown(toggle);
-        toggle.classList.toggle('show', aberto);
-        menu?.classList.toggle('show', aberto);
-        toggle.setAttribute('aria-expanded', String(aberto));
-    }
-
-    function fecharDropdowns(excecao) {
+    function fecharDropdowns() {
         if (typeof bootstrap !== 'undefined') {
-            dropdownToggles.forEach(function (toggle) {
-                if (toggle !== excecao && toggle.classList.contains('show')) {
-                    bootstrap.Dropdown.getInstance(toggle)?.hide();
-                }
+            sidebar.querySelectorAll('[data-bs-toggle="dropdown"].show').forEach(function (toggle) {
+                bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
             });
+            return;
         }
+
         dropdownToggles.forEach(function (toggle) {
-            if (toggle !== excecao) definirDropdownAberto(toggle, false);
+            const menu = toggle.parentElement?.querySelector(':scope > .dropdown-menu');
+            toggle.classList.remove('show');
+            menu?.classList.remove('show');
+            toggle.setAttribute('aria-expanded', 'false');
         });
     }
 
-    estoqueToggle?.addEventListener('click', function (event) {
-        if (desktop.matches) return;
-
-        event.preventDefault();
-        event.stopImmediatePropagation();
-
-        const deveAbrir = !estoqueMenu?.classList.contains('show');
-        fecharDropdowns(estoqueToggle);
-        definirEstoqueAberto(deveAbrir);
-        if (deveAbrir && !desktop.matches) {
-            window.requestAnimationFrame(function () {
-                estoqueToggle.scrollIntoView({block: 'nearest'});
-            });
-        }
-    });
-
-    dropdownToggles.forEach(function (toggle) {
-        toggle.addEventListener('show.bs.dropdown', function () {
-            if (toggle !== estoqueToggle) {
-                definirEstoqueAberto(false);
-            }
-        });
-    });
-
-    // O bundle do Bootstrap vem de CDN. Se ele estiver indisponível, mantém a
-    // navegação funcional com um controle local e sem Popper.
     if (typeof bootstrap === 'undefined') {
+        // O bundle do Bootstrap vem de CDN. Se ele estiver indisponível,
+        // mantém a navegação funcional com um controle local e sem Popper.
         dropdownToggles.forEach(function (toggle) {
             toggle.addEventListener('click', function (event) {
                 event.preventDefault();
                 event.stopPropagation();
-                const deveAbrir = !menuDoDropdown(toggle)?.classList.contains('show');
-                fecharDropdowns(toggle);
-                definirDropdownAberto(toggle, deveAbrir);
+                const menu = toggle.parentElement?.querySelector(':scope > .dropdown-menu');
+                const deveAbrir = !menu?.classList.contains('show');
+                fecharDropdowns();
+                toggle.classList.toggle('show', deveAbrir);
+                menu?.classList.toggle('show', deveAbrir);
+                toggle.setAttribute('aria-expanded', String(deveAbrir));
             });
         });
         document.addEventListener('click', function (event) {
@@ -913,14 +867,11 @@
 
     destinos.forEach(function (destino) {
         destino.addEventListener('click', function () {
-            if (desktop.matches) {
-                fecharDropdowns();
-                body.classList.add('app-sidebar-collapsed');
-                guardarRecolhida(true);
-            } else {
+            fecharDropdowns();
+            if (!desktop.matches) {
                 body.classList.remove('app-sidebar-open');
+                aplicarEstado();
             }
-            aplicarEstado();
         });
     });
 
