@@ -68,7 +68,11 @@ class ChamadoService:
         payload = {
             'id': evento.pk,
             'chamado_id': chamado.pk,
+            'solicitante_id': chamado.aberto_por_id,
             'protocolo': chamado.protocolo,
+            'titulo': chamado.titulo,
+            'base': chamado.base.nome,
+            'prioridade': chamado.get_prioridade_display(),
             'tipo': tipo,
             'descricao': descricao,
             'url': f'/chamados/{chamado.pk}/',
@@ -80,7 +84,7 @@ class ChamadoService:
         }
         grupos = {'chamados_admins'}
         if tipo == 'ABERTURA':
-            grupos.add('chamados_atendentes')
+            grupos.add(f'chamados_atendentes_base_{chamado.base_id}')
         elif tipo not in {'AVALIACAO', 'NOTA_INTERNA'}:
             grupos.add(f'chamados_usuario_{chamado.aberto_por_id}')
             if chamado.atendente_id:

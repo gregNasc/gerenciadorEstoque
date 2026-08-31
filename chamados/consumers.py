@@ -16,12 +16,14 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
         if not user or not user.is_authenticated:
             await self.close(code=4403)
             return
+        self.e_admin = await self._e_admin()
         self.e_atendente = await self._pode_atender()
         self.grupos_presenca = [f'chamados_usuario_{user.pk}']
         if self.e_atendente:
-            self.grupos_presenca.append('chamados_atendentes')
+            if not self.e_admin:
+                self.grupos_presenca.extend(await self._grupos_atendimento())
             await self._registrar_presenca()
-        if await self._e_admin():
+        if self.e_admin:
             self.grupos_presenca.append('chamados_admins')
         for grupo in self.grupos_presenca:
             await self.channel_layer.group_add(grupo, self.channel_name)
@@ -49,6 +51,11 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _e_admin(self):
         return ChamadoAccessPolicy.e_admin(self.scope['user'])
+
+    @database_sync_to_async
+    def _grupos_atendimento(self):
+        bases = ChamadoAccessPolicy.bases(self.scope['user']).values_list('pk', flat=True)
+        return [f'chamados_atendentes_base_{base_id}' for base_id in bases]
 
     @database_sync_to_async
     def _registrar_presenca(self):

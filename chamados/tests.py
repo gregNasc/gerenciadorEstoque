@@ -1,9 +1,10 @@
 from io import BytesIO
 from tempfile import gettempdir
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from asgiref.sync import async_to_sync
 from channels.routing import URLRouter
+from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -23,6 +24,7 @@ from chamados.models import (
     CategoriaChamado,
     Chamado,
     ChamadoAnexo,
+    ChamadoAvaliacao,
     ChamadoConexaoAtendente,
     ChamadoEvento,
     ChamadoMensagem,
@@ -127,6 +129,18 @@ class ChamadosIntegracaoTests(TestCase):
             prioridade=Chamado.Prioridade.CRITICA,
         )
 
+    def resolver_para_avaliacao(self, chamado=None):
+        chamado = chamado or self.abrir()
+        ChamadoService.assumir(chamado, self.atendente)
+        ChamadoService.resolver(
+            chamado,
+            self.atendente,
+            causa_raiz='Travamento de firmware.',
+            solucao='Equipamento reiniciado e conexão restabelecida.',
+        )
+        chamado.refresh_from_db()
+        return chamado
+
     def test_abertura_usa_usuarios_bases_e_comunicados_do_gerenciador(self):
         chamado = self.abrir()
 
@@ -204,6 +218,26 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(mensagem.texto, 'REINICIAMOS O EQUIPAMENTO E VALIDAMOS A REDE.')
         self.assertGreaterEqual(chamado.eventos.count(), 4)
 
+    def test_evento_websocket_identifica_solicitante_para_destaque_da_avaliacao(self):
+        chamado = self.abrir()
+        camada = type('CamadaTeste', (), {})()
+        camada.group_send = AsyncMock()
+
+        with (
+            patch('chamados.services.get_channel_layer', return_value=camada),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            ChamadoService._evento(
+                chamado,
+                'RESOLUCAO',
+                'CHAMADO RESOLVIDO E ENVIADO PARA AVALIAÇÃO.',
+                self.atendente,
+            )
+
+        payloads = [chamada.args[1]['payload'] for chamada in camada.group_send.await_args_list]
+        self.assertTrue(payloads)
+        self.assertTrue(all(item['solicitante_id'] == self.solicitante.pk for item in payloads))
+
     def test_atendente_assume_pelo_formulario_sem_interceptacao_da_avaliacao(self):
         chamado = self.abrir()
         self.client.force_login(self.atendente)
@@ -224,6 +258,92 @@ class ChamadosIntegracaoTests(TestCase):
         chamado.refresh_from_db()
         self.assertEqual(chamado.atendente, self.atendente)
         self.assertEqual(chamado.status, Chamado.Status.EM_ATENDIMENTO)
+
+    def test_solicitante_ve_modal_e_aviso_persistente_quando_pode_avaliar(self):
+        chamado = self.resolver_para_avaliacao()
+        self.client.force_login(self.solicitante)
+
+        pagina = self.client.get(reverse('chamados:detalhe', args=[chamado.pk]))
+
+        self.assertTrue(pagina.context['pode_avaliar'])
+        self.assertContains(pagina, 'id="avaliacaoModal"', count=1)
+        self.assertContains(pagina, 'id="avaliacao-form"', count=1)
+        self.assertContains(pagina, 'id="avaliacao-feedback"', count=1)
+        self.assertContains(pagina, 'Este atendimento ainda aguarda sua avaliação.')
+        self.assertContains(pagina, chamado.resolucao)
+        self.assertContains(pagina, 'role="radiogroup"')
+        self.assertContains(pagina, 'data-auto-show="true"')
+
+    def test_atendente_e_terceiro_nao_podem_avaliar(self):
+        chamado = self.resolver_para_avaliacao()
+        url = reverse('chamados:avaliar', args=[chamado.pk])
+        headers = {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}
+
+        for usuario in (self.atendente, self.admin):
+            with self.subTest(usuario=usuario.username):
+                self.client.force_login(usuario)
+                pagina = self.client.get(reverse('chamados:detalhe', args=[chamado.pk]))
+                self.assertFalse(pagina.context['pode_avaliar'])
+                self.assertNotContains(pagina, 'id="avaliacao-form"')
+                resposta = self.client.post(
+                    url,
+                    {'nota': 5, 'resolvido': 'True', 'comentario': ''},
+                    **headers,
+                )
+                self.assertEqual(resposta.status_code, 400)
+                self.assertIn('SOMENTE O SOLICITANTE', resposta.json()['erro'])
+        self.assertFalse(ChamadoAvaliacao.objects.filter(chamado=chamado).exists())
+
+    def test_endpoint_rejeita_notas_invalidas_e_avaliacao_duplicada(self):
+        chamado = self.resolver_para_avaliacao()
+        url = reverse('chamados:avaliar', args=[chamado.pk])
+        headers = {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}
+        self.client.force_login(self.solicitante)
+
+        for nota in (0, 6):
+            with self.subTest(nota=nota):
+                resposta = self.client.post(
+                    url,
+                    {'nota': nota, 'resolvido': 'True', 'comentario': ''},
+                    **headers,
+                )
+                self.assertEqual(resposta.status_code, 400)
+                self.assertIn('nota', resposta.json()['erros'])
+
+        resposta = self.client.post(
+            url,
+            {'nota': 5, 'resolvido': 'True', 'comentario': 'Ótimo atendimento.'},
+            **headers,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.json()['encerrado'])
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, Chamado.Status.ENCERRADO)
+        self.assertEqual(ChamadoAvaliacao.objects.filter(chamado=chamado).count(), 1)
+
+        resposta_duplicada = self.client.post(
+            url,
+            {'nota': 4, 'resolvido': 'True', 'comentario': ''},
+            **headers,
+        )
+        self.assertEqual(resposta_duplicada.status_code, 400)
+        self.assertIn('NÃO ESTÁ AGUARDANDO AVALIAÇÃO', resposta_duplicada.json()['erro'])
+        self.assertEqual(ChamadoAvaliacao.objects.filter(chamado=chamado).count(), 1)
+
+    def test_endpoint_avaliacao_negativa_reabre_chamado(self):
+        chamado = self.resolver_para_avaliacao()
+        self.client.force_login(self.solicitante)
+
+        resposta = self.client.post(
+            reverse('chamados:avaliar', args=[chamado.pk]),
+            {'nota': 2, 'resolvido': 'False', 'comentario': 'Ainda sem conexão.'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(resposta.json()['encerrado'])
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, Chamado.Status.REABERTO)
 
     def test_nota_interna_nao_e_exibida_nem_gera_comunicado(self):
         chamado = self.abrir()
@@ -639,3 +759,50 @@ class ChamadoWebSocketTests(TransactionTestCase):
                 chamado=self.chamado, autor=self.usuario, texto='OLÁ PELO CHAT'
             ).exists()
         )
+
+    def test_abertura_chega_a_todos_atendentes_conectados_da_base(self):
+        suporte = Group.objects.get(name=GruposChamados.SUPORTE)
+        segundo = User.objects.create_user('segundo_ws', password='SenhaForte123!')
+        segundo.perfil.empresa = self.empresa
+        segundo.perfil.save()
+        segundo.perfil.regionais.add(self.base)
+        segundo.groups.add(suporte)
+        self.intruso.groups.add(suporte)
+
+        async def cenario():
+            aplicacao = URLRouter(websocket_urlpatterns)
+            primeiro_ws = WebsocketCommunicator(aplicacao, '/ws/chamados/presenca/')
+            primeiro_ws.scope['user'] = self.usuario
+            segundo_ws = WebsocketCommunicator(aplicacao, '/ws/chamados/presenca/')
+            segundo_ws.scope['user'] = segundo
+            outra_base_ws = WebsocketCommunicator(aplicacao, '/ws/chamados/presenca/')
+            outra_base_ws.scope['user'] = self.intruso
+
+            for comunicador in (primeiro_ws, segundo_ws, outra_base_ws):
+                conectado, _ = await comunicador.connect()
+                self.assertTrue(conectado)
+
+            await database_sync_to_async(ChamadoService._evento)(
+                self.chamado,
+                'ABERTURA',
+                'CHAMADO ABERTO.',
+                self.intruso,
+            )
+
+            primeiro_evento = await primeiro_ws.receive_json_from(timeout=3)
+            segundo_evento = await segundo_ws.receive_json_from(timeout=3)
+            for recebido in (primeiro_evento, segundo_evento):
+                self.assertEqual(recebido['tipo'], 'chamado_evento')
+                self.assertEqual(recebido['evento']['tipo'], 'ABERTURA')
+                self.assertEqual(recebido['evento']['titulo'], self.chamado.titulo)
+                self.assertEqual(recebido['evento']['base'], self.base.nome)
+                self.assertEqual(
+                    recebido['evento']['prioridade'],
+                    self.chamado.get_prioridade_display(),
+                )
+            self.assertTrue(await outra_base_ws.receive_nothing(timeout=0.3))
+
+            for comunicador in (primeiro_ws, segundo_ws, outra_base_ws):
+                await comunicador.disconnect()
+
+        async_to_sync(cenario)()

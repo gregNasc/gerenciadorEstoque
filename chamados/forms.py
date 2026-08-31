@@ -344,13 +344,20 @@ class ChamadoStatusForm(forms.Form):
         return dados
 
 class ChamadoAvaliacaoForm(forms.Form):
-    nota = forms.IntegerField(min_value=1, max_value=5, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    nota = forms.IntegerField(min_value=1, max_value=5, widget=forms.HiddenInput())
     resolvido = forms.TypedChoiceField(
-        choices=((True, 'SIM, FOI RESOLVIDO'), (False, 'NÃO, PRECISA SER REABERTO')),
+        choices=((True, 'Sim, foi resolvido'), (False, 'Não, ainda preciso de atendimento')),
         coerce=lambda valor: str(valor).lower() == 'true',
         widget=forms.RadioSelect,
     )
-    comentario = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}))
+    comentario = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'class': 'form-control',
+            'placeholder': 'Conte-nos brevemente como foi o atendimento.',
+        }),
+    )
 
 class ChamadoTransferenciaForm(forms.Form):
     atendente_novo = forms.ModelChoiceField(

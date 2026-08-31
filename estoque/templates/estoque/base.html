@@ -51,20 +51,20 @@
                 <i class="bi bi-box-seam"></i>
                 <span class="app-sidebar-label">{% trans "Gerenciador de Estoque" %}</span>
             </a>
-            <button id="appSidebarCollapse"
+            <!--button id="appSidebarCollapse"
                     class="btn btn-dark btn-icon app-sidebar-collapse"
                     type="button"
                     aria-controls="appSidebar"
                     aria-expanded="true"
                     aria-label="{% trans 'Recolher menu principal' %}">
                 <i class="bi bi-chevron-left" aria-hidden="true"></i>
-            </button>
-            <button id="appMobileSidebarClose"
+            </button-->
+            <!--button id="appMobileSidebarClose"
                     class="btn btn-dark btn-icon app-mobile-sidebar-close"
                     type="button"
                     aria-label="{% trans 'Fechar menu principal' %}">
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
+            </button-->
         </div>
 
         <div class="navbar-collapse app-sidebar-nav"
@@ -890,6 +890,14 @@
         aplicarEstado();
     });
 
+    function recolherDesktop() {
+        if (!desktop.matches || body.classList.contains('app-sidebar-collapsed')) return;
+        fecharDropdowns();
+        body.classList.add('app-sidebar-collapsed');
+        guardarRecolhida(true);
+        aplicarEstado();
+    }
+
     sidebar.addEventListener('click', function (event) {
         if (!desktop.matches || !body.classList.contains('app-sidebar-collapsed')) return;
         event.preventDefault();
@@ -901,12 +909,24 @@
 
     destinos.forEach(function (destino) {
         destino.addEventListener('click', function () {
-            fecharDropdowns();
-            if (!desktop.matches) {
+            if (desktop.matches) {
+                recolherDesktop();
+            } else {
+                fecharDropdowns();
                 body.classList.remove('app-sidebar-open');
                 aplicarEstado();
             }
         });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (
+            desktop.matches
+            && !sidebar.contains(event.target)
+            && !body.classList.contains('app-sidebar-collapsed')
+        ) {
+            recolherDesktop();
+        }
     });
 
     function abrirMobile() {
@@ -1109,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     window.addEventListener('focus', limparDestaque);
 
-    function toast(evento) {
+    function obterAreaToast() {
         let area = document.getElementById('chamados-toast-area');
         if (!area) {
             area = document.createElement('div');
@@ -1118,6 +1138,11 @@ document.addEventListener('DOMContentLoaded', function() {
             area.style.zIndex = '1085';
             document.body.appendChild(area);
         }
+        return area;
+    }
+
+    function toast(evento) {
+        const area = obterAreaToast();
         const item = document.createElement('a');
         item.href = evento.url;
         item.className = 'toast show text-decoration-none border-0 shadow mb-2';
@@ -1146,6 +1171,52 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function () { item.remove(); }, 12000);
     }
 
+    function mostrarNovoChamado(evento) {
+        const area = obterAreaToast();
+        const item = document.createElement('div');
+        item.className = 'toast show border-0 shadow mb-2 overflow-hidden';
+        item.setAttribute('role', 'alert');
+        item.setAttribute('aria-live', 'assertive');
+        item.setAttribute('aria-atomic', 'true');
+        item.dataset.chamadoEventoId = evento.id;
+
+        const cabecalho = document.createElement('div');
+        cabecalho.className = 'toast-header bg-primary text-white border-0';
+        const icone = document.createElement('i');
+        icone.className = 'bi bi-bell-fill me-2';
+        icone.setAttribute('aria-hidden', 'true');
+        const tituloCabecalho = document.createElement('strong');
+        tituloCabecalho.className = 'me-auto';
+        tituloCabecalho.textContent = '{% trans "Novo chamado" %}';
+        const protocolo = document.createElement('small');
+        protocolo.className = 'me-2';
+        protocolo.textContent = evento.protocolo || 'CHAMADO';
+        const fechar = document.createElement('button');
+        fechar.type = 'button';
+        fechar.className = 'btn-close btn-close-white';
+        fechar.setAttribute('aria-label', '{% trans "Fechar aviso" %}');
+        cabecalho.append(icone, tituloCabecalho, protocolo, fechar);
+
+        const corpo = document.createElement('div');
+        corpo.className = 'toast-body p-3';
+        const tituloChamado = document.createElement('div');
+        tituloChamado.className = 'fw-semibold mb-1';
+        tituloChamado.textContent = evento.titulo || '{% trans "Novo chamado aguardando atendimento" %}';
+        const contexto = document.createElement('div');
+        contexto.className = 'small text-secondary mb-3';
+        contexto.textContent = [evento.base, evento.prioridade].filter(Boolean).join(' · ');
+        const abrir = document.createElement('a');
+        abrir.href = evento.url;
+        abrir.className = 'btn btn-primary btn-sm w-100';
+        abrir.innerHTML = '<i class="bi bi-headset me-1" aria-hidden="true"></i>{% trans "Abrir chamado" %}';
+        corpo.append(tituloChamado, contexto, abrir);
+        item.append(cabecalho, corpo);
+
+        fechar.addEventListener('click', function () { item.remove(); });
+        area.appendChild(item);
+        setTimeout(function () { item.remove(); }, 30000);
+    }
+
     function atualizarBadge(evento) {
         if (evento.tipo !== 'ABERTURA') return;
         const badge = document.getElementById('chamados-badge');
@@ -1154,36 +1225,116 @@ document.addEventListener('DOMContentLoaded', function() {
         badge.classList.remove('d-none');
     }
 
+    function notificarNavegador(evento) {
+        if (
+            !('Notification' in window)
+            || Notification.permission !== 'granted'
+            || (!document.hidden && document.hasFocus())
+        ) return;
+        try {
+            const autor = evento.autor ? `${evento.autor}: ` : '';
+            const notificacao = new Notification(evento.protocolo, {
+                body: `${autor}${evento.descricao}`,
+                icon: '{% static "images/favicon.svg" %}',
+                tag: `chamado-${evento.id}`,
+                renotify: true,
+                silent: false,
+            });
+            notificacao.onclick = function () {
+                window.focus();
+                window.location.href = evento.url;
+                notificacao.close();
+            };
+        } catch (e) {}
+    }
+
+    function adquirirDestaqueAvaliacao(evento) {
+        const chave = `chamado-avaliacao-evento-${evento.id}`;
+        try {
+            if (sessionStorage.getItem(chave)) return false;
+            sessionStorage.setItem(chave, '1');
+        } catch (e) {}
+        return true;
+    }
+
+    function mostrarSolicitacaoAvaliacao(evento) {
+        let elemento = document.getElementById('chamado-avaliacao-global-modal');
+        if (!elemento) {
+            elemento = document.createElement('div');
+            elemento.id = 'chamado-avaliacao-global-modal';
+            elemento.className = 'modal fade';
+            elemento.tabIndex = -1;
+            elemento.setAttribute('aria-labelledby', 'chamado-avaliacao-global-titulo');
+            elemento.setAttribute('aria-hidden', 'true');
+            elemento.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 rounded-4 shadow">
+                        <div class="modal-header border-0 pb-0">
+                            <h2 id="chamado-avaliacao-global-titulo" class="modal-title fs-5">
+                                <i class="bi bi-check-circle-fill text-success me-1" aria-hidden="true"></i>
+                                {% trans "Atendimento concluído" %}
+                            </h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Agora não' %}"></button>
+                        </div>
+                        <div class="modal-body pt-3">
+                            <div class="small fw-bold text-secondary text-uppercase" data-avaliacao-protocolo></div>
+                            <p class="mb-0 mt-2">{% trans "Seu atendimento foi concluído e está aguardando sua avaliação." %}</p>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Agora não" %}</button>
+                            <a class="btn btn-primary" data-avaliacao-url>
+                                <i class="bi bi-star me-1" aria-hidden="true"></i>
+                                {% trans "Avaliar atendimento" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(elemento);
+        }
+        elemento.querySelector('[data-avaliacao-protocolo]').textContent = evento.protocolo || 'CHAMADO';
+        elemento.querySelector('[data-avaliacao-url]').href = evento.url;
+        bootstrap.Modal.getOrCreateInstance(elemento).show();
+    }
+
+    function tratarSolicitacaoAvaliacao(evento) {
+        if (!adquirirDestaqueAvaliacao(evento)) return;
+        tocar();
+        destacarTitulo(evento);
+        notificarNavegador(evento);
+        let caminhoChamado = evento.url;
+        try { caminhoChamado = new URL(evento.url, window.location.origin).pathname; } catch (e) {}
+        if (window.location.pathname === caminhoChamado) {
+            window.location.reload();
+            return;
+        }
+        mostrarSolicitacaoAvaliacao(evento);
+    }
+
     function alertar(evento) {
         atualizarBadge(evento);
         if (Number(evento.autor_id) === usuarioAtualId) return;
+        if (
+            evento.tipo === 'RESOLUCAO'
+            && Number(evento.solicitante_id) === usuarioAtualId
+        ) {
+            tratarSolicitacaoAvaliacao(evento);
+            return;
+        }
+        if (evento.tipo === 'ABERTURA') {
+            if (!adquirirAlerta(evento)) return;
+            mostrarNovoChamado(evento);
+            tocar();
+            destacarTitulo(evento);
+            notificarNavegador(evento);
+            return;
+        }
         const naConversa = estaNaConversa(evento);
         if (!naConversa) toast(evento);
         if (!adquirirAlerta(evento)) return;
         tocar();
         if (naConversa) return;
         destacarTitulo(evento);
-        if (
-            'Notification' in window
-            && Notification.permission === 'granted'
-            && (document.hidden || !document.hasFocus())
-        ) {
-            try {
-                const autor = evento.autor ? `${evento.autor}: ` : '';
-                const notificacao = new Notification(evento.protocolo, {
-                    body: `${autor}${evento.descricao}`,
-                    icon: '{% static "images/favicon.svg" %}',
-                    tag: `chamado-${evento.id}`,
-                    renotify: true,
-                    silent: false,
-                });
-                notificacao.onclick = function () {
-                    window.focus();
-                    window.location.href = evento.url;
-                    notificacao.close();
-                };
-            } catch (e) {}
-        }
+        notificarNavegador(evento);
     }
 
     function conectarPresenca() {

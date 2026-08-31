@@ -66,17 +66,20 @@ class UIConsolidationTests(TestCase):
                 self.assertNotContains(resposta, 'class="top-navbar app-topbar"')
                 self.assertNotContains(resposta, 'id="perfilDropdown"')
 
-    def test_navegacao_nao_recolhe_sidebar_no_desktop_e_fecha_no_mobile(self):
+    def test_navegacao_recolhe_sidebar_no_desktop_e_fecha_no_mobile(self):
         conteudo = self.client.get(reverse('estoque:index')).content.decode()
         inicio = conteudo.index('destinos.forEach(function (destino)')
         fim = conteudo.index('function abrirMobile()', inicio)
         bloco_destinos = conteudo[inicio:fim]
 
-        self.assertNotIn("body.classList.add('app-sidebar-collapsed')", bloco_destinos)
-        self.assertNotIn('guardarRecolhida(true)', bloco_destinos)
-        self.assertIn('if (!desktop.matches)', bloco_destinos)
+        self.assertIn('if (desktop.matches)', bloco_destinos)
+        self.assertIn('recolherDesktop()', bloco_destinos)
         self.assertIn("body.classList.remove('app-sidebar-open')", bloco_destinos)
         self.assertIn('aplicarEstado()', bloco_destinos)
+        self.assertIn('function recolherDesktop()', conteudo)
+        self.assertIn("body.classList.add('app-sidebar-collapsed')", conteudo)
+        self.assertIn('guardarRecolhida(true)', conteudo)
+        self.assertIn("!sidebar.contains(event.target)", conteudo)
 
         self.assertIn(
             "body.classList.toggle('app-sidebar-collapsed', recolher)",
@@ -115,6 +118,19 @@ class UIConsolidationTests(TestCase):
         tocar = conteudo.index('tocar();', conteudo.index('function alertar(evento)'))
         retorno = conteudo.index('if (naConversa) return;', tocar)
         self.assertLess(tocar, retorno)
+
+    def test_abertura_de_chamado_tem_aviso_visual_prioritario_e_som(self):
+        conteudo = self.client.get(reverse('estoque:index')).content.decode()
+        inicio = conteudo.index("if (evento.tipo === 'ABERTURA')")
+        fim = conteudo.index('const naConversa', inicio)
+        bloco = conteudo[inicio:fim]
+
+        self.assertIn('mostrarNovoChamado(evento)', bloco)
+        self.assertIn('tocar()', bloco)
+        self.assertIn('notificarNavegador(evento)', bloco)
+        self.assertIn('function mostrarNovoChamado(evento)', conteudo)
+        self.assertIn("item.setAttribute('aria-live', 'assertive')", conteudo)
+        self.assertIn("abrir.className = 'btn btn-primary btn-sm w-100'", conteudo)
 
     def test_cadastro_de_equipamento_reabre_o_formulario_limpo(self):
         produto = Produto.objects.create(
