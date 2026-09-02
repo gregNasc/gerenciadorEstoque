@@ -522,7 +522,9 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertIsInstance(adicionar.call_args.kwargs['anexo'], TemporaryUploadedFile)
 
     def test_rotas_de_lista_dashboard_e_exportacao_respeitam_perfis(self):
-        self.abrir()
+        from openpyxl import load_workbook
+
+        chamado = self.abrir()
         self.client.force_login(self.solicitante)
         self.assertEqual(self.client.get(reverse('chamados:lista')).status_code, 200)
         self.assertEqual(self.client.get(reverse('chamados:dashboard')).status_code, 403)
@@ -535,6 +537,27 @@ class ChamadosIntegracaoTests(TestCase):
             response['Content-Type'],
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
+        arquivo = BytesIO(b''.join(response.streaming_content))
+        workbook = load_workbook(arquivo, read_only=True)
+        planilha = workbook.active
+        cabecalho, linha = planilha.iter_rows(values_only=True)
+        self.assertEqual(cabecalho[2:4], ('SIGLA DA LOJA', 'NÚMERO DA LOJA'))
+        self.assertEqual(linha[2:4], (self.cliente.sigla, chamado.loja))
+        workbook.close()
+
+    def test_dashboard_usa_tipo_do_equipamento_quando_categoria_de_suporte_esta_vazia(self):
+        chamado = self.abrir()
+        chamado.categoria = None
+        chamado.save(update_fields=['categoria'])
+        self.client.force_login(self.admin)
+
+        response = self.client.get(
+            reverse('chamados:dashboard'),
+            {'periodo': '30d'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '"tipo_suporte": "Routers"')
 
     def test_solicitante_fecha_chamado_resolvido(self):
         chamado = self.abrir()

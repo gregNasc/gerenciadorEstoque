@@ -206,6 +206,46 @@ class ToryPortalRoutingTests(TestCase):
         self.assertNotEqual(result.intencao, "portal_tempo_real")
         interpret.assert_not_called()
 
+    @override_settings(
+        TORY_LLM_ENABLED=True,
+        OPENAI_API_KEY="test",
+        TORY_LLM_MIN_CONFIDENCE=0.78,
+    )
+    @patch("estoque.services.portal_question_interpreter.PortalQuestionInterpreter.interpret")
+    def test_semantic_plan_corrects_intent_when_question_is_indirect(self, interpret):
+        interpret.return_value = PortalQuestionPlan(
+            intent="transferencias",
+            confidence=0.94,
+            is_portal_query=False,
+        )
+
+        result = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "Quero saber para onde aquele lote de aparelhos foi enviado",
+        )
+
+        self.assertEqual(result.intencao, "transferencias")
+
+    @override_settings(
+        TORY_LLM_ENABLED=True,
+        OPENAI_API_KEY="test",
+        TORY_LLM_MIN_CONFIDENCE=0.78,
+    )
+    @patch("estoque.services.portal_question_interpreter.PortalQuestionInterpreter.interpret")
+    def test_semantic_plan_with_low_confidence_keeps_local_interpretation(self, interpret):
+        interpret.return_value = PortalQuestionPlan(
+            intent="transferencias",
+            confidence=0.35,
+            is_portal_query=False,
+        )
+
+        result = AssistenteOperacionalService.interpretar(
+            self.admin,
+            "Mostre os indicadores gerais",
+        )
+
+        self.assertEqual(result.intencao, "indicadores")
+
 
 @override_settings(
     INVENTORY_PORTAL_ENABLED=True,

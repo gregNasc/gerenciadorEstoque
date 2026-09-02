@@ -19,6 +19,9 @@ class PortalQuestionInterpreterTests(SimpleTestCase):
         def handler(request):
             captured.update(json.loads(request.content))
             result = {
+                "intent": "portal_tempo_real",
+                "confidence": 0.96,
+                "is_follow_up": False,
                 "is_portal_query": True,
                 "status": "in_progress",
                 "client_code": "OXX",
@@ -46,12 +49,37 @@ class PortalQuestionInterpreterTests(SimpleTestCase):
         )
 
         self.assertTrue(plan.is_portal_query)
+        self.assertEqual(plan.intent, "portal_tempo_real")
+        self.assertGreater(plan.confidence, 0.9)
         self.assertEqual(plan.status, "in_progress")
         self.assertEqual(plan.store_number, "58")
         self.assertIn("divergences", plan.metrics)
         self.assertFalse(captured["store"])
         self.assertEqual(captured["text"]["format"]["type"], "json_schema")
         self.assertTrue(captured["text"]["format"]["strict"])
+        self.assertIn("intent", captured["text"]["format"]["schema"]["required"])
+
+    def test_validates_general_intent_and_confidence(self):
+        payload = {
+            "intent": "equipamentos",
+            "confidence": 2,
+            "is_follow_up": True,
+            "is_portal_query": False,
+            "status": "invalid",
+            "client_code": "",
+            "store_number": "",
+            "start_date": None,
+            "end_date": None,
+            "metrics": ["invalid"],
+        }
+
+        plan = PortalQuestionInterpreter._validate(payload)
+
+        self.assertEqual(plan.intent, "equipamentos")
+        self.assertEqual(plan.confidence, 1)
+        self.assertTrue(plan.is_follow_up)
+        self.assertFalse(plan.is_portal_query)
+        self.assertEqual(plan.status, "any")
 
     def test_failure_falls_back_without_exposing_exception(self):
         def handler(request):

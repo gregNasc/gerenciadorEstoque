@@ -279,7 +279,7 @@
 
   .chamado-chat__item {
     width: fit-content;
-    max-width: min(78%, 680px);
+    max-width: min(72%, 680px);
   }
 
   .chat-bubble {
@@ -308,17 +308,23 @@
     margin-bottom: .25rem;
   }
 
+  .chat-row--proprio .chat-meta {
+    flex-direction: row-reverse;
+  }
+
   .chat-avatar {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2rem;
+    height: 2rem;
     flex-shrink: 0;
     border-radius: 50%;
     background: var(--ch-soft-2);
     color: #64748b;
     font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
   }
 
   .chat-author {
@@ -330,6 +336,11 @@
     margin-left: auto;
     color: var(--ch-muted);
     font-size: .65rem;
+  }
+
+  .chat-row--proprio .chat-time {
+    margin-right: auto;
+    margin-left: 0;
   }
 
   .chat-text {
@@ -393,15 +404,18 @@
 
   .composer-box.is-internal {
     border-color: #d8c28f;
-    background: var(--warning-soft);
+    background: var(--ch-warning-soft);
   }
 
+  .chat-day-divider { display:flex; align-items:center; gap:.75rem; margin:1rem 0; color:var(--ch-muted); font-size:.65rem; font-weight:650; }
+  .chat-day-divider::before,.chat-day-divider::after { content:""; height:1px; flex:1; background:#e4e9f0; }
+
   .composer-box.is-internal textarea {
-    background: var(--warning-soft) !important;
+    background: var(--ch-warning-soft) !important;
   }
 
   .composer-internal-notice {
-    color: var(--warning-dark);
+    color: #8a5d00;
     font-size: .76rem;
     font-weight: 650;
   }
@@ -432,6 +446,11 @@
     color: var(--ch-muted);
     font-size: .68rem;
   }
+
+  .composer-file input[type="file"] { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); }
+  .composer-file-label { display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .5rem; border-radius:.5rem; color:#475467; cursor:pointer; font-size:.74rem; font-weight:600; }
+  .composer-file-label:hover { background:var(--ch-soft); color:var(--bs-primary); }
+  .composer-file-name { max-width:180px; color:var(--ch-muted); font-size:.68rem; }
 
   /*SIDEBAR*/
 
@@ -469,6 +488,50 @@
 
   .sidebar-card-body {
     padding: .85rem .9rem;
+  }
+
+  .context-tabs { margin-bottom:.75rem; overflow:hidden; border:1px solid var(--ch-border); border-radius:.9rem; background:#fff; }
+  .context-tabs .nav { padding:.35rem .4rem 0; border-bottom:1px solid var(--ch-border-soft); flex-wrap:nowrap; }
+  .context-tabs .nav-link { flex:1; padding:.65rem .45rem; border:0; border-bottom:2px solid transparent; border-radius:0; color:var(--ch-muted); font-size:.72rem; font-weight:650; white-space:nowrap; }
+  .context-tabs .nav-link:hover { color:var(--bs-primary); }
+  .context-tabs .nav-link.active { border-bottom-color:var(--bs-primary); background:transparent; color:var(--bs-primary); }
+  .context-tabs .chamado-sidebar-card { border:0; border-radius:0; box-shadow:none; }
+  .context-tabs .sidebar-card-header { padding-top:.95rem; }
+  .equipment-summary { display:grid; grid-template-columns:5.25rem minmax(0,1fr); gap:.75rem; align-items:center; margin-bottom:.9rem; padding:.75rem; border:1px solid var(--ch-border-soft); border-radius:.75rem; background:#fbfcfe; }
+  .equipment-summary__media { display:grid; place-items:center; width:5.25rem; height:4.5rem; overflow:hidden; border:1px solid #e8edf3; border-radius:.65rem; background:#fff; }
+  .equipment-summary__image { width:100%; height:100%; padding:.35rem; object-fit:contain; }
+  .equipment-summary__fallback { display:grid; place-items:center; width:100%; height:100%; color:#94a3b8; font-size:1.55rem; }
+  .equipment-summary__name { color:#344054; font-size:.76rem; font-weight:700; line-height:1.35; }
+  .equipment-summary__model { margin-top:.18rem; color:var(--ch-muted); font-size:.66rem; line-height:1.35; }
+  .equipment-summary__source { display:inline-flex; align-items:center; gap:.25rem; margin-top:.35rem; color:var(--bs-primary); font-size:.61rem; text-decoration:none; }
+  .equipment-summary__source:hover { text-decoration:underline; }
+  .timeline { position:relative; padding-left:.4rem; }
+  .timeline::before { content:""; position:absolute; top:.75rem; bottom:.75rem; left:.77rem; width:1px; background:#dbe4f0; }
+  .timeline-item { position:relative; display:grid; grid-template-columns:1.5rem 3.4rem 1fr; gap:.45rem; padding:.45rem 0; }
+  .timeline-dot { position:relative; z-index:1; width:.75rem; height:.75rem; margin:.22rem 0 0 .01rem; border:2px solid #fff; border-radius:50%; background:var(--bs-primary); box-shadow:0 0 0 2px #bfdbfe; }
+  .timeline-time { color:var(--ch-muted); font-size:.65rem; }
+  .timeline-title { color:#344054; font-size:.74rem; font-weight:650; line-height:1.35; }
+  .timeline-user { margin-top:.1rem; color:var(--ch-muted); font-size:.65rem; }
+  .doc-intro { padding:.75rem; border-radius:.65rem; background:#f7f9fc; color:var(--ch-muted); font-size:.7rem; line-height:1.45; }
+  .doc-item { padding:.75rem; border:1px solid var(--ch-border-soft); border-radius:.7rem; }
+  .doc-item__type { color:var(--bs-primary); font-size:.64rem; font-weight:700; letter-spacing:.035em; text-transform:uppercase; }
+  .doc-item__title { margin-top:.2rem; color:#344054; font-size:.76rem; font-weight:650; line-height:1.35; }
+  .resolution-card { border-color:#b7e4c7; background:var(--ch-success-soft); }
+  .resolution-card .sidebar-card-header { background:transparent; }
+  .next-action { margin:0 0 .75rem; padding:.8rem .9rem; border:1px solid #cfe2ff; border-radius:.8rem; background:var(--ch-primary-soft); }
+  .next-action__label { color:var(--bs-primary); font-size:.67rem; font-weight:700; letter-spacing:.035em; text-transform:uppercase; }
+  .next-action__text { margin-top:.2rem; color:#344054; font-size:.76rem; font-weight:600; }
+
+  @media (min-width: 1200px) {
+    .chamado-detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 72fr) minmax(18rem, 28fr);
+    }
+
+    .chamado-detail-layout > .chamado-main-column,
+    .chamado-detail-layout > .chamado-context-column {
+      width: auto;
+    }
   }
 
   /*INFO GRID*/
@@ -887,14 +950,14 @@
 
         <span class="chamado-pill chamado-pill--danger">
           <i class="bi bi-clock-history"></i>
-          {% trans "SLA vencido" %}
+          {% trans "Tempo de Suporte vencido" %}
         </span>
 
       {% elif chamado.prazo_sla_em %}
 
         <span class="chamado-pill">
           <i class="bi bi-clock"></i>
-          {% trans "SLA" %} {{ chamado.prazo_sla_em|date:'d/m H:i' }}
+          {% trans "Tempo de Suporte" %} · {{ chamado.prazo_sla_em|date:'d/m H:i' }}
         </span>
 
       {% endif %}
@@ -969,13 +1032,13 @@
   {% endif %}
 
 
-  <div class="row g-3">
+  <div class="row g-3 chamado-detail-layout">
 
     <!-- =================================================
          PRINCIPAL
          ================================================= -->
 
-    <div class="col-xl-8">
+    <div class="col-xl-9 chamado-main-column">
 
       <!-- DESCRIÇÃO -->
       <section class="descricao-panel">
@@ -1074,8 +1137,12 @@
 
           {% for item in mensagens_chamado %}
 
+            {% ifchanged item.criado_em|date:'Y-m-d' %}
+              <div class="chat-day-divider"><time datetime="{{ item.criado_em|date:'Y-m-d' }}">{{ item.criado_em|date:'d \d\e F \d\e Y' }}</time></div>
+            {% endifchanged %}
+
             <div
-              class="chat-row {% if item.autor_id == request.user.id %}chat-row--proprio{% endif %}"
+              class="chat-row {% if item.autor_id != chamado.aberto_por_id %}chat-row--proprio{% endif %}"
               data-mensagem-id="{{ item.pk }}"
             >
 
@@ -1091,7 +1158,7 @@
                   {% if item.nota_interna %}
                     <div class="chat-internal-label">
                       <i class="bi bi-lock-fill"></i>
-                      {% trans "Nota interna" %}
+                      {% trans "Nota interna · visível somente para atendentes" %}
                     </div>
                   {% endif %}
 
@@ -1099,7 +1166,7 @@
                   <div class="chat-meta">
 
                     <span class="chat-avatar">
-                      <i class="bi bi-person"></i>
+                      {% if item.autor.first_name %}{{ item.autor.first_name|slice:":1" }}{{ item.autor.last_name|slice:":1" }}{% else %}{{ item.autor.username|slice:":2" }}{% endif %}
                     </span>
 
                     <span class="chat-author">
@@ -1153,18 +1220,28 @@
             enctype="multipart/form-data"
             action="{% url 'chamados:mensagem' chamado.pk %}"
             data-ws-path="/ws/chamados/{{ chamado.pk }}/"
-            data-user-id="{{ request.user.id }}"
+            data-solicitante-id="{{ chamado.aberto_por_id }}"
           >
 
             {% csrf_token %}
 
             <div class="composer-box">
 
+              <label class="visually-hidden" for="{{ mensagem_form.texto.id_for_label }}">{% trans "Mensagem" %}</label>
               {{ mensagem_form.texto }}
 
               <div class="composer-footer">
 
                 <div class="d-flex flex-wrap align-items-center gap-3">
+
+                  <div class="composer-file">
+                    {{ mensagem_form.anexo }}
+                    <label class="composer-file-label" for="{{ mensagem_form.anexo.id_for_label }}">
+                      <i class="bi bi-paperclip" aria-hidden="true"></i>
+                      {% trans "Anexar" %}
+                    </label>
+                    <span id="composer-file-name" class="composer-file-name text-truncate" aria-live="polite"></span>
+                  </div>
 
                   {% if pode_atender %}
                     <div class="form-check mb-0">
@@ -1214,9 +1291,18 @@
          SIDEBAR
          ================================================= -->
 
-    <div class="col-xl-4">
+    <div class="col-xl-3 chamado-context-column">
 
       <aside class="chamado-sidebar">
+
+        <section class="context-tabs" aria-label="{% trans 'Informações contextuais do chamado' %}">
+          <nav class="nav nav-tabs" role="tablist">
+            <button class="nav-link active" id="tab-detalhes" data-bs-toggle="tab" data-bs-target="#painel-detalhes" type="button" role="tab" aria-controls="painel-detalhes" aria-selected="true">{% trans "Detalhes" %}</button>
+            <button class="nav-link" id="tab-eventos" data-bs-toggle="tab" data-bs-target="#painel-eventos" type="button" role="tab" aria-controls="painel-eventos" aria-selected="false">{% trans "Eventos" %}</button>
+            <button class="nav-link" id="tab-documentos" data-bs-toggle="tab" data-bs-target="#painel-documentos" type="button" role="tab" aria-controls="painel-documentos" aria-selected="false">{% trans "Docs" %}{% if documentacao_contextual %} <span class="badge rounded-pill bg-light text-primary border ms-1">{{ documentacao_contextual|length }}</span>{% endif %}</button>
+          </nav>
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="painel-detalhes" role="tabpanel" aria-labelledby="tab-detalhes" tabindex="0">
 
         <!-- INFORMAÇÕES -->
         <section class="chamado-sidebar-card">
@@ -1229,6 +1315,38 @@
           </div>
 
           <div class="sidebar-card-body">
+
+            {% if chamado.equipamento %}
+              <div class="equipment-summary">
+                <div class="equipment-summary__media">
+                  {% if equipamento_imagem %}
+                    <img
+                      class="equipment-summary__image"
+                      src="{{ equipamento_imagem.url }}"
+                      alt="{{ equipamento_imagem.alt }}"
+                      loading="lazy"
+                      referrerpolicy="no-referrer"
+                      onerror="this.hidden=true;this.nextElementSibling.hidden=false"
+                    >
+                    <span class="equipment-summary__fallback" hidden aria-hidden="true"><i class="bi bi-pc-display"></i></span>
+                  {% else %}
+                    <span class="equipment-summary__fallback" aria-hidden="true"><i class="bi bi-pc-display"></i></span>
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="equipment-summary__name">{{ chamado.equipamento.produto.descricao|default:chamado.equipamento }}</div>
+                  {% if chamado.equipamento.produto.fabricante or chamado.equipamento.produto.modelo %}
+                    <div class="equipment-summary__model">{{ chamado.equipamento.produto.fabricante }}{% if chamado.equipamento.produto.fabricante and chamado.equipamento.produto.modelo %} · {% endif %}{{ chamado.equipamento.produto.modelo }}</div>
+                  {% endif %}
+                  {% if equipamento_imagem %}
+                    <a class="equipment-summary__source" href="{{ equipamento_imagem.source_url }}" target="_blank" rel="noopener noreferrer">
+                      {% if equipamento_imagem.illustrative %}{% trans "Imagem ilustrativa" %}{% else %}{% trans "Foto do modelo" %}{% endif %}
+                      <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                    </a>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
 
             <div class="info-grid">
 
@@ -1345,7 +1463,7 @@
 
               <div class="info-row">
                 <div class="info-label">
-                  {% trans "SLA" %}
+                  {% trans "Tempo de Suporte" %}
                 </div>
 
                 <div class="info-value">
@@ -1370,42 +1488,61 @@
           </div>
 
         </section>
+            </div>
 
-        {% if documentacao_contextual %}
-        <section class="chamado-sidebar-card">
-          <div class="sidebar-card-header">
-            <div class="sidebar-card-title">
-              <i class="bi bi-journal-bookmark"></i>
-              {% trans "Documentação do equipamento" %}
-            </div>
-          </div>
-          <div class="sidebar-card-body">
-            <div class="alert alert-light border small mb-3">
-              {% trans "Sugestões vinculadas ao modelo. Confirme o diagnóstico antes de aplicar um procedimento." %}
-            </div>
-            <div class="d-grid gap-2">
-              {% for documento in documentacao_contextual %}
-              <div class="border rounded p-3">
-                <span class="badge text-bg-secondary mb-2">{{ documento.tipo_label }}</span>
-                <div class="fw-semibold small mb-2">{{ documento.titulo }}</div>
-                <div class="d-flex flex-wrap gap-2">
-                  {% if documento.arquivo_disponivel %}
-                  <a class="btn btn-primary btn-sm" href="{{ documento.arquivo_url }}" target="_blank" rel="noopener noreferrer">
-                    <i class="bi bi-file-earmark-text me-1"></i>{% trans "Abrir" %}
-                  </a>
-                  {% endif %}
-                  {% if documento.fonte_url %}
-                  <a class="btn btn-outline-secondary btn-sm" href="{{ documento.fonte_url }}" target="_blank" rel="noopener noreferrer">
-                    <i class="bi bi-box-arrow-up-right me-1"></i>{% trans "Fonte oficial" %}
-                  </a>
-                  {% endif %}
+            <div class="tab-pane fade" id="painel-eventos" role="tabpanel" aria-labelledby="tab-eventos" tabindex="0">
+              <section class="chamado-sidebar-card">
+                <div class="sidebar-card-header"><div class="sidebar-card-title"><i class="bi bi-clock-history"></i>{% trans "Linha do tempo" %}</div></div>
+                <div class="sidebar-card-body">
+                  <div class="timeline">
+                    {% for evento in chamado.eventos.all %}
+                    <div class="timeline-item">
+                      <span class="timeline-dot" aria-hidden="true"></span>
+                      <time class="timeline-time" datetime="{{ evento.criado_em|date:'c' }}">{{ evento.criado_em|date:'d/m' }}<br>{{ evento.criado_em|date:'H:i' }}</time>
+                      <div><div class="timeline-title">{{ evento.descricao }}</div><div class="timeline-user">{{ evento.usuario.get_full_name|default:evento.usuario.username }}</div></div>
+                    </div>
+                    {% empty %}<div class="text-center text-secondary small py-4">{% trans "Nenhum evento registrado." %}</div>{% endfor %}
+                  </div>
                 </div>
-              </div>
-              {% endfor %}
+              </section>
+            </div>
+
+            <div class="tab-pane fade" id="painel-documentos" role="tabpanel" aria-labelledby="tab-documentos" tabindex="0">
+              <section class="chamado-sidebar-card">
+                <div class="sidebar-card-header"><div class="sidebar-card-title"><i class="bi bi-journal-bookmark"></i>{% trans "Documentação do equipamento" %}</div></div>
+                <div class="sidebar-card-body">
+                  <div class="doc-intro mb-3">{% trans "Material relacionado ao equipamento deste chamado. Confirme o diagnóstico antes de aplicar o procedimento." %}</div>
+                  {% if documentacao_contextual %}<div class="d-grid gap-2">
+                    {% for documento in documentacao_contextual %}<article class="doc-item">
+                      <div class="doc-item__type"><i class="bi {% if 'vídeo' in documento.tipo_label|lower %}bi-play-circle{% elif 'manual' in documento.tipo_label|lower %}bi-book{% elif 'driver' in documento.tipo_label|lower %}bi-download{% else %}bi-file-earmark-text{% endif %} me-1" aria-hidden="true"></i>{{ documento.tipo_label }}</div>
+                      <div class="doc-item__title">{{ documento.titulo }}</div>
+                      <div class="d-flex flex-wrap gap-2 mt-2">
+                        {% if documento.arquivo_disponivel %}<a class="btn btn-primary btn-sm" href="{{ documento.arquivo_url }}" target="_blank" rel="noopener noreferrer">{% trans "Abrir" %} <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>{% endif %}
+                        {% if documento.fonte_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ documento.fonte_url }}" target="_blank" rel="noopener noreferrer">{% trans "Fonte oficial" %}</a>{% endif %}
+                      </div>
+                    </article>{% endfor %}
+                  </div>{% else %}<div class="text-center text-secondary small py-4"><i class="bi bi-journal-x d-block fs-4 opacity-50 mb-2" aria-hidden="true"></i>{% trans "Nenhuma documentação contextual disponível." %}</div>{% endif %}
+                </div>
+              </section>
             </div>
           </div>
         </section>
-        {% endif %}
+
+
+        <section class="next-action" aria-labelledby="proxima-acao-titulo">
+          <div id="proxima-acao-titulo" class="next-action__label"><i class="bi bi-bullseye me-1" aria-hidden="true"></i>{% trans "Próxima ação" %}</div>
+          <div class="next-action__text">
+            {% if chamado.status == 'AGUARDANDO_ATENDIMENTO' or chamado.status == 'ABERTO' or chamado.status == 'REABERTO' %}{% trans "O atendimento precisa ser assumido pela equipe." %}
+            {% elif chamado.status == 'AGUARDANDO_SOLICITANTE' %}{% trans "Aguardando resposta do solicitante." %}
+            {% elif chamado.status == 'AGUARDANDO_TERCEIRO' %}{% trans "Aguardando retorno de terceiro." %}
+            {% elif chamado.status == 'AVALIACAO' %}{% trans "Aguardando avaliação do solicitante." %}
+            {% elif chamado.status == 'EM_ATENDIMENTO' %}{% trans "Dar continuidade ao diagnóstico e registrar a solução." %}
+            {% elif chamado.status == 'RESOLVIDO' %}{% trans "Atendimento resolvido; acompanhe a conclusão." %}
+            {% elif chamado.status == 'ENCERRADO' %}{% trans "Atendimento concluído." %}
+            {% elif chamado.status == 'CANCELADO' %}{% trans "Nenhuma ação pendente: chamado cancelado." %}
+            {% else %}{% trans "Acompanhe a evolução deste atendimento." %}{% endif %}
+          </div>
+        </section>
 
 
         <!-- ATUALIZAR STATUS -->
@@ -1624,12 +1761,12 @@
         <!-- RESOLUÇÃO -->
         {% if chamado.resolucao %}
 
-          <section class="chamado-sidebar-card">
+          <section class="chamado-sidebar-card resolution-card">
 
             <div class="sidebar-card-header">
               <div class="sidebar-card-title">
                 <i class="bi bi-check-circle text-success"></i>
-                {% trans "Resolução" %}
+                {% trans "Resumo da solução" %}
               </div>
             </div>
 
@@ -2066,14 +2203,19 @@ document.addEventListener('DOMContentLoaded', function () {
       `${scheme}://${window.location.host}${form.dataset.wsPath}`
     );
 
-  const userId =
-    Number(form.dataset.userId);
+  const solicitanteId =
+    Number(form.dataset.solicitanteId);
 
   const texto =
     form.querySelector('[name="texto"]');
 
+  if (texto) texto.placeholder = '{% trans "Digite sua mensagem..." %}';
+
   const anexo =
     form.querySelector('[name="anexo"]');
+
+  const anexoNome =
+    document.getElementById('composer-file-name');
 
   const notaInterna =
     form.querySelector('[name="nota_interna"]');
@@ -2093,6 +2235,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
   notaInterna?.addEventListener('change', atualizarModoNotaInterna);
   atualizarModoNotaInterna();
+
+  anexo?.addEventListener('change', function () {
+    if (anexoNome) anexoNome.textContent = anexo.files[0]?.name || '';
+  });
+
+  function ajustarTextarea() {
+    if (!texto) return;
+    texto.style.height = 'auto';
+    texto.style.height = `${Math.min(texto.scrollHeight, 220)}px`;
+  }
+
+  texto?.addEventListener('input', ajustarTextarea);
+  ajustarTextarea();
 
 
   function mudarStatus(rotulo, estado) {
@@ -2130,13 +2285,27 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
 
-  function rolar() {
-    lista.scrollTop =
-      lista.scrollHeight;
+  function pertoDoFim() {
+    return (
+      lista.scrollHeight
+      - lista.scrollTop
+      - lista.clientHeight
+    ) < 120;
+  }
+
+
+  function rolar(comportamento = 'auto') {
+    lista.scrollTo({
+      top: lista.scrollHeight,
+      behavior: comportamento,
+    });
   }
 
 
   function adicionar(item) {
+
+    const acompanharConversa =
+      pertoDoFim();
 
     if (
       lista.querySelector(
@@ -2163,7 +2332,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     const proprio =
-      Number(item.autor_id) === userId;
+      Number(item.autor_id) !== solicitanteId;
 
     if (proprio) {
       row.classList.add(
@@ -2201,7 +2370,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'chat-internal-label';
 
       internal.innerHTML =
-        '<i class="bi bi-lock-fill"></i> Nota interna';
+        '<i class="bi bi-lock-fill"></i> Nota interna · visível somente para atendentes';
 
       bubble.appendChild(
         internal
@@ -2222,8 +2391,13 @@ document.addEventListener('DOMContentLoaded', function () {
     avatar.className =
       'chat-avatar';
 
-    avatar.innerHTML =
-      '<i class="bi bi-person"></i>';
+    avatar.textContent = (item.autor || '?')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(function (parte) { return parte.charAt(0); })
+      .join('')
+      .toUpperCase();
 
 
     const autor =
@@ -2280,14 +2454,16 @@ document.addEventListener('DOMContentLoaded', function () {
       row
     );
 
-    rolar();
+    if (acompanharConversa) {
+      rolar('smooth');
+    }
   }
 
 
   socket.addEventListener(
     'open',
     () => mudarStatus(
-      'Online',
+      'Conectado',
       'online'
     )
   );
@@ -2296,7 +2472,7 @@ document.addEventListener('DOMContentLoaded', function () {
   socket.addEventListener(
     'close',
     () => mudarStatus(
-      'Modo formulário'
+      'Offline · envio por formulário'
     )
   );
 
@@ -2374,6 +2550,7 @@ document.addEventListener('DOMContentLoaded', function () {
       );
 
       texto.value = '';
+      ajustarTextarea();
       texto.focus();
     }
   );

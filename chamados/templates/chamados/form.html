@@ -3,239 +3,1298 @@
 
 {% block title %}{% trans "Novo chamado" %}{% endblock %}
 
+{% block extra_css %}
+<style>
+  .ticket-create {
+    --support-bg: #f7f9fc;
+    --support-card: #ffffff;
+    --support-border: #e5e9f0;
+    --support-border-soft: #eef1f5;
+    --support-muted: #667085;
+    --support-text: #1d2939;
+    --support-soft: #f8fafc;
+    --support-primary-soft: #eef4ff;
+    --support-success-soft: #edf9f1;
+    --support-warning-soft: #fff8e8;
+    --support-danger-soft: #fff1f3;
+
+    color: var(--support-text);
+  }
+
+  /* =====================================================
+     PAGE HEADER
+     ===================================================== */
+
+  .ticket-create-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .ticket-create-breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .45rem;
+    color: var(--support-muted);
+    font-size: .74rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .ticket-create-breadcrumb:hover {
+    color: var(--bs-primary);
+  }
+
+  .ticket-create-eyebrow {
+    margin-bottom: .15rem;
+    color: var(--bs-primary);
+    font-size: .7rem;
+    font-weight: 750;
+    letter-spacing: .085em;
+    text-transform: uppercase;
+  }
+
+  .ticket-create-title {
+    margin: 0;
+    font-size: 1.65rem;
+    font-weight: 750;
+    letter-spacing: -.035em;
+  }
+
+  .ticket-create-subtitle {
+    max-width: 650px;
+    margin: .4rem 0 0;
+    color: var(--support-muted);
+    font-size: .88rem;
+    line-height: 1.55;
+  }
+
+  /* =====================================================
+     MAIN LAYOUT
+     ===================================================== */
+
+  .ticket-create-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .ticket-create-main {
+    min-width: 0;
+  }
+
+  .ticket-create-sidebar {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    gap: .8rem;
+  }
+
+  /* =====================================================
+     SUPPORT SUMMARY BAR
+     ===================================================== */
+
+  .support-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+    margin-bottom: 1rem;
+    border: 1px solid var(--support-border);
+    border-radius: .9rem;
+    background: #fff;
+    box-shadow: 0 .25rem 1rem rgba(15, 23, 42, .035);
+  }
+
+  .support-summary__item {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    min-width: 0;
+    padding: .8rem .9rem;
+    border-right: 1px solid var(--support-border-soft);
+  }
+
+  .support-summary__item:last-child {
+    border-right: 0;
+  }
+
+  .support-summary__icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    border-radius: .6rem;
+    background: var(--support-primary-soft);
+    color: var(--bs-primary);
+  }
+
+  .support-summary__label {
+    color: var(--support-muted);
+    font-size: .65rem;
+    font-weight: 650;
+  }
+
+  .support-summary__value {
+    margin-top: .06rem;
+    overflow: hidden;
+    color: var(--support-text);
+    font-size: .77rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* =====================================================
+     STEP NAVIGATION
+     ===================================================== */
+
+  .create-steps {
+    display: flex;
+    align-items: stretch;
+    gap: .65rem;
+    margin-bottom: .8rem;
+  }
+
+  .create-step {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    min-width: 0;
+    flex: 1;
+    padding: .7rem .8rem;
+    border: 1px solid var(--support-border);
+    border-radius: .8rem;
+    background: #fff;
+    color: #475467;
+  }
+
+  .create-step__number {
+    display: grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--support-primary-soft);
+    color: var(--bs-primary);
+    font-size: .72rem;
+    font-weight: 750;
+  }
+
+  .create-step__label {
+    overflow: hidden;
+    font-size: .73rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* =====================================================
+     FORM CARD
+     ===================================================== */
+
+  .create-card {
+    overflow: hidden;
+    border: 1px solid var(--support-border);
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 .35rem 1.25rem rgba(15, 23, 42, .045);
+  }
+
+  .create-section {
+    padding: 1.25rem 1.35rem;
+  }
+
+  .create-section + .create-section {
+    border-top: 1px solid var(--support-border-soft);
+    background: #fcfdff;
+  }
+
+  .create-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: .8rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .create-section-number {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    border-radius: .6rem;
+    background: var(--support-primary-soft);
+    color: var(--bs-primary);
+    font-size: .78rem;
+    font-weight: 750;
+  }
+
+  .create-section-title {
+    margin: 0;
+    font-size: .95rem;
+    font-weight: 700;
+  }
+
+  .create-section-description {
+    margin: .15rem 0 0;
+    color: var(--support-muted);
+    font-size: .73rem;
+    line-height: 1.45;
+  }
+
+  /* =====================================================
+     FORM CONTROLS
+     ===================================================== */
+
+  .create-card .form-label {
+    margin-bottom: .35rem;
+    color: #344054;
+    font-size: .73rem;
+    font-weight: 650;
+  }
+
+  .create-card .form-control,
+  .create-card .form-select {
+    min-height: 2.55rem;
+    border-color: #dfe3ea;
+    border-radius: .62rem;
+    background-color: #fff;
+    font-size: .82rem;
+  }
+
+  .create-card .form-control:focus,
+  .create-card .form-select:focus {
+    border-color: #94b6ff;
+    box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .08);
+  }
+
+  .create-card textarea.form-control {
+    min-height: 9.5rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  .create-card .form-text {
+    margin-top: .35rem;
+    color: var(--support-muted);
+    font-size: .67rem;
+    line-height: 1.4;
+  }
+
+  .create-field-error {
+    margin-top: .3rem;
+    color: var(--bs-danger);
+    font-size: .7rem;
+  }
+
+  .required-mark {
+    color: var(--bs-danger);
+  }
+
+  /* =====================================================
+     PRIORITY
+     ===================================================== */
+
+  .priority-guide {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .45rem;
+    margin-top: .6rem;
+  }
+
+  .priority-guide__item {
+    padding: .55rem .58rem;
+    border: 1px solid var(--support-border);
+    border-radius: .65rem;
+    background: #fff;
+    color: var(--support-muted);
+    font-size: .64rem;
+    line-height: 1.35;
+    transition:
+      border-color .15s ease,
+      background .15s ease,
+      transform .15s ease,
+      box-shadow .15s ease;
+  }
+
+  .priority-guide__item strong {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin-bottom: .1rem;
+    color: #344054;
+    font-size: .68rem;
+  }
+
+  .priority-guide__item.is-active {
+    border-color: #9dbaf4;
+    background: #f2f6ff;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, .05);
+    transform: translateY(-1px);
+  }
+
+  .priority-guide__item[data-priority="ALTA"].is-active {
+    border-color: #f4cf88;
+    background: var(--support-warning-soft);
+  }
+
+  .priority-guide__item[data-priority="CRITICA"].is-active {
+    border-color: #f3b4be;
+    background: var(--support-danger-soft);
+  }
+
+  /* =====================================================
+     EQUIPMENT FEEDBACK
+     ===================================================== */
+
+  .equipment-feedback {
+    min-height: 1rem;
+  }
+
+  .equipment-feedback .app-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+  }
+
+  /* =====================================================
+     ACTION FOOTER
+     ===================================================== */
+
+  .create-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .85rem 1.35rem;
+    border-top: 1px solid var(--support-border-soft);
+    background: #fff;
+  }
+
+  .create-actions__hint {
+    color: var(--support-muted);
+    font-size: .67rem;
+  }
+
+  .create-actions__buttons {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+  }
+
+  /* =====================================================
+     SIDEBAR CARDS
+     ===================================================== */
+
+  .create-side-card {
+    overflow: hidden;
+    border: 1px solid var(--support-border);
+    border-radius: .9rem;
+    background: #fff;
+    box-shadow: 0 .25rem .9rem rgba(15, 23, 42, .035);
+  }
+
+  .create-side-card__header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .78rem .85rem;
+    border-bottom: 1px solid var(--support-border-soft);
+    font-size: .76rem;
+    font-weight: 700;
+  }
+
+  .create-side-card__header i {
+    color: var(--bs-primary);
+  }
+
+  .create-side-card__body {
+    padding: .85rem;
+    color: var(--support-muted);
+    font-size: .71rem;
+    line-height: 1.5;
+  }
+
+  /* PRESENCE */
+
+  .support-presence {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+  }
+
+  .support-presence__dot {
+    width: .5rem;
+    height: .5rem;
+    margin-top: .32rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--bs-success);
+    box-shadow: 0 0 0 4px rgba(25, 135, 84, .1);
+  }
+
+  .support-presence__dot.is-offline {
+    background: #98a2b3;
+    box-shadow: 0 0 0 4px rgba(102, 112, 133, .08);
+  }
+
+  .support-presence strong {
+    display: block;
+    margin-bottom: .12rem;
+    color: #344054;
+    font-size: .76rem;
+  }
+
+  /* CHECKLIST */
+
+  .support-checklist {
+    display: grid;
+    gap: .7rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .support-checklist li {
+    display: grid;
+    grid-template-columns: 1.45rem 1fr;
+    gap: .5rem;
+    align-items: start;
+  }
+
+  .support-checklist__icon {
+    display: grid;
+    place-items: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: .42rem;
+    background: var(--support-primary-soft);
+    color: var(--bs-primary);
+    font-size: .7rem;
+  }
+
+  /* TIP */
+
+  .support-tip {
+    display: flex;
+    gap: .55rem;
+    padding: .7rem;
+    border-radius: .65rem;
+    background: var(--support-soft);
+    color: #475467;
+  }
+
+  /* =====================================================
+     RESPONSIVE
+     ===================================================== */
+
+  @media (max-width: 1199.98px) {
+    .ticket-create-layout {
+      grid-template-columns: minmax(0, 7fr) minmax(260px, 3fr);
+    }
+
+    .priority-guide {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .ticket-create-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .ticket-create-sidebar {
+      position: static;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .support-summary {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .support-summary__item:nth-child(2) {
+      border-right: 0;
+    }
+
+    .support-summary__item:nth-child(3) {
+      grid-column: 1 / -1;
+      border-top: 1px solid var(--support-border-soft);
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .ticket-create {
+      padding-inline: .25rem;
+    }
+
+    .ticket-create-title {
+      font-size: 1.4rem;
+    }
+
+    .create-steps {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .create-section {
+      padding: 1rem;
+    }
+
+    .priority-guide {
+      grid-template-columns: 1fr;
+    }
+
+    .create-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 1rem;
+    }
+
+    .create-actions__hint {
+      text-align: center;
+    }
+
+    .create-actions__buttons {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .create-actions__buttons .btn-primary {
+      grid-row: 1;
+    }
+
+    .create-actions__buttons .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .support-summary {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .support-summary__item,
+    .support-summary__item:nth-child(2),
+    .support-summary__item:nth-child(3) {
+      grid-column: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--support-border-soft);
+      border-top: 0;
+    }
+
+    .support-summary__item:last-child {
+      border-bottom: 0;
+    }
+
+    .ticket-create-sidebar {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+
 {% block content %}
 
-<div class="row justify-content-center">
-  <div class="col-xl-9">
+<div class="container-fluid px-3 px-lg-4 pb-5 ticket-create">
 
-    <header class="app-page-header">
-      <div class="app-page-header__content">
-        <h1>{% trans "Novo chamado" %}</h1>
-        <p class="app-page-header__description">
-          {% trans "Registre um problema relacionado ao inventário em andamento." %}
-        </p>
-      </div>
+  <!-- ===================================================
+       HEADER
+       =================================================== -->
+
+  <header class="ticket-create-header">
+
+    <div>
 
       <a
-        class="btn btn-outline-secondary"
+        class="ticket-create-breadcrumb"
         href="{% url 'chamados:lista' %}"
       >
-        {% trans "Voltar" %}
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        {% trans "Chamados" %}
       </a>
-    </header>
 
-    <div class="app-presence-summary mb-3" role="status">
-      {% if atendentes_online %}
-        <span class="app-status app-status-success"><i class="bi bi-circle-fill" aria-hidden="true"></i>{% blocktrans count total=atendentes_online|length %}{{ total }} atendente disponível{% plural %}{{ total }} atendentes disponíveis{% endblocktrans %}</span>
-      {% else %}
-        <span class="app-status app-status-neutral"><i class="bi bi-circle" aria-hidden="true"></i>{% trans "Nenhum atendente disponível agora" %}</span>
-        <span class="small text-secondary">{% trans "O chamado será registrado normalmente." %}</span>
-      {% endif %}
+      <div class="ticket-create-eyebrow">
+        {% trans "Central de suporte" %}
+      </div>
+
+      <h1 class="ticket-create-title">
+        {% trans "Novo chamado" %}
+      </h1>
+
+      <p class="ticket-create-subtitle">
+        {% trans "Informe o contexto e descreva o problema. Quanto mais precisa for a informação, mais rápido a equipe poderá iniciar o atendimento." %}
+      </p>
+
     </div>
 
-    <form method="post" class="card card-body">
+  </header>
 
-      {% csrf_token %}
 
-      {% if form.non_field_errors %}
-        <div class="alert alert-danger">
-          {{ form.non_field_errors }}
+  <!-- ===================================================
+       OPERATION SUMMARY
+       =================================================== -->
+
+  <section
+    class="support-summary"
+    aria-label="{% trans 'Resumo da abertura do chamado' %}"
+  >
+
+    <div class="support-summary__item">
+      <span class="support-summary__icon">
+        <i class="bi bi-calendar3" aria-hidden="true"></i>
+      </span>
+      <div class="min-w-0">
+        <div class="support-summary__label">
+          {% trans "Data" %}
         </div>
-      {% endif %}
+        <div class="support-summary__value">
+          {{ hoje|date:'d/m/Y' }}
+        </div>
+      </div>
+    </div>
 
-      <section class="app-form-section" aria-labelledby="contexto-inventario-title">
-      <div class="app-section-header"><div><h2 id="contexto-inventario-title" class="h5">{% trans "Contexto do inventário" %}</h2><p class="small text-secondary mb-0">{% trans "Identifique onde e quando o atendimento é necessário." %}</p></div></div>
-      <!-- CONTEXTO DO CHAMADO -->
-      <div class="row g-3 mb-4">
+    <div class="support-summary__item">
+      <span class="support-summary__icon">
+        <i class="bi bi-headset" aria-hidden="true"></i>
+      </span>
+      <div class="min-w-0">
+        <div class="support-summary__label">
+          {% trans "Equipe de suporte" %}
+        </div>
+        <div class="support-summary__value">
+          {% if atendentes_online %}
+            {% blocktrans count total=atendentes_online|length %}
+              {{ total }} atendente disponível
+            {% plural %}
+              {{ total }} atendentes disponíveis
+            {% endblocktrans %}
+          {% else %}
+            {% trans "Equipe temporariamente offline" %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
 
-        <div class="col-md-6">
-          <label class="form-label">
-            {% trans "Data" %}
-          </label>
+    <div class="support-summary__item">
+      <span class="support-summary__icon">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+      </span>
+      <div class="min-w-0">
+        <div class="support-summary__label">
+          {% trans "Fluxo" %}
+        </div>
+        <div class="support-summary__value">
+          {% trans "O chamado entrará na fila de atendimento" %}
+        </div>
+      </div>
+    </div>
 
-          <input
-            type="text"
-            class="form-control"
-            value="{{ hoje|date:'d/m/Y' }}"
-            disabled
-          >
+  </section>
+
+
+  <div class="ticket-create-layout">
+
+    <!-- =================================================
+         MAIN
+         ================================================= -->
+
+    <main class="ticket-create-main">
+
+      <!-- STEPS -->
+
+      <div
+        class="create-steps"
+        aria-label="{% trans 'Etapas do chamado' %}"
+      >
+
+        <div class="create-step">
+          <span class="create-step__number">1</span>
+          <span class="create-step__label">
+            {% trans "Contexto do inventário" %}
+          </span>
         </div>
 
-        <div class="col-md-6">
-          <label
-            class="form-label"
-            for="{{ form.base.id_for_label }}"
-          >
-            {{ form.base.label }}
-          </label>
-
-          {{ form.base }}
-
-          {% for error in form.base.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-        </div>
-
-        <div class="col-md-6">
-          <label
-            class="form-label"
-            for="{{ form.inventario.id_for_label }}"
-          >
-            {% trans "Inventário" %}
-          </label>
-
-          {{ form.inventario }}
-
-          {% for error in form.inventario.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-
-          <div class="form-text">
-            {% trans "Somente inventários de hoje e em andamento são exibidos." %}
-          </div>
-        </div>
-
-        <div class="col-md-6">
-          <label
-            class="form-label"
-            for="{{ form.lider.id_for_label }}"
-          >
-            {% trans "Líder" %}
-          </label>
-
-          {{ form.lider }}
-
-          {% for error in form.lider.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-
-          <div class="form-text">
-            {% trans "Preenchido automaticamente pelo inventário. Pode ser alterado se necessário." %}
-          </div>
+        <div class="create-step">
+          <span class="create-step__number">2</span>
+          <span class="create-step__label">
+            {% trans "Problema e impacto" %}
+          </span>
         </div>
 
       </div>
+
+
+      <!-- FORM -->
+
+      <form method="post" class="create-card">
+
+        {% csrf_token %}
+
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger m-3 mb-0">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+
+        <!-- ===============================================
+             STEP 1
+             =============================================== -->
+
+        <section
+          class="create-section"
+          aria-labelledby="contexto-inventario-title"
+        >
+
+          <div class="create-section-header">
+
+            <span class="create-section-number">
+              1
+            </span>
+
+            <div>
+
+              <h2
+                id="contexto-inventario-title"
+                class="create-section-title"
+              >
+                {% trans "Contexto do inventário" %}
+              </h2>
+
+              <p class="create-section-description">
+                {% trans "Identifique a operação relacionada ao atendimento." %}
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="row g-3">
+
+
+            <!-- DATA -->
+
+            <div class="col-md-6">
+
+              <label class="form-label">
+                {% trans "Data" %}
+              </label>
+
+              <input
+                type="text"
+                class="form-control"
+                value="{{ hoje|date:'d/m/Y' }}"
+                disabled
+              >
+
+            </div>
+
+
+            <!-- BASE -->
+
+            <div class="col-md-6">
+
+              <label
+                class="form-label"
+                for="{{ form.base.id_for_label }}"
+              >
+                {{ form.base.label }}
+              </label>
+
+              {{ form.base }}
+
+              {% for error in form.base.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+            </div>
+
+
+            <!-- INVENTÁRIO -->
+
+            <div class="col-md-6">
+
+              <label
+                class="form-label"
+                for="{{ form.inventario.id_for_label }}"
+              >
+                {% trans "Inventário" %}
+              </label>
+
+              {{ form.inventario }}
+
+              {% for error in form.inventario.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+              <div class="form-text">
+                {% trans "São exibidos somente inventários disponíveis para abertura de chamado." %}
+              </div>
+
+            </div>
+
+
+            <!-- LÍDER -->
+
+            <div class="col-md-6">
+
+              <label
+                class="form-label"
+                for="{{ form.lider.id_for_label }}"
+              >
+                {% trans "Líder" %}
+              </label>
+
+              {{ form.lider }}
+
+              {% for error in form.lider.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+              <div class="form-text">
+                {% trans "Preenchido automaticamente a partir do inventário selecionado." %}
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===============================================
+             STEP 2
+             =============================================== -->
+
+        <section
+          class="create-section"
+          aria-labelledby="problema-title"
+        >
+
+          <div class="create-section-header">
+
+            <span class="create-section-number">
+              2
+            </span>
+
+            <div>
+
+              <h2
+                id="problema-title"
+                class="create-section-title"
+              >
+                {% trans "Problema e impacto" %}
+              </h2>
+
+              <p class="create-section-description">
+                {% trans "Informe o equipamento afetado e descreva claramente o que está acontecendo." %}
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="row g-3">
+
+
+            <!-- CATEGORIA -->
+
+            <div class="col-md-6">
+
+              <label
+                class="form-label"
+                for="{{ form.categoria_equipamento.id_for_label }}"
+              >
+                {% trans "Categoria" %}
+              </label>
+
+              {{ form.categoria_equipamento }}
+
+              {% for error in form.categoria_equipamento.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+              <div class="form-text">
+                {% trans "Selecione Sistema para problemas de software ou a categoria do equipamento físico." %}
+              </div>
+
+            </div>
+
+
+            <!-- EQUIPAMENTO -->
+
+            <div class="col-md-6">
+
+              <label
+                class="form-label"
+                for="{{ form.equipamento.id_for_label }}"
+              >
+                {% trans "Equipamento" %}
+              </label>
+
+              {{ form.equipamento }}
+
+              {% for error in form.equipamento.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+              <div
+                id="equipamento-feedback"
+                class="form-text equipment-feedback"
+                aria-live="polite"
+              >
+                {% trans "Obrigatório para equipamentos físicos e opcional para Sistema." %}
+              </div>
+
+            </div>
+
+
+            <!-- PRIORIDADE -->
+
+            <div class="col-12">
+
+              <label
+                class="form-label"
+                for="{{ form.prioridade.id_for_label }}"
+              >
+                {% trans "Prioridade" %}
+              </label>
+
+              <div class="row">
+
+                <div class="col-lg-5">
+                  {{ form.prioridade }}
+
+                  {% for error in form.prioridade.errors %}
+                    <div class="create-field-error">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+
+              </div>
+
+
+              <div class="priority-guide" aria-live="polite">
+
+                <div
+                  class="priority-guide__item"
+                  data-priority="BAIXA"
+                >
+                  <strong>
+                    <i class="bi bi-arrow-down-circle"></i>
+                    {% trans "Baixa" %}
+                  </strong>
+                  {% trans "Demanda sem impacto imediato na operação." %}
+                </div>
+
+
+                <div
+                  class="priority-guide__item"
+                  data-priority="NORMAL"
+                >
+                  <strong>
+                    <i class="bi bi-dash-circle"></i>
+                    {% trans "Normal" %}
+                  </strong>
+                  {% trans "Problema operacional sem bloqueio crítico." %}
+                </div>
+
+
+                <div
+                  class="priority-guide__item"
+                  data-priority="ALTA"
+                >
+                  <strong>
+                    <i class="bi bi-arrow-up-circle"></i>
+                    {% trans "Alta" %}
+                  </strong>
+                  {% trans "Impacto relevante na execução do inventário." %}
+                </div>
+
+
+                <div
+                  class="priority-guide__item"
+                  data-priority="CRITICA"
+                >
+                  <strong>
+                    <i class="bi bi-exclamation-triangle"></i>
+                    {% trans "Crítica" %}
+                  </strong>
+                  {% trans "Operação impedida ou inventário em risco." %}
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <!-- TITLE -->
+
+            <div class="col-12">
+
+              <label
+                class="form-label"
+                for="{{ form.titulo.id_for_label }}"
+              >
+                {% trans "Título" %}
+                <span class="required-mark">*</span>
+              </label>
+
+              {{ form.titulo }}
+
+              {% for error in form.titulo.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+              <div class="form-text">
+                {% trans "Use uma frase curta que permita identificar rapidamente o problema." %}
+              </div>
+
+            </div>
+
+
+            <!-- DESCRIPTION -->
+
+            <div class="col-12">
+
+              <label
+                class="form-label"
+                for="{{ form.descricao.id_for_label }}"
+              >
+                {% trans "Descrição" %}
+                <span class="required-mark">*</span>
+              </label>
+
+              {{ form.descricao }}
+
+              <div class="form-text">
+                {% trans "Informe o erro apresentado, o comportamento observado, o impacto na operação e o que já foi testado." %}
+              </div>
+
+              {% for error in form.descricao.errors %}
+                <div class="create-field-error">
+                  {{ error }}
+                </div>
+              {% endfor %}
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===============================================
+             FOOTER
+             =============================================== -->
+
+        <div class="create-actions">
+
+          <div class="create-actions__hint">
+            <i class="bi bi-shield-check me-1"></i>
+            {% trans "As informações serão registradas no histórico do chamado." %}
+          </div>
+
+          <div class="create-actions__buttons">
+
+            <a
+              class="btn btn-outline-secondary"
+              href="{% url 'chamados:lista' %}"
+            >
+              {% trans "Cancelar" %}
+            </a>
+
+            <button class="btn btn-primary px-4">
+              <i class="bi bi-send me-1"></i>
+              {% trans "Abrir chamado" %}
+            </button>
+
+          </div>
+
+        </div>
+
+      </form>
+
+    </main>
+
+
+    <!-- =================================================
+         RIGHT SIDEBAR
+         ================================================= -->
+
+    <aside
+      class="ticket-create-sidebar"
+      aria-label="{% trans 'Contexto da abertura do chamado' %}"
+    >
+
+
+      <!-- SUPPORT PRESENCE -->
+
+      <section class="create-side-card">
+
+        <div class="create-side-card__header">
+          <i class="bi bi-headset"></i>
+          {% trans "Atendimento" %}
+        </div>
+
+        <div class="create-side-card__body">
+
+          <div class="support-presence" role="status">
+
+            <span
+              class="
+                support-presence__dot
+                {% if not atendentes_online %}
+                  is-offline
+                {% endif %}
+              "
+            ></span>
+
+            {% if atendentes_online %}
+
+              <span>
+
+                {% blocktrans count total=atendentes_online|length %}
+                  <strong>{{ total }} atendente disponível agora</strong>
+                  O chamado será encaminhado para a fila de atendimento.
+                {% plural %}
+                  <strong>{{ total }} atendentes disponíveis agora</strong>
+                  O chamado será encaminhado para a fila de atendimento.
+                {% endblocktrans %}
+
+              </span>
+
+            {% else %}
+
+              <span>
+                <strong>
+                  {% trans "Nenhum atendente disponível agora" %}
+                </strong>
+
+                {% trans "O chamado será registrado normalmente e permanecerá aguardando atendimento." %}
+              </span>
+
+            {% endif %}
+
+          </div>
+
+        </div>
+
       </section>
 
-      <section class="app-form-section mt-4" aria-labelledby="problema-title">
-      <div class="app-section-header"><div><h2 id="problema-title" class="h5">{% trans "Problema" %}</h2><p class="small text-secondary mb-0">{% trans "Descreva o equipamento e o impacto observado." %}</p></div></div>
-      <!-- DADOS DO PROBLEMA -->
-      <div class="row g-3 mt-1">
 
-        <div class="col-md-6">
-          <label
-            class="form-label"
-            for="{{ form.categoria_equipamento.id_for_label }}"
-          >
-            {% trans "Categoria" %}
-          </label>
+      <!-- CHECKLIST -->
 
-          {{ form.categoria_equipamento }}
+      <section class="create-side-card">
 
-          {% for error in form.categoria_equipamento.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-
-          <div class="form-text">
-            {% trans "Selecione Sistema para software ou a categoria do equipamento físico." %}
-          </div>
+        <div class="create-side-card__header">
+          <i class="bi bi-check2-square"></i>
+          {% trans "Antes de abrir" %}
         </div>
 
-        <div class="col-md-6">
-          <label
-            class="form-label"
-            for="{{ form.equipamento.id_for_label }}"
-          >
-            {% trans "Equipamento" %}
-          </label>
+        <div class="create-side-card__body">
 
-          {{ form.equipamento }}
+          <ul class="support-checklist">
 
-          {% for error in form.equipamento.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
+            <li>
+              <span class="support-checklist__icon">
+                <i class="bi bi-pc-display"></i>
+              </span>
 
-          <div id="equipamento-feedback" class="form-text" aria-live="polite">
-            {% trans "Obrigatório para categorias físicas; opcional para Sistema." %}
-          </div>
+              <span>
+                {% trans "Confirme o equipamento ou sistema afetado." %}
+              </span>
+            </li>
+
+            <li>
+              <span class="support-checklist__icon">
+                <i class="bi bi-exclamation-circle"></i>
+              </span>
+
+              <span>
+                {% trans "Descreva exatamente o erro ou comportamento observado." %}
+              </span>
+            </li>
+
+            <li>
+              <span class="support-checklist__icon">
+                <i class="bi bi-graph-up-arrow"></i>
+              </span>
+
+              <span>
+                {% trans "Informe se o problema está impedindo o inventário." %}
+              </span>
+            </li>
+
+            <li>
+              <span class="support-checklist__icon">
+                <i class="bi bi-tools"></i>
+              </span>
+
+              <span>
+                {% trans "Conte o que já foi testado antes de abrir o chamado." %}
+              </span>
+            </li>
+
+          </ul>
+
         </div>
 
-        <div class="col-md-6">
-          <label
-            class="form-label"
-            for="{{ form.prioridade.id_for_label }}"
-          >
-            {% trans "Prioridade" %}
-          </label>
-
-          {{ form.prioridade }}
-
-          {% for error in form.prioridade.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-        </div>
-
-        <div class="col-12">
-          <label
-            class="form-label"
-            for="{{ form.titulo.id_for_label }}"
-          >
-            {% trans "Título" %} *
-          </label>
-
-          {{ form.titulo }}
-
-          {% for error in form.titulo.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-        </div>
-
-        <div class="col-12">
-          <label
-            class="form-label"
-            for="{{ form.descricao.id_for_label }}"
-          >
-            {% trans "Descrição" %} *
-          </label>
-
-          {{ form.descricao }}
-
-          {% for error in form.descricao.errors %}
-            <div class="text-danger small">
-              {{ error }}
-            </div>
-          {% endfor %}
-        </div>
-
-      </div>
       </section>
 
-      <div class="d-flex justify-content-end gap-2 mt-4">
-        <a class="btn btn-outline-secondary" href="{% url 'chamados:lista' %}">{% trans "Cancelar" %}</a>
-        <button class="btn btn-primary">
-          <i class="bi bi-send"></i>
-          {% trans "Abrir chamado" %}
-        </button>
-      </div>
 
-    </form>
+      <!-- TIP -->
+
+      <section class="create-side-card">
+
+        <div class="create-side-card__body">
+
+          <div class="support-tip">
+
+            <i class="bi bi-lightbulb text-primary"></i>
+
+            <span>
+              {% trans "Chamados objetivos e completos reduzem o tempo necessário para o primeiro diagnóstico." %}
+            </span>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </aside>
 
   </div>
+
 </div>
+
 
 {{ inventarios_contexto|json_script:"inventarios-contexto" }}
 
@@ -247,9 +1306,47 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // =================================================
-    // LÍDER DO INVENTÁRIO
-    // =================================================
+    /* =================================================
+       PRIORIDADE
+       ================================================= */
+
+    const prioridadeSelect =
+        document.getElementById(
+            '{{ form.prioridade.id_for_label }}'
+        );
+
+    const prioridadeGuias =
+        document.querySelectorAll(
+            '[data-priority]'
+        );
+
+    function atualizarPrioridade() {
+
+        prioridadeGuias.forEach(
+            function (guia) {
+
+                guia.classList.toggle(
+                    'is-active',
+                    guia.dataset.priority
+                    === prioridadeSelect?.value
+                );
+
+            }
+        );
+
+    }
+
+    prioridadeSelect?.addEventListener(
+        'change',
+        atualizarPrioridade
+    );
+
+    atualizarPrioridade();
+
+
+    /* =================================================
+       LÍDER DO INVENTÁRIO
+       ================================================= */
 
     const inventarioSelect =
         document.getElementById(
@@ -271,6 +1368,7 @@ document.addEventListener('DOMContentLoaded', function () {
         liderInput &&
         dadosElement
     ) {
+
         const inventarios =
             JSON.parse(
                 dadosElement.textContent
@@ -294,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             liderInput.value =
                 dados.lider || '';
+
         }
 
         inventarioSelect.addEventListener(
@@ -307,12 +1406,13 @@ document.addEventListener('DOMContentLoaded', function () {
         ) {
             atualizarLider();
         }
+
     }
 
 
-    // =================================================
-    // EQUIPAMENTOS POR CATEGORIA
-    // =================================================
+    /* =================================================
+       EQUIPAMENTOS POR CATEGORIA
+       ================================================= */
 
     const categoriaSelect =
         document.getElementById(
@@ -330,7 +1430,9 @@ document.addEventListener('DOMContentLoaded', function () {
         );
 
     const equipamentoFeedback =
-        document.getElementById('equipamento-feedback');
+        document.getElementById(
+            'equipamento-feedback'
+        );
 
     if (
         categoriaSelect &&
@@ -352,9 +1454,14 @@ document.addEventListener('DOMContentLoaded', function () {
             equipamentoSelect.innerHTML = '';
 
             const opcaoInicial =
-                document.createElement('option');
+                document.createElement(
+                    'option'
+                );
 
             opcaoInicial.value = '';
+
+
+            /* SEM CATEGORIA */
 
             if (!categoria) {
 
@@ -365,20 +1472,48 @@ document.addEventListener('DOMContentLoaded', function () {
                     opcaoInicial
                 );
 
-                equipamentoSelect.disabled = true;
-                if (equipamentoFeedback) equipamentoFeedback.textContent = 'Selecione uma categoria para carregar os equipamentos.';
+                equipamentoSelect.disabled =
+                    true;
+
+                if (equipamentoFeedback) {
+
+                    equipamentoFeedback.textContent =
+                        'Selecione uma categoria para carregar os equipamentos.';
+
+                }
 
                 return;
+
             }
+
+
+            /* SISTEMA */
 
             if (categoria === 'Sistema') {
+
                 opcaoInicial.textContent =
                     'Não se aplica — chamado de software';
-                equipamentoSelect.appendChild(opcaoInicial);
-                equipamentoSelect.disabled = true;
-                if (equipamentoFeedback) equipamentoFeedback.textContent = 'Equipamento opcional para chamados de software.';
+
+                equipamentoSelect.appendChild(
+                    opcaoInicial
+                );
+
+                equipamentoSelect.disabled =
+                    true;
+
+                if (equipamentoFeedback) {
+
+                    equipamentoFeedback.textContent =
+                        'Equipamento opcional para chamados relacionados a sistema ou software.';
+
+                }
+
                 return;
+
             }
+
+
+            /* LOADING */
 
             opcaoInicial.textContent =
                 'Carregando equipamentos...';
@@ -387,8 +1522,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 opcaoInicial
             );
 
-            equipamentoSelect.disabled = true;
-            if (equipamentoFeedback) equipamentoFeedback.innerHTML = '<span class="app-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Carregando equipamentos...</span></span>';
+            equipamentoSelect.disabled =
+                true;
+
+            if (equipamentoFeedback) {
+
+                equipamentoFeedback.innerHTML =
+                    `
+                    <span class="app-loading">
+                      <span
+                        class="spinner-border spinner-border-sm"
+                        aria-hidden="true"
+                      ></span>
+                      <span>
+                        Carregando equipamentos...
+                      </span>
+                    </span>
+                    `;
+
+            }
+
 
             try {
 
@@ -407,23 +1560,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     await resposta.json();
 
                 if (!resposta.ok) {
+
                     throw new Error(
                         dados.erro
                         || 'Erro ao carregar equipamentos.'
                     );
+
                 }
 
-                equipamentoSelect.innerHTML = '';
+                equipamentoSelect.innerHTML =
+                    '';
 
                 const selecione =
-                    document.createElement('option');
+                    document.createElement(
+                        'option'
+                    );
 
                 selecione.value = '';
 
+
+                /* EMPTY */
+
                 if (
-                    !dados.equipamentos
-                    || dados.equipamentos.length === 0
+                    !dados.equipamentos ||
+                    dados.equipamentos.length === 0
                 ) {
+
                     selecione.textContent =
                         'Nenhum equipamento encontrado';
 
@@ -431,11 +1593,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         selecione
                     );
 
-                    equipamentoSelect.disabled = true;
-                    if (equipamentoFeedback) equipamentoFeedback.textContent = 'Nenhum equipamento disponível para a categoria e a base selecionadas.';
+                    equipamentoSelect.disabled =
+                        true;
+
+                    if (equipamentoFeedback) {
+
+                        equipamentoFeedback.textContent =
+                            'Nenhum equipamento disponível para a categoria e a base selecionadas.';
+
+                    }
 
                     return;
+
                 }
+
+
+                /* SUCCESS */
 
                 selecione.textContent =
                     'Selecione um equipamento';
@@ -461,20 +1634,41 @@ document.addEventListener('DOMContentLoaded', function () {
                         equipamentoSelect.appendChild(
                             option
                         );
+
                     }
                 );
 
-                equipamentoSelect.disabled = false;
-                if (equipamentoFeedback) equipamentoFeedback.textContent = `${dados.equipamentos.length} equipamento${dados.equipamentos.length === 1 ? '' : 's'} disponível${dados.equipamentos.length === 1 ? '' : 'is'}.`;
+                equipamentoSelect.disabled =
+                    false;
+
+                if (equipamentoFeedback) {
+
+                    const total =
+                        dados.equipamentos.length;
+
+                    equipamentoFeedback.innerHTML =
+                        `
+                        <span class="text-success">
+                          <i class="bi bi-check-circle me-1"></i>
+                          ${total}
+                          equipamento${total === 1 ? '' : 's'}
+                          disponível${total === 1 ? '' : 'is'}.
+                        </span>
+                        `;
+
+                }
 
             } catch (erro) {
 
                 console.error(erro);
 
-                equipamentoSelect.innerHTML = '';
+                equipamentoSelect.innerHTML =
+                    '';
 
                 const option =
-                    document.createElement('option');
+                    document.createElement(
+                        'option'
+                    );
 
                 option.value = '';
 
@@ -485,13 +1679,42 @@ document.addEventListener('DOMContentLoaded', function () {
                     option
                 );
 
-                equipamentoSelect.disabled = true;
+                equipamentoSelect.disabled =
+                    true;
+
                 if (equipamentoFeedback) {
-                    equipamentoFeedback.innerHTML = 'Não foi possível carregar os equipamentos. <button type="button" class="btn btn-sm btn-link p-0 align-baseline" id="tentar-equipamentos">Tentar novamente</button>';
-                    document.getElementById('tentar-equipamentos')?.addEventListener('click', carregarEquipamentos);
+
+                    equipamentoFeedback.innerHTML =
+                        `
+                        <span class="text-danger">
+                          <i class="bi bi-exclamation-circle me-1"></i>
+                          Não foi possível carregar os equipamentos.
+                        </span>
+
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                          id="tentar-equipamentos"
+                        >
+                          Tentar novamente
+                        </button>
+                        `;
+
+                    document
+                        .getElementById(
+                            'tentar-equipamentos'
+                        )
+                        ?.addEventListener(
+                            'click',
+                            carregarEquipamentos
+                        );
+
                 }
+
             }
+
         }
+
 
         categoriaSelect.addEventListener(
             'change',
@@ -503,12 +1726,16 @@ document.addEventListener('DOMContentLoaded', function () {
             carregarEquipamentos
         );
 
+
         if (!categoriaSelect.value) {
 
-            equipamentoSelect.innerHTML = '';
+            equipamentoSelect.innerHTML =
+                '';
 
             const option =
-                document.createElement('option');
+                document.createElement(
+                    'option'
+                );
 
             option.value = '';
 
@@ -519,9 +1746,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 option
             );
 
-            equipamentoSelect.disabled = true;
-            if (equipamentoFeedback) equipamentoFeedback.textContent = 'Selecione uma categoria para carregar os equipamentos.';
+            equipamentoSelect.disabled =
+                true;
+
+            if (equipamentoFeedback) {
+
+                equipamentoFeedback.textContent =
+                    'Selecione uma categoria para carregar os equipamentos.';
+
+            }
+
         }
+
     }
 
 });

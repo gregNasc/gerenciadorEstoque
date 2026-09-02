@@ -19,58 +19,54 @@
         </a>
     </div>
 
+    <div class="alert alert-secondary border-0" role="note">
+        {% trans "Esta visão de auditoria apresenta todos os campos persistidos relacionados ao registro. O bloco do equipamento representa o estado atual; os valores do momento da ação permanecem em detalhes." %}
+    </div>
+
     <div class="row g-4">
-        <div class="col-lg-5">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <strong>{% trans "Registro" %}</strong>
+        {% for grupo in grupos_dados_banco %}
+        <div class="col-12 {% if not forloop.first %}col-xl-6{% endif %}">
+            <section class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
+                    <strong>{{ grupo.titulo }}</strong>
+                    <code class="small text-secondary">{{ grupo.modelo }}</code>
                 </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-4">{% trans "Acao" %}</dt>
-                        <dd class="col-sm-8">{{ historico.get_tipo_acao_display|default:historico.tipo_acao }}</dd>
-
-                        <dt class="col-sm-4">{% trans "Usuario" %}</dt>
-                        <dd class="col-sm-8">{{ historico.usuario.username|default:"Sistema" }}</dd>
-
-                        <dt class="col-sm-4">{% trans "Produto" %}</dt>
-                        <dd class="col-sm-8">{{ historico.equipamento.produto.descricao|default:"-" }}</dd>
-
-                        <dt class="col-sm-4">{% trans "Serie" %}</dt>
-                        <dd class="col-sm-8">{{ historico.equipamento.numero_serie|default:"-" }}</dd>
-
-                        <dt class="col-sm-4">{% trans "Patrimonio" %}</dt>
-                        <dd class="col-sm-8">{{ historico.equipamento.patrimonio|default:"-" }}</dd>
-                    </dl>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 34%;">{% trans "Campo" %}</th>
+                                <th>{% trans "Valor persistido" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for campo in grupo.campos %}
+                            <tr>
+                                <th>
+                                    <span class="d-block">{{ campo.rotulo|capfirst }}</span>
+                                    <code class="small fw-normal">{{ campo.nome }}</code>
+                                </th>
+                                <td class="text-break">
+                                    {% if campo.vazio %}
+                                        <span class="text-muted">—</span>
+                                    {% elif campo.formato == 'codigo' %}
+                                        <pre class="small mb-0 text-wrap">{{ campo.valor }}</pre>
+                                    {% else %}
+                                        {{ campo.valor }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            </section>
         </div>
-
-        <div class="col-lg-7">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
-                    <strong>{% trans "Detalhes completos" %}</strong>
-                </div>
-                <div class="card-body">
-                    {% if historico.detalhes %}
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
-                                <tbody>
-                                    {% for chave, valor in historico.detalhes.items %}
-                                    <tr>
-                                        <th style="width: 220px;">{{ chave }}</th>
-                                        <td class="text-break">{{ valor|default:"-" }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <span class="text-muted">{% trans "Sem detalhes adicionais." %}</span>
-                    {% endif %}
-                </div>
-            </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-warning">{% trans "Nenhum dado persistido foi localizado." %}</div>
         </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

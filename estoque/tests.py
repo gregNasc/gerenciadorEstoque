@@ -12,7 +12,7 @@ from django.utils import timezone
 from estoque.models import (
     Base, Comunicado, DivergenciaTransferencia, Empresa, Emprestimo,
     Equipamento, GrupoRegional, ItemEmprestimo, PendenciaTransferencia, Perfil,
-    Produto, Sick, Transferencia, TransferenciaItem,
+    Historico, Produto, Sick, Transferencia, TransferenciaItem,
 )
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.assistente.response_builder import construir_erro, construir_resposta
@@ -1109,6 +1109,60 @@ class ToryInterfaceTests(TestCase):
         self.assertContains(response, 'id="tory-question"')
         self.assertContains(response, 'css/tory.css')
         self.assertContains(response, 'js/tory-renderer.js')
+
+
+class HistoricoDetalhadoTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa Auditoria')
+        self.base = Base.objects.create(nome='SP AUDITORIA', empresa=self.empresa)
+        self.usuario = User.objects.create_user(
+            'auditor_historico',
+            email='auditor@example.com',
+            password='segredo-nao-renderizar',
+        )
+        Perfil.objects.update_or_create(
+            user=self.usuario,
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
+        )
+        self.produto = Produto.objects.create(
+            codigo='PROD-AUDIT-1',
+            descricao='Coletor auditável',
+            fabricante='Fabricante X',
+            modelo='Modelo Y',
+            categoria='Coletores',
+            especificacoes_tecnicas={'memoria': '8 GB'},
+        )
+        self.equipamento = Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SERIE-AUDIT-1',
+            patrimonio='PATR-AUDIT-1',
+            regional=self.base,
+            responsavel='Operação',
+            custo_aquisicao=Decimal('1234.56'),
+            codigo='EQP-AUDIT-1',
+        )
+        self.historico = Historico.objects.create(
+            equipamento=self.equipamento,
+            tipo_acao='EDICAO',
+            usuario=self.usuario,
+            detalhes={'motivo': 'registro-interno', 'campo': 'responsavel'},
+        )
+        self.client.force_login(self.usuario)
+
+    def test_template_exibe_todos_os_campos_persistidos_relacionados(self):
+        response = self.client.get(
+            reverse('estoque:historico_detalhes', args=[self.historico.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Registro histórico')
+        self.assertContains(response, 'Equipamento — estado atual')
+        self.assertContains(response, 'especificacoes_tecnicas')
+        self.assertContains(response, 'custo_aquisicao')
+        self.assertContains(response, 'registro-interno')
+        self.assertContains(response, 'auditor@example.com')
+        self.assertNotContains(response, self.usuario.password)
+
 
 class ToryEquipamentosOperacionaisTests(TestCase):
     def setUp(self):

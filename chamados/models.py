@@ -28,18 +28,15 @@ def normalizar_alias(valor):
     texto = ''.join(caractere for caractere in texto if not unicodedata.combining(caractere))
     return re.sub(r'\s+', ' ', texto).strip().casefold()
 
-
 def validar_tamanho_anexo(arquivo):
     limite = 50 * 1024 * 1024
     if arquivo.size > limite:
         raise ValidationError('O ANEXO NÃO PODE ULTRAPASSAR 50 MB.')
 
-
 def validar_mime_anexo(arquivo):
     content_type = getattr(arquivo, 'content_type', '')
     if content_type and content_type not in MIMES_ANEXO_PERMITIDOS:
         raise ValidationError('O TIPO DE CONTEÚDO DO ANEXO NÃO É PERMITIDO.')
-
 
 def validar_assinatura_anexo(arquivo):
     """Bloqueia disfarces triviais sem tentar executar ou extrair o arquivo."""
@@ -57,15 +54,12 @@ def validar_assinatura_anexo(arquivo):
     ):
         raise ValidationError('O CONTEÚDO NÃO CORRESPONDE A UM ARQUIVO RAR VÁLIDO.')
 
-
 def caminho_anexo(instance, filename):
     sufixo = Path(filename).suffix.lower()
     return f'chamados/{instance.chamado_id}/{uuid4().hex}{sufixo}'
 
-
 def armazenamento_privado_chamados():
     return storages['private']
-
 
 class CategoriaChamado(models.Model):
     nome = models.CharField(max_length=120, unique=True)
@@ -82,7 +76,6 @@ class CategoriaChamado(models.Model):
     def __str__(self):
         return self.nome
 
-
 class SequenciaChamado(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     ano = models.PositiveSmallIntegerField()
@@ -94,7 +87,6 @@ class SequenciaChamado(models.Model):
                 fields=['empresa', 'ano'], name='chamado_sequencia_empresa_ano_unica'
             ),
         ]
-
 
 class AliasUsuario(models.Model):
     usuario = models.ForeignKey(
@@ -111,7 +103,6 @@ class AliasUsuario(models.Model):
     def save(self, *args, **kwargs):
         self.alias_normalizado = normalizar_alias(self.alias)
         return super().save(*args, **kwargs)
-
 
 class PendenciaVinculoLider(models.Model):
     class Status(models.TextChoices):
@@ -133,7 +124,6 @@ class PendenciaVinculoLider(models.Model):
     justificativa = models.TextField(blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
-
 class InventarioLiderHistorico(models.Model):
     inventario = models.ForeignKey(
         'insumos.Inventario', on_delete=models.PROTECT, related_name='historico_vinculos_lider'
@@ -153,7 +143,6 @@ class InventarioLiderHistorico(models.Model):
 
     class Meta:
         ordering = ['-alterado_em', '-id']
-
 
 class Chamado(models.Model):
     class MomentoInventario(models.TextChoices):
@@ -289,7 +278,6 @@ class Chamado(models.Model):
                 + timedelta(hours=sla_horas)
         )
 
-
 class ChamadoMensagem(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name='mensagens')
     autor = models.ForeignKey(
@@ -301,7 +289,6 @@ class ChamadoMensagem(models.Model):
 
     class Meta:
         ordering = ['criado_em', 'id']
-
 
 class ChamadoAnexo(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name='anexos')
@@ -324,7 +311,6 @@ class ChamadoAnexo(models.Model):
     enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     criado_em = models.DateTimeField(auto_now_add=True)
 
-
 class ChamadoEvento(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name='eventos')
     tipo = models.CharField(max_length=50)
@@ -340,7 +326,6 @@ class ChamadoEvento(models.Model):
         if self.pk:
             raise ValidationError('EVENTOS DE CHAMADO SÃO IMUTÁVEIS.')
         return super().save(*args, **kwargs)
-
 
 class ChamadoSessaoAtendimento(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.PROTECT, related_name='sessoes')
@@ -368,7 +353,6 @@ class ChamadoSessaoAtendimento(models.Model):
         if self.encerrada_em and self.encerrada_em < self.iniciada_em:
             raise ValidationError({'encerrada_em': 'O ENCERRAMENTO NÃO PODE ANTECEDER O INÍCIO.'})
 
-
 class ChamadoTransferenciaAtendente(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.PROTECT, related_name='transferencias_atendente')
     atendente_anterior = models.ForeignKey(
@@ -383,7 +367,6 @@ class ChamadoTransferenciaAtendente(models.Model):
         related_name='transferencias_chamado_realizadas',
     )
     transferido_em = models.DateTimeField(auto_now_add=True)
-
 
 class ChamadoAvaliacao(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.PROTECT, related_name='avaliacoes')
@@ -408,7 +391,6 @@ class ChamadoAvaliacao(models.Model):
             raise ValidationError({'atendimento': 'A NOTA DEVE ESTAR VINCULADA AO ATENDIMENTO.'})
         if self.chamado_id and self.atendimento.chamado_id != self.chamado_id:
             raise ValidationError({'atendimento': 'O ATENDIMENTO NÃO PERTENCE AO CHAMADO INFORMADO.'})
-
 
 class ChamadoConexaoAtendente(models.Model):
     usuario = models.ForeignKey(

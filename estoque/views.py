@@ -2537,6 +2537,95 @@ def detalhes_sick(request, sick_id):
     )
 
 # ----------------- HISTÓRICO -----------------
+def _campos_persistidos(instance, *, excluir=None):
+    """Expõe campos concretos/M2M para a auditoria sem vazar credenciais."""
+    if instance is None:
+        return []
+    excluir = set(excluir or ())
+    campos = []
+
+    for field in instance._meta.concrete_fields:
+        if field.name in excluir:
+            continue
+        valor_bruto = field.value_from_object(instance)
+        valor = valor_bruto
+        formato = 'texto'
+
+        if field.is_relation:
+            relacionado = getattr(instance, field.name, None)
+            valor = (
+                f'{relacionado} (ID {valor_bruto})'
+                if relacionado is not None
+                else valor_bruto
+            )
+        elif field.get_internal_type() == 'JSONField':
+            valor = json.dumps(
+                valor_bruto,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+                default=str,
+            ) if valor_bruto not in (None, '', {}, []) else valor_bruto
+            formato = 'codigo'
+        elif field.choices and valor_bruto not in (None, ''):
+            exibicao = getattr(instance, f'get_{field.name}_display')()
+            valor = f'{exibicao} ({valor_bruto})'
+        elif hasattr(valor_bruto, 'name'):
+            valor = valor_bruto.name
+
+        campos.append({
+            'nome': field.name,
+            'rotulo': str(field.verbose_name),
+            'valor': valor,
+            'vazio': valor in (None, ''),
+            'formato': formato,
+        })
+
+    for field in instance._meta.local_many_to_many:
+        if field.name in excluir:
+            continue
+        relacionados = list(getattr(instance, field.name).all())
+        campos.append({
+            'nome': field.name,
+            'rotulo': str(field.verbose_name),
+            'valor': ', '.join(
+                f'{item} (ID {item.pk})' for item in relacionados
+            ),
+            'vazio': not relacionados,
+            'formato': 'texto',
+        })
+
+    return campos
+
+
+def _grupos_dados_historico(historico):
+    equipamento = historico.equipamento
+    produto = equipamento.produto
+    base = equipamento.regional
+    usuario = historico.usuario
+    objetos = [
+        ('Registro histórico', historico, set()),
+        ('Equipamento — estado atual', equipamento, set()),
+        ('Produto', produto, set()),
+        ('Base', base, set()),
+        ('Empresa', base.empresa if base else None, set()),
+        ('Fornecedor do equipamento', equipamento.fornecedor, set()),
+        # A senha, mesmo em hash, não é informação operacional e nunca deve ser
+        # renderizada. Os demais dados persistidos do usuário permanecem auditáveis.
+        ('Usuário responsável', usuario, {'password'}),
+        ('Perfil do usuário', getattr(usuario, 'perfil', None), set()),
+    ]
+    return [
+        {
+            'titulo': titulo,
+            'modelo': objeto._meta.label,
+            'campos': _campos_persistidos(objeto, excluir=excluir),
+        }
+        for titulo, objeto, excluir in objetos
+        if objeto is not None
+    ]
+
+
 @login_required
 @permission_or_role_required('estoque.visualizar_historico_equipamentos', 'admin', 'gestor')
 def historico_view(request):
@@ -2623,13 +2712,17 @@ def historico_detalhes_view(request, historico_id):
             'equipamento',
             'equipamento__produto',
             'equipamento__regional',
-            'usuario'
+            'equipamento__regional__empresa',
+            'equipamento__fornecedor',
+            'usuario',
+            'usuario__perfil',
         )),
         id=historico_id
     )
 
     return render(request, 'estoque/historico_detalhes.html', {
-        'historico': historico
+        'historico': historico,
+        'grupos_dados_banco': _grupos_dados_historico(historico),
     })
 
 @login_required

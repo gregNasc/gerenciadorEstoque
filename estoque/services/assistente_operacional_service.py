@@ -239,7 +239,12 @@ class AssistenteOperacionalService:
         texto = cls._corrigir_termos(cls._normalizar(pergunta))
         texto = cls._remover_vocativo_tory(texto)
         texto = cls._interpretar_linguagem_cotidiana(texto)
-        portal_plan = cls._interpretar_pergunta_portal_llm(pergunta, texto, contexto)
+        semantic_plan = cls._interpretar_pergunta_llm(pergunta, texto, contexto)
+        portal_plan = (
+            semantic_plan
+            if semantic_plan and semantic_plan.is_portal_query
+            else None
+        )
         continuacao = cls._eh_continuacao(texto)
         nova_consulta_inventarios = cls._nova_consulta_inventarios(texto, continuacao)
         consulta_equipamento_explicita = bool(
@@ -718,6 +723,8 @@ class AssistenteOperacionalService:
             interpretacao.intencao = contexto['intencao']
             interpretacao.categoria = interpretacao.categoria or contexto.get('categoria', '')
             interpretacao.data = interpretacao.data or cls._data_contexto(contexto)
+
+        cls._aplicar_intencao_semantica(interpretacao, semantic_plan)
 
         cls._aplicar_escopo_de_base(user, interpretacao)
         return interpretacao
@@ -4409,7 +4416,7 @@ class AssistenteOperacionalService:
         )
 
     @classmethod
-    def _interpretar_pergunta_portal_llm(cls, pergunta, texto, contexto):
+    def _interpretar_pergunta_llm(cls, pergunta, texto, contexto):
         if not getattr(settings, 'TORY_LLM_ENABLED', False):
             return None
         if re.search(
@@ -4428,23 +4435,35 @@ class AssistenteOperacionalService:
         ))
         if contexto_local and not troca_explicita_portal:
             return None
-        candidate = bool(
-            contexto.get('intencao') == 'portal_tempo_real' or
-            re.search(
-                r'\b(portal|tempo real|realtime|inventarios?|lojas? agora|neste momento|'
-                r'nesse momento|andamento|finalizados?|concluidos?|encerrados?|progresso|'
-                r'produtividade|divergencias?|diferencas?|erros?|erramos?|piores?|'
-                r'acuracidade|indicadores?|kpis?|contagens?|recontagens?|contamos?|'
-                r'contado|contados|itens? contados?|pecas contadas?)\b',
-                texto,
-            )
-        )
-        if not candidate:
-            return None
         from estoque.services.portal_question_interpreter import PortalQuestionInterpreter
+        from estoque.services.portal_question_interpreter import PortalQuestionPlan
 
         plan = PortalQuestionInterpreter.interpret(pergunta, context=contexto)
-        return plan if plan and plan.is_portal_query else None
+        return plan if isinstance(plan, PortalQuestionPlan) else None
+
+    @classmethod
+    def _aplicar_intencao_semantica(cls, interpretacao, semantic_plan):
+        """Usa a classificação semântica sem contornar escopo ou autorização."""
+        if not semantic_plan or not semantic_plan.intent:
+            return
+        if semantic_plan.confidence < getattr(settings, 'TORY_LLM_MIN_CONFIDENCE', 0.78):
+            return
+        if interpretacao.intencao in {
+            'escolher_base', 'esclarecer_inventarios', 'esclarecer_ranking',
+            'base_sem_acesso', 'grupo_sem_acesso', 'uf_sem_acesso',
+        }:
+            return
+        if (
+            semantic_plan.intent == 'orientacao' and
+            interpretacao.intencao != 'orientacao'
+        ):
+            return
+
+        interpretacao.intencao = semantic_plan.intent
+        if semantic_plan.intent == 'capacidade_coletores':
+            interpretacao.categoria = 'Coletores'
+        if semantic_plan.intent == 'portal_tempo_real':
+            interpretacao.portal_llm_used = True
 
     @classmethod
     def _cliente_do_plano_portal(cls, portal_plan):

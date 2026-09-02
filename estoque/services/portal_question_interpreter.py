@@ -14,6 +14,9 @@ logger = logging.getLogger("integracao.tory_llm")
 
 @dataclass(frozen=True)
 class PortalQuestionPlan:
+    intent: str = ""
+    confidence: float = 0.0
+    is_follow_up: bool = False
     is_portal_query: bool = False
     status: str = "any"
     client_code: str = ""
@@ -24,7 +27,17 @@ class PortalQuestionPlan:
 
 
 class PortalQuestionInterpreter:
-    """Usa o LLM somente para transformar linguagem natural em filtros validados."""
+    """Transforma linguagem natural em intenção e filtros estritamente validados."""
+
+    ALLOWED_INTENTS = {
+        "saudacao", "ajuda_sistema", "glossario", "portal_tempo_real",
+        "planejamento", "ranking_base", "capacidade_coletores",
+        "capacidade_equipamentos", "inventarios_data_base",
+        "inventarios_relatorio", "custos_insumos", "comparacao_precos",
+        "solicitacoes_insumos", "testes_sistema", "equipamentos_categoria",
+        "equipamentos", "insumos", "transferencias", "historico",
+        "inventarios_checklists", "indicadores", "orientacao",
+    }
 
     ALLOWED_STATUS = {"any", "in_progress", "finalized", "scheduled", "preparation"}
     ALLOWED_METRICS = {
@@ -48,6 +61,12 @@ class PortalQuestionInterpreter:
         "type": "object",
         "additionalProperties": False,
         "properties": {
+            "intent": {
+                "type": "string",
+                "enum": sorted(ALLOWED_INTENTS),
+            },
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "is_follow_up": {"type": "boolean"},
             "is_portal_query": {"type": "boolean"},
             "status": {
                 "type": "string",
@@ -71,6 +90,7 @@ class PortalQuestionInterpreter:
             },
         },
         "required": [
+            "intent", "confidence", "is_follow_up",
             "is_portal_query", "status", "client_code", "store_number",
             "start_date", "end_date", "metrics",
         ],
@@ -98,8 +118,8 @@ class PortalQuestionInterpreter:
                 json={
                     "model": settings.TORY_LLM_MODEL,
                     "store": False,
-                    "reasoning": {"effort": "low"},
-                    "max_output_tokens": 600,
+                    "reasoning": {"effort": settings.TORY_LLM_REASONING_EFFORT},
+                    "max_output_tokens": 900,
                     "input": [
                         {
                             "role": "developer",
@@ -119,7 +139,7 @@ class PortalQuestionInterpreter:
                     "text": {
                         "format": {
                             "type": "json_schema",
-                            "name": "tory_portal_question",
+                            "name": "tory_question_intent",
                             "strict": True,
                             "schema": cls.SCHEMA,
                         }
@@ -138,9 +158,35 @@ class PortalQuestionInterpreter:
     @staticmethod
     def _instructions(today):
         return f"""
-Você classifica perguntas da Tory sobre inventários do Portal Inventory Brasil.
+Você é o interpretador semântico da Tory, assistente do sistema de operações,
+estoque e inventários da Inventory Brasil.
 Hoje é {today.isoformat()} no fuso America/Sao_Paulo.
 Retorne somente o objeto do schema. Não responda à pergunta e não invente valores.
+
+Classifique a intenção principal considerando a pergunta inteira e
+previous_context. Use is_follow_up=true somente quando a pergunta depender do
+assunto ou dos filtros anteriores. Confiança deve refletir a clareza real do
+pedido; em dúvida, use intent=orientacao e confiança baixa.
+
+Intenções disponíveis:
+- saudacao: cumprimento sem pedido operacional;
+- ajuda_sistema ou glossario: como usar o sistema ou significado de um termo;
+- planejamento: agenda futura, previsão, equipe/peças planejadas e eventos;
+- portal_tempo_real: execução em andamento ou finalizada lida no Portal;
+- inventarios_data_base: inventários locais por data/base, sem análise extensa;
+- inventarios_relatorio: dados registrados de execução, produtividade, tempos,
+  cliente, loja, equipe, endereço, custos operacionais ou histórico do inventário;
+- capacidade_coletores/capacidade_equipamentos: se os recursos atendem a demanda;
+- ranking_base: comparação, maior/menor ou ranking entre bases;
+- equipamentos_categoria/equipamentos: quantidade/listagem por tipo ou detalhes
+  patrimoniais, status, finalidade, SICK, empréstimos e vínculos;
+- insumos, custos_insumos, comparacao_precos ou solicitacoes_insumos: estoque de
+  materiais, consumo/custo, fornecedores/cotações ou solicitações;
+- transferencias ou historico: transferências/protocolos ou movimentações de
+  equipamento;
+- inventarios_checklists: checklist/devolução de inventário;
+- testes_sistema: testes, alertas e saúde operacional registrados;
+- indicadores: visão geral/KPIs; orientacao: pedido sem domínio identificável.
 
 Considere consulta do Portal quando o usuário pedir inventários em andamento,
 agora/neste momento, finalizados, progresso, total de peças ou itens contados,
@@ -161,6 +207,7 @@ Mapeamentos:
 
 Datas devem ser ISO YYYY-MM-DD. Use null quando não houver data. Não transforme
 número de loja em client_code. Não copie campos desconhecidos do contexto.
+is_portal_query deve ser true exatamente quando intent=portal_tempo_real.
 """.strip()
 
     @staticmethod
@@ -202,8 +249,20 @@ número de loja em client_code. Não copie campos desconhecidos do contexto.
             start = end
         if start and end and end < start:
             start, end = end, start
+        intent = (
+            payload.get("intent", "")
+            if payload.get("intent", "") in cls.ALLOWED_INTENTS
+            else ""
+        )
         return PortalQuestionPlan(
-            is_portal_query=bool(payload.get("is_portal_query")),
+            intent=intent,
+            confidence=max(0.0, min(1.0, cls._confidence(payload.get("confidence")))),
+            is_follow_up=bool(payload.get("is_follow_up")),
+            is_portal_query=(
+                intent == "portal_tempo_real"
+                if intent
+                else bool(payload.get("is_portal_query"))
+            ),
             status=status,
             client_code=str(payload.get("client_code") or "").strip().upper()[:20],
             store_number=str(payload.get("store_number") or "").strip()[:50],
@@ -211,3 +270,10 @@ número de loja em client_code. Não copie campos desconhecidos do contexto.
             end_date=end,
             metrics=list(dict.fromkeys(metrics)) or ["summary"],
         )
+
+    @staticmethod
+    def _confidence(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0

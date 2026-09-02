@@ -17,6 +17,7 @@ from chamados.forms import (
     ChamadoStatusForm,
     ChamadoTransferenciaForm,
 )
+from chamados.equipment_images import equipment_image_for
 from datetime import datetime, time, timedelta
 from chamados.models import Chamado, ChamadoAnexo
 from chamados.policies import ChamadoAccessPolicy
@@ -272,6 +273,11 @@ def detalhe(request, pk):
         if chamado.equipamento_id and chamado.equipamento.produto_id
         else []
     )
+    equipamento_imagem = (
+        equipment_image_for(chamado.equipamento.produto)
+        if chamado.equipamento_id and chamado.equipamento.produto_id
+        else None
+    )
     return render(request, 'chamados/detalhe.html', {
         'chamado': chamado,
         'mensagens_chamado': mensagens_qs,
@@ -298,6 +304,7 @@ def detalhe(request, pk):
         'metricas': ChamadoService.metricas(chamado),
         'ordens': ordens,
         'documentacao_contextual': documentacao_contextual,
+        'equipamento_imagem': equipamento_imagem,
     })
 
 @login_required
@@ -560,6 +567,10 @@ def dashboard(request):
         status=Chamado.Status.EM_ATENDIMENTO
     ).count()
 
+    aguardando_solicitante = backlog.filter(
+        status=Chamado.Status.AGUARDANDO_SOLICITANTE
+    ).count()
+
     sla_vencido = backlog.filter(
         prazo_sla_em__lt=agora
     ).count()
@@ -658,21 +669,42 @@ def dashboard(request):
         )
     )
 
-    # CATEGORIA DO EQUIPAMENTO
+    # TIPOS DE SUPORTE MAIS FREQUENTES
 
-    por_categoria = list(
+    tipos_suporte_brutos = list(
         chamados_periodo
-        .exclude(
-            categoria_equipamento=''
-        )
         .values(
-            'categoria_equipamento'
+            'categoria__nome',
+            'categoria_equipamento',
         )
         .annotate(
             total=Count('id')
         )
-        .order_by('-total')
     )
+
+    tipos_suporte_acumulados = {}
+
+    for item in tipos_suporte_brutos:
+        tipo = (
+            item['categoria__nome']
+            or item['categoria_equipamento']
+            or 'Não informado'
+        )
+        tipos_suporte_acumulados[tipo] = (
+            tipos_suporte_acumulados.get(tipo, 0)
+            + item['total']
+        )
+
+    por_categoria = [
+        {
+            'tipo_suporte': tipo,
+            'total': total,
+        }
+        for tipo, total in sorted(
+            tipos_suporte_acumulados.items(),
+            key=lambda item: (-item[1], item[0]),
+        )
+    ]
 
     # BASE
 
@@ -778,6 +810,7 @@ def dashboard(request):
             # Situação atual
             'aguardando': aguardando,
             'em_atendimento': em_atendimento,
+            'aguardando_solicitante': aguardando_solicitante,
             'sla_vencido': sla_vencido,
             'criticos': criticos,
 
@@ -828,20 +861,22 @@ def exportar(request):
     qs = _filtrar(
         request,
         ChamadoAccessPolicy.queryset(request.user).select_related(
-            'base', 'categoria', 'aberto_por', 'atendente'
+            'base', 'categoria', 'aberto_por', 'atendente', 'inventario__cliente'
         ),
     )
     workbook = Workbook()
     planilha = workbook.active
     planilha.title = 'CHAMADOS'
     planilha.append([
-        'PROTOCOLO', 'BASE', 'LOJA', 'CATEGORIA', 'TÍTULO', 'PRIORIDADE', 'STATUS',
-        'ABERTO POR', 'ATENDENTE', 'ABERTURA', 'RESOLUÇÃO',
+        'PROTOCOLO', 'BASE', 'SIGLA DA LOJA', 'NÚMERO DA LOJA', 'CATEGORIA',
+        'TÍTULO', 'PRIORIDADE', 'STATUS', 'ABERTO POR', 'ATENDENTE', 'ABERTURA',
+        'RESOLUÇÃO',
     ])
     for chamado in qs.iterator():
         planilha.append([_excel_seguro(valor) for valor in [
             chamado.protocolo,
             chamado.base.nome,
+            chamado.inventario.cliente.sigla if chamado.inventario_id else '',
             chamado.loja,
             chamado.categoria_equipamento,
             chamado.titulo,

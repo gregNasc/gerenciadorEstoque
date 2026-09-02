@@ -1,50 +1,108 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
-{% block title %}{% trans "Chamados" %}{% endblock %}
+
+{% block title %}{% trans "Fila de atendimento" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .support-queue { --queue-border:#e5e9f0; --queue-muted:#667085; --queue-soft:#f7f9fc; --queue-primary-soft:#eef4ff; }
+  .queue-header { margin-bottom:1.5rem; }
+  .queue-eyebrow { color:var(--bs-primary); font-size:.72rem; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+  .queue-title { margin:.15rem 0 0; font-weight:750; letter-spacing:-.035em; }
+  .queue-subtitle { max-width:620px; margin:.45rem 0 0; color:var(--queue-muted); font-size:.92rem; }
+  .queue-actions { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .queue-filter { margin-bottom:1rem; padding:1rem; border:1px solid var(--queue-border); border-radius:1rem; background:#fff; box-shadow:0 .25rem 1rem rgba(15,23,42,.035); }
+  .queue-filter .form-label { margin-bottom:.35rem; color:#475467; font-size:.74rem; font-weight:650; }
+  .queue-search { position:relative; }
+  .queue-search>i { position:absolute; top:50%; left:.85rem; z-index:2; color:#98a2b3; transform:translateY(-50%); pointer-events:none; }
+  .queue-search .form-control { padding-left:2.45rem; }
+  .queue-quick-filters { display:flex; gap:.4rem; overflow-x:auto; margin:0 0 1rem; padding:0 0 .2rem; scrollbar-width:thin; }
+  .queue-chip { display:inline-flex; align-items:center; gap:.4rem; min-height:2.1rem; padding:.38rem .75rem; border:1px solid var(--queue-border); border-radius:999px; background:#fff; color:#475467; font-size:.78rem; font-weight:600; text-decoration:none; white-space:nowrap; transition:.15s ease; }
+  .queue-chip:hover { border-color:#b8c7e6; background:var(--queue-soft); color:var(--bs-primary); }
+  .queue-chip.is-active { border-color:#b7cdfb; background:var(--queue-primary-soft); color:var(--bs-primary); }
+  .queue-summary { color:var(--queue-muted); font-size:.78rem; }
+  .queue-panel { overflow:hidden; border:1px solid var(--queue-border); border-radius:1rem; background:#fff; box-shadow:0 .25rem 1rem rgba(15,23,42,.035); }
+  .queue-table { margin:0; }
+  .queue-table thead th { padding:.75rem 1rem; border-bottom:1px solid var(--queue-border); background:#fafbfc; color:#667085; font-size:.68rem; font-weight:750; letter-spacing:.045em; text-transform:uppercase; white-space:nowrap; }
+  .queue-row { cursor:pointer; transition:background .15s ease,box-shadow .15s ease; }
+  .queue-row:hover { background:#f8faff; box-shadow:inset 3px 0 var(--bs-primary); }
+  .queue-row:focus-visible { position:relative; z-index:1; outline:3px solid rgba(13,110,253,.22); outline-offset:-3px; }
+  .queue-row td { padding:.95rem 1rem; border-color:#edf0f4; vertical-align:middle; }
+  .ticket-id { color:var(--bs-primary); font-size:.72rem; font-weight:750; letter-spacing:.025em; }
+  .ticket-title { margin-top:.14rem; color:#101828; font-size:.9rem; font-weight:680; line-height:1.3; }
+  .ticket-category,.ticket-meta { margin-top:.28rem; color:var(--queue-muted); font-size:.73rem; }
+  .ticket-assignee { display:flex; align-items:center; gap:.55rem; font-size:.78rem; }
+  .ticket-avatar { display:inline-grid; width:2rem; height:2rem; place-items:center; flex:0 0 auto; border-radius:50%; background:#eef2f7; color:#475467; font-size:.68rem; font-weight:750; }
+  .queue-open { color:#98a2b3; transition:transform .15s ease,color .15s ease; }
+  .queue-row:hover .queue-open { color:var(--bs-primary); transform:translateX(2px); }
+  .support-badge { display:inline-flex; align-items:center; gap:.3rem; margin-top:.38rem; padding:.25rem .5rem; border:1px solid #fecaca; border-radius:999px; background:#fff1f2; color:#b42318; font-size:.66rem; font-weight:700; }
+  .queue-mobile { display:none; }
+  .queue-mobile-card { display:block; padding:1rem; border-bottom:1px solid var(--queue-border); color:inherit; text-decoration:none; transition:background .15s ease; }
+  .queue-mobile-card:last-child { border-bottom:0; }
+  .queue-mobile-card:hover { background:#f8faff; }
+  .queue-mobile-card__badges { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.75rem; }
+  .queue-mobile-card__footer { display:flex; justify-content:space-between; gap:1rem; margin-top:.85rem; padding-top:.75rem; border-top:1px solid #edf0f4; color:var(--queue-muted); font-size:.72rem; }
+  @media (max-width:991.98px) { .queue-desktop{display:none}.queue-mobile{display:block} }
+  @media (max-width:575.98px) { .queue-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.queue-actions .btn:last-child:nth-child(odd){grid-column:1/-1}.queue-filter{padding:.85rem}.queue-filter-actions{display:grid!important;grid-template-columns:1fr 1fr} }
+</style>
+{% endblock %}
+
 {% block content %}
-<header class="app-page-header">
-  <div class="app-page-header__content"><h1>{% trans "Chamados" %}</h1><p class="app-page-header__description">{% trans "Suporte operacional relacionado aos inventários." %}</p></div>
-  <div class="app-page-header__actions">
-    {% if pode_dashboard %}<a class="btn btn-outline-secondary" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart"></i> {% trans "Dashboard" %}</a>{% endif %}
-    {% if pode_exportar %}<a class="btn btn-outline-secondary" href="{% url 'chamados:exportar' %}"><i class="bi bi-download"></i> {% trans "Exportar" %}</a>{% endif %}
-    {% if pode_criar %}<a class="btn btn-primary" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-lg"></i> {% trans "Novo chamado" %}</a>{% endif %}
-  </div>
-</header>
-<form method="get" class="app-filter-panel mb-3">
-  <div class="row g-3 align-items-end">
-    <div class="col-lg-4"><label class="form-label" for="chamados-q">{% trans "Buscar" %}</label><input id="chamados-q" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="{% trans 'Protocolo, título, descrição ou loja' %}"></div>
-    <div class="col-md-3 col-lg-2"><label class="form-label" for="chamados-status">{% trans "Status" %}</label><select id="chamados-status" class="form-select" name="status"><option value="">{% trans "Todos" %}</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-    <div class="col-md-3 col-lg-2"><label class="form-label" for="chamados-prioridade">{% trans "Prioridade" %}</label><select id="chamados-prioridade" class="form-select" name="prioridade"><option value="">{% trans "Todas" %}</option>{% for value,label in prioridade_choices %}<option value="{{ value }}" {% if request.GET.prioridade == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-    <div class="col-md-4 col-lg-2"><label class="form-label" for="chamados-base">{% trans "Base" %}</label><select id="chamados-base" class="form-select" name="base"><option value="">{% trans "Todas" %}</option>{% for base in bases %}<option value="{{ base.pk }}" {% if request.GET.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
-    <div class="col-md-2 col-lg-2 d-flex gap-2"><a class="btn btn-outline-secondary flex-fill" href="{% url 'chamados:lista' %}">{% trans "Limpar" %}</a><button class="btn btn-secondary flex-fill" type="submit">{% trans "Aplicar" %}</button></div>
-  </div>
-</form>
-{% if request.GET %}<p class="small text-secondary" role="status">{% blocktrans count total=chamados|length %}{{ total }} chamado encontrado{% plural %}{{ total }} chamados encontrados{% endblocktrans %}</p>{% endif %}
-<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-  <thead><tr><th>{% trans "Protocolo" %}</th><th>{% trans "Chamado" %}</th><th>{% trans "Base / Loja" %}</th><th>{% trans "Prioridade" %}</th><th>{% trans "Status" %}</th><th class="d-none d-lg-table-cell">{% trans "Atendente" %}</th><th class="d-none d-xl-table-cell">{% trans "Abertura" %}</th></tr></thead>
-  <tbody>{% for chamado in chamados %}<tr class="app-clickable-row" tabindex="0" data-href="{% url 'chamados:detalhe' chamado.pk %}" aria-label="{% blocktrans with protocolo=chamado.protocolo %}Abrir chamado {{ protocolo }}{% endblocktrans %}">
-    <td><a class="fw-semibold" href="{% url 'chamados:detalhe' chamado.pk %}">{{ chamado.protocolo }}</a></td>
-    <td><div>{{ chamado.titulo }}</div><small class="text-secondary">{{ chamado.categoria.nome }}</small></td>
-    <td><div>{{ chamado.base.nome }}</div><small class="text-secondary">{{ chamado.loja|default:'—' }}</small></td>
-    <td><span class="app-status {% if chamado.prioridade == 'CRITICA' %}app-status-danger{% elif chamado.prioridade == 'ALTA' %}app-status-warning{% else %}app-status-neutral{% endif %}">{{ chamado.get_prioridade_display }}</span></td>
-    <td><span class="app-status {% if chamado.status == 'RESOLVIDO' or chamado.status == 'ENCERRADO' %}app-status-success{% elif chamado.status == 'AGUARDANDO_ATENDIMENTO' or chamado.status == 'AGUARDANDO_SOLICITANTE' or chamado.status == 'AGUARDANDO_TERCEIRO' %}app-status-warning{% elif chamado.status == 'CANCELADO' %}app-status-danger{% else %}app-status-info{% endif %}">{{ chamado.get_status_display }}</span>{% if chamado.sla_vencido %}<div class="mt-1"><span class="app-status app-status-danger">{% trans "SLA vencido" %}</span></div>{% endif %}</td>
-    <td class="d-none d-lg-table-cell">{% if chamado.atendente %}{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}{% else %}{% trans "Não atribuído" %}{% endif %}</td>
-    <td class="d-none d-xl-table-cell">{{ chamado.aberto_em|date:'d/m/Y H:i' }}</td>
-  </tr>{% empty %}<tr><td colspan="7"><div class="app-empty-state m-3"><i class="bi bi-search app-empty-state__icon" aria-hidden="true"></i><p>{% trans "Nenhum chamado encontrado para os filtros selecionados." %}</p>{% if request.GET %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'chamados:lista' %}">{% trans "Limpar filtros" %}</a>{% endif %}</div></td></tr>{% endfor %}</tbody>
-</table></div></div>
+<div class="support-queue pb-5">
+  <header class="queue-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div><div class="queue-eyebrow">{% trans "Central de suporte" %}</div><h1 class="h3 queue-title">{% trans "Chamados" %}</h1><p class="queue-subtitle">{% trans "Acompanhe solicitações abertas, atendimentos em andamento e chamados aguardando retorno." %}</p></div>
+    <div class="queue-actions">
+      {% if pode_dashboard %}<a class="btn btn-outline-secondary" href="{% url 'chamados:dashboard' %}"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>{% trans "Dashboard" %}</a>{% endif %}
+      {% if pode_exportar %}<a class="btn btn-outline-secondary" href="{% url 'chamados:exportar' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-download me-1" aria-hidden="true"></i>{% trans "Exportar" %}</a>{% endif %}
+      {% if pode_criar %}<a class="btn btn-primary" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>{% trans "Novo chamado" %}</a>{% endif %}
+    </div>
+  </header>
+
+  <form method="get" class="queue-filter" aria-label="{% trans 'Filtros da fila' %}">
+    <div class="row g-3 align-items-end">
+      <div class="col-xl-4"><label class="form-label" for="chamados-q">{% trans "Buscar chamado" %}</label><div class="queue-search"><i class="bi bi-search" aria-hidden="true"></i><input id="chamados-q" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="{% trans 'Protocolo, título, descrição ou loja' %}"></div></div>
+      <div class="col-sm-4 col-xl-2"><label class="form-label" for="chamados-status">{% trans "Status" %}</label><select id="chamados-status" class="form-select" name="status"><option value="">{% trans "Todos" %}</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="col-sm-4 col-xl-2"><label class="form-label" for="chamados-prioridade">{% trans "Prioridade" %}</label><select id="chamados-prioridade" class="form-select" name="prioridade"><option value="">{% trans "Todas" %}</option>{% for value,label in prioridade_choices %}<option value="{{ value }}" {% if request.GET.prioridade == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="col-sm-4 col-xl-2"><label class="form-label" for="chamados-base">{% trans "Base" %}</label><select id="chamados-base" class="form-select" name="base"><option value="">{% trans "Todas" %}</option>{% for base in bases %}<option value="{{ base.pk }}" {% if request.GET.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>{% endfor %}</select></div>
+      <div class="col-xl-2 d-flex gap-2 queue-filter-actions"><a class="btn btn-outline-secondary flex-fill" href="{% url 'chamados:lista' %}">{% trans "Limpar" %}</a><button class="btn btn-secondary flex-fill" type="submit">{% trans "Aplicar" %}</button></div>
+    </div>
+  </form>
+
+  <nav class="queue-quick-filters" aria-label="{% trans 'Filtros rápidos' %}">
+    <a class="queue-chip {% if not request.GET.status and not request.GET.q and not request.GET.prioridade and not request.GET.base %}is-active{% endif %}" href="{% url 'chamados:lista' %}">{% trans "Todos" %}</a>
+    <a class="queue-chip {% if request.GET.status == 'AGUARDANDO_ATENDIMENTO' %}is-active{% endif %}" href="?status=AGUARDANDO_ATENDIMENTO"><i class="bi bi-hourglass-split" aria-hidden="true"></i>{% trans "Aguardando" %}</a>
+    <a class="queue-chip {% if request.GET.status == 'EM_ATENDIMENTO' %}is-active{% endif %}" href="?status=EM_ATENDIMENTO"><i class="bi bi-headset" aria-hidden="true"></i>{% trans "Em atendimento" %}</a>
+    <a class="queue-chip {% if request.GET.status == 'AGUARDANDO_SOLICITANTE' %}is-active{% endif %}" href="?status=AGUARDANDO_SOLICITANTE"><i class="bi bi-reply" aria-hidden="true"></i>{% trans "Aguardando solicitante" %}</a>
+    <a class="queue-chip {% if request.GET.status == 'RESOLVIDO' %}is-active{% endif %}" href="?status=RESOLVIDO"><i class="bi bi-check-circle" aria-hidden="true"></i>{% trans "Resolvidos" %}</a>
+    <a class="queue-chip {% if request.GET.status == 'ENCERRADO' %}is-active{% endif %}" href="?status=ENCERRADO"><i class="bi bi-archive" aria-hidden="true"></i>{% trans "Encerrados" %}</a>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-center gap-2 mb-2"><div class="queue-summary" role="status">{% blocktrans count total=chamados|length %}<strong>{{ total }}</strong> chamado na fila{% plural %}<strong>{{ total }}</strong> chamados na fila{% endblocktrans %}</div>{% if request.GET %}<a class="small text-decoration-none" href="{% url 'chamados:lista' %}">{% trans "Remover filtros" %}</a>{% endif %}</div>
+  <section class="queue-panel" aria-label="{% trans 'Fila de chamados' %}">
+    <div class="table-responsive queue-desktop"><table class="table queue-table align-middle"><thead><tr><th>{% trans "Chamado" %}</th><th>{% trans "Base / Loja" %}</th><th>{% trans "Prioridade" %}</th><th>{% trans "Status" %}</th><th>{% trans "Atendente" %}</th><th>{% trans "Abertura" %}</th><th><span class="visually-hidden">{% trans "Abrir" %}</span></th></tr></thead><tbody>
+      {% for chamado in chamados %}<tr class="queue-row" tabindex="0" data-href="{% url 'chamados:detalhe' chamado.pk %}" aria-label="{% blocktrans with protocolo=chamado.protocolo %}Abrir chamado {{ protocolo }}{% endblocktrans %}">
+        <td><div class="ticket-id">{{ chamado.protocolo }}</div><div class="ticket-title">{{ chamado.titulo }}</div><div class="ticket-category">{{ chamado.categoria.nome|default:chamado.get_categoria_equipamento_display }}</div></td>
+        <td><div class="small fw-semibold">{{ chamado.base.nome }}</div><div class="ticket-meta">{{ chamado.loja|default:'—' }}</div></td>
+        <td><span class="app-status {% if chamado.prioridade == 'CRITICA' %}app-status-danger{% elif chamado.prioridade == 'ALTA' %}app-status-warning{% else %}app-status-neutral{% endif %}">{{ chamado.get_prioridade_display }}</span></td>
+        <td><span class="app-status {% if chamado.status == 'RESOLVIDO' or chamado.status == 'ENCERRADO' %}app-status-success{% elif chamado.status == 'AGUARDANDO_ATENDIMENTO' or chamado.status == 'AGUARDANDO_SOLICITANTE' or chamado.status == 'AGUARDANDO_TERCEIRO' or chamado.status == 'AVALIACAO' %}app-status-warning{% elif chamado.status == 'CANCELADO' %}app-status-danger{% else %}app-status-info{% endif %}">{{ chamado.get_status_display }}</span>{% if chamado.sla_vencido %}<div><span class="support-badge"><i class="bi bi-clock-history" aria-hidden="true"></i>{% trans "Tempo de Suporte vencido" %}</span></div>{% endif %}</td>
+        <td>{% if chamado.atendente %}<div class="ticket-assignee"><span class="ticket-avatar"><i class="bi bi-person" aria-hidden="true"></i></span><span>{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}</span></div>{% else %}<span class="ticket-meta">{% trans "Não atribuído" %}</span>{% endif %}</td>
+        <td><div class="small">{{ chamado.aberto_em|date:'d/m/Y' }}</div><div class="ticket-meta">{{ chamado.aberto_em|date:'H:i' }}</div></td><td><i class="bi bi-chevron-right queue-open" aria-hidden="true"></i></td>
+      </tr>{% empty %}<tr><td colspan="7"><div class="app-empty-state m-3"><i class="bi bi-search app-empty-state__icon" aria-hidden="true"></i><p>{% trans "Nenhum chamado encontrado para os filtros selecionados." %}</p>{% if request.GET %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'chamados:lista' %}">{% trans "Limpar filtros" %}</a>{% endif %}</div></td></tr>{% endfor %}
+    </tbody></table></div>
+    <div class="queue-mobile">
+      {% for chamado in chamados %}<a class="queue-mobile-card" href="{% url 'chamados:detalhe' chamado.pk %}">
+        <div class="d-flex justify-content-between align-items-start gap-3"><div class="min-w-0"><div class="ticket-id">{{ chamado.protocolo }}</div><div class="ticket-title">{{ chamado.titulo }}</div></div><i class="bi bi-chevron-right queue-open mt-1" aria-hidden="true"></i></div>
+        <div class="queue-mobile-card__badges"><span class="app-status {% if chamado.prioridade == 'CRITICA' %}app-status-danger{% elif chamado.prioridade == 'ALTA' %}app-status-warning{% else %}app-status-neutral{% endif %}">{{ chamado.get_prioridade_display }}</span><span class="app-status {% if chamado.status == 'RESOLVIDO' or chamado.status == 'ENCERRADO' %}app-status-success{% elif chamado.status == 'CANCELADO' %}app-status-danger{% elif chamado.status == 'EM_ATENDIMENTO' %}app-status-info{% else %}app-status-warning{% endif %}">{{ chamado.get_status_display }}</span>{% if chamado.sla_vencido %}<span class="support-badge mt-0">{% trans "Tempo de Suporte vencido" %}</span>{% endif %}</div>
+        <div class="queue-mobile-card__footer"><span><i class="bi bi-building me-1" aria-hidden="true"></i>{{ chamado.base.nome }}{% if chamado.loja %} · {{ chamado.loja }}{% endif %}</span><span>{{ chamado.aberto_em|date:'d/m H:i' }}</span></div>
+        <div class="ticket-meta mt-2"><i class="bi bi-person me-1" aria-hidden="true"></i>{% if chamado.atendente %}{{ chamado.atendente.get_full_name|default:chamado.atendente.username }}{% else %}{% trans "Não atribuído" %}{% endif %}</div>
+      </a>{% empty %}<div class="app-empty-state m-3"><i class="bi bi-search app-empty-state__icon" aria-hidden="true"></i><p>{% trans "Nenhum chamado encontrado para os filtros selecionados." %}</p>{% if request.GET %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'chamados:lista' %}">{% trans "Limpar filtros" %}</a>{% endif %}</div>{% endfor %}
+    </div>
+  </section>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.querySelectorAll('.app-clickable-row[data-href]').forEach(function (row) {
-  function abrir(event) {
-    if (event?.target.closest('a, button, input, select, textarea')) return;
-    window.location.href = row.dataset.href;
-  }
-  row.addEventListener('click', abrir);
-  row.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') abrir(event);
-  });
-});
+document.querySelectorAll('.queue-row[data-href]').forEach(function(row){function abrir(event){if(event?.target.closest('a,button,input,select,textarea'))return;window.location.href=row.dataset.href}row.addEventListener('click',abrir);row.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();abrir(event)}})});
 </script>
 {% endblock %}

@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 import tempfile
-import warnings
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -233,7 +232,27 @@ LANGUAGES = [
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT') or BASE_DIR / 'media')
+
+# Uploads precisam sobreviver ao ciclo de vida do container. Em produção há
+# duas opções válidas: object storage (S3/compatível) ou um volume persistente.
+# PERSISTENT_STORAGE_ROOT simplifica a configuração de um único disco montado
+# (por exemplo, /var/data no Render) mantendo mídia pública e privada separadas.
+PERSISTENT_STORAGE_ROOT_CONFIGURED = os.getenv(
+    'PERSISTENT_STORAGE_ROOT', ''
+).strip()
+MEDIA_ROOT_CONFIGURED = os.getenv('MEDIA_ROOT', '').strip()
+PRIVATE_MEDIA_ROOT_CONFIGURED = os.getenv('PRIVATE_MEDIA_ROOT', '').strip()
+
+if PERSISTENT_STORAGE_ROOT_CONFIGURED:
+    PERSISTENT_STORAGE_ROOT = Path(PERSISTENT_STORAGE_ROOT_CONFIGURED)
+    MEDIA_ROOT = PERSISTENT_STORAGE_ROOT / 'media'
+    PRIVATE_MEDIA_ROOT = PERSISTENT_STORAGE_ROOT / 'private_media'
+else:
+    PERSISTENT_STORAGE_ROOT = None
+    MEDIA_ROOT = Path(MEDIA_ROOT_CONFIGURED or BASE_DIR / 'media')
+    PRIVATE_MEDIA_ROOT = Path(
+        PRIVATE_MEDIA_ROOT_CONFIGURED or BASE_DIR / 'private_media'
+    )
 
 # Mantém apenas uploads pequenos em memória. Acima deste limite, os handlers
 # do Django usam um arquivo temporário e entregam o mesmo stream ao storage.
@@ -254,27 +273,28 @@ FILE_UPLOAD_TEMP_DIR = (
     or DEFAULT_FILE_UPLOAD_TEMP_DIR
 )
 
-USE_S3 = env_bool('USE_S3', False)
-PRIVATE_MEDIA_ROOT_CONFIGURED = os.getenv('PRIVATE_MEDIA_ROOT', '').strip()
-PRIVATE_MEDIA_ROOT = Path(PRIVATE_MEDIA_ROOT_CONFIGURED or BASE_DIR / 'private_media')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '').strip()
+USE_S3 = env_bool('USE_S3', False) or bool(AWS_STORAGE_BUCKET_NAME)
+LOCAL_PERSISTENT_STORAGE_CONFIGURED = bool(
+    PERSISTENT_STORAGE_ROOT_CONFIGURED
+    or (MEDIA_ROOT_CONFIGURED and PRIVATE_MEDIA_ROOT_CONFIGURED)
+)
 
-# Em produção, avise sobre o fallback local sem impedir collectstatic, migrate
-# ou a inicialização do serviço. A persistência efetiva ainda depende de um
-# disco montado nesse caminho ou do S3.
-if not DEBUG and not USE_S3 and not PRIVATE_MEDIA_ROOT_CONFIGURED:
-    warnings.warn(
-        'PRIVATE_MEDIA_ROOT não foi configurado: arquivos enviados ficarão no '
-        'filesystem local e podem desaparecer após um novo deploy. Configure '
-        'um disco persistente ou ative USE_S3.',
-        RuntimeWarning,
-        stacklevel=1,
-    )
-if not DEBUG and not USE_S3 and not PRIVATE_MEDIA_ROOT.is_absolute():
-    warnings.warn(
-        'PRIVATE_MEDIA_ROOT deveria ser um caminho absoluto para um disco persistente.',
-        RuntimeWarning,
-        stacklevel=1,
-    )
+if not DEBUG and not USE_S3:
+    if not LOCAL_PERSISTENT_STORAGE_CONFIGURED:
+        raise ImproperlyConfigured(
+            'Uploads persistentes não foram configurados. Defina '
+            'PERSISTENT_STORAGE_ROOT para um disco persistente ou configure '
+            'USE_S3=True e AWS_STORAGE_BUCKET_NAME.'
+        )
+    if not MEDIA_ROOT.is_absolute() or not PRIVATE_MEDIA_ROOT.is_absolute():
+        raise ImproperlyConfigured(
+            'MEDIA_ROOT e PRIVATE_MEDIA_ROOT devem ser caminhos absolutos em produção.'
+        )
+    if MEDIA_ROOT.resolve() == PRIVATE_MEDIA_ROOT.resolve():
+        raise ImproperlyConfigured(
+            'MEDIA_ROOT e PRIVATE_MEDIA_ROOT devem ser diretórios diferentes.'
+        )
 
 STORAGES = {
     'staticfiles': {
@@ -287,7 +307,6 @@ STORAGES = {
 }
 
 if USE_S3:
-    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '').strip()
     if not AWS_STORAGE_BUCKET_NAME:
         raise ImproperlyConfigured('AWS_STORAGE_BUCKET_NAME deve ser configurado quando USE_S3=True.')
     AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'sa-east-1')
@@ -307,6 +326,7 @@ if USE_S3:
             'default_acl': None,
             'querystring_auth': True,
             'file_overwrite': False,
+            'location': 'media',
             'object_parameters': AWS_S3_OBJECT_PARAMETERS,
         },
     }
@@ -329,6 +349,10 @@ if USE_S3:
 else:
     STORAGES['default'] = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'OPTIONS': {
+            'location': MEDIA_ROOT,
+            'base_url': MEDIA_URL,
+        },
     }
     STORAGES['private'] = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -375,6 +399,16 @@ INVENTORY_PORTAL_MAX_DETAIL_RECORDS = int(os.getenv('INVENTORY_PORTAL_MAX_DETAIL
 TORY_LLM_ENABLED = os.getenv('TORY_LLM_ENABLED', 'False').lower() == 'true'
 TORY_LLM_MODEL = os.getenv('TORY_LLM_MODEL', 'gpt-5.6-sol')
 TORY_LLM_TIMEOUT = float(os.getenv('TORY_LLM_TIMEOUT', '20'))
+TORY_LLM_REASONING_EFFORT = os.getenv(
+    'TORY_LLM_REASONING_EFFORT', 'medium'
+).strip().lower()
+if TORY_LLM_REASONING_EFFORT not in {'minimal', 'low', 'medium', 'high'}:
+    raise ImproperlyConfigured(
+        'TORY_LLM_REASONING_EFFORT deve ser minimal, low, medium ou high.'
+    )
+TORY_LLM_MIN_CONFIDENCE = float(os.getenv('TORY_LLM_MIN_CONFIDENCE', '0.78'))
+if not 0 <= TORY_LLM_MIN_CONFIDENCE <= 1:
+    raise ImproperlyConfigured('TORY_LLM_MIN_CONFIDENCE deve estar entre 0 e 1.')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
 # Entregas opcionais por WhatsApp. Permanecem desabilitadas por padrão.
