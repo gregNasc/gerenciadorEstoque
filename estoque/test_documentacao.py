@@ -34,13 +34,17 @@ def _docx_minimo(texto):
 
 
 class DocumentationServiceTests(TestCase):
-    def test_catalogo_tem_treze_procedimentos_locais(self):
+    def test_catalogo_tem_procedimentos_locais_em_portugues_e_espanhol(self):
         resolucoes = DocumentationService.listar(tipo='RESOLUCAO')
-        self.assertEqual(len(resolucoes), 13)
+        self.assertEqual(len(resolucoes), 24)
         self.assertTrue(all(item['arquivo_disponivel'] for item in resolucoes))
         self.assertTrue(all(item['arquivo_url'].endswith('.pdf') for item in resolucoes))
         self.assertTrue(DocumentationService.listar(termo='Skorpio X4'))
         self.assertTrue(DocumentationService.listar(termo='MobyData M52'))
+        resolucoes_es = DocumentationService.listar(tipo='RESOLUCAO', idioma='es')
+        self.assertEqual(len(resolucoes_es), 11)
+        self.assertTrue(any(item['modelo'] == 'LaserJet M111' for item in resolucoes_es))
+        self.assertTrue(all(item['idioma_codigo'] == 'es' for item in resolucoes_es))
 
     def test_pesquisa_por_modelo_sintoma_e_driver_retorna_tipos_corretos(self):
         tipos_m2020 = {
@@ -369,6 +373,30 @@ class DocumentationViewsTests(TestCase):
         self.assertRedirects(self.client.post(desativar_video), videos_url)
         video.refresh_from_db()
         self.assertFalse(video.ativo)
+
+    def test_pagina_de_videos_e_exibida_em_espanhol(self):
+        self.user.perfil.idioma = 'es'
+        self.user.perfil.save(update_fields=['idioma'])
+        self.client.force_login(self.user)
+
+        pagina = self.client.get(reverse('estoque:documentacao_videos'))
+
+        self.assertContains(pagina, 'Vídeos de apoyo')
+        self.assertContains(pagina, 'resolver problemas comunes')
+        self.assertContains(pagina, 'No hay vídeos publicados')
+
+    def test_template_de_checklist_e_exibido_em_espanhol(self):
+        self.user.perfil.role = 'admin'
+        self.user.perfil.idioma = 'es'
+        self.user.perfil.save(update_fields=['role', 'idioma'])
+        self.client.force_login(self.user)
+
+        pagina = self.client.get(reverse('estoque:checklist'))
+
+        self.assertEqual(pagina.status_code, 200)
+        self.assertContains(pagina, 'CHECK-LIST DE EQUIPOS E INSUMOS')
+        self.assertContains(pagina, 'DECLARACIÓN DE RETIRO DE EQUIPOS')
+        self.assertContains(pagina, 'Seleccione primero el inventario y la base.')
         self.assertFalse(DocumentationService.listar(tipo='VIDEO'))
 
     def test_video_do_youtube_e_incorporado_na_pagina(self):
@@ -425,6 +453,7 @@ class DocumentationViewsTests(TestCase):
             'fabricante': 'MobyData',
             'modelo': 'M52',
             'categoria': 'Coletores',
+            'idioma': 'es',
             'resumo': 'Passo a passo validado pelo suporte.',
             'tags': 'wi-fi, servidor',
             'arquivo': SimpleUploadedFile(
@@ -437,6 +466,7 @@ class DocumentationViewsTests(TestCase):
         documento = ResolucaoDocumento.objects.get()
         self.assertEqual(documento.nome_original, 'resolucao-m52.pdf')
         self.assertEqual(documento.criado_por, admin)
+        self.assertEqual(documento.idioma, 'es')
 
         pagina = self.client.get(url, {'q': 'Solução de comunicação'})
         self.assertContains(pagina, documento.titulo)
@@ -479,6 +509,24 @@ class DocumentationViewsTests(TestCase):
         })
         self.assertEqual(resposta.status_code, 403)
         self.assertFalse(ResolucaoDocumento.objects.exists())
+
+    def test_resolucao_em_espanhol_exibe_interface_e_idioma_traduzidos(self):
+        self.user.perfil.idioma = 'es'
+        self.user.perfil.save(update_fields=['idioma'])
+        ResolucaoDocumento.objects.create(
+            titulo='Solución de impresión', fabricante='Xerox', modelo='3020',
+            categoria='Impresoras', idioma='es', arquivo='documento.pdf',
+            nome_original='solucion.pdf', criado_por=self.user,
+        )
+        self.client.force_login(self.user)
+
+        pagina = self.client.get(
+            reverse('estoque:documentacao_resolucao'), {'idioma': 'es'}
+        )
+
+        self.assertContains(pagina, 'Resolución de problemas')
+        self.assertContains(pagina, 'SOLUCIÓN DE IMPRESIÓN')
+        self.assertContains(pagina, 'Español')
 
 
 class ToryDocumentationTests(TestCase):

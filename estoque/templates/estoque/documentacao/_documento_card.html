@@ -1,3 +1,6 @@
+{% load i18n %}
+{% trans "Não informado" as nao_informado %}
+{% trans "Drivers oficiais" as drivers_oficiais %}
 <div class="col-12 col-xl-6">
   <article class="card h-100 border shadow-sm documentation-card">
     <div class="card-body p-4 d-flex flex-column">
@@ -8,9 +11,9 @@
           <p class="small text-secondary mb-0">{{ documento.fabricante }}{% if documento.categoria %} · {{ documento.categoria }}{% endif %}</p>
         </div>
         {% if documento.arquivo_disponivel %}
-          <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Arquivo local</span>
+          <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>{% trans "Arquivo local" %}</span>
         {% elif documento.fonte_url %}
-          <span class="badge text-bg-info"><i class="bi bi-link-45deg me-1"></i>Fonte externa</span>
+          <span class="badge text-bg-info"><i class="bi bi-link-45deg me-1"></i>{% trans "Fonte externa" %}</span>
         {% endif %}
       </div>
       <h3 class="h6 fw-bold">{{ documento.titulo }}</h3>
@@ -18,7 +21,7 @@
       {% if documento.tipo_documento == 'VIDEO' and documento.embed_url %}
         <div class="ratio ratio-16x9 mb-3 rounded overflow-hidden bg-dark">
           <iframe src="{{ documento.embed_url }}"
-                  title="Reproduzir {{ documento.titulo }}"
+                  title="{% trans 'Reproduzir' %} {{ documento.titulo }}"
                   loading="lazy"
                   referrerpolicy="strict-origin-when-cross-origin"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -26,41 +29,41 @@
         </div>
       {% endif %}
       <dl class="row small mb-3 documentation-meta">
-        <dt class="col-4">Idioma</dt><dd class="col-8">{{ documento.idioma|default:"Não informado" }}</dd>
+        <dt class="col-4">{% trans "Idioma" %}</dt><dd class="col-8">{{ documento.idioma|default:nao_informado }}</dd>
         {% if documento.versao_documento and documento.versao_documento != 'legado' %}
-          <dt class="col-4">Versão</dt><dd class="col-8">{{ documento.versao_documento }} · {{ documento.atualizado_em }}</dd>
+          <dt class="col-4">{% trans "Versão" %}</dt><dd class="col-8">{{ documento.versao_documento }} · {{ documento.atualizado_em }}</dd>
         {% endif %}
       </dl>
       {% if documento.revisao_interna %}
-        <div class="alert alert-warning py-2 px-3 small"><i class="bi bi-shield-check me-1"></i>Procedimento interno pronto para revisão operacional.</div>
+        <div class="alert alert-warning py-2 px-3 small"><i class="bi bi-shield-check me-1"></i>{% trans "Procedimento interno pronto para revisão operacional." %}</div>
       {% endif %}
       <div class="d-flex flex-wrap gap-2">
         {% if documento.detalhe_url %}
-          <a href="{{ documento.detalhe_url }}" class="btn btn-primary"><i class="bi bi-card-checklist me-2"></i>Ver checklist</a>
+          <a href="{{ documento.detalhe_url }}" class="btn btn-primary"><i class="bi bi-card-checklist me-2"></i>{% trans "Ver checklist" %}</a>
         {% endif %}
         {% if documento.arquivo_disponivel %}
           <a href="{{ documento.arquivo_url }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-            <i class="bi bi-file-earmark-pdf me-2"></i>{% if documento.tipo_documento == 'RESOLUCAO' %}Abrir procedimento{% else %}Abrir documento{% endif %}
+            <i class="bi bi-file-earmark-pdf me-2"></i>{% if documento.tipo_documento == 'RESOLUCAO' %}{% trans "Abrir procedimento" %}{% else %}{% trans "Abrir documento" %}{% endif %}
           </a>
         {% endif %}
         {% if documento.driver_url %}
           <a href="{{ documento.driver_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener noreferrer">
-            <i class="bi bi-download me-2"></i>{{ documento.driver_label|default:"Drivers oficiais" }}
+            <i class="bi bi-download me-2"></i>{{ documento.driver_label|default:drivers_oficiais }}
           </a>
         {% endif %}
         {% if documento.fonte_url and not documento.embed_url %}
           <a href="{{ documento.fonte_url }}" class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer">
-            <i class="bi {% if documento.tipo_documento == 'VIDEO' %}bi-play-btn{% else %}bi-box-arrow-up-right{% endif %} me-2"></i>{% if documento.tipo_documento == 'VIDEO' %}Abrir vídeo{% else %}Fonte oficial{% endif %}
+            <i class="bi {% if documento.tipo_documento == 'VIDEO' %}bi-play-btn{% else %}bi-box-arrow-up-right{% endif %} me-2"></i>{% if documento.tipo_documento == 'VIDEO' %}{% trans "Abrir vídeo" %}{% else %}{% trans "Fonte oficial" %}{% endif %}
           </a>
         {% endif %}
         {% if documento.tipo_documento == 'VIDEO' and pode_gerenciar_documentacao %}
-          <form method="post" action="{% url 'estoque:documentacao_video_desativar' documento.objeto_id %}">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-2"></i>Desativar</button></form>
+          <form method="post" action="{% url 'estoque:documentacao_video_desativar' documento.objeto_id %}">{% csrf_token %}<button class="btn btn-outline-danger" type="submit"><i class="bi bi-x-circle me-2"></i>{% trans "Desativar" %}</button></form>
         {% endif %}
         {% if documento.resolucao_upload and pode_gerenciar_documentacao %}
           <form method="post" action="{% url 'estoque:documentacao_resolucao_desativar' documento.objeto_id %}">
             {% csrf_token %}
             <button class="btn btn-outline-danger" type="submit">
-              <i class="bi bi-x-circle me-2" aria-hidden="true"></i>Desativar
+              <i class="bi bi-x-circle me-2" aria-hidden="true"></i>{% trans "Desativar" %}
             </button>
           </form>
         {% endif %}

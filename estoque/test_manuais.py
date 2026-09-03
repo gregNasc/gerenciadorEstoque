@@ -1,8 +1,10 @@
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from estoque.models import Base, Empresa, Equipamento, Produto
+from estoque.forms_documentacao import DriverImpressoraForm
+from estoque.models import Base, DriverImpressora, Empresa, Equipamento, Produto
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.manual_service import ManualService
 
@@ -60,6 +62,144 @@ class ManuaisViewTests(TestCase):
             with self.subTest(produto_codigo=item['produto_codigo']):
                 self.assertTrue(item.get('driver_url', '').startswith('https://'))
                 self.assertTrue(item.get('driver_label'))
+
+    def test_catalogo_de_manuais_e_exibido_em_espanhol(self):
+        self.criar_equipamento(
+            codigo='IMP-BR-XR',
+            descricao='IMPRESSORA XEROX 3020',
+            fabricante='Xerox',
+            modelo='Phaser 3020',
+            categoria='Impressoras',
+        )
+        self.user.perfil.idioma = 'es'
+        self.user.perfil.save(update_fields=['idioma'])
+        self.client.force_login(self.user)
+
+        resposta = self.client.get(reverse('estoque:manuais'))
+
+        self.assertContains(resposta, 'Manuales de equipos')
+        self.assertContains(resposta, 'Guía del usuario de Phaser 3020')
+        self.assertContains(resposta, 'Disponible localmente')
+
+
+class DriversImpressorasTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username='admin-drivers', password='segura-123'
+        )
+        self.admin.perfil.role = 'admin'
+        self.admin.perfil.save()
+        self.operador = User.objects.create_user(
+            username='operador-drivers', password='segura-123'
+        )
+        self.url = reverse('estoque:drivers_impressoras')
+
+    def tearDown(self):
+        for driver in DriverImpressora.objects.all():
+            if driver.arquivo and driver.arquivo.storage.exists(driver.arquivo.name):
+                driver.arquivo.storage.delete(driver.arquivo.name)
+
+    def test_admin_publica_e_usuario_baixa_driver_privado(self):
+        self.client.force_login(self.admin)
+        resposta = self.client.post(self.url, {
+            'titulo': 'Driver universal Xerox',
+            'fabricante': 'Xerox',
+            'modelo': 'Phaser 3020',
+            'sistema_operacional': 'Windows 11',
+            'arquitetura': '64 bits',
+            'versao': '3.1',
+            'descricao': 'Pacote validado pela equipe de suporte.',
+            'instrucoes': 'Descompacte e execute o instalador.',
+            'arquivo': SimpleUploadedFile(
+                'xerox-3020.zip', b'conteudo-do-driver', content_type='application/zip'
+            ),
+        })
+        self.assertRedirects(resposta, self.url)
+        driver = DriverImpressora.objects.get()
+        self.assertEqual(driver.nome_original, 'xerox-3020.zip')
+        self.assertEqual(driver.tamanho_bytes, len(b'conteudo-do-driver'))
+        self.assertEqual(driver.criado_por, self.admin)
+
+        self.client.force_login(self.operador)
+        pagina = self.client.get(self.url, {'q': 'Phaser'})
+        self.assertContains(pagina, 'Phaser 3020')
+        self.assertNotContains(pagina, 'Disponibilizar driver')
+        download = self.client.get(reverse(
+            'estoque:driver_impressora_arquivo', args=[driver.pk]
+        ))
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download['X-Content-Type-Options'], 'nosniff')
+        self.assertIn('attachment', download['Content-Disposition'])
+        self.assertEqual(b''.join(download.streaming_content), b'conteudo-do-driver')
+
+    def test_operador_nao_publica_e_admin_desativa(self):
+        self.client.force_login(self.operador)
+        negado = self.client.post(self.url, {
+            'titulo': 'Envio indevido',
+            'fabricante': 'HP',
+            'modelo': 'Laser 107',
+            'sistema_operacional': 'Windows 11',
+            'arquivo': SimpleUploadedFile('driver.zip', b'zip'),
+        })
+        self.assertEqual(negado.status_code, 403)
+        self.assertFalse(DriverImpressora.objects.exists())
+
+        driver = DriverImpressora.objects.create(
+            titulo='Driver HP', fabricante='HP', modelo='Laser 107',
+            sistema_operacional='Windows 11', arquivo='arquivo.zip',
+            nome_original='arquivo.zip', criado_por=self.admin,
+        )
+        self.client.force_login(self.admin)
+        resposta = self.client.post(reverse(
+            'estoque:driver_impressora_desativar', args=[driver.pk]
+        ))
+        self.assertRedirects(resposta, self.url)
+        driver.refresh_from_db()
+        self.assertFalse(driver.ativo)
+
+    def test_rejeita_extensao_nao_permitida(self):
+        self.client.force_login(self.admin)
+        resposta = self.client.post(self.url, {
+            'titulo': 'Arquivo inválido',
+            'fabricante': 'HP',
+            'modelo': 'Laser 107',
+            'sistema_operacional': 'Windows 11',
+            'arquivo': SimpleUploadedFile('instrucoes.html', b'<html></html>'),
+        })
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'EXE, MSI, ZIP, RAR, CAB ou INF')
+        self.assertFalse(DriverImpressora.objects.exists())
+
+    def test_aceita_rar_e_informa_limite_de_500_mb(self):
+        self.client.force_login(self.admin)
+        resposta = self.client.post(self.url, {
+            'titulo': 'Pacote compactado HP',
+            'fabricante': 'HP',
+            'modelo': 'LaserJet M111',
+            'sistema_operacional': 'Windows 11',
+            'arquivo': SimpleUploadedFile(
+                'hp-m111.rar', b'conteudo-rar', content_type='application/vnd.rar'
+            ),
+        })
+
+        self.assertRedirects(resposta, self.url)
+        self.assertEqual(DriverImpressora.objects.get().nome_original, 'hp-m111.rar')
+        pagina = self.client.get(self.url)
+        self.assertContains(pagina, 'RAR')
+        self.assertContains(pagina, '500 MB')
+
+    def test_rejeita_driver_acima_de_500_mb_sem_carregar_arquivo_grande(self):
+        arquivo = SimpleUploadedFile('driver.rar', b'conteudo')
+        arquivo.size = 500 * 1024 * 1024 + 1
+        form = DriverImpressoraForm(data={
+            'titulo': 'Driver muito grande',
+            'fabricante': 'HP',
+            'modelo': 'LaserJet M111',
+            'sistema_operacional': 'Windows 11',
+        }, files={'arquivo': arquivo})
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('no máximo 500 MB', ' '.join(form.errors['arquivo']))
 
 
 class ToryManuaisTests(TestCase):

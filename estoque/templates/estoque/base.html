@@ -2,7 +2,7 @@
 {% load i18n %}
 
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="{{ request.LANGUAGE_CODE|default:'pt-br' }}">
 
 <head>
     <meta charset="UTF-8">
@@ -632,7 +632,7 @@
 
                 <!-- DOCUMENTAÇÃO -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {% if url_name == 'documentacao' or url_name == 'manuais' or url_name == 'documentacao_resolucao' or url_name == 'documentacao_clientes' or url_name == 'documentacao_videos' %}active{% endif %}"
+                    <a class="nav-link dropdown-toggle {% if url_name == 'documentacao' or url_name == 'manuais' or url_name == 'drivers_impressoras' or url_name == 'documentacao_resolucao' or url_name == 'documentacao_clientes' or url_name == 'documentacao_videos' %}active{% endif %}"
                        href="#" id="documentacaoDropdown" role="button"
                        data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-journal-bookmark"></i>
@@ -640,11 +640,12 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="documentacaoDropdown">
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao' %}"><i class="bi bi-collection"></i> Biblioteca</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> Manuais de equipamentos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i> Resolução de problemas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i> Checklist de clientes</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i> Vídeos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao' %}"><i class="bi bi-collection"></i> {% trans "Biblioteca" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> {% trans "Manuais de equipamentos" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:drivers_impressoras' %}"><i class="bi bi-printer"></i> {% trans "Drivers de impressoras" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i> {% trans "Resolução de problemas" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i> {% trans "Checklist de clientes" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i> {% trans "Vídeos" %}</a></li>
                     </ul>
                 </li>
 

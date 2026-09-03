@@ -26,6 +26,24 @@ def resolucao_documento_upload_to(instance, filename):
     return f'documentacao/resolucao/{uuid.uuid4().hex}{extensao}'
 
 
+def driver_impressora_storage():
+    return storages['private']
+
+
+def driver_impressora_upload_to(instance, filename):
+    extensao = Path(filename).suffix.lower()
+    return f'documentacao/drivers-impressoras/{uuid.uuid4().hex}{extensao}'
+
+
+DRIVER_IMPRESSORA_EXTENSOES = ['exe', 'msi', 'zip', 'rar', 'cab', 'inf']
+DRIVER_IMPRESSORA_TAMANHO_MAXIMO = 500 * 1024 * 1024
+
+
+def validar_tamanho_driver_impressora(arquivo):
+    if arquivo.size > DRIVER_IMPRESSORA_TAMANHO_MAXIMO:
+        raise ValidationError(_('O arquivo deve ter no máximo 500 MB.'))
+
+
 def _url_rastreamento_correios(codigo):
     codigo = (codigo or '').strip()
     if not codigo:
@@ -1263,12 +1281,22 @@ class VideoDocumentacao(models.Model):
 
 
 class ResolucaoDocumento(models.Model):
+    class Idioma(models.TextChoices):
+        PT_BR = 'pt-br', _('Português (Brasil)')
+        ES = 'es', _('Espanhol')
+
     titulo = models.CharField(max_length=200)
     fabricante = models.CharField(max_length=120)
     modelo = models.CharField(max_length=120, db_index=True)
     categoria = models.CharField(max_length=100, default='Coletores')
     resumo = models.TextField(blank=True)
     tags = models.CharField(max_length=500, blank=True)
+    idioma = models.CharField(
+        max_length=10,
+        choices=Idioma.choices,
+        default=Idioma.PT_BR,
+        verbose_name=_('Idioma do documento'),
+    )
     arquivo = models.FileField(
         upload_to=resolucao_documento_upload_to,
         storage=resolucao_documento_storage,
@@ -1296,6 +1324,58 @@ class ResolucaoDocumento(models.Model):
 
     def __str__(self):
         return f'{self.fabricante} {self.modelo} - {self.titulo}'
+
+
+class DriverImpressora(models.Model):
+    titulo = models.CharField(max_length=200, verbose_name=_('Título'))
+    fabricante = models.CharField(max_length=120, verbose_name=_('Fabricante'))
+    modelo = models.CharField(max_length=160, db_index=True, verbose_name=_('Modelo'))
+    sistema_operacional = models.CharField(
+        max_length=120,
+        verbose_name=_('Sistema operacional'),
+    )
+    arquitetura = models.CharField(
+        max_length=30,
+        blank=True,
+        verbose_name=_('Arquitetura'),
+        help_text=_('Ex.: 64 bits, 32 bits ou universal.'),
+    )
+    versao = models.CharField(max_length=80, blank=True, verbose_name=_('Versão'))
+    descricao = models.TextField(blank=True, verbose_name=_('Descrição'))
+    instrucoes = models.TextField(
+        blank=True,
+        verbose_name=_('Instruções de instalação'),
+    )
+    arquivo = models.FileField(
+        upload_to=driver_impressora_upload_to,
+        storage=driver_impressora_storage,
+        validators=[FileExtensionValidator(
+            allowed_extensions=DRIVER_IMPRESSORA_EXTENSOES,
+            message=_('Envie um driver nos formatos EXE, MSI, ZIP, RAR, CAB ou INF.'),
+        ), validar_tamanho_driver_impressora],
+        verbose_name=_('Arquivo do driver'),
+    )
+    nome_original = models.CharField(max_length=255)
+    tamanho_bytes = models.PositiveBigIntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='drivers_impressora_criados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['fabricante', 'modelo', 'sistema_operacional', '-atualizado_em']
+        verbose_name = _('driver de impressora')
+        verbose_name_plural = _('drivers de impressoras')
+
+    def __str__(self):
+        return f'{self.fabricante} {self.modelo} - {self.sistema_operacional}'
+
 
 @receiver([post_save, post_delete], sender=Equipamento)
 def limpar_cache_estoque(sender, instance, **kwargs):

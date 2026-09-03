@@ -1065,7 +1065,7 @@
             <h1>{% trans "Checklist de equipamentos e insumos" %}</h1>
             <p>{% trans "Selecione o inventário, registre somente o que será enviado e confira antes de salvar." %}</p>
         </div>
-        <div class="workflow-steps" aria-label="Etapas do preenchimento">
+        <div class="workflow-steps" aria-label="{% trans 'Etapas do preenchimento' %}">
             <span class="workflow-step"><strong>1</strong>{% trans "Inventário" %}</span>
             <span class="workflow-step"><strong>2</strong>{% trans "Quantidades" %}</span>
             <span class="workflow-step"><strong>3</strong>{% trans "Declaração" %}</span>
@@ -1083,27 +1083,27 @@
         <input type="hidden" id="transporte" name="transporte"
                value="{% if editando %}{{ checklist.transporte|default:'' }}{% endif %}">
 
-        <div class="document-switcher" role="tablist" aria-label="Documento em edição">
-            <button type="button" class="active" data-document-target="checklist-document" aria-selected="true">Check-list de equipamentos e insumos</button>
-            <button type="button" data-document-target="declaration-document" aria-selected="false">Declaração de retirada</button>
+        <div class="document-switcher" role="tablist" aria-label="{% trans 'Documento em edição' %}">
+            <button type="button" class="active" data-document-target="checklist-document" aria-selected="true">{% trans "Check-list de equipamentos e insumos" %}</button>
+            <button type="button" data-document-target="declaration-document" aria-selected="false">{% trans "Declaração de retirada" %}</button>
         </div>
 
         <section id="checklist-document" class="editable-document active">
-            <h1>CHECK-LIST DE EQUIPAMENTOS E INSUMOS</h1>
+            <h1>{% trans "CHECK-LIST DE EQUIPAMENTOS E INSUMOS" %}</h1>
             <div class="official-meta-grid">
-                <div class="official-field"><label for="cliente">CLIENTE</label><input id="cliente" name="cliente" readonly></div>
-                <div class="official-field"><label for="loja">LOJA</label><input id="loja" readonly></div>
-                <div class="official-field"><label for="data">DATA</label><input id="data" name="data" value="{% now 'd/m/Y' %}" readonly></div>
-                <div class="official-field official-address"><label for="endereco">ENDEREÇO</label><input id="endereco" name="endereco" readonly></div>
-                <div class="official-field"><label for="bairro">BAIRRO</label><input id="bairro" name="bairro" readonly></div>
-                <div class="official-field"><label for="cidade">CIDADE</label><input id="cidade" name="cidade" readonly></div>
-                <div class="official-field"><label for="lider">LÍDER</label><input id="lider" name="lider" readonly></div>
+                <div class="official-field"><label for="cliente">{% trans "CLIENTE" %}</label><input id="cliente" name="cliente" readonly></div>
+                <div class="official-field"><label for="loja">{% trans "LOJA" %}</label><input id="loja" readonly></div>
+                <div class="official-field"><label for="data">{% trans "DATA" %}</label><input id="data" name="data" value="{% now 'd/m/Y' %}" readonly></div>
+                <div class="official-field official-address"><label for="endereco">{% trans "ENDEREÇO" %}</label><input id="endereco" name="endereco" readonly></div>
+                <div class="official-field"><label for="bairro">{% trans "BAIRRO" %}</label><input id="bairro" name="bairro" readonly></div>
+                <div class="official-field"><label for="cidade">{% trans "CIDADE" %}</label><input id="cidade" name="cidade" readonly></div>
+                <div class="official-field"><label for="lider">{% trans "LÍDER" %}</label><input id="lider" name="lider" readonly></div>
                 <div class="official-field official-address">
-                    <label for="inventario">INVENTÁRIO</label>
+                    <label for="inventario">{% trans "INVENTÁRIO" %}</label>
                     <select id="inventario" name="inventario" required>
-                        <option value="">Selecione.</option>
+                        <option value="">{% trans "Selecione." %}</option>
                         {% for inv in inventarios %}
-                            <option value="{{ inv.id }}" data-base="{{ inv.base.id }}" {% if editando and checklist.inventario_id == inv.id %}selected{% endif %}>{{ inv.cliente.sigla }} - Loja {{ inv.loja }}</option>
+                            <option value="{{ inv.id }}" data-base="{{ inv.base.id }}" {% if editando and checklist.inventario_id == inv.id %}selected{% endif %}>{{ inv.cliente.sigla }} - {% trans "Loja" %} {{ inv.loja }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -1113,54 +1113,54 @@
                 <div class="table-wrap" id="insumosContainer">
                     <table class="official-checklist-table">
                         <thead>
-                            <tr><th>CATEGORIA</th><th>DESCRIÇÃO</th><th>ENVIO<br>QUANTIDADE</th><th>SAÍDA<br>LOGÍSTICA</th><th colspan="2">CONFERÊNCIA LOJA</th><th>RETORNO<br>LOGÍSTICA</th></tr>
-                            <tr><th></th><th></th><th></th><th></th><th>ENTRADA</th><th>SAÍDA</th><th></th></tr>
+                            <tr><th>{% trans "CATEGORIA" %}</th><th>{% trans "DESCRIÇÃO" %}</th><th>{% trans "ENVIO" %}<br>{% trans "QUANTIDADE" %}</th><th>{% trans "SAÍDA" %}<br>{% trans "LOGÍSTICA" %}</th><th colspan="2">{% trans "CONFERÊNCIA LOJA" %}</th><th>{% trans "RETORNO" %}<br>{% trans "LOGÍSTICA" %}</th></tr>
+                            <tr><th></th><th></th><th></th><th></th><th>{% trans "ENTRADA" %}</th><th>{% trans "SAÍDA" %}</th><th></th></tr>
                         </thead>
-                        <tbody id="insumosBody"><tr><td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td></tr></tbody>
+                        <tbody id="insumosBody"><tr><td colspan="7" class="text-muted">{% trans "Selecione um inventário para carregar os insumos da base." %}</td></tr></tbody>
                         <tbody>
-                            <tr class="equipment-official-row"><td rowspan="4">EQUIPAMENTOS</td><td><strong>ROTEADORES</strong><button type="button" class="btn-selecionar" onclick="abrirModal('router')">Identificar patrimônios (opcional)</button><span id="router-contador" class="contador">0 identificados</span><div id="router-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_router" data-equipment-count="router" min="0" step="1" value="0" aria-label="Quantidade de routers"><small data-equipment-available="router"></small></td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>COLETORES DE DADOS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">Identificar patrimônios (opcional)</button><span id="coletor-contador" class="contador">0 identificados</span><div id="coletor-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_coletor" data-equipment-count="coletor" min="0" step="1" value="0" aria-label="Quantidade de coletores"><small data-equipment-available="coletor"></small></td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>NOTEBOOKS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">Identificar patrimônios (opcional)</button><span id="notebook-contador" class="contador">0 identificados</span><div id="notebook-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_notebook" data-equipment-count="notebook" min="0" step="1" value="0" aria-label="Quantidade de notebooks"><small data-equipment-available="notebook"></small></td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>IMPRESSORAS</strong><button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">Identificar patrimônios (opcional)</button><span id="impressora-contador" class="contador">0 identificados</span><div id="impressora-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_impressora" data-equipment-count="impressora" min="0" step="1" value="0" aria-label="Quantidade de impressoras"><small data-equipment-available="impressora"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td rowspan="4">{% trans "EQUIPAMENTOS" %}</td><td><strong>{% trans "ROTEADORES" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('router')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="router-contador" class="contador">0 {% trans "identificados" %}</span><div id="router-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_router" data-equipment-count="router" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de roteadores' %}"><small data-equipment-available="router"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>{% trans "COLETORES DE DADOS" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="coletor-contador" class="contador">0 {% trans "identificados" %}</span><div id="coletor-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_coletor" data-equipment-count="coletor" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de coletores' %}"><small data-equipment-available="coletor"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>{% trans "NOTEBOOKS" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="notebook-contador" class="contador">0 {% trans "identificados" %}</span><div id="notebook-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_notebook" data-equipment-count="notebook" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de notebooks' %}"><small data-equipment-available="notebook"></small></td><td></td><td></td><td></td><td></td></tr>
+                            <tr class="equipment-official-row"><td><strong>{% trans "IMPRESSORAS" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="impressora-contador" class="contador">0 {% trans "identificados" %}</span><div id="impressora-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_impressora" data-equipment-count="impressora" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de impressoras' %}"><small data-equipment-available="impressora"></small></td><td></td><td></td><td></td><td></td></tr>
                         </tbody>
                     </table>
                     <div id="insumosAlert" class="alert-inline error"></div>
                 </div>
-                <aside class="attention-panel"><strong>ATENÇÃO</strong><p>Todo equipamento e insumo deve ser conferido na saída da logística, na entrada e saída da loja e no retorno à logística.</p><p>As quantidades registradas devem refletir exatamente os materiais transportados.</p></aside>
+                <aside class="attention-panel"><strong>{% trans "ATENÇÃO" %}</strong><p>{% trans "Todo equipamento e insumo deve ser conferido na saída da logística, na entrada e saída da loja e no retorno à logística." %}</p><p>{% trans "As quantidades registradas devem refletir exatamente os materiais transportados." %}</p></aside>
             </div>
-            <div class="official-observation"><strong>OBS:</strong><input type="text" name="observacao" value="{% if editando %}{{ checklist.observacao|default:'' }}{% endif %}"></div>
-            <div class="official-volume-row"><label for="checklist_quantidade_volumes">QUANTIDADE DE VOLUMES</label><input type="number" id="checklist_quantidade_volumes" data-sync-field="quantidade_volumes" min="1" max="9999" step="1"></div>
-            <div class="coordinator-line"><span>COORDENADOR:</span><input type="text" name="coordenador"></div>
+            <div class="official-observation"><strong>{% trans "OBS:" %}</strong><input type="text" name="observacao" value="{% if editando %}{{ checklist.observacao|default:'' }}{% endif %}"></div>
+            <div class="official-volume-row"><label for="checklist_quantidade_volumes">{% trans "QUANTIDADE DE VOLUMES" %}</label><input type="number" id="checklist_quantidade_volumes" data-sync-field="quantidade_volumes" min="1" max="9999" step="1"></div>
+            <div class="coordinator-line"><span>{% trans "COORDENADOR:" %}</span><input type="text" name="coordenador"></div>
             <div class="official-signatures">
-                <div><input type="text" name="assinatura_preparacao"><label>RESPONSÁVEL PELA PREPARAÇÃO</label></div>
-                <div><input type="text" name="assinatura_conferencia"><label>RESPONSÁVEL PELA CONFERÊNCIA LOJA</label></div>
-                <div><input type="text" name="assinatura_retorno"><label>RESPONSÁVEL PELO RETORNO</label></div>
+                <div><input type="text" name="assinatura_preparacao"><label>{% trans "RESPONSÁVEL PELA PREPARAÇÃO" %}</label></div>
+                <div><input type="text" name="assinatura_conferencia"><label>{% trans "RESPONSÁVEL PELA CONFERÊNCIA LOJA" %}</label></div>
+                <div><input type="text" name="assinatura_retorno"><label>{% trans "RESPONSÁVEL PELO RETORNO" %}</label></div>
             </div>
         </section>
 
         <section id="declaration-document" class="editable-document declaration-document">
-            <h1>DECLARAÇÃO DE RETIRADA DE EQUIPAMENTOS</h1>
-            <h2 class="declaration-section-title">DADOS DA RETIRADA</h2>
+            <h1>{% trans "DECLARAÇÃO DE RETIRADA DE EQUIPAMENTOS" %}</h1>
+            <h2 class="declaration-section-title">{% trans "DADOS DA RETIRADA" %}</h2>
             <div class="declaration-grid">
-                <div class="declaration-row three-fields"><label for="declaration_cliente">CLIENTE</label><input id="declaration_cliente" name="declaracao_cliente" value="{% if editando %}{{ checklist.declaracao_dados.cliente|default:'' }}{% endif %}"><label for="declaration_loja">LOJA</label><input id="declaration_loja" name="declaracao_loja" value="{% if editando %}{{ checklist.declaracao_dados.loja|default:'' }}{% endif %}"><label for="declaration_data">DATA</label><input id="declaration_data" name="declaracao_data" placeholder="DD/MM/AAAA" value="{% if editando %}{{ checklist.declaracao_dados.data|default:'' }}{% endif %}"></div>
-                <div class="declaration-row one-field"><label for="declaration_endereco">ENDEREÇO</label><input id="declaration_endereco" name="declaracao_endereco" value="{% if editando %}{{ checklist.declaracao_dados.endereco|default:'' }}{% endif %}"></div>
-                <div class="declaration-row two-fields"><label for="declaration_bairro">BAIRRO</label><input id="declaration_bairro" name="declaracao_bairro" value="{% if editando %}{{ checklist.declaracao_dados.bairro|default:'' }}{% endif %}"><label for="declaration_cidade">CIDADE</label><input id="declaration_cidade" name="declaracao_cidade" value="{% if editando %}{{ checklist.declaracao_dados.cidade|default:'' }}{% endif %}"></div>
-                <div class="declaration-row two-fields"><label for="horario_ponto">HORÁRIO DE ENTREGA</label><input type="time" id="horario_ponto" name="horario_ponto" value="{% if editando %}{{ checklist.declaracao_dados.horario_entrega|default:'' }}{% endif %}"><label for="horario_inicio">HORÁRIO DE INÍCIO</label><input type="time" id="horario_inicio" name="horario_inicio" value="{% if editando %}{{ checklist.declaracao_dados.horario_inicio|default:'' }}{% endif %}"></div>
-                <div class="declaration-row one-field"><label for="ponto_encontro">PONTO DE ENCONTRO</label><input id="ponto_encontro" name="ponto_encontro" maxlength="255" value="{% if editando %}{{ checklist.declaracao_dados.ponto_encontro|default:'' }}{% endif %}"></div>
-                <div class="declaration-row one-field"><label for="declaration_transporte">TRANSPORTE</label><input id="declaration_transporte" data-sync-field="transporte" maxlength="200" placeholder="Veículo, transportadora ou motorista"></div>
+                <div class="declaration-row three-fields"><label for="declaration_cliente">{% trans "CLIENTE" %}</label><input id="declaration_cliente" name="declaracao_cliente" value="{% if editando %}{{ checklist.declaracao_dados.cliente|default:'' }}{% endif %}"><label for="declaration_loja">{% trans "LOJA" %}</label><input id="declaration_loja" name="declaracao_loja" value="{% if editando %}{{ checklist.declaracao_dados.loja|default:'' }}{% endif %}"><label for="declaration_data">{% trans "DATA" %}</label><input id="declaration_data" name="declaracao_data" placeholder="{% trans 'DD/MM/AAAA' %}" value="{% if editando %}{{ checklist.declaracao_dados.data|default:'' }}{% endif %}"></div>
+                <div class="declaration-row one-field"><label for="declaration_endereco">{% trans "ENDEREÇO" %}</label><input id="declaration_endereco" name="declaracao_endereco" value="{% if editando %}{{ checklist.declaracao_dados.endereco|default:'' }}{% endif %}"></div>
+                <div class="declaration-row two-fields"><label for="declaration_bairro">{% trans "BAIRRO" %}</label><input id="declaration_bairro" name="declaracao_bairro" value="{% if editando %}{{ checklist.declaracao_dados.bairro|default:'' }}{% endif %}"><label for="declaration_cidade">{% trans "CIDADE" %}</label><input id="declaration_cidade" name="declaracao_cidade" value="{% if editando %}{{ checklist.declaracao_dados.cidade|default:'' }}{% endif %}"></div>
+                <div class="declaration-row two-fields"><label for="horario_ponto">{% trans "HORÁRIO DE ENTREGA" %}</label><input type="time" id="horario_ponto" name="horario_ponto" value="{% if editando %}{{ checklist.declaracao_dados.horario_entrega|default:'' }}{% endif %}"><label for="horario_inicio">{% trans "HORÁRIO DE INÍCIO" %}</label><input type="time" id="horario_inicio" name="horario_inicio" value="{% if editando %}{{ checklist.declaracao_dados.horario_inicio|default:'' }}{% endif %}"></div>
+                <div class="declaration-row one-field"><label for="ponto_encontro">{% trans "PONTO DE ENCONTRO" %}</label><input id="ponto_encontro" name="ponto_encontro" maxlength="255" value="{% if editando %}{{ checklist.declaracao_dados.ponto_encontro|default:'' }}{% endif %}"></div>
+                <div class="declaration-row one-field"><label for="declaration_transporte">{% trans "TRANSPORTE" %}</label>{% trans "Veículo, transportadora ou motorista" as transporte_placeholder %}<input id="declaration_transporte" data-sync-field="transporte" maxlength="200" placeholder="{{ transporte_placeholder }}"></div>
             </div>
-            <p class="declaration-statement">A REVELAÇÃO ASSESSORIA EMPRESARIAL S/S LTDA, CNPJ: 04.304.329/0001-05, vem através desta declarar a entrega e retirada dos equipamentos e insumos abaixo:</p>
-            <h2 class="declaration-section-title">QUANTIDADES DECLARADAS</h2>
+            <p class="declaration-statement">{% trans "A REVELAÇÃO ASSESSORIA EMPRESARIAL S/S LTDA, CNPJ: 04.304.329/0001-05, vem através desta declarar a entrega e retirada dos equipamentos e insumos abaixo:" %}</p>
+            <h2 class="declaration-section-title">{% trans "QUANTIDADES DECLARADAS" %}</h2>
             <div class="declaration-totals">
-                <div><label for="declaration_total_dp">DEPARTAMENTO PESSOAL</label><input type="number" id="declaration_total_dp" name="declaracao_departamento_pessoal" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.departamento_pessoal|default:0 }}{% else %}0{% endif %}"></div>
-                <div><label for="declaration_total_fios">FIOS E CABOS</label><input type="number" id="declaration_total_fios" name="declaracao_fios_cabos" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.fios_cabos|default:0 }}{% else %}0{% endif %}"></div>
-                <div><label for="declaration_total_coletor">COLETOR DE DADOS</label><input type="number" id="declaration_total_coletor" name="declaracao_coletor_dados" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.coletor_dados|default:0 }}{% else %}0{% endif %}"></div>
-                <div><label for="declaration_total_impressora">IMPRESSORA</label><input type="number" id="declaration_total_impressora" name="declaracao_impressora" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.impressora|default:0 }}{% else %}0{% endif %}"></div>
-                <div><label for="declaration_total_escada">ESCADA</label><input type="number" id="declaration_total_escada" name="declaracao_escada" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.escada|default:0 }}{% else %}0{% endif %}"></div>
-                <div><label for="declaration_total_balanca">BALANÇA</label><input type="number" id="declaration_total_balanca" name="declaracao_balanca" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.balanca|default:0 }}{% else %}0{% endif %}"></div>
-                <div><label for="declaration_total_extensor">EXTENSOR DE REDE / CARRINHO</label><input type="number" id="declaration_total_extensor" name="declaracao_extensor_rede_carrinho" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.extensor_rede_carrinho|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_dp">{% trans "DEPARTAMENTO PESSOAL" %}</label><input type="number" id="declaration_total_dp" name="declaracao_departamento_pessoal" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.departamento_pessoal|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_fios">{% trans "FIOS E CABOS" %}</label><input type="number" id="declaration_total_fios" name="declaracao_fios_cabos" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.fios_cabos|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_coletor">{% trans "COLETOR DE DADOS" %}</label><input type="number" id="declaration_total_coletor" name="declaracao_coletor_dados" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.coletor_dados|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_impressora">{% trans "IMPRESSORA" %}</label><input type="number" id="declaration_total_impressora" name="declaracao_impressora" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.impressora|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_escada">{% trans "ESCADA" %}</label><input type="number" id="declaration_total_escada" name="declaracao_escada" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.escada|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_balanca">{% trans "BALANÇA" %}</label><input type="number" id="declaration_total_balanca" name="declaracao_balanca" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.balanca|default:0 }}{% else %}0{% endif %}"></div>
+                <div><label for="declaration_total_extensor">{% trans "EXTENSOR DE REDE / CARRINHO" %}</label><input type="number" id="declaration_total_extensor" name="declaracao_extensor_rede_carrinho" class="declaration-quantity-input" min="0" step="1" data-manual="{% if editando and checklist.declaracao_quantidades %}true{% else %}false{% endif %}" value="{% if editando %}{{ checklist.declaracao_quantidades.extensor_rede_carrinho|default:0 }}{% else %}0{% endif %}"></div>
             </div>
-            <div class="declaration-volume"><label for="declaration_quantidade_volumes">QUANTIDADE DE VOLUMES</label><input type="number" id="declaration_quantidade_volumes" data-sync-field="quantidade_volumes" min="1" max="9999" step="1"></div>
+            <div class="declaration-volume"><label for="declaration_quantidade_volumes">{% trans "QUANTIDADE DE VOLUMES" %}</label><input type="number" id="declaration_quantidade_volumes" data-sync-field="quantidade_volumes" min="1" max="9999" step="1"></div>
         </section>
 
         <div id="historicoChecklistInfo" class="alert alert-info mt-3 d-none" role="status"></div>
@@ -1180,20 +1180,20 @@
     <div id="collapseTags" class="accordion-collapse collapse" data-bs-parent="#accordionChecklist">
         <div class="accordion-body p-0">
             <div class="small-muted" style="padding: 12px 14px 0;">
-                Marque o rolo fisico e informe se o envio e de um rolo novo ou reutilizacao. No retorno, o ultimo numero usado calcula as TAGs utilizadas.
+                 {% trans "Marque o rolo físico e informe se o envio é de um rolo novo ou reutilização. No retorno, o último número usado calcula as TAGs utilizadas." %}
             </div>
 
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th class="th-main">Lote</th>
-                            <th class="th-main">Base</th>
-                            <th class="th-main">Rolo</th>
-                            <th class="th-main">Status</th>
-                            <th class="th-main">Proxima TAG</th>
-                            <th class="th-main">Envio</th>
-                            <th class="th-main">Retorno</th>
+                             <th class="th-main">{% trans "Lote" %}</th>
+                             <th class="th-main">{% trans "Base" %}</th>
+                             <th class="th-main">{% trans "Rolo" %}</th>
+                             <th class="th-main">{% trans "Status" %}</th>
+                             <th class="th-main">{% trans "Próxima TAG" %}</th>
+                             <th class="th-main">{% trans "Envio" %}</th>
+                             <th class="th-main">{% trans "Retorno" %}</th>
                         </tr>
                     </thead>
 
@@ -1201,9 +1201,9 @@
                         {% if lotes_tags %}
                         {% for lote in lotes_tags %}
                         <tr>
-                            <td>{{ lote.lote.numero_inicial }} até {{ lote.lote.numero_final }}</td>
+                            <td>{{ lote.lote.numero_inicial }} {% trans "até" %} {{ lote.lote.numero_final }}</td>
                             <td>{{ lote.lote.base.nome }}</td>
-                            <td>Rolo #{{ lote.codigo }}</td>
+                            <td>{% trans "Rolo" %} #{{ lote.codigo }}</td>
                             <td>{{ lote.get_status_display }}</td>
                             <td>{{ lote.numero_atual }}</td>
 
@@ -1217,15 +1217,15 @@
                                            data-final="{{ lote.lote.numero_final }}"
                                            data-status="{{ lote.status }}"
                                            class="tag-lote-check">
-                                    <span class="small-muted">Enviar este rolo</span>
+                                    <span class="small-muted">{% trans "Enviar este rolo" %}</span>
                                 </div>
 
                                 <div style="margin-top:8px;">
                                     <select id="tag_modo_rolo_{{ lote.id }}"
                                             name="tag_modo_rolo_{{ lote.id }}"
                                             disabled>
-                                        <option value="NOVO" {% if lote.status == 'DISPONIVEL' %}selected{% endif %}>Novo rolo</option>
-                                        <option value="REUTILIZACAO" {% if lote.status == 'EM_USO' %}selected{% endif %}>Reutilizacao</option>
+                                        <option value="NOVO" {% if lote.status == 'DISPONIVEL' %}selected{% endif %}>{% trans "Novo rolo" %}</option>
+                                        <option value="REUTILIZACAO" {% if lote.status == 'EM_USO' %}selected{% endif %}>{% trans "Reutilização" %}</option>
                                     </select>
 
                                     <input type="hidden"
@@ -1237,14 +1237,14 @@
                             </td>
 
                             <td class="small-muted">
-                                Final será definido na finalização do inventário
+                                {% trans "O final será definido na finalização do inventário" %}
                             </td>
                         </tr>
                         {% endfor %}
                         {% else %}
                         <tr>
                             <td colspan="7" class="text-muted">
-                                Nenhum rolo de TAG disponivel para esta base.
+                                {% trans "Nenhum rolo de TAG disponível para esta base." %}
                             </td>
                         </tr>
                         {% endif %}
@@ -1261,17 +1261,17 @@
         <div class="custom-modal-overlay" id="customModalOverlay">
             <div class="custom-modal">
                 <div class="custom-modal-header">
-                    <h5 id="customModalTitle">Selecionar</h5>
-                    <button type="button" aria-label="Fechar" onclick="fecharModal()">&times;</button>
+                    <h5 id="customModalTitle">{% trans "Selecionar" %}</h5>
+                    <button type="button" aria-label="{% trans 'Fechar' %}" onclick="fecharModal()">&times;</button>
                 </div>
 
                 <div class="custom-modal-body" id="customModalBody"></div>
 
                 <div class="custom-modal-footer">
-                    <span id="customModalContador">0 selecionados</span>
+                    <span id="customModalContador">0 {% trans "selecionados" %}</span>
                     <div>
-                        <button type="button" onclick="fecharModal()">Fechar</button>
-                        <button type="button" onclick="confirmarSelecao()">Confirmar</button>
+                        <button type="button" onclick="fecharModal()">{% trans "Fechar" %}</button>
+                        <button type="button" onclick="confirmarSelecao()">{% trans "Confirmar" %}</button>
                     </div>
                 </div>
             </div>
@@ -1287,28 +1287,112 @@
     </form>
 </div>
 
+{% trans "Sem patrimônio" as t_sem_patrimonio %}
+{% trans "Sem série" as t_sem_serie %}
+{% trans "Tipo de envio da TAG" as t_tipo_envio_tag %}
+{% trans "Novo" as t_novo %}
+{% trans "Reutilizar" as t_reutilizar %}
+{% trans "Sem categoria" as t_sem_categoria %}
+{% trans "Nenhum insumo disponível para esta base." as t_nenhum_insumo %}
+{% trans "A quantidade de {nome} é maior que o saldo disponível." as t_insumo_saldo %}
+{% trans "Selecione um inventário para carregar os insumos da base." as t_selecione_inventario %}
+{% trans "Erro ao carregar insumos da base." as t_erro_insumos %}
+{% trans "Selecionar roteadores" as t_selecionar_roteadores %}
+{% trans "Selecionar coletores" as t_selecionar_coletores %}
+{% trans "Selecionar notebooks" as t_selecionar_notebooks %}
+{% trans "Selecionar impressoras" as t_selecionar_impressoras %}
+{% trans "Selecionar itens" as t_selecionar_itens %}
+{% trans "máximo {limite}" as t_maximo %}
+{% trans "Selecione primeiro o inventário e a base." as t_selecione_inventario_base %}
+{% trans "Nenhum item disponível." as t_nenhum_item %}
+{% trans "Pesquisar por número de série ou patrimônio" as t_pesquisar_serie %}
+{% trans "selecionado" as t_selecionado %}
+{% trans "selecionados" as t_selecionados %}
+{% trans "identificado" as t_identificado %}
+{% trans "identificados" as t_identificados %}
+{% trans "Selecione no máximo {limite} coletores ({pessoas} pessoas + 5 de backup)." as t_limite_coletores %}
+{% trans "Selecione se o rolo será novo ou reutilização." as t_selecione_modo_rolo %}
+{% trans "Informe o número inicial enviado em todos os rolos marcados." as t_numero_inicial_rolo %}
+{% trans "O número inicial deve estar dentro da faixa disponível do rolo selecionado." as t_faixa_rolo %}
+{% trans "Um dos rolos selecionados não possui saldo disponível." as t_saldo_rolo %}
+{% trans "Novo rolo precisa estar disponível em estoque." as t_novo_rolo_disponivel %}
+{% trans "Reutilização precisa selecionar um rolo em uso." as t_reutilizacao_rolo %}
+{% trans "Informe o líder" as t_informe_lider %}
+{% trans "Preenchido automaticamente" as t_preenchido_automaticamente %}
+{% trans "Disponível: {limite}" as t_disponivel_limite %}
+{% trans "Informe manualmente uma quantidade de volumes entre 1 e 9999." as t_quantidade_volumes %}
+{% trans "Revise a quantidade de {categoria}: deve ser inteira, respeitar o saldo e não ser menor que os patrimônios identificados." as t_revise_quantidade %}
+{% trans "Preencha ao menos um item no checklist: insumo, equipamento ou lote de TAG." as t_preencha_item %}
+{% trans "Existem campos inválidos no checklist. Revise os insumos e/ou o lote de TAG." as t_campos_invalidos %}
+{% trans "O limite deste inventário é {limite} coletores ({pessoas} pessoas + 5 de backup)." as t_limite_inventario %}
 <script>
+const mensagensChecklist = {
+    tipoEnvioTag: "{{ t_tipo_envio_tag|escapejs }}",
+    novo: "{{ t_novo|escapejs }}",
+    reutilizar: "{{ t_reutilizar|escapejs }}",
+    semCategoria: "{{ t_sem_categoria|escapejs }}",
+    nenhumInsumo: "{{ t_nenhum_insumo|escapejs }}",
+    insumoSaldo: "{{ t_insumo_saldo|escapejs }}",
+    selecioneInventario: "{{ t_selecione_inventario|escapejs }}",
+    erroInsumos: "{{ t_erro_insumos|escapejs }}",
+    selecionarRoteadores: "{{ t_selecionar_roteadores|escapejs }}",
+    selecionarColetores: "{{ t_selecionar_coletores|escapejs }}",
+    selecionarNotebooks: "{{ t_selecionar_notebooks|escapejs }}",
+    selecionarImpressoras: "{{ t_selecionar_impressoras|escapejs }}",
+    selecionarItens: "{{ t_selecionar_itens|escapejs }}",
+    maximo: "{{ t_maximo|escapejs }}",
+    selecioneInventarioBase: "{{ t_selecione_inventario_base|escapejs }}",
+    nenhumItem: "{{ t_nenhum_item|escapejs }}",
+    pesquisarSerie: "{{ t_pesquisar_serie|escapejs }}",
+    selecionado: "{{ t_selecionado|escapejs }}",
+    selecionados: "{{ t_selecionados|escapejs }}",
+    identificado: "{{ t_identificado|escapejs }}",
+    identificados: "{{ t_identificados|escapejs }}",
+    limiteColetores: "{{ t_limite_coletores|escapejs }}",
+    selecioneModoRolo: "{{ t_selecione_modo_rolo|escapejs }}",
+    numeroInicialRolo: "{{ t_numero_inicial_rolo|escapejs }}",
+    faixaRolo: "{{ t_faixa_rolo|escapejs }}",
+    saldoRolo: "{{ t_saldo_rolo|escapejs }}",
+    novoRoloDisponivel: "{{ t_novo_rolo_disponivel|escapejs }}",
+    reutilizacaoRolo: "{{ t_reutilizacao_rolo|escapejs }}",
+    informeLider: "{{ t_informe_lider|escapejs }}",
+    preenchidoAutomaticamente: "{{ t_preenchido_automaticamente|escapejs }}",
+    disponivelLimite: "{{ t_disponivel_limite|escapejs }}",
+    quantidadeVolumes: "{{ t_quantidade_volumes|escapejs }}",
+    reviseQuantidade: "{{ t_revise_quantidade|escapejs }}",
+    preenchaItem: "{{ t_preencha_item|escapejs }}",
+    camposInvalidos: "{{ t_campos_invalidos|escapejs }}",
+    limiteInventario: "{{ t_limite_inventario|escapejs }}"
+};
+
+function formatarMensagem(template, valores = {}) {
+    return Object.entries(valores).reduce(
+        (texto, [chave, valor]) => texto.replaceAll(`{${chave}}`, String(valor)),
+        template
+    );
+}
+
 /*    ESTADO
 */
 const equipamentos = {
     router: [
         {% for eq in routers %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ],
     coletor: [
         {% for eq in coletores %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ],
     notebook: [
         {% for eq in notebooks %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ],
     impressora: [
         {% for eq in impressoras %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:'Sem patrimônio'|escapejs }} · {{ eq.numero_serie|default:'Sem série'|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
+            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
         {% endfor %}
     ]
 };
@@ -1382,9 +1466,9 @@ function criarLinhaInsumo(insumo) {
                 <select
                     name="insumo_${insumo.id}_modo_tag"
                     class="tag-modo-select"
-                    aria-label="Tipo de envio da TAG">
-                    <option value="NOVO">Novo</option>
-                    <option value="REUTILIZACAO">Reutilizar</option>
+                    aria-label="${mensagensChecklist.tipoEnvioTag}">
+                    <option value="NOVO">${mensagensChecklist.novo}</option>
+                    <option value="REUTILIZACAO">${mensagensChecklist.reutilizar}</option>
                 </select>
             ` : ''}
             <input
@@ -1432,7 +1516,7 @@ function renderizarInsumosAgrupados(insumos) {
     const grupos = new Map();
 
     insumos.forEach(insumo => {
-        const categoria = insumo.categoria || 'Sem categoria';
+        const categoria = insumo.categoria || mensagensChecklist.semCategoria;
 
         if (!grupos.has(categoria)) grupos.set(categoria, []);
         grupos.get(categoria).push(insumo);
@@ -1441,7 +1525,7 @@ function renderizarInsumosAgrupados(insumos) {
     tbody.innerHTML = '';
 
     if (grupos.size === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Nenhum insumo disponível para esta base.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${mensagensChecklist.nenhumInsumo}</td></tr>`;
         return;
     }
 
@@ -1519,7 +1603,10 @@ function validarTodosInsumos() {
         const ok = validarInputInsumo(input, true);
         if (!ok && !invalido) {
             invalido = true;
-            mensagem = `O insumo "${input.dataset.insumoDesc}" está com quantidade maior que o saldo disponível.`;
+            mensagem = formatarMensagem(
+                mensagensChecklist.insumoSaldo,
+                {nome: input.dataset.insumoDesc}
+            );
         }
     });
 
@@ -1538,7 +1625,7 @@ function carregarInsumosLegado(baseId) {
     if (!baseId) {
         insumosBody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td>
+                <td colspan="7" class="text-muted">${mensagensChecklist.selecioneInventario}</td>
             </tr>
         `;
         container.style.display = 'block';
@@ -1554,7 +1641,7 @@ function carregarInsumosLegado(baseId) {
             if (!data.insumos || data.insumos.length === 0) {
                 insumosBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-muted">Nenhum insumo disponível para esta base.</td>
+                        <td colspan="7" class="text-muted">${mensagensChecklist.nenhumInsumo}</td>
                     </tr>
                 `;
                 container.style.display = 'block';
@@ -1568,7 +1655,7 @@ function carregarInsumosLegado(baseId) {
             console.error('Erro ao carregar insumos:', error);
             insumosBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-danger">Erro ao carregar insumos da base.</td>
+                    <td colspan="7" class="text-danger">${mensagensChecklist.erroInsumos}</td>
                 </tr>
             `;
             container.style.display = 'block';
@@ -1582,7 +1669,7 @@ function carregarInsumos(baseId) {
     const insumosBody = obterContainerInsumos();
 
     if (!baseId) {
-        insumosBody.innerHTML = '<tr><td colspan="7" class="text-muted">Selecione um inventário para carregar os insumos da base.</td></tr>';
+        insumosBody.innerHTML = `<tr><td colspan="7" class="text-muted">${mensagensChecklist.selecioneInventario}</td></tr>`;
         container.style.display = 'block';
         return Promise.resolve();
     }
@@ -1593,7 +1680,7 @@ function carregarInsumos(baseId) {
             limparErro('insumosAlert');
 
             if (!data.insumos || data.insumos.length === 0) {
-                insumosBody.innerHTML = '<tr><td colspan="7" class="text-muted">Nenhum insumo disponível para esta base.</td></tr>';
+                insumosBody.innerHTML = `<tr><td colspan="7" class="text-muted">${mensagensChecklist.nenhumInsumo}</td></tr>`;
                 container.style.display = 'block';
                 return;
             }
@@ -1603,7 +1690,7 @@ function carregarInsumos(baseId) {
         })
         .catch(error => {
             console.error('Erro ao carregar insumos:', error);
-            insumosBody.innerHTML = '<tr><td colspan="7" class="text-danger">Erro ao carregar insumos da base.</td></tr>';
+            insumosBody.innerHTML = `<tr><td colspan="7" class="text-danger">${mensagensChecklist.erroInsumos}</td></tr>`;
             container.style.display = 'block';
         });
 }
@@ -1742,14 +1829,14 @@ function abrirModal(categoria) {
     const title = document.getElementById('customModalTitle');
 
     const nomes = {
-        router: 'Selecionar Routers',
-        coletor: 'Selecionar Coletores',
-        notebook: 'Selecionar Notebooks',
-        impressora: 'Selecionar Impressoras'
+        router: mensagensChecklist.selecionarRoteadores,
+        coletor: mensagensChecklist.selecionarColetores,
+        notebook: mensagensChecklist.selecionarNotebooks,
+        impressora: mensagensChecklist.selecionarImpressoras
     };
-    title.textContent = nomes[categoria] || 'Selecionar Itens';
+    title.textContent = nomes[categoria] || mensagensChecklist.selecionarItens;
     if (categoria === 'coletor' && limiteColetores !== null) {
-        title.textContent += ` · máximo ${limiteColetores}`;
+        title.textContent += ` · ${formatarMensagem(mensagensChecklist.maximo, {limite: limiteColetores})}`;
     }
 
     let html = '';
@@ -1763,15 +1850,15 @@ function abrirModal(categoria) {
     );
 
     if (!baseSelecionada) {
-        html = '<p class="text-muted">Selecione primeiro o inventário e a base.</p>';
+        html = `<p class="text-muted">${mensagensChecklist.selecioneInventarioBase}</p>`;
     } else if (itens.length === 0) {
-        html = '<p class="text-muted">Nenhum item disponível.</p>';
+        html = `<p class="text-muted">${mensagensChecklist.nenhumItem}</p>`;
     } else {
         html = `
             <div class="modal-search">
                 <input type="search"
                        id="modalSearchEquipamentos"
-                       placeholder="Pesquisar por número de série ou patrimônio"
+                       placeholder="${mensagensChecklist.pesquisarSerie}"
                        oninput="filtrarEquipamentosModal()">
             </div>
         `;
@@ -1821,7 +1908,9 @@ function atualizarContadorModal() {
     const body = document.getElementById('customModalBody');
     const checkboxes = body.querySelectorAll('input[type="checkbox"]:checked');
     const contador = document.getElementById('customModalContador');
-    contador.textContent = checkboxes.length + ' selecionado' + (checkboxes.length !== 1 ? 's' : '');
+    contador.textContent = `${checkboxes.length} ${
+        checkboxes.length === 1 ? mensagensChecklist.selecionado : mensagensChecklist.selecionados
+    }`;
 }
 
 function confirmarSelecao() {
@@ -1834,10 +1923,10 @@ function confirmarSelecao() {
         limiteColetores !== null &&
         ids.length > limiteColetores
     ) {
-        alert(
-            `Selecione no máximo ${limiteColetores} coletores ` +
-            `(${quantidadePessoasInventario} pessoas + 5 de backup).`
-        );
+        alert(formatarMensagem(mensagensChecklist.limiteColetores, {
+            limite: limiteColetores,
+            pessoas: quantidadePessoasInventario
+        }));
         return;
     }
 
@@ -1852,7 +1941,9 @@ function atualizarResumoCategoria(categoria) {
 
     const contador = document.getElementById(categoria + '-contador');
     if (contador) {
-        contador.textContent = ids.length + ' identificado' + (ids.length !== 1 ? 's' : '');
+        contador.textContent = `${ids.length} ${
+            ids.length === 1 ? mensagensChecklist.identificado : mensagensChecklist.identificados
+        }`;
     }
 
     const resumo = document.getElementById(categoria + '-selecionados');
@@ -1938,32 +2029,32 @@ function validarTags() {
         const inicial = parseInt(inputInicial?.value || '0', 10);
 
         if (!modo) {
-            mostrarErro('tagsAlert', 'Selecione se o rolo será novo ou reutilização.');
+            mostrarErro('tagsAlert', mensagensChecklist.selecioneModoRolo);
             return false;
         }
 
         if (!inicial) {
-            mostrarErro('tagsAlert', 'Informe o número inicial enviado em todos os rolos marcados.');
+            mostrarErro('tagsAlert', mensagensChecklist.numeroInicialRolo);
             return false;
         }
 
         if (inicial < inicialPermitido || inicial > finalLote) {
-            mostrarErro('tagsAlert', 'O número inicial deve estar dentro da faixa disponível do rolo selecionado.');
+            mostrarErro('tagsAlert', mensagensChecklist.faixaRolo);
             return false;
         }
 
         if (disponivel <= 0) {
-            mostrarErro('tagsAlert', 'Um dos rolos selecionados não possui saldo disponível.');
+            mostrarErro('tagsAlert', mensagensChecklist.saldoRolo);
             return false;
         }
 
         if (modo === 'NOVO' && statusRolo !== 'DISPONIVEL') {
-            mostrarErro('tagsAlert', 'Novo rolo precisa estar disponível em estoque.');
+            mostrarErro('tagsAlert', mensagensChecklist.novoRoloDisponivel);
             return false;
         }
 
         if (modo === 'REUTILIZACAO' && statusRolo !== 'EM_USO') {
-            mostrarErro('tagsAlert', 'Reutilização precisa selecionar um rolo em uso.');
+            mostrarErro('tagsAlert', mensagensChecklist.reutilizacaoRolo);
             return false;
         }
     }
@@ -2014,7 +2105,9 @@ function aplicarLider(valor) {
     campoLider.value = valor || '';
     campoLider.readOnly = !editavel;
     campoLider.classList.toggle('is-editable', editavel);
-    campoLider.placeholder = editavel ? 'Informe o lider' : 'Preenchido automaticamente';
+    campoLider.placeholder = editavel
+        ? mensagensChecklist.informeLider
+        : mensagensChecklist.preenchidoAutomaticamente;
 }
 
 function carregarDadosInventario(inventarioId) {
@@ -2083,7 +2176,10 @@ function carregarDadosInventario(inventarioId) {
                     input.max = String(limite);
                     if (Number(input.value || 0) > limite) input.value = String(limite);
                 }
-                if (ajuda) ajuda.textContent = `Disponível: ${limite}`;
+                if (ajuda) ajuda.textContent = formatarMensagem(
+                    mensagensChecklist.disponivelLimite,
+                    {limite}
+                );
             });
 
             if (
@@ -2242,7 +2338,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const volumes = Number(document.getElementById('quantidade_volumes').value || '0');
         if (!Number.isInteger(volumes) || volumes < 1 || volumes > 9999) {
             e.preventDefault();
-            alert('Informe manualmente uma quantidade de volumes entre 1 e 9999.');
+            alert(mensagensChecklist.quantidadeVolumes);
             return;
         }
 
@@ -2255,20 +2351,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const identificados = (selecionados[categoria] || []).length;
             if (!Number.isInteger(quantidade) || quantidade < identificados || quantidade > maximo) {
                 e.preventDefault();
-                alert(`Revise a quantidade de ${categoria}: deve ser inteira, respeitar o saldo e não ser menor que os patrimônios identificados.`);
+                alert(formatarMensagem(mensagensChecklist.reviseQuantidade, {categoria}));
                 return;
             }
         }
 
         if (!existeAlgumEnvioNoChecklist()) {
             e.preventDefault();
-            alert('Preencha ao menos um item no checklist: insumo, equipamento ou lote de TAG.');
+            alert(mensagensChecklist.preenchaItem);
             return;
         }
 
         if (!insumosOk || !tagsOk) {
             e.preventDefault();
-            alert('Existem campos inválidos no checklist. Revise os insumos e/ou o lote de TAG.');
+            alert(mensagensChecklist.camposInvalidos);
             return;
         }
 
@@ -2277,10 +2373,10 @@ document.addEventListener('DOMContentLoaded', function() {
             Number(document.querySelector('[data-equipment-count="coletor"]')?.value || 0) > limiteColetores
         ) {
             e.preventDefault();
-            alert(
-                `O limite deste inventário é ${limiteColetores} coletores ` +
-                `(${quantidadePessoasInventario} pessoas + 5 de backup).`
-            );
+            alert(formatarMensagem(mensagensChecklist.limiteInventario, {
+                limite: limiteColetores,
+                pessoas: quantidadePessoasInventario
+            }));
         }
     });
 

@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, quote_plus, urlparse
 from django.conf import settings
 from django.templatetags.static import static
 from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from estoque.services.manual_service import ManualService
 
@@ -15,6 +16,7 @@ class DocumentationService:
     """Catálogo unificado sem retirar a compatibilidade com ManualService."""
 
     CATALOGO = Path(__file__).resolve().parent.parent / 'data' / 'documentacao.json'
+    CATALOGO_ES = Path(__file__).resolve().parent.parent / 'data' / 'documentacao_es.json'
     STATIC_ROOT = Path(settings.BASE_DIR) / 'estoque' / 'static'
     TIPOS = {
         'MANUAL_OFICIAL': 'Manual oficial',
@@ -65,16 +67,17 @@ class DocumentationService:
     @classmethod
     @lru_cache(maxsize=1)
     def _documentos_json(cls):
-        with cls.CATALOGO.open(encoding='utf-8') as arquivo:
-            dados = json.load(arquivo)
         documentos = []
-        for item in dados.get('documentos', []):
-            documento = dict(item)
-            # Compatibilidade com um erro de grafia de catálogos importados.
-            documento['tipo_documento'] = documento.get(
-                'tipo_documento', documento.pop('tipo_documentO', '')
-            )
-            documentos.append(documento)
+        for catalogo in (cls.CATALOGO, cls.CATALOGO_ES):
+            with catalogo.open(encoding='utf-8') as arquivo:
+                dados = json.load(arquivo)
+            for item in dados.get('documentos', []):
+                documento = dict(item)
+                # Compatibilidade com um erro de grafia de catálogos importados.
+                documento['tipo_documento'] = documento.get(
+                    'tipo_documento', documento.pop('tipo_documentO', '')
+                )
+                documentos.append(documento)
         return documentos
 
     @classmethod
@@ -120,6 +123,8 @@ class DocumentationService:
     @classmethod
     def _preparar_item(cls, item_original):
         item = dict(item_original)
+        if item.get('tipo_documento') == 'MANUAL_OFICIAL':
+            item = ManualService._localizar_item(item)
         arquivo = item.get('arquivo', '')
         arquivo_url_privado = item.get('arquivo_url', '')
         arquivo_relativo = ''
@@ -137,7 +142,9 @@ class DocumentationService:
             arquivo_url_privado
             or (static(arquivo_relativo) if arquivo_relativo else '')
         )
-        item['tipo_label'] = cls.TIPOS.get(item.get('tipo_documento'), item.get('tipo_documento', ''))
+        item['tipo_label'] = _(cls.TIPOS.get(
+            item.get('tipo_documento'), item.get('tipo_documento', '')
+        ))
         item['revisao_interna'] = item.get('status') == 'pronto_revisao_interna'
         item['pendente'] = item.get('status') in {'identificacao_pendente', 'indisponivel'}
         return item
@@ -242,7 +249,7 @@ class DocumentationService:
             'fonte_url': video.url,
             'embed_url': cls._youtube_embed_url(video.url),
             'origem': video.get_origem_display(),
-            'idioma': 'Português (Brasil)',
+            'idioma': _('Português (Brasil)'),
             'status': 'disponivel',
             'versao_documento': '',
             'atualizado_em': video.atualizado_em.date().isoformat(),
@@ -273,7 +280,8 @@ class DocumentationService:
                 'estoque:documentacao_resolucao_arquivo', args=[documento.pk]
             ),
             'fonte_url': '',
-            'idioma': 'Português (Brasil)',
+            'idioma': documento.get_idioma_display(),
+            'idioma_codigo': documento.idioma,
             'status': 'disponivel',
             'versao_documento': '',
             'atualizado_em': documento.atualizado_em.date().isoformat(),
@@ -320,7 +328,26 @@ class DocumentationService:
             descartado = False
             for campo, valor in filtros.items():
                 valor_normalizado = ManualService.normalizar(valor)
-                if valor_normalizado and valor_normalizado not in ManualService.normalizar(item.get(campo, '')):
+                if campo == 'idioma' and valor_normalizado:
+                    idioma_codigo = ManualService.normalizar(
+                        item.get('idioma_codigo', '')
+                    )
+                    idioma_label = ManualService.normalizar(item.get('idioma', ''))
+                    corresponde = (
+                        idioma_codigo == valor_normalizado
+                        or (
+                            valor_normalizado == 'es'
+                            and idioma_label in {'espanhol', 'espanol', 'spanish'}
+                        )
+                        or (
+                            valor_normalizado == 'pt br'
+                            and idioma_label.startswith('portugues')
+                        )
+                    )
+                    if not corresponde:
+                        descartado = True
+                        break
+                elif valor_normalizado and valor_normalizado not in ManualService.normalizar(item.get(campo, '')):
                     descartado = True
                     break
             if not descartado:

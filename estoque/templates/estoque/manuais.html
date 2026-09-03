@@ -1,63 +1,62 @@
 {% extends 'estoque/base.html' %}
-{% load static %}
+{% load static i18n %}
 
-{% block title %}Manuais de equipamentos{% endblock %}
+{% block title %}{% trans "Manuais de equipamentos" %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 pb-5 manual-library">
   <section class="manual-hero card border-0 shadow-sm mb-4">
     <div class="card-body p-4 p-lg-5 d-flex flex-wrap justify-content-between align-items-center gap-4">
       <div>
-        <span class="manual-eyebrow"><i class="bi bi-journal-bookmark-fill me-2"></i>Biblioteca interna</span>
-        <h1 class="h3 fw-bold mb-2 mt-2">Manuais de equipamentos</h1>
-        <p class="text-secondary mb-0">Pesquise manuais, drivers e firmware por fabricante, modelo ou assunto. Documentos em português aparecem primeiro sempre que disponíveis.</p>
+        <span class="manual-eyebrow"><i class="bi bi-journal-bookmark-fill me-2"></i>{% trans "Biblioteca interna" %}</span>
+        <h1 class="h3 fw-bold mb-2 mt-2">{% trans "Manuais de equipamentos" %}</h1>
+        <p class="text-secondary mb-0">{% trans "Pesquise manuais, drivers e firmware por fabricante, modelo ou assunto. Documentos em português aparecem primeiro sempre que disponíveis." %}</p>
       </div>
-      <!--
-      <a class="btn btn-outline-dark" href="{% url 'estoque:assistente_operacional' %}">
-        <i class="bi bi-chat-dots me-2"></i>Perguntar à Tory
+      <a class="btn btn-outline-dark" href="{% url 'estoque:drivers_impressoras' %}">
+        <i class="bi bi-printer me-2"></i>{% trans "Abrir biblioteca de drivers" %}
       </a>
-      -->
     </div>
   </section>
 
   <form method="get" class="card border shadow-sm mb-4" role="search">
     <div class="card-header manual-section-header bg-dark text-white border-0 px-4 py-3">
-      <h2 class="h6 fw-bold mb-0"><i class="bi bi-search me-2"></i>Pesquisar manuais e drivers</h2>
+      <h2 class="h6 fw-bold mb-0"><i class="bi bi-search me-2"></i>{% trans "Pesquisar manuais e drivers" %}</h2>
     </div>
     <div class="card-body p-4">
       <div class="row g-3 align-items-end">
         <div class="col-12 col-lg-6">
-          <label for="manual-query" class="form-label fw-semibold">Equipamento, modelo ou assunto</label>
-          <input id="manual-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="Ex.: TL-WR829N, Skorpio X3, driver, Wi-Fi, bateria">
+          <label for="manual-query" class="form-label fw-semibold">{% trans "Equipamento, modelo ou assunto" %}</label>
+          {% trans "Ex.: TL-WR829N, Skorpio X3, driver, Wi-Fi, bateria" as manual_placeholder %}
+          <input id="manual-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="{{ manual_placeholder }}">
         </div>
         <div class="col-12 col-md-5 col-lg-2">
-          <label for="manual-category" class="form-label fw-semibold">Categoria</label>
+          <label for="manual-category" class="form-label fw-semibold">{% trans "Categoria" %}</label>
           <select id="manual-category" class="form-select" name="categoria">
-            <option value="">Todas</option>
+            <option value="">{% trans "Todas" %}</option>
             {% for categoria in categorias %}<option value="{{ categoria }}" {% if filtros.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>{% endfor %}
           </select>
         </div>
         <div class="col-12 col-md-5 col-lg-2">
-          <label for="manual-language" class="form-label fw-semibold">Idioma</label>
+          <label for="manual-language" class="form-label fw-semibold">{% trans "Idioma" %}</label>
           <select id="manual-language" class="form-select" name="idioma">
-            <option value="">Todos</option>
-            <option value="portugues" {% if filtros.idioma == 'portugues' %}selected{% endif %}>Português</option>
-            <option value="ingles" {% if filtros.idioma == 'ingles' %}selected{% endif %}>Inglês</option>
-            <option value="espanhol" {% if filtros.idioma == 'espanhol' %}selected{% endif %}>Espanhol</option>
+            <option value="">{% trans "Todos" %}</option>
+            <option value="portugues" {% if filtros.idioma == 'portugues' %}selected{% endif %}>{% trans "Português" %}</option>
+            <option value="ingles" {% if filtros.idioma == 'ingles' %}selected{% endif %}>{% trans "Inglês" %}</option>
+            <option value="espanhol" {% if filtros.idioma == 'espanhol' %}selected{% endif %}>{% trans "Espanhol" %}</option>
           </select>
         </div>
         <div class="col-12 col-md-2 col-lg-2 d-grid">
-          <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-2"></i>Pesquisar</button>
+          <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-2"></i>{% trans "Pesquisar" %}</button>
         </div>
       </div>
     </div>
   </form>
 
-  <div class="row g-3 mb-4" aria-label="Resumo do catálogo">
-    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>Modelos no catálogo</span><strong>{{ estatisticas.total }}</strong></div></div>
-    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>Em português</span><strong>{{ estatisticas.pt_br }}</strong></div></div>
-    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>Arquivos locais</span><strong>{{ estatisticas.locais }}</strong></div></div>
-    <div class="col-6 col-lg-3"><div class="manual-kpi manual-kpi-warning"><span>Revisão necessária</span><strong>{{ estatisticas.pendentes }}</strong></div></div>
+  <div class="row g-3 mb-4" aria-label="{% trans 'Resumo do catálogo' %}">
+    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>{% trans "Modelos no catálogo" %}</span><strong>{{ estatisticas.total }}</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>{% trans "Em português" %}</span><strong>{{ estatisticas.pt_br }}</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="manual-kpi"><span>{% trans "Arquivos locais" %}</span><strong>{{ estatisticas.locais }}</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="manual-kpi manual-kpi-warning"><span>{% trans "Revisão necessária" %}</span><strong>{{ estatisticas.pendentes }}</strong></div></div>
   </div>
 
   {% if manuais %}
@@ -74,32 +73,33 @@
               <p class="small text-secondary mb-0">{{ manual.fabricante }} · {{ manual.produto }}</p>
             </div>
             {% if manual.pendente %}
-              <span class="badge text-bg-warning"><i class="bi bi-exclamation-triangle me-1"></i>Revisar cadastro</span>
+              <span class="badge text-bg-warning"><i class="bi bi-exclamation-triangle me-1"></i>{% trans "Revisar cadastro" %}</span>
             {% elif manual.arquivo_disponivel %}
-              <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Disponível localmente</span>
+              <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>{% trans "Disponível localmente" %}</span>
             {% else %}
-              <span class="badge text-bg-info"><i class="bi bi-link-45deg me-1"></i>Fonte oficial</span>
+              <span class="badge text-bg-info"><i class="bi bi-link-45deg me-1"></i>{% trans "Fonte oficial" %}</span>
             {% endif %}
           </div>
           <h3 class="h6 fw-bold">{{ manual.titulo }}</h3>
           <p class="text-secondary mb-3">{{ manual.resumo }}</p>
           <dl class="manual-meta row small mb-4">
-            <dt class="col-4">Tipo</dt><dd class="col-8">{{ manual.tipo }}</dd>
-            <dt class="col-4">Idioma</dt><dd class="col-8">{{ manual.idioma }}</dd>
+            <dt class="col-4">{% trans "Tipo" %}</dt><dd class="col-8">{{ manual.tipo }}</dd>
+            <dt class="col-4">{% trans "Idioma" %}</dt><dd class="col-8">{{ manual.idioma }}</dd>
           </dl>
           <div class="d-flex flex-wrap gap-2 mt-auto">
             {% if manual.arquivo_disponivel %}
             <a href="{{ manual.arquivo_url }}" class="btn btn-primary" target="_blank" rel="noopener">
-              <i class="bi bi-file-earmark-pdf me-2"></i>Abrir manual
+              <i class="bi bi-file-earmark-pdf me-2"></i>{% trans "Abrir manual" %}
             </a>
             {% endif %}
             {% if manual.driver_url %}
             <a href="{{ manual.driver_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener noreferrer">
-              <i class="bi bi-download me-2"></i>{{ manual.driver_label|default:"Drivers oficiais" }}
+              {% trans "Drivers oficiais" as drivers_oficiais %}
+              <i class="bi bi-download me-2"></i>{{ manual.driver_label|default:drivers_oficiais }}
             </a>
             {% endif %}
             <a href="{{ manual.fonte_url }}" class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer">
-              <i class="bi bi-box-arrow-up-right me-2"></i>{% if manual.pendente %}Abrir suporte oficial{% else %}Ver fonte oficial{% endif %}
+              <i class="bi bi-box-arrow-up-right me-2"></i>{% if manual.pendente %}{% trans "Abrir suporte oficial" %}{% else %}{% trans "Ver fonte oficial" %}{% endif %}
             </a>
           </div>
         </div>
@@ -111,9 +111,9 @@
   {% else %}
   <div class="card border shadow-sm"><div class="card-body p-5 text-center">
     <i class="bi bi-search fs-1 text-secondary"></i>
-    <h2 class="h5 mt-3">Nenhum manual encontrado</h2>
-    <p class="text-secondary mb-3">Tente pesquisar somente pelo modelo ou remova um dos filtros.</p>
-    <a class="btn btn-outline-dark" href="{% url 'estoque:manuais' %}">Limpar filtros</a>
+    <h2 class="h5 mt-3">{% trans "Nenhum manual encontrado" %}</h2>
+    <p class="text-secondary mb-3">{% trans "Tente pesquisar somente pelo modelo ou remova um dos filtros." %}</p>
+    <a class="btn btn-outline-dark" href="{% url 'estoque:manuais' %}">{% trans "Limpar filtros" %}</a>
   </div></div>
   {% endif %}
 </div>

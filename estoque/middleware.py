@@ -60,6 +60,8 @@ class OperatorScopeMiddleware:
 
     ROTAS_ESTOQUE_PERMITIDAS = {
         'manuais',
+        'drivers_impressoras',
+        'driver_impressora_arquivo',
         'documentacao',
         'documentacao_resolucao',
         'documentacao_resolucao_arquivo',

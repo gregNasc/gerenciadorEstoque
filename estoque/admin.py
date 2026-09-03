@@ -12,6 +12,9 @@ from .models import (
     Descricao,
     Base,
     ComunicadoLeitura,
+    DriverImpressora,
+    ResolucaoDocumento,
+    VideoDocumentacao,
 )
 
 
@@ -277,6 +280,56 @@ class HistoricoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
     )
 
     readonly_fields = ("data",)
+
+
+@admin.register(DriverImpressora)
+class DriverImpressoraAdmin(admin.ModelAdmin):
+    list_display = (
+        'titulo', 'fabricante', 'modelo', 'sistema_operacional',
+        'arquitetura', 'versao', 'ativo', 'atualizado_em',
+    )
+    list_filter = ('ativo', 'fabricante', 'sistema_operacional', 'arquitetura')
+    search_fields = ('titulo', 'fabricante', 'modelo', 'descricao')
+    readonly_fields = ('nome_original', 'tamanho_bytes', 'criado_por', 'criado_em', 'atualizado_em')
+
+    def save_model(self, request, obj, form, change):
+        if 'arquivo' in form.changed_data and obj.arquivo:
+            obj.nome_original = form.cleaned_data['arquivo'].name
+            obj.tamanho_bytes = form.cleaned_data['arquivo'].size
+        if not obj.criado_por_id:
+            obj.criado_por = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(ResolucaoDocumento)
+class ResolucaoDocumentoAdmin(admin.ModelAdmin):
+    list_display = (
+        'titulo', 'fabricante', 'modelo', 'categoria', 'idioma', 'ativo',
+        'atualizado_em',
+    )
+    list_filter = ('ativo', 'idioma', 'categoria', 'fabricante')
+    search_fields = ('titulo', 'fabricante', 'modelo', 'resumo', 'tags')
+    readonly_fields = ('nome_original', 'criado_por', 'criado_em', 'atualizado_em')
+
+    def save_model(self, request, obj, form, change):
+        if 'arquivo' in form.changed_data and obj.arquivo:
+            obj.nome_original = form.cleaned_data['arquivo'].name
+        if not obj.criado_por_id:
+            obj.criado_por = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(VideoDocumentacao)
+class VideoDocumentacaoAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'origem', 'produto_codigo', 'categoria', 'ativo')
+    list_filter = ('ativo', 'origem', 'categoria')
+    search_fields = ('titulo', 'descricao', 'produto_codigo', 'tags')
+    readonly_fields = ('criado_por', 'criado_em', 'atualizado_em')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.criado_por_id:
+            obj.criado_por = request.user
+        super().save_model(request, obj, form, change)
 
 
 # ================== DESCRIÇÃO ==================

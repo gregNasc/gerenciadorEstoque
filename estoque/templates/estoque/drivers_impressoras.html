@@ -1,0 +1,138 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Drivers de impressoras" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-lg-4 pb-5">
+  <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #0d6efd!important">
+    <div class="card-body p-4 p-lg-5 d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <span class="small fw-bold text-uppercase text-secondary">
+          <i class="bi bi-archive me-2" aria-hidden="true"></i>{% trans "Biblioteca operacional" %}
+        </span>
+        <h1 class="h3 fw-bold mt-2 mb-2">{% trans "Drivers de impressoras" %}</h1>
+        <p class="text-secondary mb-0">{% trans "Instaladores validados e arquivados para manter as impressoras essenciais em operação." %}</p>
+      </div>
+      <a class="btn btn-outline-dark" href="{% url 'estoque:manuais' %}">
+        <i class="bi bi-book me-2" aria-hidden="true"></i>{% trans "Ver manuais" %}
+      </a>
+    </div>
+  </section>
+
+  <form method="get" class="card border shadow-sm mb-4" role="search">
+    <div class="card-body p-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-5">
+          <label for="driver-query" class="form-label fw-semibold">{% trans "Impressora, modelo ou sistema operacional" %}</label>
+          {% trans "Ex.: Phaser 3020, Windows 11, HP Laser" as driver_placeholder %}
+          <input id="driver-query" class="form-control" type="search" name="q" value="{{ filtros.q }}" placeholder="{{ driver_placeholder }}">
+        </div>
+        <div class="col-12 col-md-4 col-lg-3">
+          <label for="driver-maker" class="form-label fw-semibold">{% trans "Fabricante" %}</label>
+          <select id="driver-maker" class="form-select" name="fabricante">
+            <option value="">{% trans "Todos" %}</option>
+            {% for fabricante in fabricantes %}<option value="{{ fabricante }}" {% if filtros.fabricante == fabricante %}selected{% endif %}>{{ fabricante }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-5 col-lg-3">
+          <label for="driver-os" class="form-label fw-semibold">{% trans "Sistema operacional" %}</label>
+          <select id="driver-os" class="form-select" name="sistema_operacional">
+            <option value="">{% trans "Todos" %}</option>
+            {% for sistema in sistemas_operacionais %}<option value="{{ sistema }}" {% if filtros.sistema_operacional == sistema %}selected{% endif %}>{{ sistema }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-3 col-lg-1 d-grid">
+          <button class="btn btn-primary" type="submit" aria-label="{% trans 'Pesquisar' %}"><i class="bi bi-search"></i></button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-4 align-items-start">
+    <div class="col-12 {% if pode_gerenciar_documentacao %}col-xl-8{% endif %}">
+      {% if drivers %}
+        <div class="row g-4">
+          {% for driver in drivers %}
+            <div class="col-12 col-lg-6">
+              <article class="card h-100 border shadow-sm">
+                <div class="card-body p-4 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                      <span class="badge text-bg-light border mb-2">{{ driver.fabricante }}</span>
+                      <h2 class="h5 fw-bold mb-1">{{ driver.modelo }}</h2>
+                      <p class="small text-secondary mb-0">{{ driver.titulo }}</p>
+                    </div>
+                    <i class="bi bi-printer fs-3 text-primary" aria-hidden="true"></i>
+                  </div>
+                  <dl class="row small mb-3">
+                    <dt class="col-5 text-secondary">{% trans "Sistema operacional" %}</dt><dd class="col-7">{{ driver.sistema_operacional }}</dd>
+                    {% if driver.arquitetura %}<dt class="col-5 text-secondary">{% trans "Arquitetura" %}</dt><dd class="col-7">{{ driver.arquitetura }}</dd>{% endif %}
+                    {% if driver.versao %}<dt class="col-5 text-secondary">{% trans "Versão" %}</dt><dd class="col-7">{{ driver.versao }}</dd>{% endif %}
+                    <dt class="col-5 text-secondary">{% trans "Arquivo" %}</dt><dd class="col-7 text-break">{{ driver.nome_original }} ({{ driver.tamanho_bytes|filesizeformat }})</dd>
+                  </dl>
+                  {% if driver.descricao %}<p class="text-secondary">{{ driver.descricao }}</p>{% endif %}
+                  {% if driver.instrucoes %}
+                    <details class="mb-3">
+                      <summary class="fw-semibold">{% trans "Instruções de instalação" %}</summary>
+                      <div class="small text-secondary mt-2">{{ driver.instrucoes|linebreaksbr }}</div>
+                    </details>
+                  {% endif %}
+                  <div class="d-flex flex-wrap gap-2 mt-auto">
+                    <a class="btn btn-primary" href="{% url 'estoque:driver_impressora_arquivo' driver.pk %}">
+                      <i class="bi bi-download me-2" aria-hidden="true"></i>{% trans "Baixar driver" %}
+                    </a>
+                    {% if pode_gerenciar_documentacao %}
+                      <form method="post" action="{% url 'estoque:driver_impressora_desativar' driver.pk %}" onsubmit="return confirm('{% trans "Remover este driver da biblioteca?" %}');">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-danger" type="submit">{% trans "Desativar" %}</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </div>
+              </article>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card border shadow-sm">
+          <div class="card-body p-5 text-center">
+            <i class="bi bi-printer fs-1 text-secondary" aria-hidden="true"></i>
+            <h2 class="h5 mt-3">{% trans "Nenhum driver encontrado" %}</h2>
+            <p class="text-secondary">{% trans "Remova os filtros ou peça ao administrador para disponibilizar o instalador necessário." %}</p>
+            <a class="btn btn-outline-dark" href="{% url 'estoque:drivers_impressoras' %}">{% trans "Limpar filtros" %}</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if pode_gerenciar_documentacao %}
+      <aside class="col-12 col-xl-4">
+        <section class="card border shadow-sm" aria-labelledby="titulo-upload-driver">
+          <div class="card-header bg-body px-4 py-3">
+            <h2 class="h5 mb-1" id="titulo-upload-driver">{% trans "Disponibilizar driver" %}</h2>
+            <p class="text-secondary small mb-0">{% trans "Formatos aceitos: EXE, MSI, ZIP, RAR, CAB e INF. Limite de 500 MB." %}</p>
+          </div>
+          <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data" novalidate>
+              {% csrf_token %}
+              {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+              {% for campo in form %}
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                  {{ campo }}
+                  {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
+                  {% for erro in campo.errors %}<div class="app-field-error">{{ erro }}</div>{% endfor %}
+                </div>
+              {% endfor %}
+              <button class="btn btn-primary w-100" type="submit">
+                <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>{% trans "Arquivar driver" %}
+              </button>
+            </form>
+          </div>
+        </section>
+      </aside>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

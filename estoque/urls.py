@@ -23,6 +23,9 @@ urlpatterns = [
     # ---------------- ESTOQUE ----------------
     path('estoque/', views.estoque_view, name='estoque'),
     path('manuais/', views.manuais_view, name='manuais'),
+    path('manuais/drivers/', views.drivers_impressoras_view, name='drivers_impressoras'),
+    path('manuais/drivers/<int:driver_id>/arquivo/', views.driver_impressora_arquivo_view, name='driver_impressora_arquivo'),
+    path('manuais/drivers/<int:driver_id>/desativar/', views.driver_impressora_desativar_view, name='driver_impressora_desativar'),
     path('documentacao/', views.documentacao_view, name='documentacao'),
     path('documentacao/resolucao/', views.documentacao_resolucao_view, name='documentacao_resolucao'),
     path('documentacao/resolucao/<int:documento_id>/arquivo/', views.documentacao_resolucao_arquivo_view, name='documentacao_resolucao_arquivo'),

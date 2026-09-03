@@ -17,9 +17,11 @@ from .services.manual_service import ManualService
 from .services.documentation_service import DocumentationService
 from .forms_documentacao import (
     ClienteChecklistUploadForm,
+    DriverImpressoraForm,
     ResolucaoDocumentoForm,
     VideoDocumentacaoForm,
 )
+from django.utils.translation import gettext as _
 from .services.assistente.response_builder import construir_erro, construir_resposta
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
@@ -519,10 +521,12 @@ def documentacao_resolucao_view(request):
     filtros = {
         'q': request.GET.get('q', '').strip(),
         'fabricante': request.GET.get('fabricante', '').strip(),
+        'idioma': request.GET.get('idioma', '').strip(),
     }
     catalogo = DocumentationService.listar(tipo='RESOLUCAO')
     documentos = DocumentationService.listar(
-        termo=filtros['q'], tipo='RESOLUCAO', fabricante=filtros['fabricante']
+        termo=filtros['q'], tipo='RESOLUCAO', fabricante=filtros['fabricante'],
+        idioma=filtros['idioma'],
     )
     return render(
         request,
@@ -535,6 +539,99 @@ def documentacao_resolucao_view(request):
             'pode_gerenciar_documentacao': pode_gerenciar,
         },
     )
+
+
+@login_required
+def drivers_impressoras_view(request):
+    from estoque.models import DriverImpressora
+
+    pode_gerenciar = _pode_gerenciar_documentacao(request.user)
+    form = DriverImpressoraForm(
+        request.POST or None,
+        request.FILES or None,
+    ) if pode_gerenciar else None
+
+    if request.method == 'POST':
+        if not pode_gerenciar:
+            raise PermissionDenied
+        if form.is_valid():
+            driver = form.save(commit=False)
+            arquivo = request.FILES['arquivo']
+            driver.nome_original = Path(arquivo.name).name
+            driver.tamanho_bytes = arquivo.size
+            driver.criado_por = request.user
+            driver.save()
+            messages.success(request, _('Driver adicionado à biblioteca com sucesso.'))
+            return redirect('estoque:drivers_impressoras')
+
+    filtros = {
+        'q': request.GET.get('q', '').strip(),
+        'fabricante': request.GET.get('fabricante', '').strip(),
+        'sistema_operacional': request.GET.get('sistema_operacional', '').strip(),
+    }
+    drivers = DriverImpressora.objects.filter(ativo=True).select_related('criado_por')
+    if filtros['q']:
+        drivers = drivers.filter(
+            Q(titulo__icontains=filtros['q'])
+            | Q(fabricante__icontains=filtros['q'])
+            | Q(modelo__icontains=filtros['q'])
+            | Q(sistema_operacional__icontains=filtros['q'])
+            | Q(descricao__icontains=filtros['q'])
+        )
+    if filtros['fabricante']:
+        drivers = drivers.filter(fabricante=filtros['fabricante'])
+    if filtros['sistema_operacional']:
+        drivers = drivers.filter(sistema_operacional=filtros['sistema_operacional'])
+
+    ativos = DriverImpressora.objects.filter(ativo=True)
+    return render(request, 'estoque/drivers_impressoras.html', {
+        'drivers': drivers,
+        'fabricantes': ativos.order_by('fabricante').values_list(
+            'fabricante', flat=True
+        ).distinct(),
+        'sistemas_operacionais': ativos.order_by('sistema_operacional').values_list(
+            'sistema_operacional', flat=True
+        ).distinct(),
+        'filtros': filtros,
+        'form': form,
+        'pode_gerenciar_documentacao': pode_gerenciar,
+    })
+
+
+@login_required
+def driver_impressora_arquivo_view(request, driver_id):
+    from estoque.models import DriverImpressora
+
+    driver = get_object_or_404(DriverImpressora, pk=driver_id, ativo=True)
+    nome = driver.nome_original or Path(driver.arquivo.name).name
+    content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    try:
+        arquivo = driver.arquivo.open('rb')
+    except (FileNotFoundError, OSError):
+        raise Http404(_('O arquivo deste driver não está mais disponível.'))
+    resposta = FileResponse(
+        arquivo,
+        as_attachment=True,
+        filename=nome,
+        content_type=content_type,
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
+
+
+@login_required
+@require_POST
+def driver_impressora_desativar_view(request, driver_id):
+    from estoque.models import DriverImpressora
+
+    if not _pode_gerenciar_documentacao(request.user):
+        raise PermissionDenied
+    driver = get_object_or_404(DriverImpressora, pk=driver_id, ativo=True)
+    driver.ativo = False
+    driver.save(update_fields=['ativo', 'atualizado_em'])
+    messages.success(request, _('Driver removido da biblioteca.'))
+    return redirect('estoque:drivers_impressoras')
 
 
 def _pode_gerenciar_documentacao(user):

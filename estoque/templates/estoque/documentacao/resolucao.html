@@ -1,17 +1,18 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
-{% block title %}Resolução de problemas{% endblock %}
+{% block title %}{% trans "Resolução de problemas" %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 pb-5">
   <section class="card border-0 shadow-sm mb-4" style="border-left:5px solid #b45309!important">
     <div class="card-body p-4 p-lg-5">
       <span class="small fw-bold text-uppercase text-secondary">
-        <i class="bi bi-tools me-2" aria-hidden="true"></i>Procedimentos internos
+        <i class="bi bi-tools me-2" aria-hidden="true"></i>{% trans "Procedimentos internos" %}
       </span>
-      <h1 class="h3 fw-bold mt-2 mb-2">Resolução de problemas</h1>
+      <h1 class="h3 fw-bold mt-2 mb-2">{% trans "Resolução de problemas" %}</h1>
       <p class="text-secondary mb-0">
-        Pesquise pelo equipamento ou sintoma. Confirme o modelo antes de executar qualquer procedimento.
+        {% trans "Pesquise pelo equipamento ou sintoma. Confirme o modelo antes de executar qualquer procedimento." %}
       </p>
     </div>
   </section>
@@ -19,22 +20,31 @@
   <form method="get" class="card border shadow-sm mb-4" role="search">
     <div class="card-body p-4">
       <div class="row g-3 align-items-end">
-        <div class="col-12 col-lg-7">
-          <label for="resolution-query" class="form-label fw-semibold">Equipamento ou sintoma</label>
+        <div class="col-12 col-lg-5">
+          <label for="resolution-query" class="form-label fw-semibold">{% trans "Equipamento ou sintoma" %}</label>
+          {% trans "Ex.: Wi-Fi, scanner, offline, travamento" as resolution_placeholder %}
           <input id="resolution-query" class="form-control" type="search" name="q"
-                 value="{{ filtros.q }}" placeholder="Ex.: Wi-Fi, scanner, offline, travamento">
+                 value="{{ filtros.q }}" placeholder="{{ resolution_placeholder }}">
         </div>
         <div class="col-8 col-lg-3">
-          <label for="resolution-maker" class="form-label fw-semibold">Fabricante</label>
+          <label for="resolution-maker" class="form-label fw-semibold">{% trans "Fabricante" %}</label>
           <select id="resolution-maker" class="form-select" name="fabricante">
-            <option value="">Todos</option>
+            <option value="">{% trans "Todos" %}</option>
             {% for fabricante in fabricantes %}
               <option value="{{ fabricante }}" {% if filtros.fabricante == fabricante %}selected{% endif %}>{{ fabricante }}</option>
             {% endfor %}
           </select>
         </div>
+        <div class="col-8 col-lg-2">
+          <label for="resolution-language" class="form-label fw-semibold">{% trans "Idioma" %}</label>
+          <select id="resolution-language" class="form-select" name="idioma">
+            <option value="">{% trans "Todos" %}</option>
+            <option value="pt-br" {% if filtros.idioma == 'pt-br' %}selected{% endif %}>{% trans "Português (Brasil)" %}</option>
+            <option value="es" {% if filtros.idioma == 'es' %}selected{% endif %}>{% trans "Espanhol" %}</option>
+          </select>
+        </div>
         <div class="col-4 col-lg-2 d-grid">
-          <button class="btn btn-primary" type="submit">Pesquisar</button>
+          <button class="btn btn-primary" type="submit">{% trans "Pesquisar" %}</button>
         </div>
       </div>
     </div>
@@ -52,9 +62,9 @@
         <div class="card border shadow-sm">
           <div class="card-body p-5 text-center">
             <i class="bi bi-wrench-adjustable-circle fs-1 text-secondary" aria-hidden="true"></i>
-            <h2 class="h5 mt-3">Nenhum procedimento encontrado</h2>
-            <p class="text-secondary">Remova os filtros ou tente outro termo.</p>
-            <a class="btn btn-outline-dark" href="{% url 'estoque:documentacao_resolucao' %}">Limpar filtros</a>
+            <h2 class="h5 mt-3">{% trans "Nenhum procedimento encontrado" %}</h2>
+            <p class="text-secondary">{% trans "Remova os filtros ou tente outro termo." %}</p>
+            <a class="btn btn-outline-dark" href="{% url 'estoque:documentacao_resolucao' %}">{% trans "Limpar filtros" %}</a>
           </div>
         </div>
       {% endif %}
@@ -64,8 +74,8 @@
       <aside class="col-12 col-xl-4">
         <section class="card border shadow-sm" aria-labelledby="titulo-upload-resolucao">
           <div class="card-header bg-body px-4 py-3">
-            <h2 class="h5 mb-1" id="titulo-upload-resolucao">Enviar relatório de resolução</h2>
-            <p class="text-secondary small mb-0">Somente PDF, com limite de 20 MB.</p>
+            <h2 class="h5 mb-1" id="titulo-upload-resolucao">{% trans "Enviar relatório de resolução" %}</h2>
+            <p class="text-secondary small mb-0">{% trans "Envie uma edição separada para cada idioma. Somente PDF, com limite de 20 MB." %}</p>
           </div>
           <div class="card-body p-4">
             <form method="post" enctype="multipart/form-data" novalidate>
@@ -82,7 +92,7 @@
                 </div>
               {% endfor %}
               <button class="btn btn-primary w-100" type="submit">
-                <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>Enviar relatório
+                <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>{% trans "Enviar relatório" %}
               </button>
             </form>
           </div>
