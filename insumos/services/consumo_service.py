@@ -2,12 +2,21 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import (Sum, F, DecimalField, ExpressionWrapper)
 from insumos.models import (ConsumoInsumo, HistoricoInsumo)
+from insumos.policies import InsumosTenantPolicy
 
 class ConsumoService:
 
     @staticmethod
     @transaction.atomic
     def gerar(*, item):
+
+        usuario = item.checklist.finalizado_por or item.checklist.responsavel
+        InsumosTenantPolicy.require_base(
+            usuario,
+            item.checklist.inventario.base,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        )
 
         quantidade = item.quantidade_utilizada + item.quantidade_perdida
 
@@ -35,7 +44,8 @@ class ConsumoService:
 
         HistoricoInsumo.objects.create(
             tipo='CONSUMO',
-            usuario=(item.checklist.finalizado_por or item.checklist.responsavel),
+            usuario=usuario,
+            base=item.checklist.inventario.base,
             descricao=(
                 f'Consumo registrado para '
                 f'{item.insumo.descricao}'
@@ -56,10 +66,10 @@ class ConsumoService:
         return consumo
 
     @staticmethod
-    def custo_inventario(inventario):
+    def custo_inventario(user, inventario):
 
         return (
-                ConsumoInsumo.objects
+                InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
                 .filter(
                     inventario=inventario
                 )
@@ -70,10 +80,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def custo_cliente(cliente):
+    def custo_cliente(user, cliente):
 
         return (
-                ConsumoInsumo.objects
+                InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
                 .filter(
                     inventario__cliente=cliente
                 )
@@ -84,10 +94,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def custo_por_base():
+    def custo_por_base(user):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'inventario__base__sigla'
             )
@@ -98,10 +108,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def custo_periodo(data_inicio, data_fim):
+    def custo_periodo(user, data_inicio, data_fim):
 
         return (
-                ConsumoInsumo.objects
+                InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
                 .filter(
                     inventario__data_inicio__gte=data_inicio,
                     inventario__data_inicio__lte=data_fim,
@@ -113,10 +123,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def custo_mensal(ano):
+    def custo_mensal(user, ano):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .filter(
                 inventario__data_inicio__year=ano
             )
@@ -132,10 +142,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def top_insumos(limite=10):
+    def top_insumos(user, limite=10):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'insumo_id',
                 'insumo__descricao',
@@ -149,10 +159,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def top_clientes(limite=10):
+    def top_clientes(user, limite=10):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'inventario__cliente__sigla',
                 'inventario__cliente__nome',
@@ -164,10 +174,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def custo_por_categoria():
+    def custo_por_categoria(user):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'insumo__categoria__nome'
             )
@@ -178,10 +188,10 @@ class ConsumoService:
         )
 
     @staticmethod
-    def detalhamento_inventario(inventario):
+    def detalhamento_inventario(user, inventario):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .filter(
                 inventario=inventario
             )
@@ -197,7 +207,7 @@ class ConsumoService:
         )
 
     @staticmethod
-    def perdas_periodo(data_inicio, data_fim):
+    def perdas_periodo(user, data_inicio, data_fim):
 
         from insumos.models import MovimentacaoInsumo
         from django.db.models import (
@@ -208,7 +218,7 @@ class ConsumoService:
         )
 
         return (
-                MovimentacaoInsumo.objects
+                InsumosTenantPolicy.movements(user, MovimentacaoInsumo.objects)
                 .filter(
                     tipo='PERDA',
                     criado_em__date__gte=data_inicio,

@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from .models import Equipamento, Historico, Base
+from .security import secure_base_queryset, secure_history_queryset, secure_queryset
 from django.db.models import Count, Q, Sum, F
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import User
@@ -25,16 +26,10 @@ def get_object_empresa_or_404(model, request, campo_empresa='empresa', **kwargs)
     return get_object_or_404(model, **kwargs)
 
 def qs_equipamentos(request):
-    from auditorias.services.visibilidade_estoque_service import (
-        VisibilidadeEstoqueAuditoriaService,
-    )
-
-    queryset = filtrar_por_empresa(
+    return secure_queryset(
         Equipamento.objects.select_related('produto', 'regional'),
-        request,
-        campo_empresa='regional__empresa'
+        request.user,
     )
-    return VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(queryset)
 
 def qs_historico(request):
     qs = Historico.objects.select_related(
@@ -43,26 +38,10 @@ def qs_historico(request):
         'usuario'
     )
 
-    if request.user.is_superuser:
-        return qs
-
-    perfil = getattr(request.user, 'perfil', None)
-
-    if not perfil:
-        return qs.none()
-
-    bases = perfil.regionais.all()
-
-    if not bases.exists():
-        return qs.none()
-
-    return qs.filter(equipamento__regional__in=bases)
+    return secure_history_queryset(qs, request.user)
 
 def qs_bases(request):
-    return filtrar_por_empresa(
-        Base.objects.all(),
-        request
-    )
+    return secure_base_queryset(Base.objects.all(), request.user)
 
 class EstoqueService:
     STATUS_ATIVO = 'ATIVO'

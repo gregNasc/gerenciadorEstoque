@@ -5,30 +5,46 @@ from django.shortcuts import redirect
 from django.utils import translation
 
 from estoque.policies.compras import GruposCorporativos
+from estoque.tenant_context import TenantRequestContext
+from estoque.tenant_scope import TenantScope
 
 class EmpresaMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        request.empresa = None
-
         user = getattr(request, 'user', None)
+        is_authenticated = bool(user and user.is_authenticated)
+        context = TenantRequestContext.empty(
+            user_id=user.pk if is_authenticated else None,
+            is_platform_superuser=bool(is_authenticated and user.is_superuser)
+        )
 
-        if user and user.is_authenticated:
+        if is_authenticated:
             try:
                 perfil = (
                     Perfil.objects
                     .select_related('empresa')
+                    .prefetch_related('empresas_acesso_adicional')
                     .filter(user=user)
                     .first()
                 )
 
                 if perfil:
-                    request.empresa = perfil.empresa
+                    context = TenantRequestContext.from_profile(user, perfil)
 
             except DatabaseError:
-                request.empresa = None
+                # Falha fechada: ausencia de contexto nunca amplia o escopo.
+                context = TenantRequestContext.empty(
+                    user_id=user.pk,
+                    is_platform_superuser=bool(user.is_superuser)
+                )
+
+        request.tenant_context = context
+        request.tenant_scope = TenantScope.for_user(user, context=context)
+        request.tenant = request.tenant_scope.primary_company
+        # Alias legado mantido durante a migracao incremental.
+        request.empresa = request.tenant
 
         return self.get_response(request)
 

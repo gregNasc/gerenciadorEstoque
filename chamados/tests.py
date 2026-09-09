@@ -1,4 +1,5 @@
 from io import BytesIO
+from datetime import timedelta
 from tempfile import gettempdir
 from unittest.mock import AsyncMock, patch
 
@@ -19,6 +20,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from chamados.lider_service import InventarioLiderService
+from chamados.forms import ChamadoForm
 from chamados.models import (
     AliasUsuario,
     CategoriaChamado,
@@ -152,6 +154,89 @@ class ChamadosIntegracaoTests(TestCase):
         comunicado = Comunicado.objects.get(dados__chamado_id=chamado.pk)
         self.assertTrue(comunicado.usuarios.filter(pk=self.admin.pk).exists())
         self.assertTrue(comunicado.usuarios.filter(pk=self.solicitante.pk).exists())
+
+    def test_sla_operacional_e_de_trinta_minutos(self):
+        chamado = self.abrir()
+
+        self.assertEqual(chamado.tipo_chamado, Chamado.Tipo.OPERACIONAL)
+        self.assertEqual(chamado.prazo_sla_em - chamado.aberto_em, timedelta(minutes=30))
+
+    def test_gestor_abre_reparacao_sem_regional_loja_inventario_e_equipamento(self):
+        self.supervisor.perfil.role = Perfil.Role.GESTOR
+        self.supervisor.perfil.save(update_fields=['role'])
+
+        chamado = ChamadoService.abrir(
+            usuario=self.supervisor,
+            tipo_chamado=Chamado.Tipo.REPARACAO,
+            categoria_equipamento='Routers',
+            titulo='Preparar equipamentos',
+            descricao='Preparar coletores para a próxima operação.',
+            prioridade=Chamado.Prioridade.NORMAL,
+        )
+
+        self.assertIsNone(chamado.base)
+        self.assertIsNone(chamado.inventario)
+        self.assertIsNone(chamado.equipamento)
+        self.assertEqual(chamado.loja, '')
+        self.assertEqual(chamado.prazo_sla_em - chamado.aberto_em, timedelta(hours=24))
+
+    def test_operador_nao_pode_forcar_reparacao_no_backend(self):
+        with self.assertRaises(PermissionDenied):
+            ChamadoService.abrir(
+                usuario=self.solicitante,
+                tipo_chamado=Chamado.Tipo.REPARACAO,
+                categoria_equipamento='Sistema',
+                titulo='Instalar software',
+                descricao='Instalação programada.',
+                prioridade=Chamado.Prioridade.NORMAL,
+            )
+
+        form = ChamadoForm(user=self.solicitante)
+        self.assertEqual(
+            [valor for valor, _rotulo in form.fields['tipo_chamado'].choices],
+            [Chamado.Tipo.OPERACIONAL],
+        )
+
+    def test_reparacao_nao_disponibiliza_chat(self):
+        self.supervisor.perfil.role = Perfil.Role.GESTOR
+        self.supervisor.perfil.save(update_fields=['role'])
+        chamado = ChamadoService.abrir(
+            usuario=self.supervisor,
+            tipo_chamado=Chamado.Tipo.REPARACAO,
+            categoria_equipamento='Sistema',
+            titulo='Atualizar software',
+            descricao='Atualização planejada.',
+            prioridade=Chamado.Prioridade.NORMAL,
+        )
+        ChamadoService.assumir(chamado, self.atendente)
+
+        with self.assertRaisesMessage(ValidationError, 'NÃO POSSUEM CHAT'):
+            ChamadoService.adicionar_mensagem(chamado, self.atendente, 'Teste')
+
+        self.client.force_login(self.supervisor)
+        resposta = self.client.get(reverse('chamados:detalhe', args=[chamado.pk]))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertNotContains(resposta, 'id="chat-form"')
+        self.assertContains(resposta, 'Reparação / Manutenção')
+
+    def test_dashboard_exclui_reparacao_da_criticidade_operacional(self):
+        self.abrir()
+        self.supervisor.perfil.role = Perfil.Role.GESTOR
+        self.supervisor.perfil.save(update_fields=['role'])
+        ChamadoService.abrir(
+            usuario=self.supervisor,
+            tipo_chamado=Chamado.Tipo.REPARACAO,
+            categoria_equipamento='Sistema',
+            titulo='Manutenção crítica planejada',
+            descricao='Atividade técnica fora da operação.',
+            prioridade=Chamado.Prioridade.CRITICA,
+        )
+
+        self.client.force_login(self.admin)
+        resposta = self.client.get(reverse('chamados:dashboard'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.context['criticos'], 1)
 
     def test_chamado_registra_se_ocorreu_antes_ou_durante_o_inventario(self):
         antes = self.abrir()
@@ -473,7 +558,7 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(arquivo.tamanhos_lidos, [8])
         self.assertEqual(arquivo.tell(), 3)
 
-    def test_rar_invalido_e_arquivo_acima_de_50_mb_sao_rejeitados_sem_copia(self):
+    def test_rar_invalido_e_arquivo_acima_de_500_mb_sao_rejeitados_sem_copia(self):
         rar_invalido = SimpleUploadedFile(
             'renomeado.rar', b'isto nao e rar', content_type='application/octet-stream',
         )
@@ -485,11 +570,11 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(rar_invalido.tell(), 0)
 
         class ArquivoGrande:
-            size = 50 * 1024 * 1024 + 1
+            size = 500 * 1024 * 1024 + 1
 
         with self.assertRaisesMessage(
             ValidationError,
-            'O ANEXO NÃO PODE ULTRAPASSAR 50 MB.',
+            'O ANEXO NÃO PODE ULTRAPASSAR 500 MB.',
         ):
             validar_tamanho_anexo(ArquivoGrande())
 
@@ -541,8 +626,8 @@ class ChamadosIntegracaoTests(TestCase):
         workbook = load_workbook(arquivo, read_only=True)
         planilha = workbook.active
         cabecalho, linha = planilha.iter_rows(values_only=True)
-        self.assertEqual(cabecalho[2:4], ('SIGLA DA LOJA', 'NÚMERO DA LOJA'))
-        self.assertEqual(linha[2:4], (self.cliente.sigla, chamado.loja))
+        self.assertEqual(cabecalho[3:5], ('SIGLA DA LOJA', 'NÚMERO DA LOJA'))
+        self.assertEqual(linha[3:5], (self.cliente.sigla, chamado.loja))
         workbook.close()
 
     def test_dashboard_usa_tipo_do_equipamento_quando_categoria_de_suporte_esta_vazia(self):

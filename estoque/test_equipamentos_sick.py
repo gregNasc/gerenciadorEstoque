@@ -41,12 +41,11 @@ class EquipamentosSickBaseTests(TestCase):
             regional=self.base, codigo='EQP-SICK-1', status='ATIVO',
         )
 
-    @staticmethod
-    def _usuario(username, role, base=None, ativo=True):
+    def _usuario(self, username, role, base=None, ativo=True):
         user = User.objects.create_user(username=username, password='senha-forte', is_active=ativo)
         perfil = user.perfil
         perfil.role = role
-        perfil.empresa = None if role == Perfil.Role.ADMIN else base.empresa
+        perfil.empresa = self.empresa if role == Perfil.Role.ADMIN else base.empresa
         perfil.save()
         if base and role != Perfil.Role.ADMIN:
             perfil.regionais.add(base)
@@ -399,7 +398,7 @@ class FluxoSickTests(EquipamentosSickBaseTests):
         response = self.client.get(reverse('estoque:index'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'regional-details-button')
-        self.assertContains(response, "DOM.modal.classList.add('show')")
+        self.assertContains(response, 'modalInstance?.show();')
         self.assertContains(response, 'role="button"')
 
     def test_tela_exibe_timeline_finalidade_e_etapa(self):

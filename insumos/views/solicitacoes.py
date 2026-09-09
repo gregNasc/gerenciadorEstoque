@@ -9,6 +9,7 @@ from django.utils.translation import gettext as _
 
 from insumos.forms import SolicitacaoInsumoForm
 from insumos.models import Insumo, SolicitacaoInsumo
+from insumos.policies import InsumosTenantPolicy
 from insumos.services.solicitacao_service import SolicitacaoService
 
 
@@ -33,10 +34,11 @@ def _pode_ver_detalhes_administrativos(user):
     ))
 
 
-def _queryset_visivel(user):
+def _queryset_visivel(user, *, action=InsumosTenantPolicy.VIEW):
     qs = SolicitacaoInsumo.objects.select_related(
         'base', 'solicitante', 'aprovado_por', 'em_compra_por'
     ).prefetch_related('itens__insumo')
+    qs = InsumosTenantPolicy.requests(user, qs, action=action)
     if _pode_decidir(user) or user.perfil.is_financeiro_insumos:
         return qs
     return qs.filter(solicitante=user)
@@ -160,7 +162,10 @@ def detalhe_solicitacao(request, pk):
 def decidir_solicitacao(request, pk):
     if not _pode_decidir(request.user) or request.method != 'POST':
         raise PermissionDenied
-    solicitacao = get_object_or_404(_queryset_visivel(request.user), pk=pk)
+    solicitacao = get_object_or_404(
+        _queryset_visivel(request.user, action=InsumosTenantPolicy.APPROVE),
+        pk=pk,
+    )
     acao = request.POST.get('acao', '')
     observacao = request.POST.get('observacao', '').strip()
     try:

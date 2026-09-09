@@ -54,7 +54,12 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .utils import EstoqueService
-from .security import secure_queryset
+from .security import (
+    secure_base_queryset,
+    secure_company_queryset,
+    secure_history_queryset,
+    secure_queryset,
+)
 from estoque.permissions import (pode_gerenciar_sick, pode_enviar_comunicados,)
 from estoque.permissions import pode_realizar_manutencao_sick
 #from estoque.services.transferencia_services import gerar_transferencias_da_solicitacao
@@ -69,6 +74,111 @@ from .services.estoque_service import get_estoque_por_produto
 from django.contrib.auth import authenticate
 from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
 from estoque.policies.compras import ComprasAccessPolicy
+from estoque.policies.tenant_operations import TenantOperationPolicy
+from insumos.policies import InsumosTenantPolicy
+from django.contrib.auth.decorators import user_passes_test
+
+
+def is_superuser(user):
+    return user.is_authenticated and user.is_superuser
+
+
+@login_required
+def painel_superuser(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied("Acesso restrito ao Superuser.")
+
+    if request.method == 'POST':
+        acao = request.POST.get('acao', '').strip()
+
+        # ---------------- NOVA EMPRESA ----------------
+        if acao == 'criar_empresa':
+            nome = request.POST.get('nome', '').strip()
+
+            if not nome:
+                messages.error(request, "Informe o nome da empresa.")
+
+            elif Empresa.objects.filter(nome__iexact=nome).exists():
+                messages.warning(
+                    request,
+                    f'A empresa "{nome}" já está cadastrada.'
+                )
+
+            else:
+                Empresa.objects.create(nome=nome)
+
+                messages.success(
+                    request,
+                    f'Empresa "{nome}" cadastrada com sucesso.'
+                )
+
+            return redirect('estoque:painel_superuser')
+
+        # ---------------- NOVA BASE ----------------
+        if acao == 'criar_base':
+            empresa_id = request.POST.get('empresa')
+            nome = request.POST.get('nome', '').strip()
+
+            empresa = Empresa.objects.filter(pk=empresa_id).first()
+
+            if not empresa:
+                messages.error(request, "Selecione uma empresa válida.")
+
+            elif not nome:
+                messages.error(request, "Informe o nome da base.")
+
+            elif Base.objects.filter(
+                empresa=empresa,
+                nome__iexact=nome
+            ).exists():
+                messages.warning(
+                    request,
+                    f'A base "{nome}" já existe em {empresa.nome}.'
+                )
+
+            else:
+                Base.objects.create(
+                    empresa=empresa,
+                    nome=nome,
+                )
+
+                messages.success(
+                    request,
+                    f'Base "{nome}" cadastrada em {empresa.nome}.'
+                )
+
+            return redirect('estoque:painel_superuser')
+
+    empresas = (
+        Empresa.objects
+        .annotate(
+            total_bases=Count(
+                'bases',
+                distinct=True,
+            ),
+            total_usuarios=Count(
+                'perfis',
+                distinct=True,
+            ),
+        )
+        .prefetch_related('bases')
+        .order_by('nome')
+    )
+
+    context = {
+        'empresas': empresas,
+        'total_empresas': Empresa.objects.count(),
+        'total_bases': Base.objects.count(),
+        'total_usuarios': User.objects.exclude(
+            is_superuser=True
+        ).count(),
+    }
+
+    return render(
+        request,
+        'estoque/painel_superuser.html',
+        context,
+    )
 
 
 def _normalizar_nome_base(valor):
@@ -99,13 +209,26 @@ def _base_contexto_usuario(request):
     if not str(base_id or '').isdigit():
         return None
 
-    bases = Base.objects.select_related('empresa')
-    if not perfil.is_admin:
-        bases = bases.filter(pk__in=perfil.regionais.values_list('pk', flat=True))
+    bases = secure_base_queryset(
+        Base.objects.select_related('empresa'),
+        request.user,
+        action='CRIAR',
+    )
     base = bases.filter(pk=base_id).first()
     if base:
         request.session['estoque_base_contexto_id'] = base.pk
     return base
+
+
+def _base_estoque_or_404(request, base_id, *, action='VISUALIZAR'):
+    return get_object_or_404(
+        secure_base_queryset(
+            Base.objects.select_related('empresa'),
+            request.user,
+            action=action,
+        ),
+        pk=base_id,
+    )
 
 def _base_em_auditoria(base_id):
     return VisibilidadeEstoqueAuditoriaService.base_bloqueada(base_id)
@@ -134,6 +257,8 @@ def index(request):
     categoria = request.GET.get('categoria')
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
+    if regional_id and regional_id.isdigit():
+        _base_estoque_or_404(request, regional_id)
     estoque_oculto_auditoria = bool(
         regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
     )
@@ -144,6 +269,10 @@ def index(request):
         inventory_id = str(perfil.empresa_id) if perfil.empresa_id else ''
 
     if inventory_id and inventory_id.isdigit():
+        get_object_or_404(
+            secure_company_queryset(Empresa.objects.all(), request.user),
+            pk=inventory_id,
+        )
         equipamentos = equipamentos.filter(
             regional__empresa_id=inventory_id
         )
@@ -161,9 +290,6 @@ def index(request):
 
     regional_id = request.GET.get('regional')
     if regional_id and regional_id.isdigit():
-        if not perfil.is_admin and not perfil.regionais.filter(id=regional_id).exists():
-            messages.error(request, "Acesso negado a esta regional.")
-            return redirect('estoque:index')
         equipamentos = equipamentos.filter(regional_id=regional_id)
         request.session['estoque_base_contexto_id'] = int(regional_id)
 
@@ -329,7 +455,7 @@ def index(request):
         produtos_lista = produtos_lista.filter(categoria=categoria)
 
     if perfil.is_admin:
-        regionais_select = Base.objects.all()
+        regionais_select = secure_base_queryset(Base.objects.all(), request.user)
 
         if inventory_id and inventory_id.isdigit():
             regionais_select = regionais_select.filter(
@@ -341,11 +467,9 @@ def index(request):
         )
 
     regionais_select = _bases_unicas_por_nome(regionais_select)
-    empresas = (
-        Empresa.objects.all().order_by('nome')
-        if perfil.is_admin
-        else Empresa.objects.filter(id=perfil.empresa_id)
-    )
+    empresas = secure_company_queryset(
+        Empresa.objects.all(), request.user
+    ).order_by('nome')
 
     context = {
         'produtos_na_categoria': produtos_na_categoria,
@@ -885,8 +1009,10 @@ def api_kpis_json(request):
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
 
-    if regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id):
-        return _resposta_base_em_auditoria()
+    if regional_id and regional_id.isdigit():
+        _base_estoque_or_404(request, regional_id)
+        if _base_em_auditoria(regional_id):
+            return _resposta_base_em_auditoria()
 
     if produto_id and produto_id.isdigit():
         equipamentos = equipamentos.filter(produto_id=produto_id)
@@ -896,7 +1022,9 @@ def api_kpis_json(request):
     kpis = EstoqueService.get_kpis_gerais(equipamentos)
     disponibilidade = EstoqueService.get_disponibilidade(equipamentos)
 
-    regionais_lista = Base.objects.all().order_by('nome')
+    regionais_lista = secure_base_queryset(
+        Base.objects.all(), request.user
+    ).order_by('nome')
     kpis_regionais = EstoqueService.get_kpis_por_regional(equipamentos, regionais_lista)
 
     return JsonResponse({
@@ -908,11 +1036,7 @@ def api_kpis_json(request):
 @login_required
 @role_required('admin', 'gestor')
 def detalhes_regional_api(request, regional_id):
-    perfil = request.user.perfil
-
-    if not perfil.is_admin:
-        if not perfil.regionais.filter(id=regional_id).exists():
-            return JsonResponse({'erro': 'Acesso negado.'}, status=403)
+    regional = _base_estoque_or_404(request, regional_id)
 
     if _base_em_auditoria(regional_id):
         return _resposta_base_em_auditoria()
@@ -921,10 +1045,6 @@ def detalhes_regional_api(request, regional_id):
         Equipamento.objects.select_related('regional', 'produto'),
         request.user
     ).filter(regional_id__in=[regional_id])
-
-    regional = Base.objects.filter(id=regional_id).only('id', 'nome').first()
-    if not regional:
-        return JsonResponse({'erro': 'Regional não encontrada'}, status=404)
 
     produtos_agrupados = (
         equipamentos
@@ -1002,11 +1122,7 @@ def api_regionais_produto(request, produto_id):
 def lista_regionais_json(request):
     from django.apps import apps
     Base = apps.get_model('estoque', 'Base')
-    perfil = request.user.perfil
-    if perfil.is_admin():
-        regionais = Base.objects.all()
-    else:
-        regionais = perfil.regionais.all()
+    regionais = secure_base_queryset(Base.objects.all(), request.user)
     data = [{'id': r.id, 'nome': r.nome} for r in regionais]
     return JsonResponse(data, safe=False)
 
@@ -1030,6 +1146,7 @@ def cadastrar_usuario(request):
                 first_name = request.POST.get('first_name', '').strip()
                 email = request.POST.get('email', '').strip()
                 role = request.POST.get('role', 'operador')
+                empresa_id = request.POST.get('empresa', '').strip()
                 regionais_ids = request.POST.getlist('regionais')
 
                 # VALIDAÇÕES
@@ -1054,7 +1171,11 @@ def cadastrar_usuario(request):
                     return redirect('estoque:cadastrar_usuario')
 
                 # REGRA REGIONAL
-                empresa = None
+                if not empresa_id:
+                    messages.error(request, "Selecione a empresa do usuário.")
+                    return redirect('estoque:cadastrar_usuario')
+
+                empresa = get_object_or_404(Empresa, id=empresa_id)
                 regionais = Base.objects.none()
 
                 if role != 'admin':
@@ -1062,13 +1183,14 @@ def cadastrar_usuario(request):
                         messages.error(request, "Selecione ao menos uma regional.")
                         return redirect('estoque:cadastrar_usuario')
 
-                    regionais = Base.objects.filter(id__in=regionais_ids).select_related('empresa')
+                    regionais = Base.objects.filter(
+                        id__in=regionais_ids,
+                        empresa=empresa,
+                    ).select_related('empresa')
 
-                    if not regionais.exists():
-                        messages.error(request, "Regionais inválidas.")
+                    if regionais.count() != len(set(regionais_ids)):
+                        messages.error(request, "Existe regional fora da empresa informada.")
                         return redirect('estoque:cadastrar_usuario')
-
-                    empresa = regionais.first().empresa
 
                 # CRIA USUÁRIO
                 user = User.objects.create_user(
@@ -1083,7 +1205,7 @@ def cadastrar_usuario(request):
                 perfil, _ = Perfil.objects.get_or_create(user=user)
 
                 perfil.role = role
-                perfil.empresa = empresa if role != 'admin' else None
+                perfil.empresa = empresa
                 perfil.save()
 
                 if role != 'admin':
@@ -1124,7 +1246,14 @@ def cadastrar_usuario(request):
 def gerenciar_usuarios(request):
     from django.contrib.auth.models import Group, Permission, User
     from django.db.models.deletion import ProtectedError
-    from .models import AuditoriaPermissaoUsuario, Perfil, Empresa, Base
+    from .models import (
+        AuditoriaPermissaoUsuario,
+        Base,
+        CapacidadeRelacionamentoEmpresa,
+        Empresa,
+        Perfil,
+        RelacionamentoEmpresa,
+    )
     from .permission_catalog import (
         PERMISSOES_DELEGAVEIS,
         catalogo_com_ids,
@@ -1135,22 +1264,72 @@ def gerenciar_usuarios(request):
     from estoque.policies.compras import GruposCorporativos
 
     perfis_acesso = [
-        {'value': 'operador', 'label': 'Operador', 'role': Perfil.Role.OPERADOR, 'grupo': '', 'global': False},
-        {'value': 'gestor', 'label': 'Gestor', 'role': Perfil.Role.GESTOR, 'grupo': '', 'global': False},
-        {'value': 'admin', 'label': 'Administrador', 'role': Perfil.Role.ADMIN, 'grupo': '', 'global': True},
-        {'value': 'planejamento', 'label': 'Planejamento', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.PLANEJAMENTO, 'global': True},
-        {'value': 'compras', 'label': 'Compras', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.COMPRAS, 'global': True},
-        {'value': 'financeiro', 'label': 'Financeiro', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.FINANCEIRO, 'global': True},
-        {'value': 'executivo', 'label': 'Executivo', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.EXECUTIVO, 'global': True},
+        {'value': 'operador', 'label': 'Operador', 'role': Perfil.Role.OPERADOR, 'grupo': '', 'global': False, 'exige_bases': True, 'funcional': False},
+        {'value': 'gestor', 'label': 'Gestor', 'role': Perfil.Role.GESTOR, 'grupo': '', 'global': False, 'exige_bases': True, 'funcional': False},
+        {'value': 'admin', 'label': 'Administrador', 'role': Perfil.Role.ADMIN, 'grupo': '', 'global': False, 'exige_bases': False, 'funcional': False},
+        # Perfis funcionais definem responsabilidades, nunca escopo de tenant.
+        # Somente o superuser pode atribui-los e empresa/bases são obrigatórias.
+        {'value': 'planejamento', 'label': 'Planejamento', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.PLANEJAMENTO, 'global': False, 'exige_bases': True, 'funcional': True},
+        {'value': 'compras', 'label': 'Compras', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.COMPRAS, 'global': False, 'exige_bases': True, 'funcional': True},
+        {'value': 'financeiro', 'label': 'Financeiro', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.FINANCEIRO, 'global': False, 'exige_bases': True, 'funcional': True},
+        {'value': 'executivo', 'label': 'Executivo', 'role': Perfil.Role.OPERADOR, 'grupo': GruposInsumos.EXECUTIVO, 'global': False, 'exige_bases': True, 'funcional': True},
     ]
     perfis_acesso_map = {perfil['value']: perfil for perfil in perfis_acesso}
+
+    perfil_solicitante = request.user.perfil
+    if request.user.is_superuser:
+        empresas_gerenciaveis = Empresa.objects.all()
+        usuarios_gerenciaveis = User.objects.all()
+        relacionamentos_gerenciaveis = RelacionamentoEmpresa.objects.filter(
+            ativo=True,
+            capacidades__ativo=True,
+        )
+    elif perfil_solicitante.empresa_id:
+        relacionamentos_gerenciaveis = RelacionamentoEmpresa.objects.filter(
+            empresa_origem_id=perfil_solicitante.empresa_id,
+            ativo=True,
+            capacidades__ativo=True,
+        ).filter(
+            Q(
+                capacidades__recurso=CapacidadeRelacionamentoEmpresa.Recurso.OPERACAO,
+                capacidades__acao=CapacidadeRelacionamentoEmpresa.Acao.ADMINISTRAR,
+            )
+            | Q(
+                capacidades__recurso=CapacidadeRelacionamentoEmpresa.Recurso.USUARIOS,
+                capacidades__acao=CapacidadeRelacionamentoEmpresa.Acao.ADMINISTRAR,
+            )
+        ).distinct()
+        empresas_gerenciaveis = Empresa.objects.filter(
+            Q(pk=perfil_solicitante.empresa_id)
+            | Q(relacionamentos_entrada__in=relacionamentos_gerenciaveis)
+        ).distinct()
+        usuarios_gerenciaveis = User.objects.filter(
+            is_superuser=False,
+            perfil__empresa__in=empresas_gerenciaveis,
+        ).distinct()
+        perfis_acesso = [
+            perfil for perfil in perfis_acesso if not perfil['funcional']
+        ]
+        perfis_acesso_map = {perfil['value']: perfil for perfil in perfis_acesso}
+    else:
+        # Perfil administrativo legado sem tenant não recebe escopo implícito.
+        empresas_gerenciaveis = Empresa.objects.none()
+        usuarios_gerenciaveis = User.objects.none()
+        relacionamentos_gerenciaveis = RelacionamentoEmpresa.objects.none()
+        perfis_acesso = [
+            perfil for perfil in perfis_acesso if not perfil['funcional']
+        ]
+        perfis_acesso_map = {perfil['value']: perfil for perfil in perfis_acesso}
 
     if request.method == 'POST':
         try:
             with transaction.atomic():
                 acao_usuario = request.POST.get('acao_usuario', '').strip().lower()
                 if acao_usuario in {'inativar', 'reativar', 'excluir'}:
-                    alvo = get_object_or_404(User, pk=request.POST.get('usuario_id'))
+                    alvo = get_object_or_404(
+                        usuarios_gerenciaveis,
+                        pk=request.POST.get('usuario_id'),
+                    )
                     if alvo == request.user and acao_usuario in {'inativar', 'excluir'}:
                         messages.error(request, 'Você não pode inativar ou excluir o próprio usuário.')
                         return redirect('estoque:cadastrar_usuario')
@@ -1187,7 +1366,13 @@ def gerenciar_usuarios(request):
                 perfil_config = perfis_acesso_map.get(perfil_acesso)
                 role = perfil_config['role'] if perfil_config else Perfil.Role.OPERADOR
                 acesso_global = bool(perfil_config and perfil_config['global'])
+                exige_bases = bool(perfil_config and perfil_config['exige_bases'])
                 empresa_id = request.POST.get('empresa', '').strip()
+                empresas_adicionais_ids = {
+                    value.strip()
+                    for value in request.POST.getlist('empresas_acesso_adicional')
+                    if value.strip()
+                }
                 regionais_ids = request.POST.getlist('regionais')
                 bases_checklist_ids = request.POST.getlist('bases_checklist')
                 telefone = request.POST.get('telefone', '').strip()
@@ -1228,6 +1413,7 @@ def gerenciar_usuarios(request):
                     return redirect('estoque:cadastrar_usuario')
 
                 empresa = None
+                empresas_adicionais = Empresa.objects.none()
                 regionais = Base.objects.none()
                 bases_checklist = Base.objects.none()
 
@@ -1236,19 +1422,45 @@ def gerenciar_usuarios(request):
                         messages.error(request, "Selecione a empresa do usuario.")
                         return redirect('estoque:cadastrar_usuario')
 
-                    empresa = get_object_or_404(Empresa, id=empresa_id)
+                    empresa = get_object_or_404(empresas_gerenciaveis, id=empresa_id)
 
-                    if not regionais_ids:
+                    if role == Perfil.Role.ADMIN and empresas_adicionais_ids:
+                        empresas_adicionais = Empresa.objects.filter(
+                            pk__in=empresas_adicionais_ids,
+                            relacionamentos_entrada__empresa_origem=empresa,
+                            relacionamentos_entrada__ativo=True,
+                            relacionamentos_entrada__capacidades__ativo=True,
+                        ).filter(
+                            pk__in=empresas_gerenciaveis.values('pk'),
+                        ).distinct()
+                        if empresas_adicionais.count() != len(empresas_adicionais_ids):
+                            messages.error(
+                                request,
+                                'Existe empresa adicional fora dos relacionamentos permitidos.',
+                            )
+                            return redirect('estoque:cadastrar_usuario')
+                    elif empresas_adicionais_ids:
+                        messages.error(
+                            request,
+                            'Acesso a empresas adicionais é exclusivo do perfil Admin.',
+                        )
+                        return redirect('estoque:cadastrar_usuario')
+
+                    if exige_bases and not regionais_ids:
                         messages.error(request, "Selecione ao menos uma base.")
                         return redirect('estoque:cadastrar_usuario')
 
-                    regionais = Base.objects.filter(id__in=regionais_ids, empresa=empresa).select_related('empresa')
+                    if exige_bases:
+                        regionais = Base.objects.filter(
+                            id__in=regionais_ids,
+                            empresa=empresa,
+                        ).select_related('empresa')
 
-                    if regionais.count() != len(set(regionais_ids)):
-                        messages.error(request, "Existe base selecionada fora da empresa informada.")
-                        return redirect('estoque:cadastrar_usuario')
+                        if regionais.count() != len(set(regionais_ids)):
+                            messages.error(request, "Existe base selecionada fora da empresa informada.")
+                            return redirect('estoque:cadastrar_usuario')
 
-                    if bases_checklist_ids:
+                    if exige_bases and bases_checklist_ids:
                         bases_checklist = Base.objects.filter(
                             id__in=bases_checklist_ids,
                             empresa=empresa
@@ -1265,7 +1477,7 @@ def gerenciar_usuarios(request):
                             return redirect('estoque:cadastrar_usuario')
 
                 if editando:
-                    user = get_object_or_404(User, id=usuario_id)
+                    user = get_object_or_404(usuarios_gerenciaveis, id=usuario_id)
                     if user == request.user and role != Perfil.Role.ADMIN:
                         messages.error(request, "Voce nao pode remover seu proprio acesso de administrador.")
                         return redirect('estoque:cadastrar_usuario')
@@ -1297,6 +1509,10 @@ def gerenciar_usuarios(request):
                 perfil.telefone = telefone
                 perfil.telefone_alternativo = telefone_alternativo
                 perfil.save()
+                if role == Perfil.Role.ADMIN:
+                    perfil.empresas_acesso_adicional.set(empresas_adicionais)
+                else:
+                    perfil.empresas_acesso_adicional.clear()
 
                 grupos_insumos = Group.objects.filter(name__in=GruposInsumos.TODOS)
                 user.groups.remove(*grupos_insumos)
@@ -1352,7 +1568,7 @@ def gerenciar_usuarios(request):
                 ]
                 AuditoriaPermissaoUsuario.objects.bulk_create(alteracoes)
 
-                if not acesso_global:
+                if not acesso_global and exige_bases:
                     perfil.regionais.set(regionais)
                     perfil.bases_checklist.set(bases_checklist)
                 else:
@@ -1368,15 +1584,35 @@ def gerenciar_usuarios(request):
             return redirect('estoque:cadastrar_usuario')
 
     context = {
-        'empresas': Empresa.objects.all().order_by('nome'),
-        'regionais': Base.objects.select_related('empresa').all().order_by('empresa__nome', 'nome'),
+        'empresas': empresas_gerenciaveis.order_by('nome'),
+        'empresas_usuario': empresas_gerenciaveis.order_by('nome'),
+        'regionais': Base.objects.select_related('empresa').filter(
+            empresa__in=empresas_gerenciaveis
+        ).order_by('empresa__nome', 'nome'),
+        'relacionamentos_empresas': (
+            relacionamentos_gerenciaveis
+            .select_related('empresa_origem', 'empresa_destino')
+            .distinct()
+            .order_by('empresa_origem__nome', 'empresa_destino__nome')
+        ),
         'roles': Perfil.Role.choices,
         'perfis_acesso': perfis_acesso,
         'usuarios': (
-            User.objects
+            usuarios_gerenciaveis
             .select_related('perfil', 'perfil__empresa')
             .prefetch_related(
-                'perfil__regionais', 'perfil__bases_checklist', 'groups',
+                'perfil__regionais', 'perfil__bases_checklist',
+                'perfil__empresas_acesso_adicional', 'groups',
+                'user_permissions__content_type',
+            )
+            .order_by('first_name', 'username')
+        ),
+        'usuarios_gerenciados': (
+            usuarios_gerenciaveis
+            .select_related('perfil', 'perfil__empresa')
+            .prefetch_related(
+                'perfil__regionais', 'perfil__bases_checklist',
+                'perfil__empresas_acesso_adicional', 'groups',
                 'user_permissions__content_type',
             )
             .order_by('first_name', 'username')
@@ -1433,7 +1669,7 @@ def verificar_consistencia_api(request):
 
     kpis_geral = EstoqueService.get_kpis_gerais(equipamentos)
 
-    regionais = Base.objects.all()
+    regionais = secure_base_queryset(Base.objects.all(), request.user)
     soma_regionais = {
         'total': 0,
         'ativos': 0,
@@ -1556,6 +1792,8 @@ def estoque_view(request):
     )
 
     regional_id = request.GET.get('regional')
+    if regional_id and regional_id.isdigit():
+        _base_estoque_or_404(request, regional_id)
     estoque_oculto_auditoria = bool(
         regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
     )
@@ -1662,11 +1900,9 @@ def estoque_view(request):
 
     if perfil.is_admin:
 
-        regionais = (
-            Base.objects
-            .all()
-            .order_by('nome')
-        )
+        regionais = secure_base_queryset(
+            Base.objects.all(), request.user
+        ).order_by('nome')
 
     else:
 
@@ -1705,7 +1941,7 @@ def detalhes_produto_view(request, produto_id, regional_id):
 
     perfil = request.user.perfil
 
-    regional = get_object_or_404(Base, id=regional_id)
+    regional = _base_estoque_or_404(request, regional_id)
     produto = get_object_or_404(Produto, id=produto_id)
 
     if _base_em_auditoria(regional_id):
@@ -1746,7 +1982,11 @@ def detalhes_produto_view(request, produto_id, regional_id):
                 messages.error(request, "Selecione ao menos um equipamento.")
                 return redirect(request.path)
 
-            destino = get_object_or_404(Base, id=request.POST.get('regional_destino'))
+            destino = _base_estoque_or_404(
+                request,
+                request.POST.get('regional_destino'),
+                action='MOVIMENTAR',
+            )
 
             equipamentos = base_qs.filter(id__in=ids)
 
@@ -1775,8 +2015,12 @@ def detalhes_produto(request, produto_id):
     perfil = request.user.perfil
     regional_id = request.GET.get('regional')
 
-    if regional_id and str(regional_id).isdigit() and _base_em_auditoria(regional_id):
-        return _resposta_base_em_auditoria()
+    if regional_id:
+        if not str(regional_id).isdigit():
+            raise Http404('Base inválida.')
+        _base_estoque_or_404(request, regional_id)
+        if _base_em_auditoria(regional_id):
+            return _resposta_base_em_auditoria()
 
     qs = secure_queryset(
         Equipamento.objects.filter(produto_id=produto_id),
@@ -1819,7 +2063,8 @@ def detalhes_produto(request, produto_id):
             "regional": e.regional.nome if e.regional else None
         })
 
-    transferencias = (
+    transferencias = TenantOperationPolicy.transferencias(
+        request.user,
         Transferencia.objects
         .filter(
             itens__equipamento__produto_id=produto_id,
@@ -1829,14 +2074,8 @@ def detalhes_produto(request, produto_id):
             'regional_origem',
             'regional_destino'
         )
-        .distinct()
+        .distinct(),
     )
-
-    if perfil.role != 'admin':
-
-        transferencias = transferencias.filter(
-            regional_origem__in=perfil.regionais.all()
-        )
 
     if regional_id:
 
@@ -2743,6 +2982,7 @@ def historico_view(request):
         .all()
         .order_by('-data')
     )
+    historico = secure_history_queryset(historico, request.user)
     historico = SickService.filtrar_historicos_visiveis(request.user, historico)
 
     if tipo_acao and tipo_acao != 'todos':
@@ -2805,15 +3045,21 @@ def historico_view(request):
 @role_required('admin', 'gestor')
 def historico_detalhes_view(request, historico_id):
     historico = get_object_or_404(
-        SickService.filtrar_historicos_visiveis(request.user, Historico.objects.select_related(
-            'equipamento',
-            'equipamento__produto',
-            'equipamento__regional',
-            'equipamento__regional__empresa',
-            'equipamento__fornecedor',
-            'usuario',
-            'usuario__perfil',
-        )),
+        SickService.filtrar_historicos_visiveis(
+            request.user,
+            secure_history_queryset(
+                Historico.objects.select_related(
+                    'equipamento',
+                    'equipamento__produto',
+                    'equipamento__regional',
+                    'equipamento__regional__empresa',
+                    'equipamento__fornecedor',
+                    'usuario',
+                    'usuario__perfil',
+                ),
+                request.user,
+            ),
+        ),
         id=historico_id
     )
 
@@ -2845,7 +3091,7 @@ def exportar_historico_excel(request):
 
     ws.append(headers)
 
-    equipamentos = (
+    equipamentos = secure_queryset(
         Equipamento.objects
         .select_related(
             'produto',
@@ -2855,23 +3101,19 @@ def exportar_historico_excel(request):
             'regional__nome',
             'produto__descricao',
             'numero_serie'
-        )
+        ),
+        request.user,
     )
 
     regional_nome = 'TODAS'
 
     if regional_id:
+        regional = _base_estoque_or_404(request, regional_id)
 
         equipamentos = equipamentos.filter(
             regional_id=regional_id
         )
-
-        regional = Base.objects.filter(
-            id=regional_id
-        ).first()
-
-        if regional:
-            regional_nome = regional.nome
+        regional_nome = regional.nome
 
     # Primeiro histórico de criação de cada equipamento
     historicos_criacao = (
@@ -2977,14 +3219,18 @@ def exportar_historico_pdf(request):
 
     doc = SimpleDocTemplate(response)
 
-    historicos = Historico.objects.select_related(
-        'equipamento',
-        'equipamento__produto',
-        'usuario',
-        'equipamento__regional'
-    ).order_by('-data')
+    historicos = secure_history_queryset(
+        Historico.objects.select_related(
+            'equipamento',
+            'equipamento__produto',
+            'usuario',
+            'equipamento__regional'
+        ).order_by('-data'),
+        request.user,
+    )
 
     if regional_id:
+        _base_estoque_or_404(request, regional_id)
         historicos = historicos.filter(equipamento__regional_id=regional_id)
 
     data = [[
@@ -3017,15 +3263,23 @@ def exportar_historico_pdf(request):
 @login_required
 def historico_equipamento_modal(request, equipamento_id):
 
+    equipamento = get_object_or_404(
+        secure_queryset(
+            Equipamento.objects.select_related('produto', 'regional__empresa'),
+            request.user,
+        ),
+        pk=equipamento_id,
+    )
+
     historico = (
-        Historico.objects
+        secure_history_queryset(Historico.objects, request.user)
         .select_related(
             'equipamento',
             'usuario',
             'equipamento__produto',
             'equipamento__regional'
         )
-        .filter(equipamento_id=equipamento_id)
+        .filter(equipamento=equipamento)
         .order_by('-data')
         .first()
     )
@@ -3042,17 +3296,26 @@ def historico_equipamento_modal(request, equipamento_id):
         'estoque/partials/historico_detalhes.html',
         {
             'historico': historico,
-            'equipamento': historico.equipamento,
+            'equipamento': equipamento,
             'is_admin': request.user.perfil.is_admin,
-            'bases': Base.objects.all().order_by('nome'),
+            'bases': secure_base_queryset(
+                Base.objects.all(), request.user, action='EDITAR'
+            ).order_by('nome'),
             'produtos': Produto.objects.all().order_by('categoria', 'descricao'),
             'status_choices': Equipamento.STATUS_CHOICES,
             'finalidade_choices': Equipamento.Finalidade.choices,
         }
     )
 
+@login_required
 def historico_parcial(request, equipamento_id):
-    historico = Historico.objects.filter(equipamento_id=equipamento_id).last()
+    equipamento = get_object_or_404(
+        secure_queryset(Equipamento.objects.all(), request.user),
+        pk=equipamento_id,
+    )
+    historico = secure_history_queryset(
+        Historico.objects.filter(equipamento=equipamento), request.user
+    ).last()
     return render(request, 'estoque/partials/historico_detalhes.html', {
         'historico': historico
     })
@@ -3065,26 +3328,29 @@ def busca_avancada(request):
     tipo_busca = request.GET.get('tipo', 'todos')
 
     resultados = None
+    equipamentos = secure_queryset(
+        Equipamento.objects.select_related('produto'), request.user
+    )
 
     if query:
         if tipo_busca == 'serial':
-            resultados = Equipamento.objects.filter(
+            resultados = equipamentos.filter(
                 numero_serie__icontains=query
-            ).select_related('produto')
+            )
         elif tipo_busca == 'patrimonio':
-            resultados = Equipamento.objects.filter(
+            resultados = equipamentos.filter(
                 patrimonio__icontains=query
-            ).select_related('produto')
+            )
         elif tipo_busca == 'produto':
-            resultados = Equipamento.objects.filter(
+            resultados = equipamentos.filter(
                 produto__descricao__icontains=query
-            ).select_related('produto')
+            )
         else:  # busca em todos os campos
-            resultados = Equipamento.objects.filter(
+            resultados = equipamentos.filter(
                 Q(numero_serie__icontains=query) |
                 Q(patrimonio__icontains=query) |
                 Q(produto__descricao__icontains=query)
-            ).select_related('produto')
+            )
 
     return render(request, 'estoque/busca.html', {
         'resultados': resultados,
@@ -3578,40 +3844,24 @@ def ler_alerta(request, alerta_id):
 
 # ----------------- EMPRÉSTIMOS --------------------
 def _usuario_tem_acesso_emprestimo(user, emprestimo):
-    perfil = user.perfil
-    if perfil.is_admin:
-        return True
-
-    bases = perfil.regionais.all()
-
-    return (
-        emprestimo.regional_origem in bases
-        or emprestimo.regional_destino in bases
-    )
+    return TenantOperationPolicy.emprestimos(
+        user,
+        Emprestimo.objects.filter(pk=emprestimo.pk),
+    ).exists()
 
 def _usuario_e_destino(user, emprestimo):
-    perfil = user.perfil
-
-    return (
-        perfil.is_admin
-        or emprestimo.regional_destino in perfil.regionais.all()
+    return TenantOperationPolicy.can_access_base(
+        user, emprestimo.regional_destino, 'EMPRESTIMOS', 'MOVIMENTAR',
     )
 
 def _usuario_e_origem(user, emprestimo):
-
-    perfil = user.perfil
-
-    return (
-        perfil.is_admin
-        or emprestimo.regional_origem in perfil.regionais.all()
+    return TenantOperationPolicy.can_access_base(
+        user, emprestimo.regional_origem, 'EMPRESTIMOS', 'MOVIMENTAR',
     )
 
 @login_required
 def lista_emprestimos(request):
-
-    perfil = request.user.perfil
-
-    emprestimos = (
+    emprestimos = TenantOperationPolicy.emprestimos(request.user, (
         Emprestimo.objects
         .select_related(
             'regional_origem',
@@ -3622,15 +3872,7 @@ def lista_emprestimos(request):
             'itens',
         )
         .order_by('-criado_em')
-    )
-
-    if not perfil.is_admin:
-
-        emprestimos = emprestimos.filter(
-            Q(regional_origem__in=perfil.regionais.all())
-            |
-            Q(regional_destino__in=perfil.regionais.all())
-        ).distinct()
+    ))
 
     return render(
         request,
@@ -3643,16 +3885,14 @@ def lista_emprestimos(request):
 @login_required
 @transaction.atomic
 def criar_emprestimo(request):
-
-    perfil = request.user.perfil
-
-    regionais_usuario = perfil.regionais.select_related(
-        'grupo_regional'
+    regionais_usuario = TenantOperationPolicy.bases(
+        request.user,
+        'EMPRESTIMOS',
+        'MOVIMENTAR',
+        Base.objects.select_related('grupo_regional', 'empresa'),
     )
 
-    regionais_destino = Base.objects.select_related(
-        'grupo_regional'
-    )
+    regionais_destino = regionais_usuario
 
     equipamentos = (
         Equipamento.objects
@@ -3683,12 +3923,12 @@ def criar_emprestimo(request):
     if request.method == 'POST':
 
         regional_origem = get_object_or_404(
-            Base,
+            regionais_usuario,
             id=request.POST.get('regional_origem')
         )
 
         regional_destino = get_object_or_404(
-            Base,
+            regionais_destino,
             id=request.POST.get('regional_destino')
         )
 
@@ -3701,17 +3941,6 @@ def criar_emprestimo(request):
         equipamentos_ids = request.POST.getlist(
             'equipamentos'
         )
-
-        if regional_origem not in regionais_usuario:
-
-            messages.error(
-                request,
-                'Você não possui acesso à base de origem.'
-            )
-
-            return redirect(
-                'estoque:criar_emprestimo'
-            )
 
         if (
             regional_origem.grupo_regional
@@ -3746,6 +3975,10 @@ def criar_emprestimo(request):
                 status='ATIVO',
             )
         )
+
+        if equipamentos_selecionados.count() != len(set(equipamentos_ids)):
+            messages.error(request, 'Há equipamentos inválidos ou fora da base de origem.')
+            return redirect('estoque:criar_emprestimo')
 
         try:
 
@@ -3799,7 +4032,7 @@ def detalhe_emprestimo(request, emprestimo_id):
 
     emprestimo = get_object_or_404(
 
-        Emprestimo.objects
+        TenantOperationPolicy.emprestimos(request.user, Emprestimo.objects)
         .select_related(
             'regional_origem',
             'regional_destino',
@@ -3902,20 +4135,14 @@ def detalhe_emprestimo(request, emprestimo_id):
 def receber_emprestimo(request, emprestimo_id):
 
     emprestimo = get_object_or_404(
-        Emprestimo.objects.prefetch_related(
-            'itens',
-            'itens__equipamento',
+        TenantOperationPolicy.emprestimos(
+            request.user,
+            Emprestimo.objects.prefetch_related('itens', 'itens__equipamento'),
         ),
         id=emprestimo_id
     )
 
-    perfil = request.user.perfil
-
-    if (
-        not perfil.is_admin
-        and emprestimo.regional_destino
-        not in perfil.regionais.all()
-    ):
+    if not _usuario_e_destino(request.user, emprestimo):
         raise PermissionDenied()
 
     if emprestimo.status != 'AGUARDANDO_RECEBIMENTO':
@@ -3965,20 +4192,14 @@ def receber_emprestimo(request, emprestimo_id):
 def devolver_emprestimo(request, emprestimo_id):
 
     emprestimo = get_object_or_404(
-        Emprestimo.objects.prefetch_related(
-            'itens',
-            'itens__equipamento',
+        TenantOperationPolicy.emprestimos(
+            request.user,
+            Emprestimo.objects.prefetch_related('itens', 'itens__equipamento'),
         ),
         id=emprestimo_id
     )
 
-    perfil = request.user.perfil
-
-    if (
-        not perfil.is_admin
-        and emprestimo.regional_destino
-        not in perfil.regionais.all()
-    ):
+    if not _usuario_e_destino(request.user, emprestimo):
         raise PermissionDenied()
 
     if emprestimo.status != 'EMPRESTADO':
@@ -4029,9 +4250,9 @@ def devolver_emprestimo(request, emprestimo_id):
 def receber_devolucao_emprestimo(request, emprestimo_id):
 
     emprestimo = get_object_or_404(
-        Emprestimo.objects.prefetch_related(
-            'itens',
-            'itens__equipamento',
+        TenantOperationPolicy.emprestimos(
+            request.user,
+            Emprestimo.objects.prefetch_related('itens', 'itens__equipamento'),
         ),
         id=emprestimo_id
     )
@@ -4092,11 +4313,25 @@ def receber_devolucao_emprestimo(request, emprestimo_id):
 @login_required
 @role_required('admin', 'gestor')
 def painel_alocacao(request, solicitacao_id):
-
+    bases_aprovacao = TenantOperationPolicy.bases(
+        request.user, 'TRANSFERENCIAS', 'APROVAR'
+    )
     solicitacao = get_object_or_404(
-        Solicitacao.objects.prefetch_related('itens'),
+        Solicitacao.objects.filter(
+            regional_solicitante__in=bases_aprovacao
+        ).prefetch_related('itens'),
         id=solicitacao_id
     )
+    bases_origem = TenantOperationPolicy.bases(
+        request.user, 'TRANSFERENCIAS', 'MOVIMENTAR'
+    )
+    bases_origem = Base.objects.filter(pk__in=[
+        base.pk
+        for base in bases_origem.select_related('empresa')
+        if TenantOperationPolicy.flow_allowed(
+            base, solicitacao.regional_solicitante, 'TRANSFERENCIAS'
+        )
+    ])
 
     itens_solicitados = solicitacao.itens.all()
 
@@ -4131,8 +4366,16 @@ def painel_alocacao(request, solicitacao_id):
                     except ValueError:
                         continue
 
+                    regional_origem = get_object_or_404(bases_origem, pk=regional_id)
+                    TenantOperationPolicy.require_flow(
+                        request.user,
+                        regional_origem,
+                        solicitacao.regional_solicitante,
+                        'TRANSFERENCIAS',
+                    )
+
                     disponiveis = Equipamento.objects.filter(
-                        regional_id=regional_id,
+                        regional=regional_origem,
                         produto_id=produto_id,
                         status='ATIVO'
                     ).count()
@@ -4151,14 +4394,14 @@ def painel_alocacao(request, solicitacao_id):
 
                     alocacao = AlocacaoSolicitacaoItem.objects.create(
                         item=item,
-                        regional_origem_id=regional_id,
+                        regional_origem=regional_origem,
                         produto_id=produto_id,
                         quantidade=quantidade
                     )
 
                     Transferencia.objects.create(
                         protocolo=str(uuid4())[:8].upper(),
-                        regional_origem_id=regional_id,
+                        regional_origem=regional_origem,
                         regional_destino=solicitacao.regional_solicitante,
                         solicitado_por=request.user,
                         status='PENDENTE',
@@ -4224,7 +4467,8 @@ def painel_alocacao(request, solicitacao_id):
         regionais = (
             Equipamento.objects
             .filter(
-                produto__categoria=item.categoria
+                produto__categoria=item.categoria,
+                regional__in=bases_origem,
             )
             .exclude(
                 regional=solicitacao.regional_solicitante
@@ -4325,7 +4569,7 @@ def dashboard_gestor(request):
 
     from .services.estoque_service import get_estoque_por_produto
 
-    estoque = get_estoque_por_produto()
+    estoque = get_estoque_por_produto(request.user)
 
     resumo = {}
 
@@ -4345,9 +4589,9 @@ def dashboard_gestor(request):
 @login_required
 @role_required('admin', 'gestor')
 def caixa_solicitacoes(request):
-
-    perfil = request.user.perfil
-
+    bases_aprovacao = TenantOperationPolicy.bases(
+        request.user, 'TRANSFERENCIAS', 'APROVAR'
+    )
     solicitacoes = (
         Solicitacao.objects
         .select_related(
@@ -4358,16 +4602,11 @@ def caixa_solicitacoes(request):
             'itens'
         )
         .filter(
-            status='PENDENTE'
+            status='PENDENTE',
+            regional_solicitante__in=bases_aprovacao,
         )
         .order_by('-id')
     )
-
-    if perfil.role != 'admin':
-
-        solicitacoes = solicitacoes.filter(
-            regional_solicitante__in=perfil.regionais.all()
-        )
 
     return render(
         request,
@@ -4399,7 +4638,7 @@ def caixa_solicitacoes(request):
 def transferencia_selecionados(request, id):
 
     transferencia = get_object_or_404(
-        Transferencia.objects
+        TenantOperationPolicy.transferencias(request.user, Transferencia.objects)
         .select_related('regional_origem', 'regional_destino', 'solicitado_por')
         .prefetch_related(
             'itens__equipamento__produto',
@@ -4408,12 +4647,6 @@ def transferencia_selecionados(request, id):
         ),
         id=id
     )
-    perfil = request.user.perfil
-    if not perfil.is_admin and not perfil.regionais.filter(
-        id__in=[transferencia.regional_origem_id, transferencia.regional_destino_id]
-    ).exists():
-        raise PermissionDenied
-
     return render(
         request,
         'estoque/transferencia/selecionados.html',
@@ -4425,10 +4658,10 @@ def transferencia_selecionados(request, id):
 @login_required
 @role_required('gestor', 'operador', 'admin')
 def caixa_separacao(request):
-
-    perfil = request.user.perfil
-
-    transferencias = (
+    bases_origem = TenantOperationPolicy.bases(
+        request.user, 'TRANSFERENCIAS', 'MOVIMENTAR'
+    )
+    transferencias = TenantOperationPolicy.transferencias(request.user, (
         Transferencia.objects
         .select_related(
             'regional_origem',
@@ -4438,13 +4671,7 @@ def caixa_separacao(request):
             'itens',
             'itens__equipamento'
         )
-    )
-
-    if perfil.role != 'admin':
-
-        transferencias = transferencias.filter(
-            regional_origem__in=perfil.regionais.all()
-        )
+    )).filter(regional_origem__in=bases_origem)
 
     transferencias = transferencias.filter(
         status='PENDENTE'
@@ -4460,11 +4687,11 @@ def caixa_separacao(request):
 
 @login_required
 def caixa_transferencias(request):
-
-    perfil = request.user.perfil
-
-    transferencias = Transferencia.objects.filter(
-        regional_destino__in=perfil.regionais.all(),
+    bases_destino = TenantOperationPolicy.bases(
+        request.user, 'TRANSFERENCIAS', 'MOVIMENTAR'
+    )
+    transferencias = TenantOperationPolicy.transferencias(request.user).filter(
+        regional_destino__in=bases_destino,
         status='EM_TRANSITO'
     ).order_by('-id')
 
@@ -4477,12 +4704,18 @@ def caixa_transferencias(request):
 def separar_transferencia(request, transferencia_id):
 
     transferencia = get_object_or_404(
-        Transferencia.objects.select_related(
+        TenantOperationPolicy.transferencias(
+            request.user,
+            Transferencia.objects.select_related(
             'regional_origem',
             'regional_destino',
             'alocacao__item'
+            ),
         ),
         id=transferencia_id
+    )
+    TenantOperationPolicy.require_base(
+        request.user, transferencia.regional_origem, 'TRANSFERENCIAS', 'MOVIMENTAR'
     )
 
     if request.method == 'POST':
@@ -4503,6 +4736,13 @@ def separar_transferencia(request, transferencia_id):
                 regional=transferencia.regional_origem,
                 status='ATIVO'
             ).select_for_update()
+
+            if equipamentos.count() != len(set(equipamentos_ids)):
+                messages.error(request, 'Há equipamentos inválidos ou fora da origem.')
+                return redirect(
+                    'estoque:separar_transferencia',
+                    transferencia_id=transferencia.id,
+                )
 
             for eq in equipamentos:
 
@@ -4723,7 +4963,7 @@ def finalizar_transferencia(transferencia, user):
 @permission_or_role_required('estoque.transferir_equipamentos', 'gestor', 'operador', 'admin')
 def transferencia_detalhe(request, id):
     transferencia = get_object_or_404(
-        Transferencia.objects
+        TenantOperationPolicy.transferencias(request.user, Transferencia.objects)
         .select_related(
             'regional_origem',
             'regional_destino',
@@ -4738,11 +4978,8 @@ def transferencia_detalhe(request, id):
         id=id
     )
 
-    perfil = request.user.perfil
-
-    if (
-        perfil.role != 'admin'
-        and not perfil.regionais.filter(id=transferencia.regional_origem.id).exists()
+    if not TenantOperationPolicy.can_access_base(
+        request.user, transferencia.regional_origem, 'TRANSFERENCIAS', 'MOVIMENTAR'
     ):
         messages.error(request, 'Sem permissão.')
         return redirect('estoque:caixa_separacao')
@@ -4878,9 +5115,11 @@ def transferencia_detalhe(request, id):
 @role_required('admin')
 @require_POST
 def recusar_solicitacao(request, solicitacao_id):
-
+    bases_aprovacao = TenantOperationPolicy.bases(
+        request.user, 'TRANSFERENCIAS', 'APROVAR'
+    )
     solicitacao = get_object_or_404(
-        Solicitacao,
+        Solicitacao.objects.filter(regional_solicitante__in=bases_aprovacao),
         id=solicitacao_id,
         status='PENDENTE'
     )
@@ -5001,23 +5240,21 @@ def solicitar_transferencia_lote(request):
 def receber_transferencia(request, transferencia_id):
 
     transferencia = get_object_or_404(
-        Transferencia.objects.select_related(
+        TenantOperationPolicy.transferencias(
+            request.user,
+            Transferencia.objects.select_related(
             'regional_origem',
             'regional_destino',
             'solicitado_por'
         ).prefetch_related(
             'itens__equipamento__produto'
+            ),
         ),
         id=transferencia_id
     )
 
-    perfil = request.user.perfil
-
-    if (
-        perfil.role != 'admin'
-        and not perfil.regionais.filter(
-            id=transferencia.regional_destino_id
-        ).exists()
+    if not TenantOperationPolicy.can_access_base(
+        request.user, transferencia.regional_destino, 'TRANSFERENCIAS', 'MOVIMENTAR'
     ):
         messages.error(request, 'Sem permissão para receber esta transferência.')
         return redirect('estoque:caixa_transferencias')
@@ -5309,10 +5546,9 @@ def receber_transferencia(request, transferencia_id):
 @permission_or_role_required('estoque.cancelar_transferencias', 'gestor', 'admin')
 def cancelar_transferencia(request, transferencia_id):
     transferencia = get_object_or_404(
-        secure_queryset(
-            Transferencia.objects.select_related('regional_origem__empresa', 'regional_destino'),
+        TenantOperationPolicy.transferencias(
             request.user,
-            'regional_origem__empresa'
+            Transferencia.objects.select_related('regional_origem__empresa', 'regional_destino'),
         ),
         id=transferencia_id
     )
@@ -5331,11 +5567,10 @@ def cancelar_transferencia(request, transferencia_id):
 @permission_or_role_required('estoque.visualizar_transferencias', 'admin', 'gestor')
 def lista_transferencias(request):
 
-    perfil = request.user.perfil
     busca = request.GET.get('q', '').strip()
     status = request.GET.get('status', '').strip()
 
-    base_qs = (
+    base_qs = TenantOperationPolicy.transferencias(request.user, (
         Transferencia.objects
         .select_related(
             'regional_origem',
@@ -5348,13 +5583,7 @@ def lista_transferencias(request):
             'itens__equipamento__produto'
         )
         .order_by('-data_envio')
-    )
-
-    if perfil.role != 'admin':
-        base_qs = base_qs.filter(
-            Q(regional_destino__in=perfil.regionais_ids) |
-            Q(regional_origem=perfil.regionais.first())
-        )
+    ))
 
     if busca:
         base_qs = base_qs.filter(
@@ -5382,9 +5611,11 @@ def lista_transferencias(request):
     for t in transferencias:
         t.pode_receber = (
             t.status == 'PENDENTE'
-            and (
-                perfil.role == 'admin'
-                or t.regional_destino.id in perfil.regionais_ids
+            and TenantOperationPolicy.can_access_base(
+                request.user,
+                t.regional_destino,
+                'TRANSFERENCIAS',
+                'MOVIMENTAR',
             )
         )
 
@@ -5407,10 +5638,7 @@ def lista_transferencias(request):
 @login_required
 @role_required('admin', 'gestor')
 def equipamentos_por_regional(request, produto_id, regional_id):
-    perfil = request.user.perfil
-
-    if not perfil.is_admin and not perfil.regionais.filter(id=regional_id).exists():
-        return JsonResponse({'erro': 'Acesso negado a esta regional'}, status=403)
+    _base_estoque_or_404(request, regional_id)
 
     if _base_em_auditoria(regional_id):
         return _resposta_base_em_auditoria()
@@ -5419,11 +5647,14 @@ def equipamentos_por_regional(request, produto_id, regional_id):
         request.user,
         Sick.objects.order_by('-data_ocorrencia'),
     )
-    equipamentos = Equipamento.objects.filter(
-        produto_id=produto_id,
-        regional_id=regional_id
-    ).select_related('produto', 'regional__empresa').prefetch_related(
-        Prefetch('sicks', queryset=sicks_visiveis, to_attr='sicks_ordenados')
+    equipamentos = secure_queryset(
+        Equipamento.objects.filter(
+            produto_id=produto_id,
+            regional_id=regional_id
+        ).select_related('produto', 'regional__empresa').prefetch_related(
+            Prefetch('sicks', queryset=sicks_visiveis, to_attr='sicks_ordenados')
+        ),
+        request.user,
     )
 
     data = {
@@ -5458,7 +5689,11 @@ def equipamentos_por_regional(request, produto_id, regional_id):
             for e in equipamentos
         ],
         'regionais': list(
-            Base.objects.exclude(id=regional_id).values('id', 'nome')
+            secure_base_queryset(
+                Base.objects.exclude(id=regional_id),
+                request.user,
+                action='MOVIMENTAR',
+            ).values('id', 'nome')
         )
     }
     return JsonResponse(data)
@@ -5471,6 +5706,7 @@ def editar_equipamento(request, equipamento_id):
         secure_queryset(
             Equipamento.objects.select_related('produto', 'regional__empresa'),
             request.user,
+            action='EDITAR',
         ),
         id=equipamento_id
     )
@@ -5481,7 +5717,9 @@ def editar_equipamento(request, equipamento_id):
     is_gestor = perfil.is_gestor
 
     bases = (
-        Base.objects.all().order_by('nome')
+        secure_base_queryset(
+            Base.objects.all(), request.user, action='EDITAR'
+        ).order_by('nome')
         if is_admin else []
     )
 
@@ -5679,7 +5917,11 @@ def editar_equipamento(request, equipamento_id):
                 if regional_id:
 
                     nova_regional = get_object_or_404(
-                        Base,
+                        secure_base_queryset(
+                            Base.objects.all(),
+                            request.user,
+                            action='EDITAR',
+                        ),
                         id=regional_id
                     )
 
@@ -5891,20 +6133,17 @@ def checklist_view(request):
                 return redirect('estoque:checklist')
 
             inventario = get_object_or_404(
-                Inventario.objects.select_related('base', 'cliente'),
+                InsumosTenantPolicy.queryset(
+                    Inventario.objects.select_related(
+                        'base__empresa', 'cliente'
+                    ),
+                    request.user,
+                    base_field='base',
+                    resource=InsumosTenantPolicy.CHECKLISTS,
+                    action=InsumosTenantPolicy.CREATE,
+                ),
                 id=inventario_id
             )
-
-            # Verifica permissão de acesso à base
-            perfil = request.user.perfil
-            if not perfil.is_admin:
-                regionais_ids = perfil.bases_checklist_ids
-                if (
-                    inventario.base_id not in regionais_ids or
-                    inventario.base.empresa_id != perfil.empresa_id
-                ):
-                    messages.error(request, 'Você não tem acesso à base deste inventário.')
-                    return redirect('estoque:checklist')
 
             lider_atual = (inventario.lider or '').strip()
             lider_informado = request.POST.get('lider', '').strip()
@@ -6142,36 +6381,36 @@ def checklist_view(request):
             return redirect('estoque:checklist')
 
     # --- GET: Exibir formulário ---
-    perfil = request.user.perfil
-    bases_checklist = perfil.bases_checklist_ativas
-    regionais_ids = perfil.bases_checklist_ids
-
-    if perfil.is_admin:
-        equipamentos = Equipamento.objects.filter(
-            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
-        )
-        inventarios = Inventario.objects.filter(
+    bases_checklist = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.CHECKLISTS,
+        action=InsumosTenantPolicy.CREATE,
+    )
+    equipamentos = Equipamento.objects.filter(
+        status='ATIVO',
+        finalidade=Equipamento.Finalidade.OPERACIONAL,
+        regional__in=bases_checklist,
+    )
+    inventarios = InsumosTenantPolicy.queryset(
+        Inventario.objects.filter(
             status='PLANEJADO',
             data_inicio=date.today()
-        )
-        lotes_tags = RoloTag.objects.filter(status__in=['DISPONIVEL', 'EM_USO'], lote__ativo=True).select_related('lote', 'lote__base')
-    else:
-        equipamentos = Equipamento.objects.filter(
-            status='ATIVO',
-            finalidade=Equipamento.Finalidade.OPERACIONAL,
-            regional_id__in=regionais_ids
-        )
-        inventarios = Inventario.objects.filter(
-            status='PLANEJADO',
-            base__in=bases_checklist,
-            base__empresa=perfil.empresa,
-            data_inicio=date.today()
-        )
-        lotes_tags = RoloTag.objects.filter(
+        ),
+        request.user,
+        base_field='base',
+        resource=InsumosTenantPolicy.CHECKLISTS,
+        action=InsumosTenantPolicy.CREATE,
+    )
+    lotes_tags = InsumosTenantPolicy.queryset(
+        RoloTag.objects.filter(
             status__in=['DISPONIVEL', 'EM_USO'],
             lote__ativo=True,
-            lote__base_id__in=regionais_ids
-        ).select_related('lote', 'lote__base')
+        ).select_related('lote', 'lote__base'),
+        request.user,
+        base_field='lote__base',
+        resource=InsumosTenantPolicy.CHECKLISTS,
+        action=InsumosTenantPolicy.CREATE,
+    )
 
     # ----- LISTA DE ITENS FIXOS DO CHECKLIST -----
     ITENS_CHECKLIST = [
@@ -6257,20 +6496,26 @@ def get_equipamentos_disponiveis(request):
     if not regional_id or not categoria:
         return JsonResponse({'results': []})
 
-    if str(regional_id).isdigit() and _base_em_auditoria(regional_id):
+    if not str(regional_id).isdigit():
+        return JsonResponse({'results': []}, status=400)
+
+    base = get_object_or_404(
+        InsumosTenantPolicy.bases(
+            request.user,
+            resource=InsumosTenantPolicy.CHECKLISTS,
+        ),
+        pk=regional_id,
+    )
+
+    if _base_em_auditoria(regional_id):
         return _resposta_base_em_auditoria()
 
-    if not request.user.perfil.is_admin:
-        regionais_ids = request.user.perfil.bases_checklist_ids
-        if int(regional_id) not in regionais_ids:
-            return JsonResponse({'results': []}, status=403)
-
     equipamentos = Equipamento.objects.filter(
-        status='ATIVO',
-        finalidade=Equipamento.Finalidade.OPERACIONAL,
-        regional_id=regional_id,
-        produto__categoria=categoria,
-    ).select_related('produto')
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
+            regional=base,
+            produto__categoria=categoria,
+        ).select_related('produto')
 
     data = [{
         'id': eq.id,
@@ -6282,18 +6527,25 @@ def get_equipamentos_disponiveis(request):
 
     return JsonResponse({'results': data})
 
+@login_required
 def get_lotes_tags_disponiveis(request):
     regional_id = request.GET.get('regional')
 
     if not regional_id:
         return JsonResponse({'results': []})
 
-    if not request.user.perfil.is_admin:
-        regionais_ids = request.user.perfil.bases_checklist_ids
-        if int(regional_id) not in regionais_ids:
-            return JsonResponse({'results': []}, status=403)
-
-    lotes = LoteTag.objects.filter(ativo=True, quantidade_disponivel__gt=0, base_id=regional_id)
+    base = get_object_or_404(
+        InsumosTenantPolicy.bases(
+            request.user,
+            resource=InsumosTenantPolicy.CHECKLISTS,
+        ),
+        pk=regional_id,
+    )
+    lotes = LoteTag.objects.filter(
+        ativo=True,
+        quantidade_disponivel__gt=0,
+        base=base,
+    )
 
     data = [{
         'id': lote.id,

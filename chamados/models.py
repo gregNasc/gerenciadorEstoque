@@ -29,9 +29,9 @@ def normalizar_alias(valor):
     return re.sub(r'\s+', ' ', texto).strip().casefold()
 
 def validar_tamanho_anexo(arquivo):
-    limite = 50 * 1024 * 1024
+    limite = 500 * 1024 * 1024
     if arquivo.size > limite:
-        raise ValidationError('O ANEXO NÃO PODE ULTRAPASSAR 50 MB.')
+        raise ValidationError('O ANEXO NÃO PODE ULTRAPASSAR 500 MB.')
 
 def validar_mime_anexo(arquivo):
     content_type = getattr(arquivo, 'content_type', '')
@@ -145,6 +145,10 @@ class InventarioLiderHistorico(models.Model):
         ordering = ['-alterado_em', '-id']
 
 class Chamado(models.Model):
+    class Tipo(models.TextChoices):
+        OPERACIONAL = 'OPERACIONAL', _('Operacional')
+        REPARACAO = 'REPARACAO', _('Reparação / Manutenção')
+
     class MomentoInventario(models.TextChoices):
         ANTES = 'ANTES', _('Antes do inventario')
         EM_ANDAMENTO = 'EM_ANDAMENTO', _('Inventario em andamento')
@@ -169,7 +173,15 @@ class Chamado(models.Model):
 
     protocolo = models.CharField(max_length=30, unique=True, editable=False)
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='chamados')
-    base = models.ForeignKey(Base, on_delete=models.PROTECT, related_name='chamados')
+    tipo_chamado = models.CharField(
+        max_length=12,
+        choices=Tipo.choices,
+        default=Tipo.OPERACIONAL,
+        db_index=True,
+    )
+    base = models.ForeignKey(
+        Base, null=True, blank=True, on_delete=models.PROTECT, related_name='chamados'
+    )
     inventario = models.ForeignKey('insumos.Inventario', null=True, blank=True, on_delete=models.PROTECT, related_name='chamados')
     momento_inventario_abertura = models.CharField(
         max_length=20,
@@ -233,6 +245,14 @@ class Chamado(models.Model):
 
     def clean(self):
         super().clean()
+        if self.tipo_chamado == self.Tipo.OPERACIONAL:
+            erros = {}
+            if not self.base_id:
+                erros['base'] = 'A REGIONAL É OBRIGATÓRIA PARA CHAMADOS OPERACIONAIS.'
+            if not self.inventario_id:
+                erros['inventario'] = 'O INVENTÁRIO É OBRIGATÓRIO PARA CHAMADOS OPERACIONAIS.'
+            if erros:
+                raise ValidationError(erros)
         if self.base_id and self.empresa_id and self.base.empresa_id != self.empresa_id:
             raise ValidationError({'base': 'A BASE NÃO PERTENCE À EMPRESA INFORMADA.'})
         if self.inventario_id and self.inventario.base_id != self.base_id:
@@ -255,28 +275,22 @@ class Chamado(models.Model):
 
     @property
     def sla_vencido(self):
-        return bool(
-            self.prazo_sla_em
-            and self.status not in {
-                self.Status.RESOLVIDO, self.Status.AVALIACAO,
-                self.Status.ENCERRADO, self.Status.CANCELADO,
-            }
-            and timezone.now() > self.prazo_sla_em
-        )
+        if not self.prazo_sla_em or self.status == self.Status.CANCELADO:
+            return False
+        fim = self.resolvido_em or timezone.now()
+        return fim > self.prazo_sla_em
+
+    @property
+    def limite_sla(self):
+        if self.tipo_chamado == self.Tipo.REPARACAO:
+            return timedelta(hours=24)
+        return timedelta(minutes=30)
 
     def definir_prazo_sla(self):
         if self.prazo_sla_em:
             return
 
-        sla_horas = 24
-
-        if self.categoria_id:
-            sla_horas = self.categoria.sla_horas
-
-        self.prazo_sla_em = (
-                self.aberto_em
-                + timedelta(hours=sla_horas)
-        )
+        self.prazo_sla_em = self.aberto_em + self.limite_sla
 
 class ChamadoMensagem(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name='mensagens')

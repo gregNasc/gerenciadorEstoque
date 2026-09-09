@@ -22,8 +22,11 @@ class ChamadoMensagemInline(admin.TabularInline):
 
 @admin.register(Chamado)
 class ChamadoAdmin(admin.ModelAdmin):
-    list_display = ('protocolo', 'titulo', 'base', 'prioridade', 'status', 'atendente', 'aberto_em')
-    list_filter = ('status', 'prioridade', 'categoria', 'base')
+    list_display = (
+        'protocolo', 'tipo_chamado', 'titulo', 'base', 'prioridade',
+        'status', 'atendente', 'aberto_em',
+    )
+    list_filter = ('tipo_chamado', 'status', 'prioridade', 'categoria', 'base')
     search_fields = ('protocolo', 'titulo', 'descricao', 'loja', 'lider')
     inlines = (ChamadoMensagemInline,)
 

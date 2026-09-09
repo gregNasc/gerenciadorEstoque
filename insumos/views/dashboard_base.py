@@ -1,15 +1,19 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from insumos.models import (Inventario, ChecklistDiario, SolicitacaoInsumo, Insumo)
+from insumos.policies import InsumosTenantPolicy
 from insumos.utils import secure_queryset_insumos
 
 
 @login_required
 def dashboard_base(request):
 
-    perfil = request.user.perfil
-    inventarios = secure_queryset_insumos(Inventario.objects.all(), request.user, campo_base='base')
-    checklists = ChecklistDiario.objects.filter(inventario__base__in=perfil.regionais.all()) if not perfil.is_admin else ChecklistDiario.objects.all()
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user, Inventario.objects.all()
+    )
+    checklists = InsumosTenantPolicy.checklists(
+        request.user, ChecklistDiario.objects.all()
+    )
     solicitacoes = secure_queryset_insumos(SolicitacaoInsumo.objects.all(), request.user, campo_base='base')
     insumos = Insumo.objects.filter(ativo=True)
 

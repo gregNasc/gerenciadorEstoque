@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum
 from insumos.models import HistoricoInsumo, MovimentacaoInsumo, SaldoInsumoBase
+from insumos.policies import InsumosTenantPolicy
 from insumos.services.saldo_service import SaldoInsumoService
 
 class MovimentacaoService:
@@ -47,7 +48,12 @@ class MovimentacaoService:
     @staticmethod
     @transaction.atomic
     def entrada(*, base, insumo, quantidade, usuario, valor_unitario, observacao='', solicitacao=None,):
-
+        InsumosTenantPolicy.require_base(
+            usuario,
+            base,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        )
         quantidade = Decimal(str(quantidade))
         valor_unitario = Decimal(str(valor_unitario))
         if quantidade <= 0:
@@ -77,6 +83,7 @@ class MovimentacaoService:
 
             tipo='MOVIMENTACAO',
             usuario=usuario,
+            base=base,
             descricao=(
                 f'Entrada de {quantidade} '
                 f'{insumo.unidade_medida}'
@@ -97,7 +104,12 @@ class MovimentacaoService:
     @staticmethod
     @transaction.atomic
     def saida(*, base, insumo, quantidade, usuario, observacao='', solicitacao=None,):
-
+        InsumosTenantPolicy.require_base(
+            usuario,
+            base,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        )
         quantidade = Decimal(str(quantidade))
         if quantidade <= 0:
             raise ValueError('A quantidade de saída deve ser positiva.')
@@ -127,6 +139,7 @@ class MovimentacaoService:
         HistoricoInsumo.objects.create(
             tipo='MOVIMENTACAO',
             usuario=usuario,
+            base=base,
             descricao=(
                 f'Saída de {quantidade} '
                 f'{insumo.unidade_medida}'
@@ -146,7 +159,12 @@ class MovimentacaoService:
     @staticmethod
     @transaction.atomic
     def devolucao(*, base, insumo, quantidade, usuario, observacao='',):
-
+        InsumosTenantPolicy.require_base(
+            usuario,
+            base,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        )
         quantidade = Decimal(str(quantidade))
         if quantidade <= 0:
             raise ValueError('A quantidade devolvida deve ser positiva.')
@@ -168,6 +186,20 @@ class MovimentacaoService:
             quando=movimentacao.criado_em,
         )
 
+        HistoricoInsumo.objects.create(
+            tipo='MOVIMENTACAO',
+            usuario=usuario,
+            base=base,
+            descricao=f'Devolução de {quantidade} {insumo.unidade_medida}',
+            dados={
+                'base_id': base.id,
+                'base_nome': base.nome,
+                'insumo': insumo.descricao,
+                'tipo': 'DEVOLUCAO',
+                'quantidade': str(quantidade),
+            },
+        )
+
         MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
 
         return movimentacao
@@ -175,7 +207,12 @@ class MovimentacaoService:
     @staticmethod
     @transaction.atomic
     def perda(*, base, insumo, quantidade, usuario, observacao='',):
-
+        InsumosTenantPolicy.require_base(
+            usuario,
+            base,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        )
         quantidade = Decimal(str(quantidade))
         if quantidade <= 0:
             raise ValueError('A quantidade perdida deve ser positiva.')
@@ -198,6 +235,20 @@ class MovimentacaoService:
 
         SaldoInsumoService.aplicar_saida(saldo_base, quantidade)
 
+        HistoricoInsumo.objects.create(
+            tipo='MOVIMENTACAO',
+            usuario=usuario,
+            base=base,
+            descricao=f'Perda de {quantidade} {insumo.unidade_medida}',
+            dados={
+                'base_id': base.id,
+                'base_nome': base.nome,
+                'insumo': insumo.descricao,
+                'tipo': 'PERDA',
+                'quantidade': str(quantidade),
+            },
+        )
+
         MovimentacaoService._emitir_ordem_servico(movimentacao, usuario)
 
         return movimentacao
@@ -205,7 +256,12 @@ class MovimentacaoService:
     @staticmethod
     @transaction.atomic
     def ajuste(*, base, insumo, saldo_real, usuario, observacao='',):
-
+        InsumosTenantPolicy.require_base(
+            usuario,
+            base,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        )
         saldo_real = Decimal(str(saldo_real))
         if saldo_real < 0:
             raise ValueError('O saldo real não pode ser negativo.')
@@ -253,6 +309,7 @@ class MovimentacaoService:
         HistoricoInsumo.objects.create(
             tipo='MOVIMENTACAO',
             usuario=usuario,
+            base=base,
             descricao=(
                 f'Ajuste de estoque: '
                 f'{"entrada" if diferenca > 0 else "saída"} '

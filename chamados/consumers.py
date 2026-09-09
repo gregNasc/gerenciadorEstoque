@@ -54,7 +54,9 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _grupos_atendimento(self):
-        bases = ChamadoAccessPolicy.bases(self.scope['user']).values_list('pk', flat=True)
+        bases = ChamadoAccessPolicy.bases_atendimento(
+            self.scope['user']
+        ).values_list('pk', flat=True)
         return [f'chamados_atendentes_base_{base_id}' for base_id in bases]
 
     @database_sync_to_async
@@ -130,7 +132,10 @@ class ChamadoChatConsumer(AsyncJsonWebsocketConsumer):
         user = self.scope.get('user')
         return bool(
             user and user.is_authenticated
-            and ChamadoAccessPolicy.queryset(user).filter(pk=self.chamado_id).exists()
+            and ChamadoAccessPolicy.queryset(user).filter(
+                pk=self.chamado_id,
+                tipo_chamado=Chamado.Tipo.OPERACIONAL,
+            ).exists()
         )
 
     @database_sync_to_async

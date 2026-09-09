@@ -1,10 +1,12 @@
 from decimal import Decimal
 
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q, Sum
 from django.shortcuts import render
 from estoque.models import Base, Empresa
 from insumos.models import MovimentacaoInsumo, SolicitacaoInsumo
 from estoque.policies.compras import ComprasAccessPolicy
+from insumos.policies import InsumosTenantPolicy
 from insumos.views.saude_estoque import saude_estoque_required
 
 
@@ -206,21 +208,25 @@ def dashboard_saude_insumos(request):
     if base_id and not base_id.isdigit():
         base_id = ""
 
+    bases_visiveis = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.SUPPLIES,
+        action=InsumosTenantPolicy.VIEW,
+    )
     empresas = list(
-        Empresa.objects
-        .filter(bases__isnull=False)
-        .distinct()
-        .order_by("nome")
+        Empresa.objects.filter(
+            pk__in=bases_visiveis.values('empresa_id')
+        ).order_by('nome')
     )
 
     bases_opcoes = list(
-        Base.objects
+        bases_visiveis
         .select_related("empresa")
         .order_by("empresa__nome", "nome")
     )
 
     bases_consulta_qs = (
-        Base.objects
+        bases_visiveis
         .select_related("empresa")
         .order_by("empresa__nome", "nome")
     )

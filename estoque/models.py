@@ -54,9 +54,142 @@ def _url_rastreamento_correios(codigo):
 # ---------------- BASE ----------------
 class Empresa(models.Model):
     nome = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=220, null=True, blank=True, db_index=True)
+    ativa = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.nome
+
+
+class RelacionamentoEmpresa(models.Model):
+    empresa_origem = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='relacionamentos_saida',
+    )
+    empresa_destino = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='relacionamentos_entrada',
+    )
+    ativo = models.BooleanField(default=True, db_index=True)
+    compartilha_suporte_chamados = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            'Permite que usuários do grupo de suporte atendam chamados da '
+            'origem e do destino, sem ampliar outros módulos.'
+        ),
+    )
+    criado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='relacionamentos_empresa_criados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Relacionamento entre empresas'
+        verbose_name_plural = 'Relacionamentos entre empresas'
+        ordering = ('empresa_origem__nome', 'empresa_destino__nome')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa_origem', 'empresa_destino'),
+                name='empresa_relacao_direcional_unica',
+            ),
+            models.CheckConstraint(
+                condition=~Q(empresa_origem=models.F('empresa_destino')),
+                name='empresa_relacao_destinos_distintos',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if (
+            self.empresa_origem_id
+            and self.empresa_origem_id == self.empresa_destino_id
+        ):
+            raise ValidationError(
+                {'empresa_destino': 'A empresa de destino deve ser diferente da origem.'}
+            )
+
+    def __str__(self):
+        return f'{self.empresa_origem} -> {self.empresa_destino}'
+
+
+class CapacidadeRelacionamentoEmpresa(models.Model):
+    class Recurso(models.TextChoices):
+        OPERACAO = 'OPERACAO', 'Operação do tenant'
+        EQUIPAMENTOS = 'EQUIPAMENTOS', 'Equipamentos'
+        ESTOQUE = 'ESTOQUE', 'Estoque'
+        SICK = 'SICK', 'SICK'
+        TRANSFERENCIAS = 'TRANSFERENCIAS', 'Transferências'
+        EMPRESTIMOS = 'EMPRESTIMOS', 'Empréstimos'
+        INSUMOS = 'INSUMOS', 'Insumos'
+        CHECKLISTS = 'CHECKLISTS', 'Checklists'
+        INVENTARIOS = 'INVENTARIOS', 'Inventários'
+        CHAMADOS = 'CHAMADOS', 'Chamados'
+        COMPRAS = 'COMPRAS', 'Compras'
+        CATALOGO = 'CATALOGO', 'Catálogo'
+        ORDENS_SERVICO = 'ORDENS_SERVICO', 'Ordens de serviço'
+        AUDITORIAS = 'AUDITORIAS', 'Auditorias'
+        DOCUMENTACAO = 'DOCUMENTACAO', 'Documentação'
+        INTEGRACOES = 'INTEGRACOES', 'Integrações'
+        TORY = 'TORY', 'Tory'
+        USUARIOS = 'USUARIOS', 'Usuários'
+
+    class Acao(models.TextChoices):
+        VISUALIZAR = 'VISUALIZAR', 'Visualizar'
+        CRIAR = 'CRIAR', 'Criar'
+        EDITAR = 'EDITAR', 'Editar'
+        MOVIMENTAR = 'MOVIMENTAR', 'Movimentar'
+        ATENDER = 'ATENDER', 'Atender'
+        APROVAR = 'APROVAR', 'Aprovar'
+        EXPORTAR = 'EXPORTAR', 'Exportar'
+        ADMINISTRAR = 'ADMINISTRAR', 'Administrar'
+
+    relacionamento = models.ForeignKey(
+        RelacionamentoEmpresa,
+        on_delete=models.CASCADE,
+        related_name='capacidades',
+    )
+    recurso = models.CharField(max_length=30, choices=Recurso.choices)
+    acao = models.CharField(max_length=20, choices=Acao.choices)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='capacidades_empresa_criadas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Capability de relacionamento entre empresas'
+        verbose_name_plural = 'Capabilities de relacionamentos entre empresas'
+        ordering = ('relacionamento', 'recurso', 'acao')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('relacionamento', 'recurso', 'acao'),
+                name='empresa_relacao_capacidade_unica',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('ativo', 'recurso', 'acao'),
+                name='empresa_cap_ativa_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.relacionamento} | {self.recurso}:{self.acao}'
 
 class Base(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="bases")
@@ -110,6 +243,11 @@ class Perfil(models.Model):
         Empresa,
         blank=True,
         related_name='perfis_compras',
+    )
+    empresas_acesso_adicional = models.ManyToManyField(
+        Empresa,
+        blank=True,
+        related_name='perfis_com_acesso_adicional',
     )
     bases_escopo_compras = models.ManyToManyField(
         Base,
@@ -222,14 +360,14 @@ class Perfil(models.Model):
 
     # -------- SAVE --------
     def save(self, *args, **kwargs):
-
-        if self.is_admin:
-            self.empresa = None
-
         super().save(*args, **kwargs)
 
+        # Admin opera a empresa inteira e não usa Bases como limitador. O
+        # vínculo principal com Empresa, porém, deve ser preservado.
         if self.is_admin:
             self.regionais.clear()
+        else:
+            self.empresas_acesso_adicional.clear()
 
     # -------- PERMISSÕES --------
     @property

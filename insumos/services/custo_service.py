@@ -5,6 +5,7 @@ from django.db.models.functions import TruncMonth
 
 from estoque.policies.compras import ComprasAccessPolicy
 from insumos.models import ConsumoInsumo, MovimentacaoInsumo, SaldoInsumoBase
+from insumos.policies import InsumosTenantPolicy
 from insumos.services.saldo_service import SaldoInsumoService
 
 
@@ -16,15 +17,6 @@ class CustoInsumoService:
     def pode_visualizar(user):
         return ComprasAccessPolicy.pode_visualizar_valores(user)
 
-    @staticmethod
-    def _aplicar_escopo_compras(queryset, user, campo_base):
-        perfil = getattr(user, 'perfil', None)
-        if perfil and perfil.is_compras_insumos and not perfil.is_admin:
-            return queryset.filter(**{
-                f'{campo_base}__in': ComprasAccessPolicy.bases(user),
-            })
-        return queryset
-
     @classmethod
     def queryset(cls, user):
         if not cls.pode_visualizar(user):
@@ -32,7 +24,7 @@ class CustoInsumoService:
         queryset = ConsumoInsumo.objects.select_related(
             'inventario__cliente', 'inventario__base', 'insumo__categoria'
         )
-        return cls._aplicar_escopo_compras(queryset, user, 'inventario__base')
+        return InsumosTenantPolicy.consumptions(user, queryset)
 
     @classmethod
     def filtrar(
@@ -167,8 +159,9 @@ class CustoInsumoService:
     def valor_estoque_atual(cls, user, bases=None):
         if not cls.pode_visualizar(user):
             return Decimal('0')
-        queryset = MovimentacaoInsumo.objects.all()
-        queryset = cls._aplicar_escopo_compras(queryset, user, 'base')
+        queryset = InsumosTenantPolicy.movements(
+            user, MovimentacaoInsumo.objects.all()
+        )
         if bases is not None:
             queryset = queryset.filter(base__in=bases)
 

@@ -8,6 +8,7 @@ from django.utils.dateparse import parse_date
 
 from estoque.models import Comunicado, Equipamento, Historico, Sick
 from estoque.policies.compras import GruposCorporativos
+from estoque.policies.tenant_operations import TenantOperationPolicy
 from estoque.services.comunicado_service import ComunicadoService
 
 
@@ -91,41 +92,8 @@ class SickService:
     @classmethod
     def visiveis_para(cls, usuario, queryset=None):
         queryset = queryset if queryset is not None else Sick.objects.all()
-        perfil = cls._perfil(usuario)
-
-        # Admin possui visão global e não depende de bases vinculadas.
-        # SICK terceirizado continua restrito à base de origem.
-        if perfil.is_admin:
-            return queryset.exclude(
-                tipo_destino=Sick.TipoDestino.TERCEIRIZADA
-            )
-
-        # Equipe central de manutenção também possui visão global
-        # dos SICKs internos.
-        if usuario.groups.filter(
-                name=GruposCorporativos.SICK_MANUTENCAO,
-        ).exists():
-            return queryset.exclude(
-                tipo_destino=Sick.TipoDestino.TERCEIRIZADA
-            )
-
-        # Gestores e operadores dependem das bases vinculadas.
-        bases = perfil.regionais.all()
-
-        if not bases.exists():
-            return queryset.none()
-
-        return queryset.filter(
-            Q(
-                tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
-                base_origem__in=bases,
-            )
-            |
-            Q(
-                ~Q(tipo_destino=Sick.TipoDestino.TERCEIRIZADA),
-                equipamento__regional__in=bases,
-            )
-        ).distinct()
+        cls._perfil(usuario)
+        return TenantOperationPolicy.sick(usuario, queryset)
 
     @classmethod
     def filtrar_historicos_visiveis(cls, usuario, queryset):
@@ -140,21 +108,22 @@ class SickService:
     @classmethod
     def _validar_acesso_base(cls, usuario, equipamento):
         perfil = cls._perfil(usuario)
-
-        if perfil.is_admin:
-            return perfil
-
-        if not perfil.regionais.filter(
-                pk=equipamento.regional_id
-        ).exists():
-            raise PermissionDenied(
-                'Usuário sem acesso à base do equipamento.'
-            )
-
+        TenantOperationPolicy.require_base(
+            usuario,
+            equipamento.regional,
+            resource='SICK',
+            action='MOVIMENTAR',
+        )
         return perfil
 
     @classmethod
     def _validar_acesso_sick(cls, usuario, sick):
+        if not cls.visiveis_para(
+            usuario,
+            Sick.objects.filter(pk=sick.pk),
+        ).exists():
+            raise PermissionDenied('Usuário sem acesso a este SICK.')
+
         if sick.tipo_destino != Sick.TipoDestino.TERCEIRIZADA:
             perfil = cls._perfil(usuario)
             if usuario.groups.filter(
@@ -247,7 +216,14 @@ class SickService:
 
     @classmethod
     def _carregar_sick(cls, sick_id, usuario=None):
-        sick = Sick.objects.select_for_update().get(pk=sick_id)
+        queryset = Sick.objects.select_for_update()
+        if usuario is not None:
+            queryset = TenantOperationPolicy.sick(
+                usuario,
+                queryset,
+                action='MOVIMENTAR',
+            )
+        sick = queryset.get(pk=sick_id)
         sick.equipamento = Equipamento.objects.select_for_update(of=('self',)).select_related(
             'produto', 'regional__empresa'
         ).get(pk=sick.equipamento_id)

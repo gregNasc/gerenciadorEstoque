@@ -377,6 +377,39 @@
     </div>
   </header>
 
+  <form method="get" class="card border-0 shadow-sm mb-4" aria-label="{% trans 'Filtros do dashboard' %}">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label" for="dashboard-regional">{% trans "Regional" %}</label>
+          <select class="form-select" id="dashboard-regional" name="regional">
+            <option value="">{% trans "Todas" %}</option>
+            {% for regional in regionais %}<option value="{{ regional.pk }}" {% if regional_selecionada == regional.pk|stringformat:'s' %}selected{% endif %}>{{ regional.nome }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="dashboard-tipo">{% trans "Tipo de chamado" %}</label>
+          <select class="form-select" id="dashboard-tipo" name="tipo_chamado">
+            <option value="">{% trans "Todos" %}</option>
+            {% for value,label in tipo_choices %}<option value="{{ value }}" {% if tipo_chamado_selecionado == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="dashboard-inicio">{% trans "Data inicial" %}</label>
+          <input class="form-control" id="dashboard-inicio" name="data_inicial" type="date" value="{{ data_inicial }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="dashboard-fim">{% trans "Data final" %}</label>
+          <input class="form-control" id="dashboard-fim" name="data_final" type="date" value="{{ data_final }}">
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <a class="btn btn-outline-secondary flex-fill" href="{% url 'chamados:dashboard' %}">{% trans "Limpar" %}</a>
+          <button class="btn btn-primary flex-fill" type="submit">{% trans "Aplicar" %}</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
 
   <!-- SITUAÇÃO AGORA -->
   <div class="dashboard-section">
@@ -529,21 +562,21 @@
     <div class="periodo-selector" aria-label="{% trans 'Selecionar período' %}">
 
       <a
-        href="?periodo=hoje"
+        href="?periodo=hoje{% if regional_selecionada %}&regional={{ regional_selecionada }}{% endif %}{% if tipo_chamado_selecionado %}&tipo_chamado={{ tipo_chamado_selecionado }}{% endif %}"
         class="btn {% if periodo == 'hoje' %}periodo-ativo{% else %}text-secondary{% endif %}"
       >
         {% trans "Hoje" %}
       </a>
 
       <a
-        href="?periodo=7d"
+        href="?periodo=7d{% if regional_selecionada %}&regional={{ regional_selecionada }}{% endif %}{% if tipo_chamado_selecionado %}&tipo_chamado={{ tipo_chamado_selecionado }}{% endif %}"
         class="btn {% if periodo == '7d' %}periodo-ativo{% else %}text-secondary{% endif %}"
       >
         {% trans "7 dias" %}
       </a>
 
       <a
-        href="?periodo=30d"
+        href="?periodo=30d{% if regional_selecionada %}&regional={{ regional_selecionada }}{% endif %}{% if tipo_chamado_selecionado %}&tipo_chamado={{ tipo_chamado_selecionado }}{% endif %}"
         class="btn {% if periodo == '30d' %}periodo-ativo{% else %}text-secondary{% endif %}"
       >
         {% trans "30 dias" %}
@@ -818,6 +851,10 @@
 
                   <div class="d-flex flex-wrap justify-content-end gap-1">
 
+                    <span class="badge {% if chamado.tipo_chamado == 'OPERACIONAL' %}bg-primary-subtle text-primary{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                      {{ chamado.get_tipo_chamado_display }}
+                    </span>
+
                     {% if chamado.prioridade == 'CRITICA' %}
                       <span class="badge text-bg-danger">
                         {% trans "Crítico" %}
@@ -839,7 +876,7 @@
 
                   <span>
                     <i class="bi bi-building"></i>
-                    {{ chamado.base.nome }}
+                    {{ chamado.base.nome|default:'Sem regional' }}
                   </span>
 
                   {% if chamado.loja %}

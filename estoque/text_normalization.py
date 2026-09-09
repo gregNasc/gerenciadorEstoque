@@ -48,6 +48,7 @@ TECHNICAL_MODEL_FIELDS = {
     ('chamados.AliasUsuario', 'alias_normalizado'),
     ('chamados.PendenciaVinculoLider', 'texto_normalizado'),
     ('chamados.ChamadoAnexo', 'nome_original'),
+    ('estoque.Empresa', 'slug'),
     ('estoque.ComunicadoEntrega', 'destino'),
     ('estoque.ComunicadoEntrega', 'provedor'),
     ('estoque.ComunicadoEntrega', 'template_codigo'),

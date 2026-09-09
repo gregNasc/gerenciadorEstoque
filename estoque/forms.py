@@ -4,6 +4,7 @@ from django.utils import timezone
 from .models import DeclaracaoCorreios, DeclaracaoCorreiosItem, Produto, Equipamento, Transferencia, Sick, Base
 from django.utils.translation import gettext_lazy as _
 from insumos.models import FornecedorInsumo
+from estoque.security import secure_base_queryset
 
 
 class DeclaracaoCorreiosForm(forms.ModelForm):
@@ -199,9 +200,17 @@ class EquipamentoForm(forms.ModelForm):
             if perfil:
                 from estoque.policies.compras import ComprasAccessPolicy
                 if perfil.is_admin:
-                    self.fields['regional'].queryset = Base.objects.all()
+                    self.fields['regional'].queryset = secure_base_queryset(
+                        Base.objects.all(),
+                        user,
+                        action='CRIAR',
+                    )
                 elif perfil.is_compras_insumos:
-                    self.fields['regional'].queryset = ComprasAccessPolicy.bases(user)
+                    self.fields['regional'].queryset = secure_base_queryset(
+                        Base.objects.all(),
+                        user,
+                        action='CRIAR',
+                    )
                 else:
                     regionais = perfil.regionais.all()
 
@@ -235,7 +244,11 @@ class EquipamentoForm(forms.ModelForm):
         perfil = getattr(self.user, 'perfil', None)
         if not perfil:
             raise ValidationError("Usuário sem perfil de acesso.")
-        if not perfil.is_admin and not perfil.regionais.filter(pk=regional.pk).exists():
+        if not secure_base_queryset(
+            Base.objects.filter(pk=regional.pk),
+            self.user,
+            action='CRIAR',
+        ).exists():
             raise ValidationError("Você não possui acesso a esta base.")
         if self.base_selecionada and regional.pk != self.base_selecionada.pk:
             raise ValidationError("A base informada diverge do contexto selecionado.")

@@ -2,7 +2,12 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 from uuid import uuid4
-from estoque.models import (Emprestimo, ItemEmprestimo,)
+from estoque.models import (
+    CapacidadeRelacionamentoEmpresa,
+    Emprestimo,
+    ItemEmprestimo,
+)
+from estoque.policies.tenant_operations import TenantOperationPolicy
 from .comunicado_service import ComunicadoService
 from .notificacao_service import NotificacaoService
 
@@ -15,10 +20,23 @@ class EmprestimoService:
         codigo_rastreio_envio='',
     ):
 
+        TenantOperationPolicy.require_flow(
+            user,
+            base_origem,
+            base_destino,
+            CapacidadeRelacionamentoEmpresa.Recurso.EMPRESTIMOS,
+        )
+
         if base_origem.grupo_regional != base_destino.grupo_regional:
             raise ValidationError(
                 'Bases devem pertencer ao mesmo grupo.'
             )
+
+        equipamentos = list(equipamentos)
+        if not equipamentos:
+            raise ValidationError('Selecione ao menos um equipamento válido.')
+        if any(equipamento.regional_id != base_origem.pk for equipamento in equipamentos):
+            raise ValidationError('Todos os equipamentos devem pertencer à base de origem.')
 
         emprestimo = Emprestimo.objects.create(
 
@@ -130,6 +148,13 @@ class EmprestimoService:
     @transaction.atomic
     def receber(emprestimo, itens_recebidos_ids, usuario,):
 
+        TenantOperationPolicy.require_base(
+            usuario,
+            emprestimo.regional_destino,
+            CapacidadeRelacionamentoEmpresa.Recurso.EMPRESTIMOS,
+            TenantOperationPolicy.MOVE,
+        )
+
         for item in emprestimo.itens.all():
 
             if str(item.id) in itens_recebidos_ids:
@@ -165,6 +190,13 @@ class EmprestimoService:
     @staticmethod
     @transaction.atomic
     def devolver(emprestimo, itens_devolvidos_ids, usuario, codigo_rastreio_devolucao=''):
+
+        TenantOperationPolicy.require_base(
+            usuario,
+            emprestimo.regional_destino,
+            CapacidadeRelacionamentoEmpresa.Recurso.EMPRESTIMOS,
+            TenantOperationPolicy.MOVE,
+        )
 
         for item in emprestimo.itens.all():
 
@@ -205,6 +237,13 @@ class EmprestimoService:
     @staticmethod
     @transaction.atomic
     def confirmar_devolucao(emprestimo, itens_confirmados_ids, usuario,):
+
+        TenantOperationPolicy.require_base(
+            usuario,
+            emprestimo.regional_origem,
+            CapacidadeRelacionamentoEmpresa.Recurso.EMPRESTIMOS,
+            TenantOperationPolicy.MOVE,
+        )
 
         for item in emprestimo.itens.select_related(
                 'equipamento'

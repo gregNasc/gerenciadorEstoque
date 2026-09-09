@@ -142,4 +142,6 @@ urlpatterns = [
     path('checklist/', views.checklist_view, name='checklist'),
     path('api/equipamentos-disponiveis/', views.get_equipamentos_disponiveis, name='api_equipamentos'),
     path('api/lotes-tags-disponiveis/', views.get_lotes_tags_disponiveis, name='api_lotes_tags'),
-]
+
+    path("painel-superuser/", views.painel_superuser, name="painel_superuser"),
+    ]

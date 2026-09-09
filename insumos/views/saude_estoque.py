@@ -11,6 +11,7 @@ from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoque
 from estoque.models import Base, Equipamento
 from estoque.policies.compras import ComprasAccessPolicy
 from insumos.models import SaldoInsumoBase
+from insumos.policies import InsumosTenantPolicy
 
 
 def pode_visualizar_saude_estoque(user):
@@ -33,7 +34,14 @@ def saude_estoque_required(view):
 
 
 def _equipamentos_visiveis(request):
-    qs = Equipamento.objects.select_related('produto', 'regional__empresa')
+    bases = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.SUPPLIES,
+        action=InsumosTenantPolicy.VIEW,
+    )
+    qs = Equipamento.objects.select_related(
+        'produto', 'regional__empresa'
+    ).filter(regional__in=bases)
     qs = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(qs)
     empresa_id = request.GET.get('empresa')
     base_id = request.GET.get('base')
@@ -44,10 +52,17 @@ def _equipamentos_visiveis(request):
     return qs
 
 
-def _filtros():
+def _filtros(request):
+    bases = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.SUPPLIES,
+        action=InsumosTenantPolicy.VIEW,
+    )
     return {
-        'empresas': Base.objects.values('empresa_id', 'empresa__nome').distinct().order_by('empresa__nome'),
-        'bases': Base.objects.select_related('empresa').order_by('empresa__nome', 'nome'),
+        'empresas': bases.values(
+            'empresa_id', 'empresa__nome'
+        ).distinct().order_by('empresa__nome'),
+        'bases': bases.select_related('empresa').order_by('empresa__nome', 'nome'),
     }
 
 
@@ -66,7 +81,7 @@ def dashboard_saude_equipamentos(request):
         .annotate(total=Count('id')).order_by('-total')[:12]
     )
     contexto = {
-        **_filtros(),
+        **_filtros(request),
         'total': qs.count(),
         'operacionais': qs.filter(status__in=['ATIVO', 'EM_USO', 'EMPRESTADO']).count(),
         'indisponiveis': qs.filter(status__in=['SICK', 'MANUTENCAO']).count(),
@@ -91,7 +106,10 @@ def dashboard_saude_equipamentos(request):
 @saude_estoque_required
 def dashboard_saude_geral(request):
     equipamentos = _equipamentos_visiveis(request)
-    saldos = SaldoInsumoBase.objects.select_related('base__empresa', 'insumo')
+    saldos = InsumosTenantPolicy.balances(
+        request.user,
+        SaldoInsumoBase.objects.select_related('base__empresa', 'insumo'),
+    )
     empresa_id = request.GET.get('empresa')
     base_id = request.GET.get('base')
     if empresa_id and empresa_id.isdigit():
@@ -111,7 +129,11 @@ def dashboard_saude_geral(request):
         row['base_id']: row['total']
         for row in saldos.values('base_id').annotate(total=Sum('saldo'))
     }
-    bases = list(Base.objects.select_related('empresa').order_by('nome'))
+    bases = list(InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.SUPPLIES,
+        action=InsumosTenantPolicy.VIEW,
+    ).select_related('empresa').order_by('nome'))
     if empresa_id and empresa_id.isdigit():
         bases = [base for base in bases if base.empresa_id == int(empresa_id)]
     if base_id and base_id.isdigit():
@@ -127,7 +149,7 @@ def dashboard_saude_geral(request):
     por_status = list(equipamentos.values('status').annotate(total=Count('id')).order_by('-total'))
     status_labels = dict(Equipamento.STATUS_CHOICES)
     contexto = {
-        **_filtros(),
+        **_filtros(request),
         'total_equipamentos': equipamentos.count(),
         'total_insumos': saldos.aggregate(
             total=Coalesce(Sum('saldo'), Value(Decimal('0')))

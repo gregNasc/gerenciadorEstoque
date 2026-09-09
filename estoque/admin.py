@@ -11,9 +11,11 @@ from .models import (
     Historico,
     Descricao,
     Base,
+    CapacidadeRelacionamentoEmpresa,
     ComunicadoLeitura,
     DriverImpressora,
     ResolucaoDocumento,
+    RelacionamentoEmpresa,
     VideoDocumentacao,
 )
 
@@ -77,6 +79,85 @@ class BaseAdmin(EmpresaAdminMixin, admin.ModelAdmin):
     list_filter = ('empresa',)
     search_fields = ('nome',)
     ordering = ('empresa', 'nome')
+
+
+class SomenteSuperuserAdminMixin:
+    def has_module_permission(self, request):
+        return bool(request.user.is_superuser)
+
+    def has_view_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+    def has_add_permission(self, request):
+        return bool(request.user.is_superuser)
+
+    def has_change_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+    def has_delete_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+
+class CapacidadeRelacionamentoEmpresaInline(admin.TabularInline):
+    model = CapacidadeRelacionamentoEmpresa
+    extra = 0
+    readonly_fields = ('criado_por', 'criado_em', 'atualizado_em')
+
+
+@admin.register(RelacionamentoEmpresa)
+class RelacionamentoEmpresaAdmin(SomenteSuperuserAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'empresa_origem',
+        'empresa_destino',
+        'ativo',
+        'compartilha_suporte_chamados',
+        'criado_por',
+        'atualizado_em',
+    )
+    list_filter = (
+        'ativo', 'compartilha_suporte_chamados',
+        'empresa_origem', 'empresa_destino',
+    )
+    search_fields = ('empresa_origem__nome', 'empresa_destino__nome')
+    readonly_fields = ('criado_por', 'criado_em', 'atualizado_em')
+    inlines = (CapacidadeRelacionamentoEmpresaInline,)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.criado_por_id:
+            obj.criado_por = request.user
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for deleted in formset.deleted_objects:
+            deleted.delete()
+        for instance in instances:
+            if (
+                isinstance(instance, CapacidadeRelacionamentoEmpresa)
+                and not instance.criado_por_id
+            ):
+                instance.criado_por = request.user
+            instance.save()
+        formset.save_m2m()
+
+
+@admin.register(CapacidadeRelacionamentoEmpresa)
+class CapacidadeRelacionamentoEmpresaAdmin(
+    SomenteSuperuserAdminMixin,
+    admin.ModelAdmin,
+):
+    list_display = ('relacionamento', 'recurso', 'acao', 'ativo', 'criado_por')
+    list_filter = ('ativo', 'recurso', 'acao')
+    search_fields = (
+        'relacionamento__empresa_origem__nome',
+        'relacionamento__empresa_destino__nome',
+    )
+    readonly_fields = ('criado_por', 'criado_em', 'atualizado_em')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.criado_por_id:
+            obj.criado_por = request.user
+        super().save_model(request, obj, form, change)
 
 @admin.register(ComunicadoLeitura)
 class ComunicadoLeituraAdmin(admin.ModelAdmin):

@@ -4,7 +4,14 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from estoque.models import Equipamento, Historico, Transferencia, TransferenciaItem
+from estoque.models import (
+    CapacidadeRelacionamentoEmpresa,
+    Equipamento,
+    Historico,
+    Transferencia,
+    TransferenciaItem,
+)
+from estoque.policies.tenant_operations import TenantOperationPolicy
 from estoque.services.comunicado_service import ComunicadoService
 
 
@@ -36,6 +43,12 @@ class TransferenciaService:
         if not divergencia.equipamento_id or not divergencia.base_encontrada_id:
             raise ValidationError('A divergência não possui equipamento e base identificados.')
         exigir_acesso_base(usuario, divergencia.base_encontrada)
+        TenantOperationPolicy.require_flow(
+            usuario,
+            divergencia.base_encontrada,
+            base_destino,
+            CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+        )
         if base_destino.empresa_id != divergencia.base_encontrada.empresa_id:
             raise ValidationError('A base de destino deve pertencer à mesma empresa.')
         if base_destino.pk == divergencia.base_encontrada_id:

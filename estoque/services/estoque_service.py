@@ -1,9 +1,10 @@
 from django.db.models import Count
 from estoque.models import Equipamento, Produto
+from estoque.security import secure_queryset
 
-def get_estoque_por_produto():
+def get_estoque_por_produto(user):
     estoque = (
-        Equipamento.objects
+        secure_queryset(Equipamento.objects.all(), user)
         .filter(status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL)
         .values(
             'produto_id',

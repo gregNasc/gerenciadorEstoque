@@ -13,6 +13,7 @@ class ChamadoForm(forms.ModelForm):
     class Meta:
         model = Chamado
         fields = [
+            'tipo_chamado',
             'base',
             'inventario',
             'categoria_equipamento',
@@ -31,6 +32,19 @@ class ChamadoForm(forms.ModelForm):
 
         self.user = user
         hoje = timezone.localdate()
+
+        tipo_selecionado = (
+            (self.data.get('tipo_chamado') if self.is_bound else None)
+            or getattr(self.instance, 'tipo_chamado', None)
+            or Chamado.Tipo.OPERACIONAL
+        )
+        tipos_permitidos = [Chamado.Tipo.OPERACIONAL]
+        if ChamadoAccessPolicy.pode_abrir_reparacao(user):
+            tipos_permitidos.append(Chamado.Tipo.REPARACAO)
+        self.fields['tipo_chamado'].choices = [
+            escolha for escolha in Chamado.Tipo.choices if escolha[0] in tipos_permitidos
+        ]
+        self.fields['tipo_chamado'].label = _('Tipo de chamado')
 
         # BASES PERMITIDAS
         bases = ChamadoAccessPolicy.bases(user)
@@ -107,7 +121,9 @@ class ChamadoForm(forms.ModelForm):
             )
         )
 
-        self.fields['inventario'].required = True
+        operacional = tipo_selecionado == Chamado.Tipo.OPERACIONAL
+        self.fields['base'].required = operacional
+        self.fields['inventario'].required = operacional
 
         # INVENTÁRIO INICIAL
         inventario_inicial = None
@@ -138,6 +154,11 @@ class ChamadoForm(forms.ModelForm):
         self.fields[
             'categoria_equipamento'
         ].label = _('Categoria')
+        if not operacional:
+            self.fields['categoria_equipamento'].choices = [
+                (valor, _('Rede') if valor == 'Routers' else rotulo)
+                for valor, rotulo in self.fields['categoria_equipamento'].choices
+            ]
 
         # Descobrir categoria selecionada
         categoria_selecionada = ''
@@ -186,7 +207,9 @@ class ChamadoForm(forms.ModelForm):
             )
         )
 
-        self.fields['equipamento'].required = categoria_selecionada != 'Sistema'
+        self.fields['equipamento'].required = bool(
+            operacional and categoria_selecionada != 'Sistema'
+        )
         self.fields['equipamento'].label = _('Equipamento')
 
         # CSS
@@ -198,6 +221,18 @@ class ChamadoForm(forms.ModelForm):
 
     def clean(self):
         dados = super().clean()
+
+        tipo_chamado = dados.get('tipo_chamado') or Chamado.Tipo.OPERACIONAL
+        operacional = tipo_chamado == Chamado.Tipo.OPERACIONAL
+
+        if (
+            tipo_chamado == Chamado.Tipo.REPARACAO
+            and not ChamadoAccessPolicy.pode_abrir_reparacao(self.user)
+        ):
+            self.add_error(
+                'tipo_chamado',
+                'USUÁRIOS COM PERFIL OPERADOR NÃO PODEM ABRIR CHAMADOS DE REPARAÇÃO / MANUTENÇÃO.'
+            )
 
         base = dados.get('base')
         inventario = dados.get('inventario')
@@ -212,13 +247,19 @@ class ChamadoForm(forms.ModelForm):
 
         hoje = timezone.localdate()
 
-        if categoria_equipamento != 'Sistema' and not equipamento:
+        if operacional and categoria_equipamento != 'Sistema' and not equipamento:
             self.add_error(
                 'equipamento',
                 'INFORME O EQUIPAMENTO RELACIONADO AO CHAMADO.'
             )
 
         # BASE
+        if operacional and not base:
+            self.add_error('base', 'INFORME A REGIONAL DO CHAMADO OPERACIONAL.')
+
+        if operacional and not inventario:
+            self.add_error('inventario', 'INFORME O INVENTÁRIO DO CHAMADO OPERACIONAL.')
+
         if (
             base
             and not ChamadoAccessPolicy.pode_abrir_na_base(
@@ -232,7 +273,7 @@ class ChamadoForm(forms.ModelForm):
             )
 
         # INVENTÁRIO / BASE
-        if (
+        if operacional and (
             inventario
             and base
             and inventario.base_id != base.pk
@@ -243,7 +284,7 @@ class ChamadoForm(forms.ModelForm):
             )
 
         # INVENTÁRIO / DATA
-        if (
+        if operacional and (
             inventario
             and inventario.data_inicio != hoje
         ):
@@ -258,7 +299,7 @@ class ChamadoForm(forms.ModelForm):
             'EM_ANDAMENTO',
         }
 
-        if (
+        if operacional and (
             inventario
             and inventario.status
             not in status_permitidos
@@ -269,7 +310,7 @@ class ChamadoForm(forms.ModelForm):
             )
 
         # LÍDER
-        if (
+        if operacional and (
             inventario
             and not (
                 dados.get('lider')
@@ -282,7 +323,7 @@ class ChamadoForm(forms.ModelForm):
             ).strip()
 
         # EQUIPAMENTO / BASE
-        if (
+        if operacional and (
             equipamento
             and base
             and equipamento.regional_id
@@ -294,7 +335,7 @@ class ChamadoForm(forms.ModelForm):
             )
 
         # EQUIPAMENTO / CATEGORIA
-        if (
+        if operacional and (
             equipamento
             and categoria_equipamento
         ):
@@ -312,6 +353,14 @@ class ChamadoForm(forms.ModelForm):
                     'equipamento',
                     'O EQUIPAMENTO NÃO PERTENCE À CATEGORIA SELECIONADA.'
                 )
+
+        if not operacional:
+            dados.update({
+                'base': None,
+                'inventario': None,
+                'equipamento': None,
+                'lider': '',
+            })
 
         return dados
 

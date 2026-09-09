@@ -45,6 +45,8 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_POST
 from estoque.policies.compras import ComprasAccessPolicy
+from estoque.security import secure_queryset
+from insumos.policies import InsumosTenantPolicy
 
 
 def _permissao_ou_perfil(user, permissao, *roles):
@@ -57,52 +59,31 @@ def _permissao_ou_perfil(user, permissao, *roles):
 
 
 def _pode_acessar_checklist(user, checklist):
-    if user.is_superuser:
-        return True
-    perfil = getattr(user, 'perfil', None)
-    if not perfil:
-        return False
-    if perfil.is_admin:
-        return not perfil.empresa_id or checklist.inventario.base.empresa_id == perfil.empresa_id
-    return bool(
-        checklist.inventario.base_id in perfil.regionais_ids
-        and (
-            not perfil.empresa_id
-            or checklist.inventario.base.empresa_id == perfil.empresa_id
-        )
+    return InsumosTenantPolicy.can_access_base(
+        user,
+        checklist.inventario.base,
+        resource=InsumosTenantPolicy.CHECKLISTS,
     )
 
 @login_required
 @role_required('admin', 'gestor', 'operador')
 def estoque_insumos(request):
-    perfil = request.user.perfil
-
     empresa_id = (request.GET.get('empresa') or '').strip()
     base_id = (request.GET.get('base') or '').strip()
 
 
     # ESCOPO DE BASES PERMITIDAS PARA O USUÁRIO
-    if perfil.pode_ver_empresas_globais:
-        bases_disponiveis_qs = (
-            Base.objects
-            .select_related('empresa')
-            .all()
-            .order_by('empresa__nome', 'nome')
-        )
-    else:
-        bases_disponiveis_qs = (
-            perfil.regionais
-            .select_related('empresa')
-            .all()
-            .order_by('empresa__nome', 'nome')
-        )
+    bases_disponiveis_qs = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.SUPPLIES,
+        queryset=Base.objects.select_related('empresa'),
+    ).order_by('empresa__nome', 'nome')
 
     bases_disponiveis = list(bases_disponiveis_qs)
     total_bases_disponiveis = len(bases_disponiveis)
 
     exibir_filtros = (
-        perfil.pode_ver_empresas_globais
-        or total_bases_disponiveis > 1
+        request.user.is_superuser or total_bases_disponiveis > 1
     )
 
 
@@ -274,12 +255,9 @@ def estoque_insumos(request):
 @login_required
 def kpi_inventarios(request):
 
-    perfil = request.user.perfil
-
-    qs = Inventario.objects.all()
-
-    if not perfil.pode_ver_empresas_globais:
-        qs = qs.filter(base__in=perfil.regionais.all())
+    qs = InsumosTenantPolicy.inventories(
+        request.user, Inventario.objects.all()
+    )
 
     data = {
         "planejados": qs.filter(status="PLANEJADO").count(),
@@ -293,7 +271,9 @@ def kpi_inventarios(request):
 def consumo_por_base(request):
 
     data = (
-        ConsumoInsumo.objects
+        InsumosTenantPolicy.consumptions(
+            request.user, ConsumoInsumo.objects.all()
+        )
         .values("inventario__base__nome")
         .annotate(total=Sum("valor_total"))
         .order_by("-total")
@@ -305,7 +285,9 @@ def consumo_por_base(request):
 def ranking_insumos(request):
 
     data = (
-        ConsumoInsumo.objects
+        InsumosTenantPolicy.consumptions(
+            request.user, ConsumoInsumo.objects.all()
+        )
         .values("insumo__descricao")
         .annotate(total=Sum("quantidade"))
         .order_by("-total")[:10]
@@ -317,7 +299,9 @@ def ranking_insumos(request):
 def consumo_por_mes(request):
 
     data = (
-        ConsumoInsumo.objects
+        InsumosTenantPolicy.consumptions(
+            request.user, ConsumoInsumo.objects.all()
+        )
         .annotate(mes=TruncMonth("criado_em"))
         .values("mes")
         .annotate(total=Sum("valor_total"))
@@ -377,20 +361,16 @@ def cadastrar_insumo(request):
 
     return render(request, 'insumos/cadastrar_insumos.html', {'form': form})
 
+@login_required
 def get_equipamentos_disponiveis(request, categoria):
-
-    regionais_ids = request.user.perfil.bases_checklist_ids
-
-    if request.user.perfil.is_admin:
-        equipamentos = Equipamento.objects.filter(
+    equipamentos = secure_queryset(
+        Equipamento.objects.filter(
             status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL,
             produto__categoria=categoria,
-        )
-    else:
-        equipamentos = Equipamento.objects.filter(
-            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL,
-            produto__categoria=categoria, regional_id__in=regionais_ids,
-        )
+        ),
+        request.user,
+        resource=InsumosTenantPolicy.CHECKLISTS,
+    )
 
     data = [{
         'id': eq.id,
@@ -401,14 +381,12 @@ def get_equipamentos_disponiveis(request, categoria):
 
     return JsonResponse({'results': data})
 
+@login_required
 def get_lotes_tags_disponiveis(request):
-
-    regionais_ids = request.user.perfil.bases_checklist_ids
-
-    if request.user.perfil.is_admin:
-        lotes = LoteTag.objects.filter(ativo=True, quantidade_disponivel__gt=0)
-    else:
-        lotes = LoteTag.objects.filter(ativo=True, quantidade_disponivel__gt=0, base_id__in=regionais_ids)
+    lotes = InsumosTenantPolicy.lots(
+        request.user,
+        LoteTag.objects.filter(ativo=True, quantidade_disponivel__gt=0),
+    )
 
     data = [{
         'id': lote.id,
@@ -692,6 +670,8 @@ def importar_alteracoes_calendario(wb, arquivo_nome, usuario, regional_map, empr
 
 @staff_member_required
 def importar_excel(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied('A importação global é exclusiva do superuser.')
     if request.method == 'POST' and request.FILES.get('arquivo'):
         arquivo = request.FILES['arquivo']
         try:
@@ -1096,7 +1076,13 @@ def importar_excel(request):
 
 @login_required
 def inventario_detalhes(request, inventario_id):
-    inventario = get_object_or_404(Inventario, pk=inventario_id)
+    inventario = get_object_or_404(
+        InsumosTenantPolicy.inventories(
+            request.user,
+            Inventario.objects.select_related('cliente', 'base__empresa'),
+        ),
+        pk=inventario_id,
+    )
     data = {
         'cliente': f"{inventario.cliente.sigla} - {inventario.cliente.nome}",
         'sigla': inventario.cliente.sigla,
@@ -1131,9 +1117,13 @@ def inventario_detalhes(request, inventario_id):
     }
     return JsonResponse(data)
 
+@login_required
 def media_pecas_por_cliente(request):
 
-    inventarios = Inventario.objects.filter(status='FINALIZADO')
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user,
+        Inventario.objects.filter(status='FINALIZADO'),
+    )
 
     total = 0
     count = 0
@@ -1146,8 +1136,20 @@ def media_pecas_por_cliente(request):
     media = total / count if count > 0 else 0
     return JsonResponse({'media_pecas': media})
 
+@login_required
 def planejamento_inventarios(request):
-    inventarios = Inventario.objects.filter(status='PLANEJADO')
+    perfil = request.user.perfil
+    if not (
+        request.user.is_superuser
+        or perfil.is_admin
+        or perfil.is_planejamento_insumos
+        or perfil.is_executivo_insumos
+    ):
+        raise PermissionDenied('Sem permissão para visualizar o planejamento.')
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user,
+        Inventario.objects.filter(status='PLANEJADO'),
+    )
     dados = []
     for inv in inventarios:
         dados.append({
@@ -1179,20 +1181,16 @@ def gerenciar_inventarios(request):
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
-    inventarios = (
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user,
         Inventario.objects
         .select_related('cliente', 'base')
         .only(
             'id', 'cliente__sigla', 'cliente__nome', 'base__nome', 'criado_por_id',
             'loja', 'data_inicio', 'status', 'endereco', 'bairro', 'cidade',
             'lider', 'ponto_encontro', 'previsao_pecas', 'bid', 'cnpj', 'chave',
-        )
+        ),
     )
-
-    if perfil.pode_ver_empresas_globais:
-        inventarios = inventarios.all()
-    else:
-        inventarios = inventarios.filter(base__in=perfil.regionais.all())
 
     if cliente_id:
         inventarios = inventarios.filter(cliente_id=cliente_id)
@@ -1220,11 +1218,10 @@ def gerenciar_inventarios(request):
         'total_inventarios': total_inventarios,
         'querystring': query_params.urlencode(),
         'clientes': Cliente.objects.filter(ativo=True).order_by('sigla'),
-        'regionais': (
-            Base.objects.all().order_by('nome')
-            if perfil.pode_ver_empresas_globais
-            else perfil.regionais.all().order_by('nome')
-        ),
+        'regionais': InsumosTenantPolicy.bases(
+            request.user,
+            resource=InsumosTenantPolicy.INVENTORIES,
+        ).order_by('nome'),
         'status_choices': Inventario.STATUS,
         'filtro_cliente': cliente_id,
         'filtro_regional': regional_id,
@@ -1244,13 +1241,10 @@ def lista_inventarios(request):
     data_fim = request.GET.get('data_fim')
     regional_id = request.GET.get('regional', '')
 
-    # Base queryset com permissões do usuário
-    if request.user.perfil.pode_ver_empresas_globais:
-        inventarios = Inventario.objects.all().select_related('cliente', 'base')
-    else:
-        inventarios = Inventario.objects.filter(
-            base__in=request.user.perfil.regionais.all()
-        ).select_related('cliente', 'base')
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user,
+        Inventario.objects.select_related('cliente', 'base'),
+    )
     inventarios = inventarios.only(
         'id', 'cliente__sigla', 'cliente__nome', 'base__nome',
         'loja', 'data_inicio', 'status', 'pessoas', 'tipo',
@@ -1279,11 +1273,10 @@ def lista_inventarios(request):
     query_params = request.GET.copy()
     query_params.pop('page', None)
 
-    # Lista de regionais para o filtro
-    if request.user.perfil.pode_ver_empresas_globais:
-        regionais = Base.objects.all().order_by('nome')
-    else:
-        regionais = request.user.perfil.regionais.all().order_by('nome')
+    regionais = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.INVENTORIES,
+    ).order_by('nome')
 
     context = {
         'inventarios': page_obj.object_list,
@@ -1303,16 +1296,19 @@ def lista_inventarios(request):
 
 @login_required
 def editar_inventario(request, pk):
-    inventario = get_object_or_404(Inventario, pk=pk)
+    inventario = get_object_or_404(
+        InsumosTenantPolicy.inventories(
+            request.user,
+            Inventario.objects.select_related('base__empresa'),
+            action=InsumosTenantPolicy.EDIT,
+        ),
+        pk=pk,
+    )
     perfil = request.user.perfil
     pode_editar = perfil.is_admin or perfil.is_gestor or perfil.is_planejamento_insumos
     if not pode_editar:
         messages.error(request, 'Você não tem permissão para editar.')
         return redirect('insumos:lista_inventarios')
-    if not perfil.pode_ver_empresas_globais and not perfil.regionais.filter(id=inventario.base_id).exists():
-        messages.error(request, 'Sem permissao para editar esta base.')
-        return redirect('insumos:lista_inventarios')
-
     if request.method == 'POST':
         form = InventarioForm(request.POST, instance=inventario)
         if form.is_valid():
@@ -1346,7 +1342,14 @@ def editar_inventario_modal(request, inventario_id):
     if not request.user.perfil.is_admin:
         return JsonResponse({'error': 'Acesso negado'}, status=403)
 
-    inventario = get_object_or_404(Inventario, pk=inventario_id)
+    inventario = get_object_or_404(
+        InsumosTenantPolicy.inventories(
+            request.user,
+            Inventario.objects.select_related('base__empresa'),
+            action=InsumosTenantPolicy.EDIT,
+        ),
+        pk=inventario_id,
+    )
     if request.method == 'POST':
         form = InventarioForm(request.POST, instance=inventario)
         if form.is_valid():
@@ -1426,9 +1429,13 @@ def exportar_excel(request):
     ws_principal.append(cabecalho_colunas)
 
     # Dados dos inventários (apenas os que estão planejados ou em andamento, ou todos?)
-    inventarios = Inventario.objects.filter(
-        status__in=['PLANEJADO', 'EM_ANDAMENTO']
-    ).select_related('cliente', 'base')
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user,
+        Inventario.objects.filter(
+            status__in=['PLANEJADO', 'EM_ANDAMENTO']
+        ).select_related('cliente', 'base'),
+        action=InsumosTenantPolicy.EXPORT,
+    )
 
     # Ordenar por data e cliente
     inventarios = inventarios.order_by('data_inicio', 'cliente__sigla')
@@ -1556,19 +1563,14 @@ def insumos_por_base(request):
     if not base_id:
         return JsonResponse({'insumos': []})
 
-    perfil = request.user.perfil
-    base = get_object_or_404(Base.objects.select_related('empresa'), pk=base_id)
-    if (
-        not perfil.is_admin and
-        (
-            base.pk not in perfil.bases_checklist_ids or
-            base.empresa_id != perfil.empresa_id
-        )
-    ):
-        return JsonResponse(
-            {'insumos': [], 'erro': 'Base não autorizada.'},
-            status=403,
-        )
+    base = get_object_or_404(
+        InsumosTenantPolicy.bases(
+            request.user,
+            resource=InsumosTenantPolicy.CHECKLISTS,
+            queryset=Base.objects.select_related('empresa'),
+        ),
+        pk=base_id,
+    )
 
     data = [
         {
@@ -1584,7 +1586,8 @@ def insumos_por_base(request):
 
 @login_required
 def lista_checklists(request):
-    checklists = (
+    checklists = InsumosTenantPolicy.checklists(
+        request.user,
         ChecklistDiario.objects
         .select_related(
             "inventario",
@@ -1592,38 +1595,8 @@ def lista_checklists(request):
             "inventario__base",
             "criado_por",
         )
-        .order_by("-data_inicio", "-id")
+        .order_by("-data_inicio", "-id"),
     )
-
-
-    # PERMISSÕES POR PERFIL E BASE
-    perfil = getattr(request.user, "perfil", None)
-
-    if not request.user.is_superuser:
-        if perfil is None:
-            # Usuário sem perfil não pode visualizar checklists.
-            checklists = checklists.none()
-
-        elif perfil.role == "admin":
-            # Admin visualiza somente os registros da própria empresa.
-            if perfil.empresa_id:
-                checklists = checklists.filter(
-                    inventario__base__empresa_id=perfil.empresa_id
-                )
-            else:
-                checklists = checklists.none()
-
-        else:
-            # Gestores e operadores visualizam somente as bases
-            # associadas ao campo regionais do perfil.
-            bases_permitidas = perfil.regionais.values_list(
-                "id",
-                flat=True,
-            )
-
-            checklists = checklists.filter(
-                inventario__base_id__in=bases_permitidas
-            )
 
 
     # PARÂMETROS DOS FILTROS
@@ -1750,13 +1723,20 @@ def lista_checklists(request):
     )
 
 @login_required
+@require_POST
 def finalizar_checklist(request, pk):
-    checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base', 'inventario__cliente'), pk=pk)
+    checklist = get_object_or_404(
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related(
+                'inventario__base__empresa', 'inventario__cliente'
+            ),
+            action=InsumosTenantPolicy.EDIT,
+        ),
+        pk=pk,
+    )
 
     # Verifica permissão (admin, gestor, ou responsável)
-    perfil = request.user.perfil
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not (
         _permissao_ou_perfil(
             request.user, 'insumos.finalizar_checklists', 'admin', 'gestor'
@@ -1786,13 +1766,15 @@ def finalizar_checklist(request, pk):
 @require_POST
 def reabrir_checklist(request, pk):
     checklist = get_object_or_404(
-        ChecklistDiario.objects.select_related(
-            'inventario__base__empresa', 'inventario__cliente'
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related(
+                'inventario__base__empresa', 'inventario__cliente'
+            ),
+            action=InsumosTenantPolicy.EDIT,
         ),
         pk=pk,
     )
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not _permissao_ou_perfil(
         request.user, 'insumos.reabrir_checklists', 'admin'
     ):
@@ -1808,17 +1790,18 @@ def reabrir_checklist(request, pk):
 @login_required
 def checklist_detail(request, pk):
     checklist = get_object_or_404(
-        ChecklistDiario.objects.select_related(
-            'inventario__cliente',
-            'inventario__base',
-            'inventario__base__empresa',
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related(
+                'inventario__cliente',
+                'inventario__base',
+                'inventario__base__empresa',
+            ),
         ),
         pk=pk
     )
 
     perfil = request.user.perfil
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not _permissao_ou_perfil(
         request.user, 'insumos.visualizar_checklists', 'admin', 'gestor', 'operador'
     ):
@@ -2100,16 +2083,18 @@ def checklist_detail(request, pk):
 @login_required
 def imprimir_checklist(request, pk):
     checklist = get_object_or_404(
-        ChecklistDiario.objects.select_related(
-            'inventario__cliente',
-            'inventario__base',
-            'inventario__base__empresa',
-            'responsavel',
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related(
+                'inventario__cliente',
+                'inventario__base',
+                'inventario__base__empresa',
+                'responsavel',
+            ),
+            action=InsumosTenantPolicy.EXPORT,
         ),
         pk=pk,
     )
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not _permissao_ou_perfil(
         request.user, 'insumos.imprimir_checklists', 'admin', 'gestor', 'operador'
     ):
@@ -2282,15 +2267,17 @@ def imprimir_checklist(request, pk):
 @login_required
 def exportar_checklist_modelo(request, pk):
     checklist = get_object_or_404(
-        ChecklistDiario.objects.select_related(
-            'inventario__cliente',
-            'inventario__base',
-            'inventario__base__empresa',
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related(
+                'inventario__cliente',
+                'inventario__base',
+                'inventario__base__empresa',
+            ),
+            action=InsumosTenantPolicy.EXPORT,
         ),
         pk=pk,
     )
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not _permissao_ou_perfil(
         request.user, 'insumos.imprimir_checklists', 'admin', 'gestor', 'operador'
     ):
@@ -2461,11 +2448,16 @@ def exportar_checklist_modelo(request, pk):
 
 @login_required
 def editar_itens_checklist(request, pk):
-    checklist = get_object_or_404(ChecklistDiario.objects.select_related('inventario__base'), pk=pk)
+    checklist = get_object_or_404(
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related('inventario__base__empresa'),
+            action=InsumosTenantPolicy.EDIT,
+        ),
+        pk=pk,
+    )
 
     # Verifica permissão
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not (
         _permissao_ou_perfil(
             request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
@@ -2514,23 +2506,26 @@ def ultimo_checklist_por_loja(request):
         return JsonResponse({'error': 'Inventário não informado'}, status=400)
 
     inventario = get_object_or_404(
-        Inventario.objects.select_related('cliente', 'base', 'base__empresa'),
+        InsumosTenantPolicy.queryset(
+            Inventario.objects.select_related('cliente', 'base', 'base__empresa'),
+            request.user,
+            base_field='base',
+            resource=InsumosTenantPolicy.CHECKLISTS,
+            action=InsumosTenantPolicy.CREATE,
+        ),
         pk=inventario_id,
     )
-    perfil = request.user.perfil
-    if not perfil.is_admin and (
-        inventario.base_id not in perfil.bases_checklist_ids or
-        inventario.base.empresa_id != perfil.empresa_id
-    ):
-        return JsonResponse({'error': 'Base não permitida para este usuário'}, status=403)
 
-    anteriores = ChecklistDiario.objects.filter(
-        inventario__cliente_id=inventario.cliente_id,
-        inventario__loja__iexact=inventario.loja,
-        inventario__base_id=inventario.base_id,
-        inventario__data_inicio__lt=inventario.data_inicio,
-        status__in=['FINALIZADO', 'EM_EXECUCAO'],
-    ).exclude(inventario_id=inventario.id).select_related('inventario')
+    anteriores = InsumosTenantPolicy.checklists(
+        request.user,
+        ChecklistDiario.objects.filter(
+            inventario__cliente_id=inventario.cliente_id,
+            inventario__loja__iexact=inventario.loja,
+            inventario__base_id=inventario.base_id,
+            inventario__data_inicio__lt=inventario.data_inicio,
+            status__in=['FINALIZADO', 'EM_EXECUCAO'],
+        ).exclude(inventario_id=inventario.id).select_related('inventario'),
+    )
 
     # Usa o preenchimento imediatamente anterior, mesmo que o retorno ainda esteja em execução.
     ultimo = anteriores.order_by('-inventario__data_inicio', '-data_inicio').first()
@@ -2578,13 +2573,18 @@ def ultimo_checklist_por_loja(request):
 
 @login_required
 def editar_checklist(request, pk):
-    checklist = get_object_or_404(ChecklistDiario.objects.select_related(
-        'inventario__base', 'inventario__cliente'
-    ), pk=pk)
+    checklist = get_object_or_404(
+        InsumosTenantPolicy.checklists(
+            request.user,
+            ChecklistDiario.objects.select_related(
+                'inventario__base__empresa', 'inventario__cliente'
+            ),
+            action=InsumosTenantPolicy.EDIT,
+        ),
+        pk=pk,
+    )
     perfil = request.user.perfil
 
-    if not _pode_acessar_checklist(request.user, checklist):
-        raise PermissionDenied
     if not (
         _permissao_ou_perfil(
             request.user, 'insumos.preencher_checklists', 'admin', 'gestor'
@@ -2764,25 +2764,24 @@ def editar_checklist(request, pk):
     from estoque.models import Equipamento
     from insumos.models import Insumo
 
-    regionais_ids = perfil.bases_checklist_ids
-    if perfil.is_admin:
-        equipamentos = Equipamento.objects.filter(
+    equipamentos = secure_queryset(
+        Equipamento.objects.filter(
             status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
-        )
-        lotes_tags = RoloTag.objects.filter(status__in=['DISPONIVEL', 'EM_USO'], lote__ativo=True).select_related('lote', 'lote__base')
-    else:
-        equipamentos = Equipamento.objects.filter(
-            status='ATIVO',
-            finalidade=Equipamento.Finalidade.OPERACIONAL,
-            regional_id__in=regionais_ids,
-            regional__empresa=perfil.empresa,
-        )
-        lotes_tags = RoloTag.objects.filter(
+        ),
+        request.user,
+        resource=InsumosTenantPolicy.CHECKLISTS,
+        action=InsumosTenantPolicy.EDIT,
+    )
+    lotes_tags = InsumosTenantPolicy.queryset(
+        RoloTag.objects.filter(
             status__in=['DISPONIVEL', 'EM_USO'],
             lote__ativo=True,
-            lote__base_id__in=regionais_ids,
-            lote__base__empresa=perfil.empresa,
-        ).select_related('lote', 'lote__base')
+        ).select_related('lote', 'lote__base'),
+        request.user,
+        base_field='lote__base',
+        resource=InsumosTenantPolicy.CHECKLISTS,
+        action=InsumosTenantPolicy.EDIT,
+    )
 
     # Obtém itens do checklist para pré-preencher
     itens_checklist = []
@@ -2833,7 +2832,14 @@ def ajustar_estoque_insumo(request):
         messages.error(request, 'Saldo informado inválido.')
         return redirect('insumos:estoque_insumos')
 
-    base = get_object_or_404(Base, id=base_id)
+    base = get_object_or_404(
+        InsumosTenantPolicy.bases(
+            request.user,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.MOVE,
+        ),
+        id=base_id,
+    )
     insumo = get_object_or_404(Insumo, id=insumo_id)
     saldo_anterior = MovimentacaoService.saldo(base, insumo)
 
@@ -2845,7 +2851,13 @@ def ajustar_estoque_insumo(request):
         observacao=motivo,
     )
 
-    admins = User.objects.filter(perfil__role='admin', is_active=True).distinct()
+    admins = User.objects.filter(
+        Q(perfil__empresa=base.empresa)
+        | Q(perfil__empresas_acesso_adicional=base.empresa)
+        | Q(is_superuser=True),
+        perfil__role='admin',
+        is_active=True,
+    ).distinct()
     if admins.exists():
         comunicado = Comunicado.objects.create(
             titulo='Ajuste de estoque de insumo',

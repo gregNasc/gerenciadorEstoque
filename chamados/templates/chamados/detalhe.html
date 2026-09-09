@@ -870,10 +870,12 @@
 
         <div class="chamado-contexto">
 
-          <span class="chamado-contexto__item">
-            <i class="bi bi-building"></i>
-            {{ chamado.base.nome }}
-          </span>
+          {% if chamado.base %}
+            <span class="chamado-contexto__item">
+              <i class="bi bi-building"></i>
+              {{ chamado.base.nome }}
+            </span>
+          {% endif %}
 
           {% if chamado.loja %}
             <span class="chamado-contexto__item">
@@ -918,6 +920,11 @@
 
 
     <div class="chamado-statusbar">
+
+      <span class="chamado-pill {% if chamado.tipo_chamado == 'OPERACIONAL' %}chamado-pill--status{% endif %}">
+        <i class="bi {% if chamado.tipo_chamado == 'OPERACIONAL' %}bi-lightning-charge{% else %}bi-tools{% endif %}"></i>
+        {{ chamado.get_tipo_chamado_display }}
+      </span>
 
       <span class="chamado-pill chamado-pill--status">
         {{ chamado.get_status_display }}
@@ -1073,6 +1080,7 @@
 
 
       <!-- CHAT -->
+      {% if chat_disponivel %}
       <section
         class="chamado-chat"
         aria-labelledby="titulo-chat-chamado"
@@ -1283,6 +1291,7 @@
         {% endif %}
 
       </section>
+      {% endif %}
 
     </div>
 
@@ -1351,6 +1360,11 @@
             <div class="info-grid">
 
               <div class="info-row">
+                <div class="info-label">{% trans "Tipo" %}</div>
+                <div class="info-value">{{ chamado.get_tipo_chamado_display }}</div>
+              </div>
+
+              <div class="info-row">
                 <div class="info-label">
                   {% trans "Inventário" %}
                 </div>
@@ -1373,7 +1387,7 @@
                 </div>
 
                 <div class="info-value">
-                  {{ chamado.get_categoria_equipamento_display|default:'—' }}
+                  {% if chamado.tipo_chamado == 'REPARACAO' and chamado.categoria_equipamento == 'Routers' %}{% trans "Rede" %}{% else %}{{ chamado.get_categoria_equipamento_display|default:'—' }}{% endif %}
                 </div>
               </div>
 

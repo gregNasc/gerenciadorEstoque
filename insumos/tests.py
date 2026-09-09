@@ -39,6 +39,10 @@ class SaldoInsumoPorBaseTests(TestCase):
         self.base_a = Base.objects.create(nome='BASE A', empresa=self.empresa)
         self.base_b = Base.objects.create(nome='BASE B', empresa=self.empresa)
         self.usuario = User.objects.create_user('saldo_por_base')
+        self.usuario.perfil.empresa = self.empresa
+        self.usuario.perfil.role = Perfil.Role.OPERADOR
+        self.usuario.perfil.save()
+        self.usuario.perfil.regionais.add(self.base_a, self.base_b)
         self.categoria = CategoriaInsumo.objects.create(nome='Categoria saldo')
         self.insumo = Insumo.objects.create(
             descricao='Material por base',
@@ -207,7 +211,7 @@ class EstoqueInsumosDesempenhoTests(TestCase):
         self.admin = User.objects.create_user('admin_estoque_rapido', password='teste')
         Perfil.objects.update_or_create(
             user=self.admin,
-            defaults={'empresa': None, 'role': Perfil.Role.ADMIN},
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
         )
         self.admin.refresh_from_db()
         categoria = CategoriaInsumo.objects.create(nome='Categoria estoque rápido')
@@ -243,12 +247,13 @@ class EstoqueInsumosDesempenhoTests(TestCase):
             for item in resposta.context['estoque']
         }
         self.assertEqual(resposta.status_code, 200)
-        self.assertTrue(sem_base.context['aguardando_filtro_base'])
-        self.assertEqual(sem_base.context['estoque'], [])
+        self.assertFalse(sem_base.context['aguardando_filtro_base'])
+        self.assertEqual(len(sem_base.context['estoque']), 2)
         self.assertLess(len(sem_base.content), 250000)
         # Inclui os context processors globais de comunicados e chamados em
         # tempo real; permanece constante e sem N+1 por item.
-        self.assertLess(len(consultas), 35)
+        # Inclui também a resolução central do TenantScope da Etapa 15.
+        self.assertLess(len(consultas), 38)
         self.assertTrue(por_item['ITEM CRÍTICO']['critico'])
         self.assertFalse(por_item['ITEM NORMAL']['critico'])
         self.assertContains(resposta, 'id="formAjusteEstoque"', count=1)
@@ -348,7 +353,7 @@ class UltimoChecklistPorLojaTests(TestCase):
             {'inventario': self.inventario_alvo.id},
         )
 
-        self.assertEqual(resposta.status_code, 403)
+        self.assertEqual(resposta.status_code, 404)
 
     def test_usuario_inicia_vazio_quando_historico_e_de_outra_base(self):
         self.client.force_login(self.operador)
@@ -374,7 +379,7 @@ class ChecklistModeloOficialTests(TestCase):
         )
         Perfil.objects.update_or_create(
             user=self.admin,
-            defaults={'empresa': None, 'role': Perfil.Role.ADMIN},
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
         )
         self.cliente = Cliente.objects.create(
             sigla='MOD',
@@ -796,7 +801,7 @@ class FiltroValorEstoqueCustosTests(TestCase):
         self.admin = User.objects.create_user('admin_filtro_estoque')
         Perfil.objects.update_or_create(
             user=self.admin,
-            defaults={'empresa': None, 'role': Perfil.Role.ADMIN},
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
         )
         categoria = CategoriaInsumo.objects.create(nome='Categoria filtro estoque')
         self.insumo = Insumo.objects.create(

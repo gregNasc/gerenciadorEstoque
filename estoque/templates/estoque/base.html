@@ -664,6 +664,22 @@
                 </li>
                 {% endif %}
 
+                {% if request.user.is_superuser %}
+                <li class="nav-item">
+                    <a class="nav-link"
+                       href="{% url 'estoque:painel_superuser' %}">
+                        <i class="bi bi-shield-lock"></i>
+                        {% trans "Painel Superuser" %}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin:index' %}">
+                        <i class="bi bi-tools"></i>
+                        {% trans "Admin técnico" %}
+                    </a>
+                </li>
+                {% endif %}
+
             </ul>
 
             {% endwith %}

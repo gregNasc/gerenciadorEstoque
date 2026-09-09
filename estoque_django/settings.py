@@ -28,6 +28,27 @@ def env_list(name, default=''):
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def load_local_env(path):
+    """Carrega o .env local sem sobrescrever variáveis já definidas."""
+    if not path.is_file():
+        return
+
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        if value[:1] == value[-1:] and value.startswith(('"', "'")):
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_local_env(BASE_DIR / '.env')
+
 LOCALE_PATHS = [
     BASE_DIR / 'locale',
 ]
@@ -86,6 +107,7 @@ DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
 DATABASE_CONN_MAX_AGE = int(os.getenv('DATABASE_CONN_MAX_AGE', '600'))
 DATABASE_HEALTH_CHECKS = env_bool('DATABASE_HEALTH_CHECKS', True)
 DATABASE_SSL_REQUIRED = env_bool('DATABASE_SSL_REQUIRED', not DEBUG)
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', '').strip()
 
 if DATABASE_URL:
     DATABASES = {
@@ -98,12 +120,16 @@ if DATABASE_URL:
 else:
     if not DEBUG:
         raise ImproperlyConfigured('DATABASE_URL deve ser configurada em produção.')
+    if not POSTGRES_PASSWORD:
+        raise ImproperlyConfigured(
+            'POSTGRES_PASSWORD deve ser configurada no ambiente de desenvolvimento.'
+        )
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('POSTGRES_DB', 'estoque_render_dump'),
             'USER': os.getenv('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'admininventory'),
+            'PASSWORD': POSTGRES_PASSWORD,
             'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
             'PORT': os.getenv('POSTGRES_PORT', '5432'),
             'CONN_MAX_AGE': DATABASE_CONN_MAX_AGE,

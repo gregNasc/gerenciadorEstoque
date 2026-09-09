@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -28,7 +28,8 @@ from ordens_servico.models import OrdemServico
 def _filtrar(request, queryset):
     status = request.GET.get('status', '').strip()
     prioridade = request.GET.get('prioridade', '').strip()
-    base = request.GET.get('base', '').strip()
+    base = (request.GET.get('regional') or request.GET.get('base') or '').strip()
+    tipo_chamado = request.GET.get('tipo_chamado', '').strip()
     busca = request.GET.get('q', '').strip()
     if status:
         queryset = queryset.filter(status=status)
@@ -36,6 +37,8 @@ def _filtrar(request, queryset):
         queryset = queryset.filter(prioridade=prioridade)
     if base.isdigit():
         queryset = queryset.filter(base_id=base)
+    if tipo_chamado in Chamado.Tipo.values:
+        queryset = queryset.filter(tipo_chamado=tipo_chamado)
     if busca:
         queryset = queryset.filter(
             Q(protocolo__icontains=busca)
@@ -50,6 +53,17 @@ def _excel_seguro(valor):
         return f"'{valor}"
     return valor
 
+
+def _adicionar_erro_backend(form, excecao):
+    """Preserva erros por campo sem falhar quando o campo não é exibido no formulário."""
+    if isinstance(excecao, ValidationError) and hasattr(excecao, 'error_dict'):
+        for campo, erros in excecao.error_dict.items():
+            destino = campo if campo in form.fields else None
+            for erro in erros:
+                form.add_error(destino, erro)
+        return
+    form.add_error(None, excecao)
+
 @login_required
 def lista(request):
     qs = _filtrar(
@@ -60,14 +74,12 @@ def lista(request):
     )
     return render(request, 'chamados/lista.html', {
         'chamados': qs[:300],
-        'bases': ChamadoAccessPolicy.bases(request.user),
+        'bases': ChamadoAccessPolicy.bases_atendimento(request.user),
         'status_choices': Chamado.Status.choices,
         'prioridade_choices': Chamado.Prioridade.choices,
+        'tipo_choices': Chamado.Tipo.choices,
         'pode_atender': ChamadoAccessPolicy.pode_atender(request.user),
-        'pode_criar': bool(
-            ChamadoAccessPolicy.bases(request.user).exists()
-            and not ChamadoAccessPolicy.e_admin(request.user)
-        ),
+        'pode_criar': ChamadoAccessPolicy.pode_abrir(request.user),
         'pode_dashboard': ChamadoAccessPolicy.pode_dashboard(request.user),
         'pode_exportar': bool(
             ChamadoAccessPolicy.e_admin(request.user)
@@ -205,8 +217,8 @@ def equipamentos_por_categoria(request):
 
 @login_required
 def criar(request):
-    if ChamadoAccessPolicy.e_admin(request.user):
-        raise PermissionDenied('ADMINISTRADORES ATENDEM CHAMADOS E NÃO ABREM SOLICITAÇÕES.')
+    if not ChamadoAccessPolicy.pode_abrir(request.user):
+        raise PermissionDenied('VOCÊ NÃO POSSUI PERMISSÃO PARA ABRIR CHAMADOS.')
     form = ChamadoForm(
         request.POST or None,
         user=request.user,
@@ -219,7 +231,7 @@ def criar(request):
                 **form.cleaned_data,
             )
         except (PermissionDenied, ValidationError) as exc:
-            form.add_error(None, exc)
+            _adicionar_erro_backend(form, exc)
         else:
             messages.success(
                 request,
@@ -263,7 +275,8 @@ def detalhe(request, pk):
         pk=pk,
     )
     pode_atender = ChamadoAccessPolicy.pode_atender(request.user)
-    mensagens_qs = chamado.mensagens.all()
+    chat_disponivel = chamado.tipo_chamado == Chamado.Tipo.OPERACIONAL
+    mensagens_qs = chamado.mensagens.all() if chat_disponivel else chamado.mensagens.none()
     if not pode_atender:
         mensagens_qs = mensagens_qs.filter(nota_interna=False)
     status_permitidos = ChamadoService.status_permitidos(chamado, request.user)
@@ -298,6 +311,7 @@ def detalhe(request, pk):
         # to both the requester and the attendant after submission.
         'pode_ver_avaliacoes': ChamadoAccessPolicy.e_admin(request.user),
         'pode_interagir': ChamadoAccessPolicy.pode_interagir(request.user, chamado),
+        'chat_disponivel': chat_disponivel,
         'pode_avaliar': chamado.aberto_por_id == request.user.pk and chamado.status == Chamado.Status.AVALIACAO,
         'pode_transferir': chamado.atendente_id and ChamadoAccessPolicy.pode_transferir(request.user, chamado),
         'pode_converter_sick': not chamado.sick_id and ChamadoAccessPolicy.pode_converter_sick(request.user, chamado),
@@ -503,6 +517,13 @@ def dashboard(request):
         request.user
     )
 
+    regional = (request.GET.get('regional') or '').strip()
+    tipo_chamado = (request.GET.get('tipo_chamado') or '').strip()
+    if regional.isdigit():
+        qs = qs.filter(base_id=regional)
+    if tipo_chamado in Chamado.Tipo.values:
+        qs = qs.filter(tipo_chamado=tipo_chamado)
+
     agora = timezone.now()
     hoje = timezone.localdate()
 
@@ -513,7 +534,27 @@ def dashboard(request):
         or 'hoje'
     ).strip()
 
-    if periodo == '7d':
+    data_inicial_texto = (request.GET.get('data_inicial') or '').strip()
+    data_final_texto = (request.GET.get('data_final') or '').strip()
+    data_final = hoje
+
+    if data_inicial_texto or data_final_texto:
+        try:
+            data_inicio = datetime.strptime(data_inicial_texto, '%Y-%m-%d').date()
+            data_final = datetime.strptime(data_final_texto, '%Y-%m-%d').date()
+            if data_inicio > data_final:
+                raise ValueError
+        except ValueError:
+            messages.error(request, 'INFORME UM PERÍODO PERSONALIZADO VÁLIDO.')
+            data_inicio = hoje
+            data_final = hoje
+            periodo = 'hoje'
+            periodo_label = 'Hoje'
+        else:
+            periodo = 'personalizado'
+            periodo_label = f'{data_inicio:%d/%m/%Y} a {data_final:%d/%m/%Y}'
+
+    elif periodo == '7d':
         data_inicio = (
             hoje - timedelta(days=6)
         )
@@ -537,6 +578,11 @@ def dashboard(request):
         ),
         timezone.get_current_timezone(),
     )
+    fim_periodo = timezone.make_aware(
+        datetime.combine(data_final, time.max),
+        timezone.get_current_timezone(),
+    )
+    fim_consulta = min(agora, fim_periodo)
 
     # STATUS TERMINAIS
 
@@ -555,7 +601,9 @@ def dashboard(request):
         status__in=terminais
     )
 
-    aguardando = backlog.filter(
+    backlog_operacional = backlog.filter(tipo_chamado=Chamado.Tipo.OPERACIONAL)
+
+    aguardando = backlog_operacional.filter(
         status__in={
             Chamado.Status.ABERTO,
             Chamado.Status.AGUARDANDO_ATENDIMENTO,
@@ -571,11 +619,12 @@ def dashboard(request):
         status=Chamado.Status.AGUARDANDO_SOLICITANTE
     ).count()
 
-    sla_vencido = backlog.filter(
-        prazo_sla_em__lt=agora
+    sla_vencido = qs.exclude(status=Chamado.Status.CANCELADO).filter(
+        Q(resolvido_em__gt=F('prazo_sla_em'))
+        | Q(resolvido_em__isnull=True, prazo_sla_em__lt=agora)
     ).count()
 
-    criticos = backlog.filter(
+    criticos = backlog_operacional.filter(
         prioridade=Chamado.Prioridade.CRITICA
     ).count()
 
@@ -583,7 +632,7 @@ def dashboard(request):
 
     chamados_periodo = qs.filter(
         aberto_em__gte=inicio_periodo,
-        aberto_em__lte=agora,
+        aberto_em__lte=fim_consulta,
     )
 
     # RESOLVIDOS NO PERÍODO
@@ -593,7 +642,7 @@ def dashboard(request):
     resolvidos_periodo_qs = qs.filter(
         resolvido_em__isnull=False,
         resolvido_em__gte=inicio_periodo,
-        resolvido_em__lte=agora,
+        resolvido_em__lte=fim_consulta,
     )
 
     resolvidos_periodo = (
@@ -676,6 +725,7 @@ def dashboard(request):
         .values(
             'categoria__nome',
             'categoria_equipamento',
+            'tipo_chamado',
         )
         .annotate(
             total=Count('id')
@@ -690,6 +740,8 @@ def dashboard(request):
             or item['categoria_equipamento']
             or 'Não informado'
         )
+        if item['tipo_chamado'] == Chamado.Tipo.REPARACAO and tipo == 'Routers':
+            tipo = 'Rede'
         tipos_suporte_acumulados[tipo] = (
             tipos_suporte_acumulados.get(tipo, 0)
             + item['total']
@@ -779,7 +831,8 @@ def dashboard(request):
         backlog
         .filter(
             Q(
-                prioridade=Chamado.Prioridade.CRITICA
+                tipo_chamado=Chamado.Tipo.OPERACIONAL,
+                prioridade=Chamado.Prioridade.CRITICA,
             )
             |
             Q(
@@ -806,6 +859,14 @@ def dashboard(request):
             # Período
             'periodo': periodo,
             'periodo_label': periodo_label,
+            'data_inicial': data_inicial_texto,
+            'data_final': data_final_texto,
+            'regional_selecionada': regional,
+            'tipo_chamado_selecionado': tipo_chamado,
+            'regionais': ChamadoAccessPolicy.bases_atendimento(
+                request.user
+            ).order_by('nome'),
+            'tipo_choices': Chamado.Tipo.choices,
 
             # Situação atual
             'aguardando': aguardando,
@@ -868,17 +929,23 @@ def exportar(request):
     planilha = workbook.active
     planilha.title = 'CHAMADOS'
     planilha.append([
-        'PROTOCOLO', 'BASE', 'SIGLA DA LOJA', 'NÚMERO DA LOJA', 'CATEGORIA',
+        'PROTOCOLO', 'TIPO', 'REGIONAL', 'SIGLA DA LOJA', 'NÚMERO DA LOJA', 'CATEGORIA',
         'TÍTULO', 'PRIORIDADE', 'STATUS', 'ABERTO POR', 'ATENDENTE', 'ABERTURA',
         'RESOLUÇÃO',
     ])
     for chamado in qs.iterator():
         planilha.append([_excel_seguro(valor) for valor in [
             chamado.protocolo,
-            chamado.base.nome,
+            chamado.get_tipo_chamado_display(),
+            chamado.base.nome if chamado.base_id else '',
             chamado.inventario.cliente.sigla if chamado.inventario_id else '',
             chamado.loja,
-            chamado.categoria_equipamento,
+            (
+                'Rede'
+                if chamado.tipo_chamado == Chamado.Tipo.REPARACAO
+                and chamado.categoria_equipamento == 'Routers'
+                else chamado.get_categoria_equipamento_display()
+            ),
             chamado.titulo,
             chamado.get_prioridade_display(),
             chamado.get_status_display(),

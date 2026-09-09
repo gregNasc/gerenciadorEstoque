@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
@@ -266,6 +267,7 @@ class ChecklistService:
         HistoricoInsumo.objects.create(
             tipo='CHECKLIST',
             usuario=usuario,
+            base=checklist.inventario.base,
             descricao=f'{quantidade} equipamento(s) de {categoria} enviado(s) no checklist {checklist.id}.',
             dados={
                 'checklist': checklist.id,
@@ -318,6 +320,7 @@ class ChecklistService:
         HistoricoInsumo.objects.create(
             tipo='CHECKLIST',
             usuario=usuario,
+            base=checklist.inventario.base,
             descricao=f'Equipamento enviado no checklist {checklist.id}.',
             dados={
                 'checklist': checklist.id,
@@ -331,7 +334,14 @@ class ChecklistService:
 
     @staticmethod
     def _comunicar_admins_equipamento(item_equip, usuario):
-        admins = User.objects.filter(perfil__role='admin', is_active=True).distinct()
+        company = item_equip.checklist.inventario.base.empresa
+        admins = User.objects.filter(
+            Q(perfil__empresa=company)
+            | Q(perfil__empresas_acesso_adicional=company)
+            | Q(is_superuser=True),
+            perfil__role='admin',
+            is_active=True,
+        ).distinct()
         if not admins.exists():
             return None
 
@@ -527,6 +537,7 @@ class ChecklistService:
         HistoricoInsumo.objects.create(
             tipo='CHECKLIST',
             usuario=usuario,
+            base=checklist.inventario.base,
             descricao=f'Lote de TAG adicionado ao checklist {checklist.id}.',
             dados={
                 'checklist': checklist.id,
@@ -691,6 +702,7 @@ class ChecklistService:
         HistoricoInsumo.objects.create(
             tipo='CHECKLIST',
             usuario=usuario,
+            base=checklist.inventario.base,
             descricao=f'Checklist {checklist.pk} reaberto para correção.',
             dados={'checklist': checklist.pk, 'reaberto_em': agora.isoformat()},
         )
@@ -837,6 +849,7 @@ class ChecklistService:
         HistoricoInsumo.objects.create(
             tipo='CHECKLIST',
             usuario=usuario,
+            base=checklist.inventario.base,
             descricao=f'Checklist do inventário {checklist.inventario} finalizado.',
             dados={
                 'checklist': checklist.id,

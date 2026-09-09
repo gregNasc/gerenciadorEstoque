@@ -925,6 +925,13 @@ class HistoricoInsumo(models.Model):
 
     tipo = models.CharField(max_length=30, choices=TIPO)
     usuario = models.ForeignKey(User, on_delete=models.PROTECT)
+    base = models.ForeignKey(
+        Base,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='historicos_insumos',
+    )
     descricao = models.TextField()
     dados = models.JSONField(default=dict, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -932,6 +939,7 @@ class HistoricoInsumo(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['tipo']),
+            models.Index(fields=['base']),
             models.Index(fields=['criado_em']),
         ]
 

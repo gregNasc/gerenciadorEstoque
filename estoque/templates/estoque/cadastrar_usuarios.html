@@ -54,9 +54,15 @@
                                     <label for="role" class="form-label">{% trans "Tipo de acesso" %} <span class="text-danger">*</span></label>
                                     <select name="perfil_acesso" id="role" class="form-select form-select-sm" required>
                                         {% for perfil in perfis_acesso %}
-                                            <option value="{{ perfil.value }}" data-global="{% if perfil.global %}1{% else %}0{% endif %}">{{ perfil.label }}</option>
+                                            <option value="{{ perfil.value }}"
+                                                    data-global="{% if perfil.global %}1{% else %}0{% endif %}"
+                                                    data-funcional="{% if perfil.funcional %}1{% else %}0{% endif %}"
+                                                    data-exige-bases="{% if perfil.exige_bases %}1{% else %}0{% endif %}">{{ perfil.label }}</option>
                                         {% endfor %}
                                     </select>
+                                    <div class="form-text">
+                                        {% trans "Perfis funcionais exigem empresa e bases; eles não concedem acesso global." %}
+                                    </div>
                                 </div>
                                 <div class="col-md-5 d-flex align-items-end">
                                     <div class="form-check form-switch mb-1">
@@ -68,7 +74,8 @@
                                     <div class="d-flex flex-wrap gap-4 border rounded p-2">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" name="usuario_suporte" id="usuario_suporte">
-                                            <label class="form-check-label small" for="usuario_suporte">{% trans "Suporte tecnico" %}</label>
+                                            <label class="form-check-label small" for="usuario_suporte">{% trans "Suporte Inventory Brasil / LATAM / OXXO" %}</label>
+                                            <div class="form-text">{% trans "Pode atender chamados das três empresas, independentemente da empresa e da base do perfil." %}</div>
                                         </div>
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" name="usuario_sick" id="usuario_sick">
@@ -165,12 +172,35 @@
                                     <label for="empresa" class="form-label">{% trans "Empresa" %} <span class="text-danger">*</span></label>
                                     <select name="empresa" id="empresa" class="form-select form-select-sm">
                                         <option value="">{% trans "Selecione a empresa" %}</option>
-                                        {% for empresa in empresas %}
+                                        {% for empresa in empresas_usuario %}
                                             <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-12 d-none" id="escopoEmpresasAdicionais">
+                                    <label class="form-label">{% trans "Empresas adicionais do Admin" %}</label>
+                                    <div class="bases-grid bases-grid-compact" id="empresasAdicionaisGrid">
+                                        {% for relacionamento in relacionamentos_empresas %}
+                                            <label class="base-option empresa-adicional-option"
+                                                   data-origem="{{ relacionamento.empresa_origem_id }}">
+                                                <input type="checkbox"
+                                                       name="empresas_acesso_adicional"
+                                                       value="{{ relacionamento.empresa_destino_id }}">
+                                                <span>
+                                                    <strong>{{ relacionamento.empresa_destino.nome }}</strong>
+                                                    <small>{% trans "Relacionado a" %} {{ relacionamento.empresa_origem.nome }}</small>
+                                                </span>
+                                                <i class="bi bi-check-circle-fill"></i>
+                                            </label>
+                                        {% empty %}
+                                            <div class="text-secondary small py-3">{% trans "Nenhum relacionamento entre empresas configurado." %}</div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="small text-secondary mt-2" id="empresasAdicionaisResumo">
+                                        {% trans "Opcional. Selecione somente as empresas relacionadas que este Admin poderá acessar." %}
+                                    </div>
+                                </div>
+                                <div class="col-12 escopo-bases-operacionais">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                                         <label for="buscaBase" class="form-label mb-0">{% trans "Bases" %} <span class="text-danger">*</span></label>
                                         <div class="d-flex align-items-center gap-2 base-actions">
@@ -206,7 +236,7 @@
                                     </div>
                                     <div class="small text-secondary mt-2" id="basesResumo">{% trans "Selecione uma empresa para filtrar as bases." %}</div>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-12 escopo-bases-operacionais">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                                         <label for="buscaBaseChecklist" class="form-label mb-0">{% trans "Bases do checklist" %}</label>
                                         <div class="d-flex align-items-center gap-2 base-actions">
@@ -287,7 +317,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for usuario in usuarios %}
+                                {% for usuario in usuarios_gerenciados %}
                                     <tr class="usuario-row"
                                         data-search="{{ usuario.username|lower }} {{ usuario.first_name|lower }} {{ usuario.last_name|lower }} {{ usuario.email|lower }} {{ usuario.perfil.empresa.nome|lower }}"
                                         data-id="{{ usuario.id }}"
@@ -304,16 +334,20 @@
                                         data-sick="{% for grupo in usuario.groups.all %}{% if grupo.name == 'SICK_GERENCIAR' %}1{% endif %}{% endfor %}"
                                         data-permissoes="{% for permissao in usuario.user_permissions.all %}{{ permissao.content_type.app_label }}.{{ permissao.codename }}{% if not forloop.last %},{% endif %}{% endfor %}"
                                         data-regionais="{% for base in usuario.perfil.regionais.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
-                                        data-bases-checklist="{% for base in usuario.perfil.bases_checklist.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                        data-bases-checklist="{% for base in usuario.perfil.bases_checklist.all %}{{ base.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                                        data-empresas-adicionais="{% for empresa_adicional in usuario.perfil.empresas_acesso_adicional.all %}{{ empresa_adicional.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                                         <td>
                                             <div class="fw-semibold">{{ usuario.get_full_name|default:usuario.username }}</div>
                                             <div class="text-secondary small">{{ usuario.username }}{% if usuario.email %} · {{ usuario.email }}{% endif %}</div>
                                         </td>
                                         <td>
-                                            {% if usuario.perfil.pode_ver_empresas_globais %}
+                                            {% if usuario.is_superuser %}
                                                 <span class="text-secondary small">{% trans "Todas" %}</span>
                                             {% elif usuario.perfil.empresa %}
-                                                {{ usuario.perfil.empresa.nome }}
+                                                <div>{{ usuario.perfil.empresa.nome }}</div>
+                                                {% for empresa_adicional in usuario.perfil.empresas_acesso_adicional.all %}
+                                                    <span class="badge text-bg-light border mt-1">+ {{ empresa_adicional.nome }}</span>
+                                                {% endfor %}
                                             {% else %}
                                                 <span class="text-danger small">{% trans "Sem empresa" %}</span>
                                             {% endif %}
@@ -401,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const senha = document.getElementById('password');
     const active = document.getElementById('is_active');
     const escopo = document.getElementById('escopoAcesso');
+    const escoposBases = Array.from(document.querySelectorAll('.escopo-bases-operacionais'));
     const buscaBase = document.getElementById('buscaBase');
     const buscaBaseChecklist = document.getElementById('buscaBaseChecklist');
     const bases = Array.from(document.querySelectorAll('.access-base-option'));
@@ -417,6 +452,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnSubmitTexto = document.getElementById('btnSubmitTexto');
     const buscaUsuario = document.getElementById('buscaUsuario');
     const permissionCheckboxes = Array.from(document.querySelectorAll('.permissao-operacional'));
+    const escopoEmpresasAdicionais = document.getElementById('escopoEmpresasAdicionais');
+    const empresasAdicionaisOptions = Array.from(document.querySelectorAll('.empresa-adicional-option'));
+    const empresasAdicionaisCheckboxes = Array.from(document.querySelectorAll('input[name="empresas_acesso_adicional"]'));
+    const empresasAdicionaisResumo = document.getElementById('empresasAdicionaisResumo');
 
     function visibleBaseOptions() {
         return bases.filter(base => base.style.display !== 'none');
@@ -428,6 +467,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function isPerfilGlobal() {
         return role.selectedOptions[0]?.dataset.global === '1';
+    }
+
+    function perfilExigeBases() {
+        return role.selectedOptions[0]?.dataset.exigeBases === '1';
+    }
+
+    function updateEmpresasAdicionaisResumo() {
+        const selecionadas = empresasAdicionaisCheckboxes.filter(cb => cb.checked).length;
+        const disponiveis = empresasAdicionaisOptions.filter(option => option.style.display !== 'none').length;
+        empresasAdicionaisResumo.textContent = disponiveis
+            ? `${selecionadas} empresa(s) adicional(is) selecionada(s) de ${disponiveis} disponível(is).`
+            : 'A empresa principal não possui relacionamentos adicionais ativos.';
+    }
+
+    function filterEmpresasAdicionais(clearHidden) {
+        const empresaId = empresa.value;
+        empresasAdicionaisOptions.forEach(option => {
+            const show = role.value === 'admin' && empresaId && option.dataset.origem === empresaId;
+            option.style.display = show ? '' : 'none';
+            if (clearHidden && !show) {
+                option.querySelector('input[type="checkbox"]').checked = false;
+            }
+        });
+        updateEmpresasAdicionaisResumo();
     }
 
     function updateBasesResumo() {
@@ -502,18 +565,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function toggleEscopo() {
         const global = isPerfilGlobal();
+        const exigeBases = perfilExigeBases();
+        const adminTenant = !global && role.value === 'admin';
         escopo.classList.toggle('d-none', global);
+        escoposBases.forEach(bloco => bloco.classList.toggle('d-none', !exigeBases));
+        escopoEmpresasAdicionais.classList.toggle('d-none', !adminTenant);
         empresa.required = !global;
         checkboxes.forEach(cb => cb.required = false);
 
         if (global) {
             empresa.value = '';
+        }
+        if (global || !exigeBases) {
             checkboxes.forEach(cb => cb.checked = false);
             checkboxesChecklist.forEach(cb => cb.checked = false);
         }
+        if (!adminTenant) {
+            empresasAdicionaisCheckboxes.forEach(cb => cb.checked = false);
+        }
 
-        filterBases(global);
-        filterChecklistBases(global);
+        filterBases(global || !exigeBases);
+        filterChecklistBases(global || !exigeBases);
+        filterEmpresasAdicionais(!adminTenant);
     }
 
     function setModoEdicao(editando) {
@@ -536,6 +609,7 @@ document.addEventListener('DOMContentLoaded', function () {
         permissionCheckboxes.forEach(cb => cb.checked = false);
         checkboxes.forEach(cb => cb.checked = false);
         checkboxesChecklist.forEach(cb => cb.checked = false);
+        empresasAdicionaisCheckboxes.forEach(cb => cb.checked = false);
         setModoEdicao(false);
         toggleEscopo();
         document.getElementById('username').focus();
@@ -559,6 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
         senha.value = '';
         checkboxes.forEach(cb => cb.checked = false);
         checkboxesChecklist.forEach(cb => cb.checked = false);
+        empresasAdicionaisCheckboxes.forEach(cb => cb.checked = false);
 
         const regionais = (row.dataset.regionais || '').split(',').filter(Boolean);
         regionais.forEach(id => {
@@ -576,6 +651,12 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleEscopo();
         filterBases(false);
         filterChecklistBases(false);
+        const empresasAdicionais = (row.dataset.empresasAdicionais || '').split(',').filter(Boolean);
+        empresasAdicionais.forEach(id => {
+            const checkbox = document.querySelector(`input[name="empresas_acesso_adicional"][value="${id}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+        filterEmpresasAdicionais(true);
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -583,7 +664,9 @@ document.addEventListener('DOMContentLoaded', function () {
     empresa.addEventListener('change', () => {
         filterBases(true);
         filterChecklistBases(true);
+        filterEmpresasAdicionais(true);
     });
+    empresasAdicionaisCheckboxes.forEach(cb => cb.addEventListener('change', updateEmpresasAdicionaisResumo));
     buscaBase.addEventListener('input', () => filterBases(false));
     buscaBaseChecklist.addEventListener('input', () => filterChecklistBases(false));
     checkboxes.forEach(cb => cb.addEventListener('change', () => {
@@ -636,15 +719,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('submit', function (event) {
         if (!isPerfilGlobal()) {
+            const exigeBases = perfilExigeBases();
             const algumaBase = checkboxes.some(cb => cb.checked);
             const regionaisSelecionadas = new Set(checkboxes.filter(cb => cb.checked).map(cb => cb.value));
             const checklistForaDoAcesso = checkboxesChecklist.some(cb => cb.checked && !regionaisSelecionadas.has(cb.value));
-            if (!empresa.value || !algumaBase) {
+            if (!empresa.value) {
                 event.preventDefault();
-                alert('Selecione a empresa e ao menos uma base.');
+                alert('Selecione a empresa.');
                 return;
             }
-            if (checklistForaDoAcesso) {
+            if (exigeBases && !algumaBase) {
+                event.preventDefault();
+                alert('Selecione ao menos uma base.');
+                return;
+            }
+            if (exigeBases && checklistForaDoAcesso) {
                 event.preventDefault();
                 alert('As bases do checklist precisam fazer parte das bases de acesso.');
             }

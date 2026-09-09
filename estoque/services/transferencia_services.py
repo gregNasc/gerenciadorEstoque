@@ -2,12 +2,14 @@ from django.db import transaction
 from django.utils import timezone
 from uuid import uuid4
 from estoque.models import (
+    CapacidadeRelacionamentoEmpresa,
     Equipamento,
     Transferencia,
     TransferenciaItem,
     Historico,
     Notificacao,
 )
+from estoque.policies.tenant_operations import TenantOperationPolicy
 from .comunicado_service import ComunicadoService
 
 STATUS_PENDENTE = 'PENDENTE'
@@ -56,6 +58,13 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
     equipamentos = list(equipamentos)
 
     regional_origem = equipamentos[0].regional
+
+    TenantOperationPolicy.require_flow(
+        solicitado_por,
+        regional_origem,
+        regional_destino,
+        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+    )
 
     for equipamento in equipamentos:
 
@@ -174,6 +183,13 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
 @transaction.atomic
 def enviar_transferencia(transferencia, user, codigo_rastreio=''):
 
+    TenantOperationPolicy.require_flow(
+        user,
+        transferencia.regional_origem,
+        transferencia.regional_destino,
+        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+    )
+
     if transferencia.status != STATUS_PENDENTE:
         raise ValueError(
             'Somente transferências pendentes podem ser enviadas.'
@@ -279,6 +295,13 @@ def enviar_transferencia(transferencia, user, codigo_rastreio=''):
 
 @transaction.atomic
 def receber_transferencia(transferencia, user):
+
+    TenantOperationPolicy.require_base(
+        user,
+        transferencia.regional_destino,
+        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+        TenantOperationPolicy.MOVE,
+    )
 
     if transferencia.status != STATUS_EM_TRANSITO:
         raise ValueError(
@@ -389,6 +412,13 @@ def receber_transferencia(transferencia, user):
 
 @transaction.atomic
 def cancelar_transferencia(transferencia, user):
+
+    TenantOperationPolicy.require_base(
+        user,
+        transferencia.regional_origem,
+        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+        TenantOperationPolicy.MOVE,
+    )
 
     if transferencia.status != STATUS_PENDENTE:
         raise ValueError(

@@ -58,15 +58,7 @@ class PlanningService:
 
     @staticmethod
     def _can_view_all_planning(user):
-        perfil = getattr(user, "perfil", None)
-        return bool(
-            perfil
-            and (
-                perfil.is_admin
-                or perfil.is_planejamento_insumos
-                or perfil.is_executivo_insumos
-            )
-        )
+        return bool(user and user.is_superuser)
 
     @staticmethod
     def _scope_for_local_bases(local_base_ids):
@@ -164,9 +156,16 @@ class PlanningService:
         ).prefetch_related("children")
 
         if not cls._can_view_all_planning(user):
+            from insumos.policies import InsumosTenantPolicy
+
+            bases_visiveis = InsumosTenantPolicy.bases(
+                user,
+                resource=InsumosTenantPolicy.INVENTORIES,
+                action=InsumosTenantPolicy.VIEW,
+            )
             queryset = queryset.filter(
                 cls._scope_for_local_bases(
-                    perfil.regionais.values_list("pk", flat=True),
+                    bases_visiveis.values_list("pk", flat=True),
                 )
             )
 

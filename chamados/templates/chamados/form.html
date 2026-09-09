@@ -663,7 +663,7 @@
       </div>
     </div>
 
-    <div class="support-summary__item">
+    <div class="support-summary__item repair-chat-only">
       <span class="support-summary__icon">
         <i class="bi bi-headset" aria-hidden="true"></i>
       </span>
@@ -747,6 +747,24 @@
           </div>
         {% endif %}
 
+        <section class="create-section" aria-labelledby="tipo-chamado-title">
+          <div class="create-section-header">
+            <span class="create-section-number"><i class="bi bi-diagram-3"></i></span>
+            <div>
+              <h2 id="tipo-chamado-title" class="create-section-title">{% trans "Tipo de chamado" %}</h2>
+              <p class="create-section-description">{% trans "Escolha atendimento urgente da operação ou uma solicitação de reparação e manutenção." %}</p>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <label class="form-label" for="{{ form.tipo_chamado.id_for_label }}">{{ form.tipo_chamado.label }} <span class="required-mark">*</span></label>
+              {{ form.tipo_chamado }}
+              {% for error in form.tipo_chamado.errors %}<div class="create-field-error">{{ error }}</div>{% endfor %}
+              <div id="tipo-chamado-ajuda" class="form-text"></div>
+            </div>
+          </div>
+        </section>
+
 
         <!-- ===============================================
              STEP 1
@@ -754,6 +772,7 @@
 
         <section
           class="create-section"
+          id="operational-context-section"
           aria-labelledby="contexto-inventario-title"
         >
 
@@ -944,7 +963,7 @@
 
             <!-- EQUIPAMENTO -->
 
-            <div class="col-md-6">
+            <div class="col-md-6" id="equipment-field">
 
               <label
                 class="form-label"
@@ -1156,7 +1175,7 @@
 
       <!-- SUPPORT PRESENCE -->
 
-      <section class="create-side-card">
+      <section class="create-side-card repair-chat-only">
 
         <div class="create-side-card__header">
           <i class="bi bi-headset"></i>
@@ -1305,6 +1324,34 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    const tipoSelect = document.getElementById('{{ form.tipo_chamado.id_for_label }}');
+    const contextoOperacional = document.getElementById('operational-context-section');
+    const equipamentoField = document.getElementById('equipment-field');
+    const tipoAjuda = document.getElementById('tipo-chamado-ajuda');
+    const repairChatOnly = document.querySelectorAll('.repair-chat-only');
+
+    function atualizarTipoChamado() {
+        const reparacao = tipoSelect?.value === 'REPARACAO';
+        if (contextoOperacional) contextoOperacional.hidden = reparacao;
+        if (equipamentoField) equipamentoField.hidden = reparacao;
+        repairChatOnly.forEach(item => { item.hidden = reparacao; });
+
+        const camposOperacionais = contextoOperacional?.querySelectorAll('select,input,textarea') || [];
+        camposOperacionais.forEach(campo => { campo.disabled = reparacao; });
+        if (equipamentoSelect) equipamentoSelect.disabled = reparacao || categoriaSelect?.value === 'Sistema';
+
+        const opcaoRede = categoriaSelect?.querySelector('option[value="Routers"]');
+        if (opcaoRede) {
+            opcaoRede.dataset.operationalLabel ||= 'Routers';
+            opcaoRede.textContent = reparacao ? 'Rede' : opcaoRede.dataset.operationalLabel;
+        }
+        if (tipoAjuda) {
+            tipoAjuda.textContent = reparacao
+                ? 'SLA de 24 horas corridas. Regional, inventário, loja, equipamento e chat não são necessários.'
+                : 'SLA de 30 minutos. Regional, inventário e loja são obrigatórios.';
+        }
+    }
 
     /* =================================================
        PRIORIDADE
@@ -1759,6 +1806,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
     }
+
+    tipoSelect?.addEventListener('change', function () {
+        atualizarTipoChamado();
+        if (tipoSelect.value === 'OPERACIONAL' && categoriaSelect && baseSelect) {
+            categoriaSelect.dispatchEvent(new Event('change'));
+        }
+    });
+    atualizarTipoChamado();
 
 });
 </script>

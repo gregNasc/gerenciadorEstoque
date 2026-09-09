@@ -1,0 +1,286 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Painel Superuser" %} - Gerenciador de Estoque{% endblock %}
+
+{% block extra_css %}
+<style>
+    .superuser-page {
+        --su-ink: #172033;
+        --su-muted: #667085;
+        --su-line: #e7eaf0;
+        --su-soft: #f6f8fb;
+        --su-accent: #3157d5;
+        --su-accent-soft: #eef2ff;
+        color: var(--su-ink);
+        max-width: 1480px;
+        margin-inline: auto;
+    }
+    .su-hero {
+        position: relative;
+        overflow: hidden;
+        padding: clamp(1.25rem, 3vw, 2rem);
+        border: 1px solid #28344d;
+        border-radius: 1.25rem;
+        background: radial-gradient(circle at 92% 10%, rgba(93,135,255,.32), transparent 31%), linear-gradient(135deg,#111827 0%,#202d49 100%);
+        color: #fff;
+        box-shadow: 0 18px 45px rgba(16,24,40,.14);
+    }
+    .su-hero::after {
+        content: "";
+        position: absolute;
+        width: 210px;
+        height: 210px;
+        right: -75px;
+        bottom: -130px;
+        border: 34px solid rgba(255,255,255,.06);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .su-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .35rem .65rem;
+        margin-bottom: .9rem;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 999px;
+        background: rgba(255,255,255,.09);
+        color: #dce6ff;
+        font-size: .76rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .su-hero h1 { margin-bottom: .55rem; font-size: clamp(1.7rem,3vw,2.4rem); letter-spacing: -.035em; }
+    .su-hero-copy { max-width: 720px; margin: 0; color: #c8d1e2; line-height: 1.55; }
+    .su-hero-actions { position: relative; z-index: 1; }
+    .su-hero .btn-light { color: #172033; font-weight: 650; }
+    .su-hero .btn-outline-light { border-color: rgba(255,255,255,.38); }
+    .su-kpi {
+        position: relative;
+        min-height: 132px;
+        overflow: hidden;
+        border: 1px solid var(--su-line);
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(16,24,40,.055);
+    }
+    .su-kpi::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; background: var(--kpi-color,var(--su-accent)); }
+    .su-kpi-icon {
+        display: grid;
+        width: 46px;
+        height: 46px;
+        flex: 0 0 46px;
+        place-items: center;
+        border-radius: .85rem;
+        background: var(--kpi-soft,var(--su-accent-soft));
+        color: var(--kpi-color,var(--su-accent));
+        font-size: 1.25rem;
+    }
+    .su-kpi-value { font-size: 1.9rem; font-weight: 750; letter-spacing: -.035em; line-height: 1; }
+    .su-kpi-label { margin-top: .38rem; color: var(--su-muted); font-size: .82rem; font-weight: 600; }
+    .su-panel { border: 1px solid var(--su-line); border-radius: 1rem; background: #fff; box-shadow: 0 8px 24px rgba(16,24,40,.045); }
+    .su-section-title { margin: 0; font-size: 1.05rem; font-weight: 750; letter-spacing: -.015em; }
+    .su-section-copy { margin: .25rem 0 0; color: var(--su-muted); font-size: .86rem; }
+    .su-action {
+        display: flex;
+        min-height: 112px;
+        align-items: flex-start;
+        gap: .85rem;
+        padding: 1rem;
+        border: 1px solid var(--su-line);
+        border-radius: .9rem;
+        background: #fff;
+        color: var(--su-ink);
+        text-align: left;
+        text-decoration: none;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .su-action:not(:disabled):hover, .su-action:not(:disabled):focus-visible {
+        border-color: #b8c5f5;
+        color: var(--su-ink);
+        box-shadow: 0 10px 24px rgba(49,87,213,.1);
+        transform: translateY(-2px);
+    }
+    .su-action:disabled { opacity: .62; }
+    .su-action-icon {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        place-items: center;
+        border-radius: .78rem;
+        background: var(--su-accent-soft);
+        color: var(--su-accent);
+        font-size: 1.1rem;
+    }
+    .su-action-title { display: block; margin-bottom: .2rem; font-weight: 700; }
+    .su-action-copy { display: block; color: var(--su-muted); font-size: .8rem; line-height: 1.4; }
+    .su-search { position: relative; width: min(100%,340px); }
+    .su-search .bi-search { position: absolute; top: 50%; left: .9rem; z-index: 2; color: #8a94a6; transform: translateY(-50%); pointer-events: none; }
+    .su-search .form-control { min-height: 42px; padding-left: 2.55rem; border-color: var(--su-line); border-radius: .75rem; background: var(--su-soft); }
+    .su-search .form-control:focus { border-color: #91a6ef; background: #fff; box-shadow: 0 0 0 .2rem rgba(49,87,213,.1); }
+    .su-table thead th {
+        padding-block: .8rem;
+        border-bottom-color: var(--su-line);
+        background: var(--su-soft);
+        color: #667085;
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: .045em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .su-table tbody td { padding-block: 1rem; border-color: #eef0f4; }
+    .su-table tbody tr:last-child td { border-bottom: 0; }
+    .su-company-mark {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        place-items: center;
+        border: 1px solid #dce3f5;
+        border-radius: .78rem;
+        background: #f3f6ff;
+        color: var(--su-accent);
+        font-weight: 750;
+        text-transform: uppercase;
+    }
+    .su-count { display: inline-flex; min-width: 2rem; justify-content: center; padding: .3rem .55rem; border: 1px solid #dfe3eb; border-radius: .55rem; background: #f8f9fb; color: #344054; font-size: .78rem; font-weight: 700; }
+    .su-base-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        max-width: 190px;
+        padding: .28rem .55rem;
+        overflow: hidden;
+        border: 1px solid #e1e5ed;
+        border-radius: 999px;
+        background: #fafbfc;
+        color: #475467;
+        font-size: .75rem;
+        font-weight: 550;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .su-mobile-company { padding: 1rem; border: 1px solid var(--su-line); border-radius: .9rem; background: #fff; }
+    .su-empty-filter { display: none; padding: 3rem 1rem; color: var(--su-muted); text-align: center; }
+    .su-panel-footer { padding: .8rem 1.25rem; border-top: 1px solid var(--su-line); color: var(--su-muted); font-size: .78rem; }
+    .su-security-note { display: flex; align-items: flex-start; gap: .65rem; padding: .8rem .9rem; border: 1px solid #d9e1f7; border-radius: .8rem; background: #f7f9ff; color: #405174; font-size: .78rem; line-height: 1.45; }
+    @media (max-width: 767.98px) {
+        .superuser-page { padding-inline: .75rem !important; }
+        .su-hero-actions, .su-hero-actions .btn, .su-search { width: 100%; }
+        .su-kpi { min-height: 112px; }
+        .su-panel-header { align-items: stretch !important; flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid superuser-page px-4 py-4" id="superuserPanel">
+    <section class="su-hero mb-4" aria-labelledby="superuser-title">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
+            <div class="position-relative" style="z-index:1">
+                <span class="su-eyebrow"><i class="bi bi-shield-check"></i>{% trans "Acesso exclusivo da plataforma" %}</span>
+                <h1 id="superuser-title" class="fw-bold">{% trans "Central de administração" %}</h1>
+                <p class="su-hero-copy">{% trans "Gerencie a estrutura multiempresa, cadastre bases e controle os acessos do sistema em um único lugar." %}</p>
+            </div>
+            <div class="su-hero-actions d-flex flex-column flex-sm-row gap-2">
+                <a href="{% url 'estoque:cadastrar_usuario' %}" class="btn btn-light px-3"><i class="bi bi-person-gear me-2"></i>{% trans "Gerenciar usuários" %}</a>
+                <a href="{% url 'admin:index' %}" class="btn btn-outline-light px-3"><i class="bi bi-tools me-2"></i>{% trans "Admin técnico" %}</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-3 mb-4" aria-label="{% trans 'Resumo da plataforma' %}">
+        <div class="col-12 col-sm-4"><article class="su-kpi" style="--kpi-color:#3157d5;--kpi-soft:#eef2ff"><div class="card-body d-flex align-items-center justify-content-between gap-3 p-4"><div><div class="su-kpi-value">{{ total_empresas }}</div><div class="su-kpi-label">{% trans "Empresas cadastradas" %}</div></div><span class="su-kpi-icon"><i class="bi bi-buildings"></i></span></div></article></div>
+        <div class="col-12 col-sm-4"><article class="su-kpi" style="--kpi-color:#087e8b;--kpi-soft:#e9f8f8"><div class="card-body d-flex align-items-center justify-content-between gap-3 p-4"><div><div class="su-kpi-value">{{ total_bases }}</div><div class="su-kpi-label">{% trans "Bases operacionais" %}</div></div><span class="su-kpi-icon"><i class="bi bi-geo-alt"></i></span></div></article></div>
+        <div class="col-12 col-sm-4"><article class="su-kpi" style="--kpi-color:#b45309;--kpi-soft:#fff5e6"><div class="card-body d-flex align-items-center justify-content-between gap-3 p-4"><div><div class="su-kpi-value">{{ total_usuarios }}</div><div class="su-kpi-label">{% trans "Usuários da operação" %}</div></div><span class="su-kpi-icon"><i class="bi bi-people"></i></span></div></article></div>
+    </section>
+
+    <section class="su-panel p-3 p-lg-4 mb-4" aria-labelledby="quick-actions-title">
+        <div class="mb-3"><h2 class="su-section-title" id="quick-actions-title">{% trans "Ações rápidas" %}</h2><p class="su-section-copy">{% trans "Crie a estrutura primeiro e configure os acessos em seguida." %}</p></div>
+        <div class="row g-3">
+            <div class="col-12 col-md-6 col-xl-3"><button type="button" class="su-action w-100" data-bs-toggle="modal" data-bs-target="#modalNovaEmpresa"><span class="su-action-icon"><i class="bi bi-building-add"></i></span><span><span class="su-action-title">{% trans "Nova empresa" %}</span><span class="su-action-copy">{% trans "Cadastre um novo tenant na plataforma." %}</span></span></button></div>
+            <div class="col-12 col-md-6 col-xl-3"><button type="button" class="su-action w-100" data-bs-toggle="modal" data-bs-target="#modalNovaBase" {% if not empresas %}disabled{% endif %}><span class="su-action-icon"><i class="bi bi-pin-map"></i></span><span><span class="su-action-title">{% trans "Nova base" %}</span><span class="su-action-copy">{% trans "Vincule uma unidade operacional a uma empresa." %}</span></span></button></div>
+            <div class="col-12 col-md-6 col-xl-3"><a href="{% url 'estoque:cadastrar_usuario' %}" class="su-action"><span class="su-action-icon"><i class="bi bi-person-plus"></i></span><span><span class="su-action-title">{% trans "Usuários e acessos" %}</span><span class="su-action-copy">{% trans "Defina empresa, perfil, bases e permissões." %}</span></span></a></div>
+            <div class="col-12 col-md-6 col-xl-3"><a href="{% url 'admin:index' %}" class="su-action"><span class="su-action-icon"><i class="bi bi-diagram-3"></i></span><span><span class="su-action-title">{% trans "Configuração avançada" %}</span><span class="su-action-copy">{% trans "Relacionamentos, capabilities e dados técnicos." %}</span></span></a></div>
+        </div>
+    </section>
+
+    <section class="su-panel overflow-hidden" aria-labelledby="companies-title">
+        <header class="su-panel-header d-flex align-items-center justify-content-between gap-3 p-3 p-lg-4 border-bottom">
+            <div><h2 class="su-section-title" id="companies-title">{% trans "Estrutura de empresas" %}</h2><p class="su-section-copy">{% trans "Consulte os tenants, suas bases e usuários vinculados." %}</p></div>
+            <div class="su-search"><i class="bi bi-search"></i><label class="visually-hidden" for="companySearch">{% trans "Buscar empresa ou base" %}</label><input type="search" class="form-control" id="companySearch" placeholder="{% trans 'Buscar empresa ou base...' %}" autocomplete="off"></div>
+        </header>
+
+        <div class="table-responsive d-none d-md-block">
+            <table class="table su-table align-middle mb-0">
+                <thead><tr><th class="ps-4">{% trans "Empresa" %}</th><th>{% trans "Bases" %}</th><th>{% trans "Usuários" %}</th><th>{% trans "Unidades cadastradas" %}</th><th class="text-end pe-4">{% trans "Ação" %}</th></tr></thead>
+                <tbody>
+                    {% for empresa in empresas %}
+                    <tr class="js-company-row" data-search="{{ empresa.nome }} {% for base in empresa.bases.all %}{{ base.nome }} {% endfor %}">
+                        <td class="ps-4"><div class="d-flex align-items-center gap-3"><span class="su-company-mark">{{ empresa.nome|slice:":1" }}</span><div><div class="fw-semibold">{{ empresa.nome }}</div><div class="small text-secondary">Tenant #{{ empresa.id }}</div></div></div></td>
+                        <td><span class="su-count">{{ empresa.total_bases }}</span></td>
+                        <td><span class="su-count">{{ empresa.total_usuarios }}</span></td>
+                        <td>{% if empresa.total_bases %}<div class="d-flex flex-wrap gap-1">{% for base in empresa.bases.all|slice:":4" %}<span class="su-base-chip" title="{{ base.nome }}"><i class="bi bi-geo-alt-fill"></i>{{ base.nome }}</span>{% endfor %}{% if empresa.total_bases > 4 %}<span class="su-base-chip">+{{ empresa.total_bases|add:"-4" }} {% trans "bases" %}</span>{% endif %}</div>{% else %}<span class="small text-secondary">{% trans "Nenhuma base cadastrada" %}</span>{% endif %}</td>
+                        <td class="text-end pe-4"><a href="{% url 'estoque:index' %}?inventory={{ empresa.id }}" class="btn btn-sm btn-outline-primary">{% trans "Abrir empresa" %}<i class="bi bi-arrow-up-right ms-1"></i></a></td>
+                    </tr>
+                    {% empty %}<tr><td colspan="5" class="text-center py-5 text-secondary"><i class="bi bi-buildings fs-2 d-block mb-2"></i><strong class="d-block text-dark">{% trans "Nenhuma empresa cadastrada" %}</strong><span class="small">{% trans "Use a ação Nova empresa para iniciar a estrutura." %}</span></td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-md-none p-3"><div class="d-grid gap-2">
+            {% for empresa in empresas %}
+            <article class="su-mobile-company js-company-row" data-search="{{ empresa.nome }} {% for base in empresa.bases.all %}{{ base.nome }} {% endfor %}">
+                <div class="d-flex align-items-center gap-3 mb-3"><span class="su-company-mark">{{ empresa.nome|slice:":1" }}</span><div class="min-w-0"><div class="fw-semibold text-truncate">{{ empresa.nome }}</div><div class="small text-secondary">Tenant #{{ empresa.id }}</div></div></div>
+                <div class="d-flex flex-wrap gap-2 mb-3"><span class="su-count"><i class="bi bi-geo-alt me-1"></i>{{ empresa.total_bases }} {% trans "bases" %}</span><span class="su-count"><i class="bi bi-people me-1"></i>{{ empresa.total_usuarios }} {% trans "usuários" %}</span></div>
+                {% if empresa.total_bases %}<div class="d-flex flex-wrap gap-1 mb-3">{% for base in empresa.bases.all|slice:":3" %}<span class="su-base-chip">{{ base.nome }}</span>{% endfor %}{% if empresa.total_bases > 3 %}<span class="su-base-chip">+{{ empresa.total_bases|add:"-3" }}</span>{% endif %}</div>{% endif %}
+                <a href="{% url 'estoque:index' %}?inventory={{ empresa.id }}" class="btn btn-outline-primary w-100">{% trans "Abrir empresa" %}<i class="bi bi-arrow-up-right ms-1"></i></a>
+            </article>
+            {% empty %}<div class="text-center py-5 text-secondary">{% trans "Nenhuma empresa cadastrada." %}</div>{% endfor %}
+        </div></div>
+
+        <div class="su-empty-filter" id="companyEmptyFilter" role="status"><i class="bi bi-search fs-3 d-block mb-2"></i><strong class="d-block text-dark">{% trans "Nenhum resultado encontrado" %}</strong><span>{% trans "Tente buscar por outro nome de empresa ou base." %}</span></div>
+        {% if empresas %}<footer class="su-panel-footer d-flex flex-wrap align-items-center justify-content-between gap-2"><span id="companyResultCount">{{ total_empresas }} {% trans "empresas exibidas" %}</span><span><i class="bi bi-shield-lock me-1"></i>{% trans "Visão exclusiva do Superuser" %}</span></footer>{% endif %}
+    </section>
+
+    <aside class="su-security-note mt-3"><i class="bi bi-info-circle mt-1"></i><span>{% trans "Este painel administra toda a plataforma. Admins de empresa continuam limitados aos tenants e às capabilities explicitamente atribuídas." %}</span></aside>
+</main>
+
+<div class="modal fade" id="modalNovaEmpresa" tabindex="-1" aria-labelledby="modalNovaEmpresaTitulo" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><form method="post" action="{% url 'estoque:painel_superuser' %}">{% csrf_token %}<input type="hidden" name="acao" value="criar_empresa"><div class="modal-header border-0 pb-0"><div><h2 class="modal-title fs-5" id="modalNovaEmpresaTitulo">{% trans "Cadastrar empresa" %}</h2><p class="small text-secondary mb-0">{% trans "Crie um novo tenant para organizar bases e usuários." %}</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fechar' %}"></button></div><div class="modal-body py-4"><label for="empresaNome" class="form-label fw-semibold">{% trans "Nome da empresa" %}</label><input type="text" class="form-control form-control-lg" id="empresaNome" name="nome" maxlength="200" placeholder="{% trans 'Ex.: Inventory Argentina' %}" required><div class="form-text">{% trans "Esse nome aparecerá em filtros, cadastros e relatórios." %}</div></div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">{% trans "Cancelar" %}</button><button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>{% trans "Cadastrar empresa" %}</button></div></form></div></div></div>
+
+<div class="modal fade" id="modalNovaBase" tabindex="-1" aria-labelledby="modalNovaBaseTitulo" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><form method="post" action="{% url 'estoque:painel_superuser' %}">{% csrf_token %}<input type="hidden" name="acao" value="criar_base"><div class="modal-header border-0 pb-0"><div><h2 class="modal-title fs-5" id="modalNovaBaseTitulo">{% trans "Cadastrar base" %}</h2><p class="small text-secondary mb-0">{% trans "Adicione uma unidade operacional a uma empresa." %}</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fechar' %}"></button></div><div class="modal-body py-4"><div class="mb-3"><label for="baseEmpresa" class="form-label fw-semibold">{% trans "Empresa" %}</label><select class="form-select" id="baseEmpresa" name="empresa" required><option value="">{% trans "Selecione a empresa" %}</option>{% for empresa in empresas %}<option value="{{ empresa.id }}">{{ empresa.nome }}</option>{% endfor %}</select></div><div><label for="baseNome" class="form-label fw-semibold">{% trans "Nome da base" %}</label><input type="text" class="form-control" id="baseNome" name="nome" maxlength="100" placeholder="{% trans 'Ex.: São Paulo - Centro' %}" required><div class="form-text">{% trans "Use um nome curto que identifique claramente a unidade." %}</div></div></div><div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">{% trans "Cancelar" %}</button><button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>{% trans "Cadastrar base" %}</button></div></form></div></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const search = document.getElementById('companySearch');
+    const rows = Array.from(document.querySelectorAll('.js-company-row'));
+    const empty = document.getElementById('companyEmptyFilter');
+    const count = document.getElementById('companyResultCount');
+    const total = {{ total_empresas|default:0 }};
+    const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
+    function filterCompanies() {
+        const term = normalize(search?.value.trim());
+        let visible = 0;
+        rows.forEach(function (row) {
+            const show = !term || normalize(row.dataset.search).includes(term);
+            row.classList.toggle('d-none', !show);
+            if (show && row.tagName === 'TR') visible += 1;
+        });
+        if (empty) empty.style.display = total > 0 && visible === 0 ? 'block' : 'none';
+        if (count) count.textContent = `${visible} ${visible === 1 ? 'empresa exibida' : 'empresas exibidas'}`;
+    }
+    search?.addEventListener('input', filterCompanies);
+    ['modalNovaEmpresa','modalNovaBase'].forEach(function (id) {
+        document.getElementById(id)?.addEventListener('shown.bs.modal', function () {
+            this.querySelector('input:not([type="hidden"])')?.focus();
+        });
+    });
+});
+</script>
+{% endblock %}

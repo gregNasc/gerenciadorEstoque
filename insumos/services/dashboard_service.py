@@ -2,12 +2,13 @@ from decimal import Decimal
 from django.db.models import (Sum, Count, F, ExpressionWrapper, DecimalField)
 from django.utils import timezone
 from insumos.models import (ConsumoInsumo, MovimentacaoInsumo, SolicitacaoInsumo, Inventario, Insumo)
+from insumos.policies import InsumosTenantPolicy
 from insumos.services.movimentacao_service import MovimentacaoService
 
 class DashboardService:
 
     @staticmethod
-    def estoque_critico(base=None):
+    def estoque_critico(user, base=None):
 
         queryset = Insumo.objects.filter(ativo=True)
 
@@ -16,16 +17,13 @@ class DashboardService:
         for insumo in queryset:
 
             saldo_total = Decimal('0')
-            bases = (
-                [base]
-                if base
-                else insumo.movimentacaoinsumo_set
-                     .values_list(
-                        'base',
-                        flat=True
-                     )
-                     .distinct()
-            )
+            bases = InsumosTenantPolicy.bases(user)
+            if base:
+                InsumosTenantPolicy.require_base(user, base)
+                bases = bases.filter(pk=base.pk)
+            bases = bases.filter(
+                movimentacaoinsumo__insumo=insumo
+            ).distinct()
 
             for b in bases:
 
@@ -47,7 +45,9 @@ class DashboardService:
         return dados
 
     @staticmethod
-    def saude_estoque(base):
+    def saude_estoque(user, base):
+
+        InsumosTenantPolicy.require_base(user, base)
 
         total = 0
         saudavel = 0
@@ -80,10 +80,10 @@ class DashboardService:
         }
 
     @staticmethod
-    def custo_por_cliente():
+    def custo_por_cliente(user):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'inventario__cliente__sigla',
                 'inventario__cliente__nome',
@@ -97,10 +97,10 @@ class DashboardService:
         )
 
     @staticmethod
-    def custo_por_base():
+    def custo_por_base(user):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'inventario__base__sigla'
             )
@@ -113,10 +113,10 @@ class DashboardService:
         )
 
     @staticmethod
-    def inventarios_maior_custo(limite=10):
+    def inventarios_maior_custo(user, limite=10):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'inventario_id',
                 'inventario__cliente__sigla',
@@ -131,10 +131,10 @@ class DashboardService:
         )
 
     @staticmethod
-    def perdas_periodo(data_inicio, data_fim):
+    def perdas_periodo(user, data_inicio, data_fim):
 
         return (
-            MovimentacaoInsumo.objects
+            InsumosTenantPolicy.movements(user, MovimentacaoInsumo.objects)
             .filter(
                 tipo='PERDA',
                 criado_em__date__range=(
@@ -158,10 +158,10 @@ class DashboardService:
         )
 
     @staticmethod
-    def solicitacoes_pendentes():
+    def solicitacoes_pendentes(user):
 
         return (
-            SolicitacaoInsumo.objects
+            InsumosTenantPolicy.requests(user, SolicitacaoInsumo.objects)
             .filter(
                 status='PENDENTE'
             )
@@ -169,10 +169,10 @@ class DashboardService:
         )
 
     @staticmethod
-    def consumo_mensal(ano):
+    def consumo_mensal(user, ano):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .filter(
                 inventario__data_inicio__year=ano
             )
@@ -190,10 +190,10 @@ class DashboardService:
         )
 
     @staticmethod
-    def top_insumos(limite=10):
+    def top_insumos(user, limite=10):
 
         return (
-            ConsumoInsumo.objects
+            InsumosTenantPolicy.consumptions(user, ConsumoInsumo.objects)
             .values(
                 'insumo__descricao',
                 'insumo__categoria__nome',

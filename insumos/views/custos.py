@@ -29,6 +29,7 @@ from insumos.models import (
 )
 from insumos.services.custo_service import CustoInsumoService
 from insumos.services.preco_online_service import PrecoOnlineErro, PrecoOnlineService
+from insumos.policies import InsumosTenantPolicy
 
 
 def _pode_editar(user):
@@ -61,7 +62,18 @@ def dashboard_custos(request):
     pessoas_texto = request.GET.get('pessoas', '').strip()
     pessoas = int(pessoas_texto) if pessoas_texto.isdigit() else None
     inventario_id = _id_opcional(request.GET.get('inventario'))
-    base = Base.objects.filter(pk=_id_opcional(request.GET.get('base'))).first()
+    bases_visiveis = InsumosTenantPolicy.bases(
+        request.user,
+        resource=InsumosTenantPolicy.INVENTORIES,
+        action=InsumosTenantPolicy.VIEW,
+    )
+    base = bases_visiveis.filter(
+        pk=_id_opcional(request.GET.get('base'))
+    ).first()
+    inventarios_visiveis = InsumosTenantPolicy.inventories(
+        request.user,
+        Inventario.objects.select_related('cliente', 'base'),
+    )
 
     qs = CustoInsumoService.filtrar(
         request.user,
@@ -120,11 +132,11 @@ def dashboard_custos(request):
         'por_tipo': por_tipo,
         'top_insumos': top_insumos,
         'clientes': Cliente.objects.order_by('sigla'),
-        'bases': Base.objects.exclude(nome__iexact='TODAS').order_by('nome'),
-        'lojas': Inventario.objects.order_by('loja').values_list('loja', flat=True).distinct(),
-        'tipos': Inventario.objects.exclude(tipo__isnull=True).exclude(tipo='').order_by('tipo').values_list('tipo', flat=True).distinct(),
-        'inventarios': Inventario.objects.filter(data_inicio__range=(inicio, fim)).select_related(
-            'cliente', 'base'
+        'bases': bases_visiveis.exclude(nome__iexact='TODAS').order_by('nome'),
+        'lojas': inventarios_visiveis.order_by('loja').values_list('loja', flat=True).distinct(),
+        'tipos': inventarios_visiveis.exclude(tipo__isnull=True).exclude(tipo='').order_by('tipo').values_list('tipo', flat=True).distinct(),
+        'inventarios': inventarios_visiveis.filter(
+            data_inicio__range=(inicio, fim)
         ).order_by('cliente__sigla', 'loja'),
         'chart_inventarios': chart_inventarios,
         'chart_clientes': chart_clientes,
