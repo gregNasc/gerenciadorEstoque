@@ -34,6 +34,21 @@ class OrdemServicoService:
     @classmethod
     @transaction.atomic
     def criar(cls, *, empresa, tipo, solicitante, motivo, status=None, prioridade=None, **campos):
+        if not OrdemServicoAccessPolicy.empresas(
+            solicitante,
+            action=OrdemServicoAccessPolicy.CREATE,
+        ).filter(pk=empresa.pk).exists():
+            raise PermissionDenied('Empresa fora do escopo da O.S.')
+        bases_informadas = {
+            getattr(campos.get(nome), 'pk', None)
+            for nome in ('base_responsavel', 'base_origem', 'base_destino')
+            if campos.get(nome) is not None
+        }
+        if bases_informadas and not OrdemServicoAccessPolicy.bases(
+            solicitante,
+            action=OrdemServicoAccessPolicy.CREATE,
+        ).filter(pk__in=bases_informadas).exists():
+            raise PermissionDenied('Bases da O.S. fora do escopo autorizado.')
         ano, numero = cls._proximo_numero(empresa)
         ordem = OrdemServico(
             numero=numero,
@@ -318,7 +333,9 @@ class OrdemServicoService:
         ordem = OrdemServico.objects.select_for_update().get(pk=ordem.pk)
         if not OrdemServicoAccessPolicy.pode_visualizar(usuario, ordem):
             raise PermissionDenied('Sem acesso a esta O.S.')
-        if tipo == OrdemServicoAssinatura.Tipo.AUTORIZACAO and not OrdemServicoAccessPolicy.pode_autorizar(usuario):
+        if tipo == OrdemServicoAssinatura.Tipo.AUTORIZACAO and not OrdemServicoAccessPolicy.pode_autorizar(
+            usuario, ordem
+        ):
             raise PermissionDenied('Sem permissão para autorizar esta O.S.')
         if not isinstance(senha, str) or not usuario.check_password(senha):
             raise ValidationError('Senha inválida. A O.S. não foi assinada.')
@@ -366,6 +383,11 @@ class OrdemServicoService:
     @transaction.atomic
     def registrar_transicao(cls, ordem, *, status, usuario, evento, dados=None):
         ordem = OrdemServico.objects.select_for_update().get(pk=ordem.pk)
+        if not OrdemServicoAccessPolicy.queryset(
+            usuario,
+            action=OrdemServicoAccessPolicy.EDIT,
+        ).filter(pk=ordem.pk).exists():
+            raise PermissionDenied('Sem acesso para alterar esta O.S.')
         anterior = ordem.status
         ordem.status = status
         agora = timezone.now()

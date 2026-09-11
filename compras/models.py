@@ -44,6 +44,70 @@ class CodigoCatalogo(models.Model):
         ]
 
 
+class CatalogoProdutoEmpresa(models.Model):
+    """Seleção tenant-specific sobre o cadastro técnico global de produtos."""
+
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        on_delete=models.CASCADE,
+        related_name='catalogo_produtos',
+    )
+    produto = models.ForeignKey(
+        'estoque.Produto',
+        on_delete=models.CASCADE,
+        related_name='catalogos_empresa',
+    )
+    ativo = models.BooleanField(default=True, db_index=True)
+    preco_referencia = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+    )
+    preco_origem = models.CharField(
+        max_length=30,
+        default='SEM_PRECO_VALIDADO',
+        db_index=True,
+    )
+    preco_fonte = models.CharField(max_length=255, blank=True)
+    preco_fornecedor = models.ForeignKey(
+        'insumos.FornecedorInsumo',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='catalogos_empresa_precificados',
+    )
+    preco_validado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='catalogos_empresa_precos_validados',
+    )
+    preco_validado_em = models.DateTimeField(null=True, blank=True)
+    configurado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='catalogos_produto_configurados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['empresa__nome', 'produto__categoria', 'produto__descricao']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa', 'produto'],
+                name='catalogo_produto_empresa_unico',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.empresa} — {self.produto}'
+
+
 class Aquisicao(models.Model):
     class Status(models.TextChoices):
         RASCUNHO = 'RASCUNHO', 'Rascunho'
@@ -132,6 +196,24 @@ class ItemAquisicao(models.Model):
             ),
         ]
 
+    def clean(self):
+        super().clean()
+        if (
+            self.tipo_item == self.Tipo.EQUIPAMENTO
+            and self.produto_id
+            and self.aquisicao_id
+        ):
+            configuracoes = CatalogoProdutoEmpresa.objects.filter(
+                empresa_id=self.aquisicao.empresa_id,
+            )
+            if configuracoes.exists() and not configuracoes.filter(
+                produto_id=self.produto_id,
+                ativo=True,
+            ).exists():
+                raise ValidationError({
+                    'produto': 'O equipamento não está habilitado no catálogo desta empresa.'
+                })
+
     @property
     def valor_total(self):
         return (self.quantidade * self.valor_unitario) - self.desconto + self.frete + self.impostos
@@ -151,6 +233,14 @@ class VinculoEquipamentoAquisicao(models.Model):
             raise ValidationError({'item': 'O item deve ser do tipo equipamento.'})
         if self.item_id and self.equipamento_id and self.item.produto_id != self.equipamento.produto_id:
             raise ValidationError({'equipamento': 'O produto do equipamento difere do item da aquisição.'})
+        if (
+            self.item_id
+            and self.equipamento_id
+            and self.item.aquisicao.empresa_id != self.equipamento.regional.empresa_id
+        ):
+            raise ValidationError(
+                {'equipamento': 'O equipamento deve pertencer à empresa da aquisição.'}
+            )
 
 
 class HistoricoValorEquipamento(models.Model):
@@ -172,6 +262,13 @@ class HistoricoValorEquipamento(models.Model):
 
 
 class HistoricoPrecoProduto(models.Model):
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='historicos_preco_produto',
+    )
     produto = models.ForeignKey(
         'estoque.Produto',
         on_delete=models.PROTECT,
@@ -249,6 +346,10 @@ class RemessaCompra(models.Model):
         super().clean()
         if self.base_destino_id and self.base_destino.empresa_id != self.empresa_id:
             raise ValidationError({'base_destino': 'A base de destino deve pertencer à empresa.'})
+        if self.base_origem_id and self.base_origem.empresa_id != self.empresa_id:
+            raise ValidationError({'base_origem': 'A base de origem deve pertencer à empresa.'})
+        if self.aquisicao_id and self.aquisicao.empresa_id != self.empresa_id:
+            raise ValidationError({'aquisicao': 'A aquisição deve pertencer à empresa da remessa.'})
         if self.fluxo == self.Fluxo.ENTRE_BASES:
             if not self.base_origem_id:
                 raise ValidationError({'base_origem': 'Informe a base de origem.'})

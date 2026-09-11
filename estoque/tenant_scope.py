@@ -35,7 +35,11 @@ class TenantScope:
         if not user or not user.is_authenticated:
             return cls.empty()
 
+        context_provided = context is not None
         if context is None:
+            cached = getattr(user, '_tenant_scope_request_cache', None)
+            if isinstance(cached, cls) and cached.user_id == user.pk:
+                return cached
             context = cls._load_context(user)
         elif context.user_id != user.pk:
             # Um contexto de outra identidade nunca pode ampliar este usuario.
@@ -45,7 +49,7 @@ class TenantScope:
             )
 
         if user.is_superuser:
-            return cls(
+            scope = cls(
                 user_id=user.pk,
                 primary_company=context.primary_tenant,
                 visible_company_ids=context.tenant_ids,
@@ -55,6 +59,9 @@ class TenantScope:
                 profile_role=context.profile_role,
                 is_platform_scope=True,
             )
+            if context_provided:
+                user._tenant_scope_request_cache = scope
+            return scope
 
         primary_id = context.primary_tenant_id
         visible_ids = (
@@ -83,7 +90,7 @@ class TenantScope:
             )
             manageable_ids = frozenset((primary_id,)) | manageable_related_ids
 
-        return cls(
+        scope = cls(
             user_id=user.pk,
             primary_company=context.primary_tenant,
             visible_company_ids=visible_ids,
@@ -94,6 +101,9 @@ class TenantScope:
             profile_role=context.profile_role,
             is_platform_scope=False,
         )
+        if context_provided:
+            user._tenant_scope_request_cache = scope
+        return scope
 
     @staticmethod
     def _load_context(user):

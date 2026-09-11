@@ -18,7 +18,6 @@ from chamados.models import (
     SequenciaChamado,
 )
 from chamados.policies import ChamadoAccessPolicy
-from estoque.models import Empresa
 from estoque.services.comunicado_service import ComunicadoService
 
 
@@ -31,11 +30,17 @@ class ChamadoService:
 
     @classmethod
     def status_permitidos(cls, chamado, user):
-        if chamado.aberto_por_id == getattr(user, 'pk', None) and not ChamadoAccessPolicy.pode_atender(user):
+        if not ChamadoAccessPolicy.pode_ver(user, chamado):
+            return set()
+        if chamado.aberto_por_id == getattr(
+            user, 'pk', None
+        ) and not ChamadoAccessPolicy.pode_atender_chamado(user, chamado):
             return {Chamado.Status.CANCELADO} if chamado.status in {
                 Chamado.Status.ABERTO, Chamado.Status.AGUARDANDO_ATENDIMENTO,
             } else set()
-        if chamado.atendente_id != getattr(user, 'pk', None) and not ChamadoAccessPolicy.pode_supervisionar(user):
+        if chamado.atendente_id != getattr(
+            user, 'pk', None
+        ) and not ChamadoAccessPolicy.pode_supervisionar_chamado(user, chamado):
             return set()
         mapa = {
             Chamado.Status.EM_ATENDIMENTO: {
@@ -69,6 +74,8 @@ class ChamadoService:
         payload = {
             'id': evento.pk,
             'chamado_id': chamado.pk,
+            'empresa_id': chamado.empresa_id,
+            'base_id': chamado.base_id,
             'solicitante_id': chamado.aberto_por_id,
             'protocolo': chamado.protocolo,
             'titulo': chamado.titulo,
@@ -83,10 +90,14 @@ class ChamadoService:
                 if usuario else ''
             ),
         }
-        grupos = {'chamados_admins'}
+        grupos = {
+            'chamados_superusers',
+            f'chamados_admins_empresa_{chamado.empresa_id}',
+        }
         if tipo == 'ABERTURA':
             if chamado.base_id:
                 grupos.add(f'chamados_atendentes_base_{chamado.base_id}')
+            grupos.add(f'chamados_atendentes_empresa_{chamado.empresa_id}')
         elif tipo not in {'AVALIACAO', 'NOTA_INTERNA'}:
             grupos.add(f'chamados_usuario_{chamado.aberto_por_id}')
             if chamado.atendente_id:
@@ -117,6 +128,7 @@ class ChamadoService:
         }
         metadados.update(dados or {})
         destinatarios = ChamadoService._envolvidos(chamado)
+        destinatarios.extend(ChamadoAccessPolicy.admins_para(chamado))
         if incluir_fila:
             destinatarios.extend(ChamadoAccessPolicy.atendentes_para(chamado))
         return ComunicadoService.criar_acao(
@@ -129,6 +141,7 @@ class ChamadoService:
             tipo=tipo,
             dados=metadados,
             url=f'/chamados/{chamado.pk}/',
+            incluir_admins=False,
         )
 
     @classmethod
@@ -188,8 +201,6 @@ class ChamadoService:
         if tipo_chamado == Chamado.Tipo.REPARACAO:
             perfil = ChamadoAccessPolicy.perfil(usuario)
             empresa = getattr(perfil, 'empresa', None)
-            if empresa is None and ChamadoAccessPolicy.e_admin(usuario):
-                empresa = Empresa.objects.order_by('pk').first()
             if empresa is None:
                 raise ValidationError(
                     'NÃO FOI POSSÍVEL DETERMINAR A EMPRESA DO CHAMADO DE REPARAÇÃO.'
@@ -392,7 +403,9 @@ class ChamadoService:
         chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
         if not ChamadoAccessPolicy.pode_atender(usuario):
             raise PermissionDenied('VOCÊ NÃO PODE ATENDER CHAMADOS.')
-        if not ChamadoAccessPolicy.queryset(usuario).filter(pk=chamado.pk).exists():
+        if not ChamadoAccessPolicy.queryset(
+            usuario, action=ChamadoAccessPolicy.ATTEND
+        ).filter(pk=chamado.pk).exists():
             raise PermissionDenied('O CHAMADO ESTÁ FORA DO SEU ESCOPO DE ATENDIMENTO.')
         if chamado.atendente_id:
             raise ValidationError('O CHAMADO JÁ POSSUI ATENDENTE.')
@@ -431,7 +444,9 @@ class ChamadoService:
             raise ValidationError('O ATENDIMENTO PRECISA SER ASSUMIDO ANTES DO CHAT.')
         if not ChamadoAccessPolicy.pode_interagir(usuario, chamado):
             raise PermissionDenied('VOCÊ NÃO PODE INTERAGIR NESTE CHAMADO.')
-        if nota_interna and not ChamadoAccessPolicy.pode_atender(usuario):
+        if nota_interna and not ChamadoAccessPolicy.pode_atender_chamado(
+            usuario, chamado
+        ):
             raise PermissionDenied('APENAS ATENDENTES PODEM CRIAR NOTAS INTERNAS.')
         mensagem = ChamadoMensagem(
             chamado=chamado, autor=usuario, texto=texto, nota_interna=nota_interna
@@ -509,7 +524,11 @@ class ChamadoService:
     @transaction.atomic
     def resolver(cls, chamado, usuario, *, causa_raiz, solucao):
         chamado = Chamado.objects.select_for_update().get(pk=chamado.pk)
-        if chamado.atendente_id != usuario.pk and not ChamadoAccessPolicy.pode_supervisionar(usuario):
+        if not ChamadoAccessPolicy.pode_ver(usuario, chamado):
+            raise PermissionDenied('O CHAMADO ESTÁ FORA DO SEU ESCOPO.')
+        if chamado.atendente_id != usuario.pk and not (
+            ChamadoAccessPolicy.pode_supervisionar_chamado(usuario, chamado)
+        ):
             raise PermissionDenied('APENAS O ATENDENTE OU SUPERVISOR PODE RESOLVER O CHAMADO.')
         if chamado.status not in {
             Chamado.Status.EM_ATENDIMENTO,
@@ -600,7 +619,7 @@ class ChamadoService:
             chamado, evento, mensagem, usuario,
             {'avaliacao_id': avaliacao.pk, 'atendimento_id': atendimento.pk},
         )
-        admins = User.objects.filter(is_active=True, perfil__role='admin').distinct()
+        admins = ChamadoAccessPolicy.admins_para(chamado)
         ComunicadoService.criar_acao(
             titulo=f'NOTA DO ATENDIMENTO {chamado.protocolo}',
             mensagem=(
@@ -610,7 +629,7 @@ class ChamadoService:
             ),
             usuario=usuario,
             usuarios=admins,
-            incluir_admins=True,
+            incluir_admins=False,
             incluir_autor=False,
             empresa=chamado.empresa,
             tipo='URGENTE' if not resolvido else 'OPERACIONAL',
@@ -647,7 +666,6 @@ class ChamadoService:
             and not ChamadoAccessPolicy.bases_atendimento(atendente_novo).filter(
                 pk=chamado.base_id
             ).exists()
-            and not ChamadoAccessPolicy.e_admin(atendente_novo)
         ):
             raise ValidationError('O NOVO ATENDENTE NÃO POSSUI ACESSO À BASE.')
         anterior = chamado.atendente

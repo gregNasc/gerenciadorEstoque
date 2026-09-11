@@ -25,7 +25,8 @@ class TransferenciaService:
         if not justificativa.strip():
             raise ValidationError('Informe a justificativa da transferência.')
         divergencia = AuditoriaDivergencia.objects.select_for_update(of=('self',)).select_related(
-            'auditoria_base__campanha', 'base_encontrada', 'base_esperada'
+            'auditoria_base__campanha', 'auditoria_base__base__empresa',
+            'base_encontrada', 'base_esperada'
         ).get(pk=divergencia.pk)
         if divergencia.tipo != AuditoriaDivergencia.Tipo.OUTRA_BASE:
             raise ValidationError('Esta divergência não permite transferência direta.')
@@ -42,13 +43,12 @@ class TransferenciaService:
             raise ValidationError('A auditoria não está dentro do prazo de correção.')
         if not divergencia.equipamento_id or not divergencia.base_encontrada_id:
             raise ValidationError('A divergência não possui equipamento e base identificados.')
-        exigir_acesso_base(usuario, divergencia.base_encontrada)
-        TenantOperationPolicy.require_flow(
-            usuario,
-            divergencia.base_encontrada,
-            base_destino,
-            CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
-        )
+        from auditorias.permissions import ACAO_EDITAR
+
+        # A autorização deste fluxo nasce da Base auditada. A Base onde o item
+        # foi encontrado e o destino pertencem à mesma empresa, mas não precisam
+        # estar vinculados ao operador responsável pela correção da auditoria.
+        exigir_acesso_base(usuario, divergencia.auditoria_base.base, acao=ACAO_EDITAR)
         if base_destino.empresa_id != divergencia.base_encontrada.empresa_id:
             raise ValidationError('A base de destino deve pertencer à mesma empresa.')
         if base_destino.pk == divergencia.base_encontrada_id:

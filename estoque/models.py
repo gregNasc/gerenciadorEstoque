@@ -454,7 +454,7 @@ class Produto(models.Model):
     descricao = models.CharField(max_length=255)
     fabricante = models.CharField(max_length=100)
     modelo = models.CharField(max_length=100)
-    categoria = models.CharField(max_length=50, choices=CATEGORIAS, db_index=True)
+    categoria = models.CharField(max_length=50, db_index=True)
     nome_resumido = models.CharField(max_length=120, blank=True)
     sku_fabricante = models.CharField(max_length=100, blank=True, db_index=True)
     subcategoria = models.CharField(max_length=100, blank=True)
@@ -490,6 +490,14 @@ class Produto(models.Model):
     criado_por = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.PROTECT, related_name='produtos_criados'
     )
+    empresa_catalogo_origem = models.ForeignKey(
+        Empresa,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='produtos_catalogo_criados',
+        help_text=_('Empresa que originou o item; vazio identifica um item técnico global.'),
+    )
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -503,6 +511,14 @@ class Produto(models.Model):
 
     def __str__(self):
         return self.descricao
+
+    def get_categoria_display(self):
+        """Compatibilidade com o antigo campo choices e suporte a categorias livres."""
+        categoria = str(self.categoria or '')
+        for codigo, rotulo in self.CATEGORIAS:
+            if codigo.casefold() == categoria.casefold():
+                return rotulo
+        return categoria
 
 # ---------------- EQUIPAMENTO ----------------
 class Equipamento(models.Model):
@@ -593,17 +609,42 @@ class Equipamento(models.Model):
 
     def save(self, *args, **kwargs):
         if self._state.adding and self.produto_id and self.preco_referencia is None:
+            from compras.models import CatalogoProdutoEmpresa
+
             produto = Produto.objects.only(
                 'preco_referencia', 'preco_origem', 'preco_fornecedor_id',
             ).get(pk=self.produto_id)
-            self.preco_referencia = produto.preco_referencia
-            if produto.preco_referencia is not None:
+            catalogo = None
+            if self.regional_id:
+                empresa_id = Base.objects.only('empresa_id').get(
+                    pk=self.regional_id,
+                ).empresa_id
+                catalogo = CatalogoProdutoEmpresa.objects.filter(
+                    empresa_id=empresa_id,
+                    produto_id=self.produto_id,
+                    ativo=True,
+                ).only(
+                    'preco_referencia', 'preco_origem', 'preco_fornecedor_id',
+                ).first()
+            referencia = (
+                catalogo.preco_referencia
+                if catalogo is not None
+                else produto.preco_referencia
+            )
+            origem = catalogo.preco_origem if catalogo is not None else produto.preco_origem
+            fornecedor_id = (
+                catalogo.preco_fornecedor_id
+                if catalogo is not None
+                else produto.preco_fornecedor_id
+            )
+            self.preco_referencia = referencia
+            if referencia is not None:
                 self.origem_valor = (
-                    produto.preco_origem
-                    if produto.preco_origem in Equipamento.OrigemValor.values
+                    origem
+                    if origem in Equipamento.OrigemValor.values
                     else Equipamento.OrigemValor.INFORMADO_COMPRAS
                 )
-                self.fornecedor_id = self.fornecedor_id or produto.preco_fornecedor_id
+                self.fornecedor_id = self.fornecedor_id or fornecedor_id
         if not self.codigo:
             ultimo = Equipamento.objects.order_by('-id').first()
             proximo = (ultimo.id + 1) if ultimo else 1
@@ -1396,6 +1437,14 @@ class VideoDocumentacao(models.Model):
     duracao = models.CharField(max_length=20, blank=True)
     publicado_em = models.DateField(null=True, blank=True)
     ativo = models.BooleanField(default=True)
+    empresa = models.ForeignKey(
+        Empresa,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='videos_documentacao',
+        help_text='Vazio identifica documentação global legada da plataforma.',
+    )
     criado_por = models.ForeignKey(
         User,
         null=True,
@@ -1445,6 +1494,14 @@ class ResolucaoDocumento(models.Model):
     )
     nome_original = models.CharField(max_length=255)
     ativo = models.BooleanField(default=True)
+    empresa = models.ForeignKey(
+        Empresa,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='resolucoes_documentacao',
+        help_text='Vazio identifica documentação global legada da plataforma.',
+    )
     criado_por = models.ForeignKey(
         User,
         null=True,
@@ -1496,6 +1553,14 @@ class DriverImpressora(models.Model):
     nome_original = models.CharField(max_length=255)
     tamanho_bytes = models.PositiveBigIntegerField(default=0)
     ativo = models.BooleanField(default=True)
+    empresa = models.ForeignKey(
+        Empresa,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='drivers_impressora',
+        help_text='Vazio identifica documentação global legada da plataforma.',
+    )
     criado_por = models.ForeignKey(
         User,
         null=True,

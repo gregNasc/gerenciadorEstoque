@@ -153,19 +153,26 @@ class DocumentationService:
     def _clientes_autorizados(cls, user):
         from django.db.models import Prefetch
 
-        from insumos.models import Cliente, ClienteRelatorio, Inventario
+        from insumos.models import (
+            Cliente,
+            ClienteChecklistDocumento,
+            ClienteRelatorio,
+            Inventario,
+        )
+        from estoque.policies.documentation import DocumentationAccessPolicy
         from insumos.utils import secure_queryset_insumos
 
         if user is None or not getattr(user, 'is_authenticated', False):
             return Cliente.objects.none()
-        perfil = getattr(user, 'perfil', None)
-        if not perfil:
-            return Cliente.objects.none()
-        if perfil.is_admin:
+        if user.is_superuser:
             clientes = Cliente.objects.filter(ativo=True)
         else:
             inventarios = secure_queryset_insumos(
-                Inventario.objects.all(), user, campo_base='base'
+                Inventario.objects.all(),
+                user,
+                campo_base='base',
+                resource='INVENTARIOS',
+                action='VISUALIZAR',
             )
             clientes = Cliente.objects.filter(
                 ativo=True, inventarios__in=inventarios
@@ -174,13 +181,31 @@ class DocumentationService:
             ativo=True,
             tipo_relatorio__ativo=True,
         ).select_related('tipo_relatorio')
-        return clientes.select_related('checklist_documento').prefetch_related(
+        documentos = DocumentationAccessPolicy.queryset(
+            ClienteChecklistDocumento.objects.select_related('empresa'),
+            user,
+        ).order_by('empresa_id', '-atualizado_em')
+        return clientes.prefetch_related(
+            Prefetch(
+                'checklist_documentos',
+                queryset=documentos,
+                to_attr='checklists_documentacao',
+            ),
             Prefetch(
                 'relatorios_requeridos',
                 queryset=relatorios,
                 to_attr='relatorios_documentacao',
             )
         )
+
+    @staticmethod
+    def _checklist_do_cliente(cliente):
+        documentos = getattr(cliente, 'checklists_documentacao', None)
+        if documentos is not None:
+            return documentos[0] if documentos else None
+        return cliente.checklist_documentos.order_by(
+            'empresa_id', '-atualizado_em'
+        ).first()
 
     @staticmethod
     def _relatorios_do_cliente(cliente):
@@ -190,7 +215,7 @@ class DocumentationService:
     def _checklists_cliente(cls, user):
         documentos = []
         for cliente in cls._clientes_autorizados(user):
-            checklist = getattr(cliente, 'checklist_documento', None)
+            checklist = cls._checklist_do_cliente(cliente)
             relatorios = cls._relatorios_do_cliente(cliente)
             resumo_arquivo = (
                 f'Arquivo disponível: {checklist.nome_original}.'
@@ -231,8 +256,16 @@ class DocumentationService:
         return documentos
 
     @classmethod
-    def _videos_catalogo(cls):
+    def _videos_catalogo(cls, user=None):
         from estoque.models import VideoDocumentacao
+        from estoque.policies.documentation import DocumentationAccessPolicy
+
+        queryset = VideoDocumentacao.objects.filter(ativo=True)
+        queryset = (
+            DocumentationAccessPolicy.queryset(queryset, user)
+            if user is not None
+            else queryset.filter(empresa__isnull=True)
+        )
 
         return [{
             'id': f'video-{video.pk}',
@@ -258,11 +291,19 @@ class DocumentationService:
             'aliases': [video.titulo, video.produto_codigo],
             'tags': [tag.strip() for tag in video.tags.split(',') if tag.strip()],
             'objeto_id': video.pk,
-        } for video in VideoDocumentacao.objects.filter(ativo=True)]
+        } for video in queryset]
 
     @classmethod
-    def _resolucoes_upload(cls):
+    def _resolucoes_upload(cls, user=None):
         from estoque.models import ResolucaoDocumento
+        from estoque.policies.documentation import DocumentationAccessPolicy
+
+        queryset = ResolucaoDocumento.objects.filter(ativo=True)
+        queryset = (
+            DocumentationAccessPolicy.queryset(queryset, user)
+            if user is not None
+            else queryset.filter(empresa__isnull=True)
+        )
 
         return [{
             'id': f'resolucao-upload-{documento.pk}',
@@ -292,7 +333,7 @@ class DocumentationService:
             'tags': [tag.strip() for tag in documento.tags.split(',') if tag.strip()],
             'objeto_id': documento.pk,
             'resolucao_upload': True,
-        } for documento in ResolucaoDocumento.objects.filter(ativo=True)]
+        } for documento in queryset]
 
     @classmethod
     def listar(
@@ -310,8 +351,8 @@ class DocumentationService:
         termo_normalizado = ManualService.normalizar(termo)
         resultado = []
         catalogo = list(cls._dados_catalogo())
-        catalogo.extend(cls._resolucoes_upload())
-        catalogo.extend(cls._videos_catalogo())
+        catalogo.extend(cls._resolucoes_upload(user))
+        catalogo.extend(cls._videos_catalogo(user))
         if user is not None:
             catalogo.extend(cls._checklists_cliente(user))
         for original in catalogo:
@@ -374,15 +415,15 @@ class DocumentationService:
         }
 
     @classmethod
-    def para_produto(cls, produto):
+    def para_produto(cls, produto, user=None):
         """Retorna documentos pelo vínculo explícito do produto, sem usar texto do chamado."""
         codigo = str(getattr(produto, 'codigo', '') or '').strip()
         if not codigo:
             return []
         catalogo = (
             list(cls._dados_catalogo())
-            + cls._resolucoes_upload()
-            + cls._videos_catalogo()
+            + cls._resolucoes_upload(user)
+            + cls._videos_catalogo(user)
         )
         documentos = [
             cls._preparar_item(item)
@@ -396,10 +437,10 @@ class DocumentationService:
         )
 
     @classmethod
-    def _item_da_pergunta(cls, pergunta, tipo_preferido=''):
+    def _item_da_pergunta(cls, pergunta, tipo_preferido='', user=None):
         texto = ManualService.normalizar(pergunta)
         candidatos = []
-        for item in list(cls._dados_catalogo()) + cls._resolucoes_upload():
+        for item in list(cls._dados_catalogo()) + cls._resolucoes_upload(user):
             if tipo_preferido and item.get('tipo_documento') != tipo_preferido:
                 continue
             melhor_alias = 0
@@ -443,7 +484,7 @@ class DocumentationService:
                 'interpretacao': {'intencao': 'documentacao_clientes'},
                 'contexto': {'intencao': 'documentacao_clientes', 'tipo_documento': 'CHECKLIST_CLIENTE'},
             }
-        checklist = getattr(cliente, 'checklist_documento', None)
+        checklist = cls._checklist_do_cliente(cliente)
         relatorios = cls._relatorios_do_cliente(cliente)
         trecho_relatorios = (
             ' Os relatórios cadastrados são: '
@@ -506,9 +547,9 @@ class DocumentationService:
             or 'documentacao' in texto
         )
         tipo_preferido = 'MANUAL_OFICIAL' if (pede_manual or pede_driver) else ('RESOLUCAO' if pede_resolucao else '')
-        item = cls._item_da_pergunta(pergunta, tipo_preferido)
+        item = cls._item_da_pergunta(pergunta, tipo_preferido, user=user)
         if not item and tipo_preferido:
-            item = cls._item_da_pergunta(pergunta)
+            item = cls._item_da_pergunta(pergunta, user=user)
         if not tem_marcador and not item:
             return None
 

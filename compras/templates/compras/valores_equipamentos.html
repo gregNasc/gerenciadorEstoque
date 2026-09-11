@@ -214,6 +214,9 @@
         </a>
         {% endif %}
         {% if pode_catalogo %}
+        <a class="btn btn-outline-light" href="{% url 'compras:catalogo_empresa' %}">
+          <i class="bi bi-sliders me-1"></i> {% trans "Configurar catálogo" %}
+        </a>
         <a class="btn btn-outline-light" href="{% url 'compras:criar_produto_catalogo' %}">
           <i class="bi bi-plus-lg me-1"></i> {% trans "Novo item" %}
         </a>
@@ -373,7 +376,7 @@
             <td><div>{{ e.patrimonio|default:"—" }}</div><div class="equipment-meta">{% trans "Serie" %}: {{ e.numero_serie|default:"—" }}</div></td>
             <td><span class="badge rounded-pill text-bg-light border">{{ e.get_status_display }}</span></td>
             <td class="fw-semibold text-nowrap">{% if e.valor_considerado %}R$ {{ e.valor_considerado|floatformat:2 }}{% else %}—{% endif %}</td>
-            <td>{% if e.custo_aquisicao != None %}<span class="price-pill">{% trans "Custo da unidade" %}</span>{% elif e.produto.preco_referencia != None %}<span class="price-pill">{{ e.produto.get_preco_origem_display }}</span>{% elif e.preco_referencia != None %}<span class="price-pill">{{ e.get_origem_valor_display }}</span>{% else %}<span class="price-pill pending">{% trans "Pendente" %}</span>{% endif %}</td>
+            <td>{% if e.custo_aquisicao != None %}<span class="price-pill">{% trans "Custo da unidade" %}</span>{% elif e.preco_referencia != None %}<span class="price-pill">{{ e.get_origem_valor_display }}</span>{% else %}<span class="price-pill pending">{% trans "Pendente" %}</span>{% endif %}</td>
           </tr>
           <tr id="detalhe-equipamento-{{ e.pk }}" class="inventory-detail-row d-none">
             <td colspan="6">
@@ -389,8 +392,8 @@
                     <div class="detail-fact"><small>{% trans "Numero de serie" %}</small><span>{{ e.numero_serie|default:"—" }}</span></div>
                     <div class="detail-fact"><small>{% trans "Finalidade / status" %}</small><span>{{ e.get_finalidade_display }} · {{ e.get_status_display }}</span></div>
                     <div class="detail-fact"><small>{% trans "Custo da unidade" %}</small><span>{% if e.custo_aquisicao != None %}R$ {{ e.custo_aquisicao|floatformat:2 }}{% else %}—{% endif %}</span></div>
-                    <div class="detail-fact"><small>{% trans "Fonte atual" %}</small><span>{{ e.produto.preco_fonte|default:"—" }}</span></div>
-                    <div class="detail-fact"><small>{% trans "Validado por" %}</small><span>{% if e.produto.preco_validado_por %}{{ e.produto.preco_validado_por.get_full_name|default:e.produto.preco_validado_por.username }}{% else %}—{% endif %}{% if e.produto.preco_validado_em %} · {{ e.produto.preco_validado_em|date:'d/m/Y H:i' }}{% endif %}</span></div>
+                    <div class="detail-fact"><small>{% trans "Fonte atual" %}</small><span>{{ e.preco_empresa_fonte|default:"—" }}</span></div>
+                    <div class="detail-fact"><small>{% trans "Validado por" %}</small><span>{% if e.preco_empresa_validado_por %}{{ e.preco_empresa_validado_por.get_full_name|default:e.preco_empresa_validado_por.username }}{% else %}—{% endif %}{% if e.preco_empresa_validado_em %} · {{ e.preco_empresa_validado_em|date:'d/m/Y H:i' }}{% endif %}</span></div>
                   </div>
                 </section>
                 <section class="detail-card">
@@ -399,12 +402,12 @@
                   <form method="post" action="{% url 'compras:alterar_preco_produto' e.pk %}" class="price-edit-form">
                     {% csrf_token %}
                     <input type="hidden" name="retorno" value="{{ request.get_full_path }}#equipamento-{{ e.pk }}">
-                    <div class="price-scope-note mb-3"><i class="bi bi-info-circle-fill"></i><span>{% trans "Esta alteracao vale para todas as unidades vinculadas ao mesmo produto e gera historico." %}</span></div>
+                    <div class="price-scope-note mb-3"><i class="bi bi-info-circle-fill"></i><span>{% trans "Esta alteracao vale somente para as unidades deste produto nesta empresa e gera historico." %}</span></div>
                     <div class="row g-2">
-                      <div class="col-md-4"><label class="form-label" for="preco-{{ e.pk }}">{% trans "Preco de referencia" %}</label><div class="input-group"><span class="input-group-text">R$</span><input id="preco-{{ e.pk }}" class="form-control" type="number" name="preco_referencia" min="0" step="0.01" value="{% if e.produto.preco_referencia != None %}{{ e.produto.preco_referencia|unlocalize }}{% endif %}" required></div></div>
-                      <div class="col-md-4"><label class="form-label" for="origem-{{ e.pk }}">{% trans "Origem" %}</label><select id="origem-{{ e.pk }}" class="form-select" name="preco_origem" required>{% for valor, rotulo in origens_preco %}{% if valor != 'SEM_PRECO_VALIDADO' %}<option value="{{ valor }}" {% if e.produto.preco_origem == valor %}selected{% endif %}>{{ rotulo }}</option>{% endif %}{% endfor %}</select></div>
-                      <div class="col-md-4"><label class="form-label" for="fornecedor-{{ e.pk }}">{% trans "Fornecedor" %}</label><select id="fornecedor-{{ e.pk }}" class="form-select" name="preco_fornecedor"><option value="">{% trans "Nao informado" %}</option>{% for fornecedor in fornecedores_preco %}<option value="{{ fornecedor.pk }}" {% if e.produto.preco_fornecedor_id == fornecedor.pk %}selected{% endif %}>{{ fornecedor.nome }}</option>{% endfor %}</select></div>
-                      <div class="col-md-6"><label class="form-label" for="fonte-{{ e.pk }}">{% trans "Fonte / documento" %}</label><input id="fonte-{{ e.pk }}" class="form-control" name="preco_fonte" maxlength="255" value="{{ e.produto.preco_fonte }}" placeholder="{% trans 'Ex.: cotacao, nota fiscal ou pesquisa' %}"></div>
+                      <div class="col-md-4"><label class="form-label" for="preco-{{ e.pk }}">{% trans "Preco de referencia" %}</label><div class="input-group"><span class="input-group-text">R$</span><input id="preco-{{ e.pk }}" class="form-control" type="number" name="preco_referencia" min="0" step="0.01" value="{% if e.preco_referencia != None %}{{ e.preco_referencia|unlocalize }}{% endif %}" required></div></div>
+                      <div class="col-md-4"><label class="form-label" for="origem-{{ e.pk }}">{% trans "Origem" %}</label><select id="origem-{{ e.pk }}" class="form-select" name="preco_origem" required>{% for valor, rotulo in origens_preco %}{% if valor != 'SEM_PRECO_VALIDADO' %}<option value="{{ valor }}" {% if e.origem_valor == valor %}selected{% endif %}>{{ rotulo }}</option>{% endif %}{% endfor %}</select></div>
+                      <div class="col-md-4"><label class="form-label" for="fornecedor-{{ e.pk }}">{% trans "Fornecedor" %}</label><select id="fornecedor-{{ e.pk }}" class="form-select" name="preco_fornecedor"><option value="">{% trans "Nao informado" %}</option>{% for fornecedor in fornecedores_preco %}<option value="{{ fornecedor.pk }}" {% if e.preco_empresa_fornecedor_id == fornecedor.pk %}selected{% endif %}>{{ fornecedor.nome }}</option>{% endfor %}</select></div>
+                      <div class="col-md-6"><label class="form-label" for="fonte-{{ e.pk }}">{% trans "Fonte / documento" %}</label><input id="fonte-{{ e.pk }}" class="form-control" name="preco_fonte" maxlength="255" value="{{ e.preco_empresa_fonte }}" placeholder="{% trans 'Ex.: cotacao, nota fiscal ou pesquisa' %}"></div>
                       <div class="col-md-6"><label class="form-label" for="motivo-{{ e.pk }}">{% trans "Motivo da alteracao" %}</label><input id="motivo-{{ e.pk }}" class="form-control" name="observacao_preco" maxlength="500" required placeholder="{% trans 'Explique por que o valor foi atualizado' %}"></div>
                       <div class="col-12 d-flex justify-content-end mt-3"><button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> {% trans "Salvar novo preco" %}</button></div>
                     </div>

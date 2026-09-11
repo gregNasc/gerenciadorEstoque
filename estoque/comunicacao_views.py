@@ -8,35 +8,34 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import ComunicadoArquivo, ComunicadoEntrega
+from .policies.communications import CommunicationAccessPolicy
 from .services.comunicacoes.consentimento_service import WhatsAppConsentimentoService
 from .services.comunicacoes.phone import mascarar_whatsapp
 
 
 @login_required
 def baixar_arquivo_comunicado(request, arquivo_id):
-    perfil = getattr(request.user, 'perfil', None)
-    empresa_id = perfil.empresa_id if perfil else None
     escopo = ComunicadoArquivo.objects.select_related('comunicado').filter(
-        Q(comunicado__enviar_para_todos=True)
-        | Q(comunicado__usuarios=request.user)
-        | Q(comunicado__empresa_id=empresa_id)
-    ).distinct()
+        comunicado__in=CommunicationAccessPolicy.comunicados(request.user)
+    )
     arquivo = get_object_or_404(escopo, pk=arquivo_id)
     nome = Path(arquivo.arquivo.name).name
     content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
-    return FileResponse(
+    resposta = FileResponse(
         arquivo.arquivo.open('rb'),
         as_attachment=True,
         filename=nome,
         content_type=content_type,
     )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
 
 
 @login_required
@@ -80,6 +79,11 @@ def _assinatura_valida(request):
 
 @csrf_exempt
 def whatsapp_webhook(request):
+    # A conta Meta recebe callbacks de todos os tenants. O payload global só é
+    # aceito após a verificação criptográfica e cada status é aplicado à
+    # entrega interna identificada pelo provider_message_id.
+    from integracao.scopes import IntegrationExecutionScope
+    IntegrationExecutionScope.platform_global('WHATSAPP_WEBHOOK')
     if request.method == 'GET':
         if (
             settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN

@@ -85,10 +85,10 @@
         <div class="cost-panel-header"><h2>{% trans "Cotações recentes" %}</h2><p>{% trans "Últimos preços ativos informados pelos fornecedores." %}</p></div>
         <div class="table-responsive">
             <table class="table cost-table cost-responsive-table align-middle">
-                <thead><tr><th>{% trans "Data" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th></tr></thead>
+                <thead><tr><th>{% trans "Data" %}</th><th>{% trans "Empresa" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th></tr></thead>
                 <tbody>
                 {% for preco in precos_recentes %}
-                <tr><td data-label="{% trans 'Data' %}">{{ preco.vigente_desde|date:'d/m/Y' }}</td><td data-label="{% trans 'Insumo' %}"><strong>{{ preco.insumo.descricao }}</strong></td><td data-label="{% trans 'Fornecedor' %}">{{ preco.fornecedor.nome }}</td><td data-label="{% trans 'Preço unitário' %}" class="money-cell">R$ {{ preco.valor_unitario|floatformat:4 }}</td></tr>
+                <tr><td data-label="{% trans 'Data' %}">{{ preco.vigente_desde|date:'d/m/Y' }}</td><td data-label="{% trans 'Empresa' %}">{{ preco.empresa.nome|default:'Plataforma' }}</td><td data-label="{% trans 'Insumo' %}"><strong>{{ preco.insumo.descricao }}</strong></td><td data-label="{% trans 'Fornecedor' %}">{{ preco.fornecedor.nome }}</td><td data-label="{% trans 'Preço unitário' %}" class="money-cell">R$ {{ preco.valor_unitario|floatformat:4 }}</td></tr>
                 {% empty %}<tr><td colspan="4" class="cost-empty"><i class="bi bi-receipt"></i>{% trans "Nenhuma cotação ativa." %}</td></tr>{% endfor %}
                 </tbody>
             </table>

@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from estoque.models import ComunicadoEntrega
+from integracao.scopes import IntegrationExecutionScope, IntegrationScopeError
 
 from .providers import DisabledWhatsAppProvider, obter_provedor
 from .providers.base import ProviderResult
@@ -28,7 +29,9 @@ class OutboxService:
                 ultimo_erro='PROCESSAMENTO ANTERIOR EXPIROU E FOI REAGENDADO.',
             )
             entregas = list(
-                ComunicadoEntrega.objects.select_for_update(skip_locked=True).filter(
+                ComunicadoEntrega.objects.select_related(
+                    'comunicado__criado_por'
+                ).select_for_update(skip_locked=True).filter(
                     canal=canal,
                     status__in=[ComunicadoEntrega.Status.PENDENTE, ComunicadoEntrega.Status.FALHA],
                 ).filter(
@@ -48,6 +51,7 @@ class OutboxService:
                 processadas.append(entrega.pk)
                 continue
             try:
+                integration_scope = cls._integration_scope(entrega)
                 payload = construir_payload(
                     template_codigo=entrega.template_codigo,
                     idioma=entrega.parametros.get('idioma'),
@@ -57,8 +61,9 @@ class OutboxService:
                     destino=entrega.destino,
                     payload=payload,
                     idempotency_key=str(entrega.idempotency_key),
+                    execution_scope=integration_scope,
                 )
-            except TemplatePayloadError as exc:
+            except (TemplatePayloadError, IntegrationScopeError) as exc:
                 resultado = ProviderResult(sucesso=False, erro=str(exc), repetivel=False)
             except Exception:
                 resultado = ProviderResult(
@@ -69,6 +74,27 @@ class OutboxService:
             cls._persistir_resultado(entrega.pk, resultado)
             processadas.append(entrega.pk)
         return processadas
+
+    @staticmethod
+    def _integration_scope(entrega):
+        declared = entrega.parametros.get('_integration_scope') or {}
+        kind = declared.get('kind')
+        source = declared.get('source') or 'WHATSAPP_COMUNICADOS'
+        company_id = declared.get('company_id')
+        if kind:
+            return IntegrationExecutionScope(
+                kind=kind,
+                source=source,
+                company_id=company_id,
+            )
+        comunicado = entrega.comunicado
+        if comunicado.empresa_id:
+            return IntegrationExecutionScope.tenant(source, comunicado.empresa_id)
+        if comunicado.criado_por.is_superuser:
+            return IntegrationExecutionScope.platform_global(source)
+        raise IntegrationScopeError(
+            'Entrega externa sem empresa ou escopo global autorizado.'
+        )
 
     @staticmethod
     def _marcar_ignorada(entrega_id, motivo):

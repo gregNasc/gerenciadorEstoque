@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from compras.models import Aquisicao, ItemAquisicao, RemessaCompra
@@ -27,6 +28,25 @@ class ItemAquisicaoForm(forms.Form):
     frete = forms.DecimalField(min_value=0, decimal_places=2, initial=0)
     impostos = forms.DecimalField(min_value=0, decimal_places=2, initial=0)
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from estoque.policies.compras import ComprasAccessPolicy
+
+        empresas = ComprasAccessPolicy.empresas(
+            user,
+            action=ComprasAccessPolicy.CREATE,
+        )
+        empresa_id = self.data.get('empresa') if self.is_bound else None
+        empresa = (
+            empresas.filter(pk=empresa_id).first()
+            if empresa_id and str(empresa_id).isdigit()
+            else empresas.first()
+        )
+        self.fields['produto'].queryset = ComprasAccessPolicy.produtos_catalogo(
+            user,
+            empresa=empresa,
+        )
+
 
 class ImportacaoPrecificacaoForm(forms.Form):
     arquivo = forms.FileField(
@@ -40,6 +60,32 @@ class ImportacaoPrecificacaoForm(forms.Form):
         if arquivo.size > 10 * 1024 * 1024:
             raise forms.ValidationError(_('A planilha não pode ultrapassar 10 MB.'))
         return arquivo
+
+
+class CatalogoEmpresaForm(forms.Form):
+    empresa = forms.ModelChoiceField(queryset=None, label='Empresa')
+    produtos = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label='Equipamentos disponíveis',
+    )
+
+    def __init__(self, *args, user=None, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from estoque.policies.compras import ComprasAccessPolicy
+
+        empresas = ComprasAccessPolicy.empresas(
+            user,
+            action=ComprasAccessPolicy.ADMIN,
+            resource=ComprasAccessPolicy.CATALOGO,
+        ).order_by('nome')
+        self.fields['empresa'].queryset = empresas
+        self.fields['produtos'].queryset = Produto.objects.filter(
+            Q(empresa_catalogo_origem=None)
+            | Q(empresa_catalogo_origem__in=empresas),
+            ativo=True,
+        ).order_by('categoria', 'descricao')
 
 
 class RemessaForm(forms.Form):
@@ -59,13 +105,26 @@ class RemessaForm(forms.Form):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         from estoque.policies.compras import ComprasAccessPolicy
-        empresas = ComprasAccessPolicy.empresas(user)
-        bases = ComprasAccessPolicy.bases(user)
+        empresas = ComprasAccessPolicy.empresas(
+            user,
+            action=ComprasAccessPolicy.CREATE,
+        )
+        bases = ComprasAccessPolicy.bases(
+            user,
+            action=ComprasAccessPolicy.CREATE,
+        )
         self.fields['empresa'].queryset = empresas
         self.fields['base_origem'].queryset = bases
         self.fields['base_destino'].queryset = bases
-        self.fields['aquisicao'].queryset = Aquisicao.objects.filter(empresa__in=empresas)
-        self.fields['item_aquisicao'].queryset = ItemAquisicao.objects.filter(aquisicao__empresa__in=empresas)
+        self.fields['equipamento'].queryset = Equipamento.objects.filter(
+            regional__in=bases
+        )
+        self.fields['aquisicao'].queryset = Aquisicao.objects.filter(
+            empresa__in=empresas
+        )
+        self.fields['item_aquisicao'].queryset = ItemAquisicao.objects.filter(
+            aquisicao__empresa__in=empresas
+        )
 
     def clean(self):
         dados = super().clean()

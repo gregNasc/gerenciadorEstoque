@@ -160,4 +160,4 @@ class TenantOperationPolicy:
                 base_origem__in=perfil.regionais.all(),
                 equipamento__regional__empresa_id=perfil.empresa_id,
             )
-        return queryset.filter(internal | external).distinct()
+        return queryset.filter(internal | external)

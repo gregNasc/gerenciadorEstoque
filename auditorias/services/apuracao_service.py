@@ -11,17 +11,25 @@ from auditorias.models import (
     AuditoriaEvento,
     AuditoriaResolucao,
 )
-from auditorias.permissions import exigir_acesso_base, exigir_admin, usuario_e_admin
+from auditorias.permissions import (
+    ACAO_ADMINISTRAR,
+    ACAO_APROVAR,
+    ACAO_EDITAR,
+    ACAO_VISUALIZAR,
+    exigir_acesso_base,
+    exigir_admin,
+    usuario_e_admin,
+)
 
 
 class ApuracaoService:
     @staticmethod
     @transaction.atomic
     def solicitar_correcao(auditoria_base, usuario, *, prazo_correcao_em, orientacoes):
-        exigir_admin(usuario)
         auditoria = AuditoriaBase.objects.select_for_update().select_related(
             'base', 'campanha__empresa'
         ).get(pk=auditoria_base.pk)
+        exigir_admin(usuario, auditoria.campanha.empresa, acao=ACAO_EDITAR)
         agora = timezone.now()
         if auditoria.finalizada_em:
             raise ValidationError('O resultado já foi validado e não pode receber nova solicitação de correção.')
@@ -62,11 +70,16 @@ class ApuracaoService:
     @staticmethod
     @transaction.atomic
     def responder_divergencia(divergencia, usuario, justificativa):
-        if usuario_e_admin(usuario):
-            raise ValidationError('A resposta deve ser registrada por um usuário da base.')
         divergencia = AuditoriaDivergencia.objects.select_for_update().select_related(
-            'auditoria_base__base'
+            'auditoria_base__base__empresa',
+            'auditoria_base__campanha__empresa',
         ).get(pk=divergencia.pk)
+        if usuario_e_admin(
+            usuario,
+            divergencia.auditoria_base.campanha.empresa,
+            acao=ACAO_VISUALIZAR,
+        ):
+            raise ValidationError('A resposta deve ser registrada por um usuário da base.')
         auditoria = AuditoriaBase.objects.select_for_update().get(pk=divergencia.auditoria_base_id)
         exigir_acesso_base(usuario, auditoria.base)
         agora = timezone.now()
@@ -101,10 +114,10 @@ class ApuracaoService:
     @staticmethod
     @transaction.atomic
     def validar_resultado(auditoria_base, usuario):
-        exigir_admin(usuario)
         auditoria = AuditoriaBase.objects.select_for_update().select_related(
             'base', 'campanha__empresa'
         ).get(pk=auditoria_base.pk)
+        exigir_admin(usuario, auditoria.campanha.empresa, acao=ACAO_APROVAR)
         if auditoria.finalizada_em:
             raise ValidationError('O resultado desta auditoria já foi validado.')
         if auditoria.status not in (
@@ -150,7 +163,6 @@ class ApuracaoService:
     @staticmethod
     @transaction.atomic
     def inativar_nao_localizado(divergencia, usuario, justificativa):
-        exigir_admin(usuario)
         justificativa = str(justificativa or '').strip()
         if not justificativa:
             raise ValidationError('Informe a justificativa da inativação.')
@@ -158,6 +170,11 @@ class ApuracaoService:
         divergencia = AuditoriaDivergencia.objects.select_for_update(of=('self',)).select_related(
             'auditoria_base__campanha__empresa', 'equipamento__regional'
         ).get(pk=divergencia.pk)
+        exigir_admin(
+            usuario,
+            divergencia.auditoria_base.campanha.empresa,
+            acao=ACAO_ADMINISTRAR,
+        )
         if divergencia.tipo != AuditoriaDivergencia.Tipo.NAO_LOCALIZADO:
             raise ValidationError('Somente itens não localizados podem ser inativados por esta ação.')
         if divergencia.status not in (

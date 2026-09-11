@@ -2,6 +2,7 @@ import re
 
 import requests
 from django.conf import settings
+from integracao.scopes import IntegrationExecutionScope
 from .base import ProviderResult
 
 
@@ -27,7 +28,20 @@ def _resposta_segura(dados):
 
 
 class MetaWhatsAppProvider:
-    def enviar_payload(self, *, destino, payload, idempotency_key):
+    def enviar_payload(
+        self,
+        *,
+        destino,
+        payload,
+        idempotency_key,
+        execution_scope,
+    ):
+        if not isinstance(execution_scope, IntegrationExecutionScope):
+            return ProviderResult(
+                sucesso=False,
+                erro='ESCOPO DA INTEGRAÇÃO NÃO DECLARADO.',
+                repetivel=False,
+            )
         if not all((settings.WHATSAPP_API_BASE_URL, settings.WHATSAPP_ACCESS_TOKEN, settings.WHATSAPP_PHONE_NUMBER_ID)):
             return ProviderResult(sucesso=False, erro='CONFIGURAÇÃO DO PROVEDOR INCOMPLETA.', repetivel=False)
         if not isinstance(payload, dict) or payload.get('type') != 'template':

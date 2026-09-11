@@ -17,6 +17,7 @@ class WhatsAppProvider(Protocol):
         destino: str,
         payload: dict,
         idempotency_key: str,
+        execution_scope: object,
     ) -> ProviderResult:
         ...
 

@@ -1,34 +1,45 @@
-from django.db.models import Q
-
 from .models import AuditoriaBase, AuditoriaDivergencia, CampanhaAuditoria
-from .permissions import perfil_do_usuario, usuario_e_admin
+from .permissions import (
+    ACAO_VISUALIZAR,
+    RECURSO_AUDITORIAS,
+    perfil_do_usuario,
+)
+from estoque.security import secure_company_queryset
 
 
-def _escopo_usuario(user):
-    if usuario_e_admin(user):
-        return None
-    perfil = perfil_do_usuario(user)
-    if not perfil:
-        return Q(pk__in=[])
-    return Q(empresa_id=perfil.empresa_id, auditorias_bases__base__in=perfil.regionais.all())
-
-def campanhas_visiveis(user):
+def campanhas_visiveis(user, *, action=ACAO_VISUALIZAR):
     qs = CampanhaAuditoria.objects.select_related('empresa', 'criado_por')
-    escopo = _escopo_usuario(user)
-    return qs if escopo is None else qs.filter(escopo).distinct()
-
-def auditorias_visiveis(user):
-    qs = AuditoriaBase.objects.select_related('campanha__empresa', 'base')
-    if usuario_e_admin(user):
+    empresas = secure_company_queryset(
+        CampanhaAuditoria._meta.get_field('empresa').related_model.objects.all(),
+        user,
+        resource=RECURSO_AUDITORIAS,
+        action=action,
+    )
+    qs = qs.filter(empresa__in=empresas)
+    if getattr(user, 'is_superuser', False):
         return qs
     perfil = perfil_do_usuario(user)
     if not perfil:
         return qs.none()
-    return qs.filter(campanha__empresa_id=perfil.empresa_id, base__in=perfil.regionais.all())
+    if perfil.is_admin:
+        return qs
+    return qs.filter(auditorias_bases__base__in=perfil.regionais.all()).distinct()
 
-def divergencias_visiveis(user):
+def auditorias_visiveis(user, *, action=ACAO_VISUALIZAR):
+    qs = AuditoriaBase.objects.select_related('campanha__empresa', 'base')
+    qs = qs.filter(campanha__in=campanhas_visiveis(user, action=action))
+    if getattr(user, 'is_superuser', False):
+        return qs
+    perfil = perfil_do_usuario(user)
+    if not perfil:
+        return qs.none()
+    if perfil.is_admin:
+        return qs
+    return qs.filter(base__in=perfil.regionais.all())
+
+def divergencias_visiveis(user, *, action=ACAO_VISUALIZAR):
     return AuditoriaDivergencia.objects.filter(
-        auditoria_base__in=auditorias_visiveis(user)
+        auditoria_base__in=auditorias_visiveis(user, action=action)
     ).select_related(
         'auditoria_base__base', 'equipamento', 'leitura',
         'base_esperada', 'base_encontrada',

@@ -87,15 +87,16 @@
                 <div class="cost-panel-header d-flex justify-content-between align-items-center gap-2 flex-wrap"><div><h2>{% trans "Histórico de preços" %}</h2><p>{% trans "Cotações mais recentes e custo de referência de cada insumo." %}</p></div><span class="badge rounded-pill text-bg-light border px-3 py-2">{{ precos|length }} {% trans "exibidos" %}</span></div>
                 <div class="table-responsive">
                     <table class="table table-hover cost-table cost-responsive-table align-middle">
-                        <thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th><th>{% trans "Vigência" %}</th><th>{% trans "Custo atual" %}</th><th>{% trans "Status" %}</th>{% if pode_editar %}<th class="text-end">{% trans "Ações" %}</th>{% endif %}</tr></thead>
+                        <thead><tr><th>{% trans "Empresa" %}</th><th>{% trans "Insumo" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Preço unitário" %}</th><th>{% trans "Vigência" %}</th><th>{% trans "Escopo" %}</th><th>{% trans "Status" %}</th>{% if pode_editar %}<th class="text-end">{% trans "Ações" %}</th>{% endif %}</tr></thead>
                         <tbody>
                         {% for preco in precos %}
                         <tr>
+                            <td data-label="{% trans 'Empresa' %}"><strong>{{ preco.empresa.nome|default:'Plataforma' }}</strong></td>
                             <td data-label="{% trans 'Insumo' %}"><strong>{{ preco.insumo.descricao }}</strong><div class="small text-secondary">{{ preco.insumo.categoria.nome }}</div></td>
                             <td data-label="{% trans 'Fornecedor' %}">{{ preco.fornecedor.nome }}</td>
                             <td data-label="{% trans 'Preço unitário' %}" class="money-cell">R$ {{ preco.valor_unitario|floatformat:4 }}</td>
                             <td data-label="{% trans 'Vigência' %}">{{ preco.vigente_desde|date:'d/m/Y' }}{% if preco.vigente_ate %} – {{ preco.vigente_ate|date:'d/m/Y' }}{% endif %}</td>
-                            <td data-label="{% trans 'Custo atual' %}">{% if preco.insumo.preco_referencia_id == preco.id %}<span class="badge text-bg-success">{% trans "Referência" %}</span>{% else %}R$ {{ preco.insumo.valor_medio|floatformat:2 }}{% endif %}</td>
+                            <td data-label="{% trans 'Escopo' %}">{% if preco.empresa_id %}<span class="badge text-bg-primary">{% trans "Somente esta empresa" %}</span>{% else %}<span class="badge text-bg-secondary">{% trans "Legado da plataforma" %}</span>{% endif %}</td>
                             <td data-label="{% trans 'Status' %}"><span class="status-pill {% if preco.ativo %}active{% else %}inactive{% endif %}">{% if preco.ativo %}{% trans "Ativo" %}{% else %}{% trans "Inativo" %}{% endif %}</span></td>
                             {% if pode_editar %}<td data-label="{% trans 'Ações' %}" class="text-end"><a class="btn btn-sm btn-outline-secondary" href="?editar={{ preco.id }}" title="{% trans 'Editar' %}" aria-label="{% trans 'Editar preço' %}"><i class="bi bi-pencil"></i></a></td>{% endif %}
                         </tr>

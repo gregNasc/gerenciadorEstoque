@@ -47,6 +47,7 @@ from django.views.decorators.http import require_POST
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.security import secure_queryset
 from insumos.policies import InsumosTenantPolicy
+from integracao.scopes import IntegrationExecutionScope
 
 
 def _permissao_ou_perfil(user, permissao, *roles):
@@ -672,6 +673,9 @@ def importar_alteracoes_calendario(wb, arquivo_nome, usuario, regional_map, empr
 def importar_excel(request):
     if not request.user.is_superuser:
         raise PermissionDenied('A importação global é exclusiva do superuser.')
+    execution_scope = IntegrationExecutionScope.platform_global(
+        'CALENDARIO_INVENTARIOS_XLSX'
+    )
     if request.method == 'POST' and request.FILES.get('arquivo'):
         arquivo = request.FILES['arquivo']
         try:
@@ -749,6 +753,7 @@ def importar_excel(request):
 
         resumo_importacao = {
             'arquivo': arquivo.name,
+            'escopo': execution_scope.kind,
             'clientes': 0,
             'alteracoes': 0,
             'inventarios_criados': 0,
@@ -1072,7 +1077,10 @@ def importar_excel(request):
             return redirect('insumos:importar_excel')
 
     resumo_importacao = request.session.pop('resumo_importacao_excel', None)
-    return render(request, 'insumos/importar_excel.html', {'resumo_importacao': resumo_importacao})
+    return render(request, 'insumos/importar_excel.html', {
+        'resumo_importacao': resumo_importacao,
+        'escopo_integracao': execution_scope.kind,
+    })
 
 @login_required
 def inventario_detalhes(request, inventario_id):
@@ -1366,6 +1374,14 @@ def editar_inventario_modal(request, inventario_id):
 def exportar_excel(request):
     """Exporta todos os inventários para um arquivo Excel no mesmo formato do importado."""
 
+    inventarios = InsumosTenantPolicy.inventories(
+        request.user,
+        Inventario.objects.filter(
+            status__in=['PLANEJADO', 'EM_ANDAMENTO']
+        ).select_related('cliente', 'base'),
+        action=InsumosTenantPolicy.EXPORT,
+    )
+
     # Criar workbook
     wb = openpyxl.Workbook()
 
@@ -1379,7 +1395,10 @@ def exportar_excel(request):
     ws_siglas.append(cabecalho_siglas)
 
     # Dados dos clientes ativos
-    clientes = Cliente.objects.filter(ativo=True).order_by('sigla')
+    clientes = Cliente.objects.filter(
+        ativo=True,
+        inventarios__in=inventarios,
+    ).distinct().order_by('sigla')
     for cliente in clientes:
         ws_siglas.append([
             cliente.sigla,
@@ -1429,14 +1448,6 @@ def exportar_excel(request):
     ws_principal.append(cabecalho_colunas)
 
     # Dados dos inventários (apenas os que estão planejados ou em andamento, ou todos?)
-    inventarios = InsumosTenantPolicy.inventories(
-        request.user,
-        Inventario.objects.filter(
-            status__in=['PLANEJADO', 'EM_ANDAMENTO']
-        ).select_related('cliente', 'base'),
-        action=InsumosTenantPolicy.EXPORT,
-    )
-
     # Ordenar por data e cliente
     inventarios = inventarios.order_by('data_inicio', 'cliente__sigla')
 

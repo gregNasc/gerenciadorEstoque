@@ -9,6 +9,7 @@ from integracao.exceptions import InventoryPlanningError
 from integracao.mappers.events import flatten_events
 from integracao.models import InventoryPlanningSyncRun
 from integracao.repositories.planning_repository import InventoryPlanningRepository
+from integracao.scopes import IntegrationExecutionScope, IntegrationScopeError
 from integracao.services.materialization import PlanningEventMaterializer
 
 
@@ -22,10 +23,24 @@ class InventoryPlanningSyncAlreadyRunning(InventoryPlanningError):
 class InventoryPlanningService:
     CATALOG_ENDPOINTS = ("regions", "clients", "stores", "inventory-types")
 
-    def __init__(self, *, client=None, repository=None, materializer=None):
+    def __init__(
+        self,
+        *,
+        client=None,
+        repository=None,
+        materializer=None,
+        execution_scope=None,
+    ):
         self.client = client or InventoryPlanningClient()
         self.repository = repository or InventoryPlanningRepository()
         self.materializer = materializer or PlanningEventMaterializer()
+        self.execution_scope = execution_scope or IntegrationExecutionScope.platform_global(
+            "INVENTORY_PLANNING"
+        )
+        if not self.execution_scope.is_platform_global:
+            raise IntegrationScopeError(
+                "O snapshot Inventory Planning é global e exige PLATFORM_GLOBAL."
+            )
 
     @staticmethod
     def _start_run(endpoint, scope=None):
@@ -111,7 +126,7 @@ class InventoryPlanningService:
     def sync_catalog(self, endpoint):
         if endpoint not in self.CATALOG_ENDPOINTS:
             raise ValueError(f"Catálogo não suportado: {endpoint}")
-        run = self._start_run(endpoint)
+        run = self._start_run(endpoint, scope=self.execution_scope.as_dict())
         seen = set()
         pages = created = updated = 0
         rate_limits = {}
@@ -168,7 +183,10 @@ class InventoryPlanningService:
             raise
 
     def sync_events(self, *, params=None, materialize=True):
-        run = self._start_run("events", scope=params)
+        run = self._start_run(
+            "events",
+            scope=self.execution_scope.as_dict(filters=params),
+        )
         seen = set()
         pages = created = updated = 0
         rate_limits = {}

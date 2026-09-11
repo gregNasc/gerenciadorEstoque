@@ -65,7 +65,7 @@ class InventorySupportScopeTests(TestCase):
         cls.support.perfil.save()
         cls.support.perfil.regionais.add(cls.bases[cls.propria.pk])
         cls.support.groups.add(
-            Group.objects.create(name=GruposChamados.SUPORTE)
+            Group.objects.get_or_create(name=GruposChamados.SUPORTE)[0]
         )
 
         cls.opener = User.objects.create_user(
@@ -168,4 +168,3 @@ class InventorySupportMigrationTests(TestCase):
         )
         unrelated.refresh_from_db()
         self.assertFalse(unrelated.compartilha_suporte_chamados)
-

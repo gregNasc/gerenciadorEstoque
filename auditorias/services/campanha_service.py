@@ -8,7 +8,13 @@ from auditorias.models import (
     CampanhaAuditoria,
     CampanhaAuditoriaEvento,
 )
-from auditorias.permissions import exigir_admin
+from auditorias.permissions import (
+    ACAO_ADMINISTRAR,
+    ACAO_APROVAR,
+    ACAO_CRIAR,
+    ACAO_EDITAR,
+    exigir_admin,
+)
 
 
 class CampanhaService:
@@ -46,7 +52,7 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def criar_campanha(cls, *, empresa, nome, criado_por, descricao='', instrucoes=''):
-        exigir_admin(criado_por)
+        exigir_admin(criado_por, empresa, acao=ACAO_CRIAR)
         campanha = CampanhaAuditoria.objects.create(
             empresa=empresa,
             nome=nome,
@@ -66,8 +72,10 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def editar_campanha(cls, campanha, *, usuario, justificativa='', **dados):
-        exigir_admin(usuario)
-        campanha = CampanhaAuditoria.objects.select_for_update().get(pk=campanha.pk)
+        campanha = CampanhaAuditoria.objects.select_for_update().select_related(
+            'empresa'
+        ).get(pk=campanha.pk)
+        exigir_admin(usuario, campanha.empresa, acao=ACAO_EDITAR)
         if campanha.status in {
             CampanhaAuditoria.Status.ENCERRADA,
             CampanhaAuditoria.Status.CANCELADA,
@@ -75,6 +83,9 @@ class CampanhaService:
             raise ValidationError('CAMPANHA ENCERRADA OU CANCELADA NÃO PODE SER EDITADA.')
 
         dados = dados.copy()
+        nova_empresa = dados.get('empresa')
+        if nova_empresa is not None:
+            exigir_admin(usuario, nova_empresa, acao=ACAO_EDITAR)
         for campo in ('nome', 'descricao', 'instrucoes'):
             if campo in dados and isinstance(dados[campo], str):
                 dados[campo] = dados[campo].upper()
@@ -123,8 +134,10 @@ class CampanhaService:
         observacoes='',
         justificativa='',
     ):
-        exigir_admin(usuario)
-        campanha = CampanhaAuditoria.objects.select_for_update().get(pk=campanha.pk)
+        campanha = CampanhaAuditoria.objects.select_for_update().select_related(
+            'empresa'
+        ).get(pk=campanha.pk)
+        exigir_admin(usuario, campanha.empresa, acao=ACAO_EDITAR)
         permitidos = {
             CampanhaAuditoria.Status.RASCUNHO,
             CampanhaAuditoria.Status.AGENDADA,
@@ -206,8 +219,10 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def agendar(cls, campanha, usuario):
-        exigir_admin(usuario)
-        campanha = CampanhaAuditoria.objects.select_for_update().get(pk=campanha.pk)
+        campanha = CampanhaAuditoria.objects.select_for_update().select_related(
+            'empresa'
+        ).get(pk=campanha.pk)
+        exigir_admin(usuario, campanha.empresa, acao=ACAO_APROVAR)
         if campanha.status != CampanhaAuditoria.Status.RASCUNHO:
             raise ValidationError('A CAMPANHA NÃO ESTÁ EM RASCUNHO.')
         if not campanha.auditorias_bases.exists():
@@ -229,10 +244,10 @@ class CampanhaService:
     def atualizar_periodo_base(
         cls, auditoria_base, *, inicio_em, fim_em, usuario, justificativa=''
     ):
-        exigir_admin(usuario)
         auditoria = AuditoriaBase.objects.select_for_update().select_related(
-            'campanha', 'base'
+            'campanha__empresa', 'base'
         ).get(pk=auditoria_base.pk)
+        exigir_admin(usuario, auditoria.campanha.empresa, acao=ACAO_EDITAR)
         if auditoria.campanha.status in {
             CampanhaAuditoria.Status.ENCERRADA,
             CampanhaAuditoria.Status.CANCELADA,
@@ -300,10 +315,10 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def remover_base(cls, auditoria_base, usuario, justificativa=''):
-        exigir_admin(usuario)
         auditoria = AuditoriaBase.objects.select_for_update().select_related(
-            'campanha', 'base'
+            'campanha__empresa', 'base'
         ).get(pk=auditoria_base.pk)
+        exigir_admin(usuario, auditoria.campanha.empresa, acao=ACAO_ADMINISTRAR)
         campanha = CampanhaAuditoria.objects.select_for_update().get(pk=auditoria.campanha_id)
         if campanha.status in {
             CampanhaAuditoria.Status.ENCERRADA,
@@ -375,8 +390,10 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def encerrar_campanha(cls, campanha, usuario):
-        exigir_admin(usuario)
-        campanha = CampanhaAuditoria.objects.select_for_update().get(pk=campanha.pk)
+        campanha = CampanhaAuditoria.objects.select_for_update().select_related(
+            'empresa'
+        ).get(pk=campanha.pk)
+        exigir_admin(usuario, campanha.empresa, acao=ACAO_APROVAR)
         if campanha.status in {
             CampanhaAuditoria.Status.ENCERRADA,
             CampanhaAuditoria.Status.CANCELADA,
@@ -407,10 +424,12 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def cancelar_campanha(cls, campanha, usuario, justificativa):
-        exigir_admin(usuario)
         if not justificativa.strip():
             raise ValidationError('INFORME A JUSTIFICATIVA DO CANCELAMENTO.')
-        campanha = CampanhaAuditoria.objects.select_for_update().get(pk=campanha.pk)
+        campanha = CampanhaAuditoria.objects.select_for_update().select_related(
+            'empresa'
+        ).get(pk=campanha.pk)
+        exigir_admin(usuario, campanha.empresa, acao=ACAO_ADMINISTRAR)
         if campanha.status in {
             CampanhaAuditoria.Status.ENCERRADA,
             CampanhaAuditoria.Status.CANCELADA,
@@ -445,12 +464,14 @@ class CampanhaService:
     @classmethod
     @transaction.atomic
     def reabrir_base(cls, auditoria_base, usuario, justificativa):
-        exigir_admin(usuario)
         if not justificativa.strip():
             raise ValidationError('INFORME A JUSTIFICATIVA DA REABERTURA.')
-        auditoria = AuditoriaBase.objects.select_for_update().select_related('campanha').get(
+        auditoria = AuditoriaBase.objects.select_for_update().select_related(
+            'campanha__empresa'
+        ).get(
             pk=auditoria_base.pk
         )
+        exigir_admin(usuario, auditoria.campanha.empresa, acao=ACAO_ADMINISTRAR)
         if not auditoria.snapshot_criado_em:
             raise ValidationError('NÃO É POSSÍVEL REABRIR UMA AUDITORIA AINDA NÃO INICIADA.')
         if auditoria.status not in (

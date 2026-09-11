@@ -6,7 +6,7 @@ from estoque.models import Equipamento, Historico, Transferencia
 from estoque.services.comunicado_service import ComunicadoService
 
 from auditorias.models import AuditoriaBase, AuditoriaDivergencia, AuditoriaEvento, AuditoriaResolucao
-from auditorias.permissions import exigir_acesso_base
+from auditorias.permissions import ACAO_EDITAR, exigir_acesso_base
 
 
 class RegularizacaoService:
@@ -33,7 +33,7 @@ class RegularizacaoService:
             raise ValidationError('A divergência não está disponível para regularização.')
         if not divergencia.equipamento_id or not divergencia.base_encontrada_id:
             raise ValidationError('A divergência não possui equipamento e base identificados.')
-        exigir_acesso_base(usuario, divergencia.base_encontrada)
+        exigir_acesso_base(usuario, divergencia.base_encontrada, acao=ACAO_EDITAR)
         equipamento = Equipamento.objects.select_for_update().get(pk=divergencia.equipamento_id)
         if Transferencia.objects.filter(
             itens__equipamento=equipamento,

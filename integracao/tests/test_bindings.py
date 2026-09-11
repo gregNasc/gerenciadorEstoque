@@ -169,7 +169,7 @@ class MappingPermissionAndRunTests(TestCase):
         self.client = HttpClient()
         self.client.force_login(self.user)
 
-    def test_mapping_screen_requires_specific_permission(self):
+    def test_mapping_screen_is_global_and_requires_superuser(self):
         url = reverse("integracao:planning_mappings")
         self.assertEqual(self.client.get(url).status_code, 403)
 
@@ -177,7 +177,12 @@ class MappingPermissionAndRunTests(TestCase):
         self.user.user_permissions.add(permission)
         self.user = User.objects.get(pk=self.user.pk)
         self.client.force_login(self.user)
+        self.assertEqual(self.client.get(url).status_code, 403)
 
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save(update_fields=("is_staff", "is_superuser"))
+        self.client.force_login(self.user)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Mapeamentos Inventory Planning")
@@ -185,6 +190,9 @@ class MappingPermissionAndRunTests(TestCase):
     def test_client_confirmation_is_permissioned_and_idempotent(self):
         permission = Permission.objects.get(codename="gerenciar_mapeamentos_planning")
         self.user.user_permissions.add(permission)
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save(update_fields=("is_staff", "is_superuser"))
         self.user = User.objects.get(pk=self.user.pk)
         self.client.force_login(self.user)
         now = timezone.now()

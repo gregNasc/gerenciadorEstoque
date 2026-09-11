@@ -74,7 +74,7 @@ def lista(request):
     )
     return render(request, 'chamados/lista.html', {
         'chamados': qs[:300],
-        'bases': ChamadoAccessPolicy.bases_atendimento(request.user),
+        'bases': ChamadoAccessPolicy.bases_visiveis(request.user),
         'status_choices': Chamado.Status.choices,
         'prioridade_choices': Chamado.Prioridade.choices,
         'tipo_choices': Chamado.Tipo.choices,
@@ -131,7 +131,8 @@ def equipamentos_por_categoria(request):
     # Bases que o usuário realmente pode acessar
     bases_permitidas = (
         ChamadoAccessPolicy.bases(
-            request.user
+            request.user,
+            action=ChamadoAccessPolicy.CREATE,
         )
     )
 
@@ -258,7 +259,9 @@ def criar(request):
             'form': form,
             'hoje': timezone.localdate(),
             'inventarios_contexto': inventarios_contexto,
-            'atendentes_online': ChamadoAccessPolicy.atendentes_online_para(),
+            'atendentes_online': ChamadoAccessPolicy.atendentes_online_para(
+                user=request.user
+            ),
         }
     )
 
@@ -274,7 +277,9 @@ def detalhe(request, pk):
         ),
         pk=pk,
     )
-    pode_atender = ChamadoAccessPolicy.pode_atender(request.user)
+    pode_atender = ChamadoAccessPolicy.pode_atender_chamado(
+        request.user, chamado
+    )
     chat_disponivel = chamado.tipo_chamado == Chamado.Tipo.OPERACIONAL
     mensagens_qs = chamado.mensagens.all() if chat_disponivel else chamado.mensagens.none()
     if not pode_atender:
@@ -282,7 +287,7 @@ def detalhe(request, pk):
     status_permitidos = ChamadoService.status_permitidos(chamado, request.user)
     ordens = OrdemServico.objects.filter(chamado_referencia=chamado.protocolo).order_by('-aberto_em')
     documentacao_contextual = (
-        DocumentationService.para_produto(chamado.equipamento.produto)
+        DocumentationService.para_produto(chamado.equipamento.produto, request.user)
         if chamado.equipamento_id and chamado.equipamento.produto_id
         else []
     )
@@ -324,7 +329,13 @@ def detalhe(request, pk):
 @login_required
 @require_POST
 def assumir(request, pk):
-    chamado = get_object_or_404(ChamadoAccessPolicy.queryset(request.user), pk=pk)
+    chamado = get_object_or_404(
+        ChamadoAccessPolicy.queryset(
+            request.user,
+            action=ChamadoAccessPolicy.ATTEND,
+        ),
+        pk=pk,
+    )
     try:
         ChamadoService.assumir(chamado, request.user)
         messages.success(request, 'CHAMADO ASSUMIDO COM SUCESSO.')
@@ -435,10 +446,15 @@ def converter_sick(request, pk):
 
 @login_required
 def baixar_anexo(request, pk):
-    anexo = get_object_or_404(ChamadoAnexo.objects.select_related('chamado'), pk=pk)
-    if not ChamadoAccessPolicy.pode_ver(request.user, anexo.chamado):
-        raise PermissionDenied
-    if anexo.mensagem and anexo.mensagem.nota_interna and not ChamadoAccessPolicy.pode_atender(request.user):
+    anexo = get_object_or_404(
+        ChamadoAnexo.objects.select_related('chamado', 'mensagem').filter(
+            chamado__in=ChamadoAccessPolicy.queryset(request.user)
+        ),
+        pk=pk,
+    )
+    if anexo.mensagem and anexo.mensagem.nota_interna and not (
+        ChamadoAccessPolicy.pode_atender_chamado(request.user, anexo.chamado)
+    ):
         raise PermissionDenied
     resposta = FileResponse(
         anexo.arquivo.open('rb'),
@@ -448,6 +464,7 @@ def baixar_anexo(request, pk):
     )
     resposta['X-Content-Type-Options'] = 'nosniff'
     resposta['Content-Security-Policy'] = "sandbox; default-src 'none'"
+    resposta['Cache-Control'] = 'private, no-store'
     return resposta
 
 def _media_duracoes(duracoes):
@@ -863,7 +880,7 @@ def dashboard(request):
             'data_final': data_final_texto,
             'regional_selecionada': regional,
             'tipo_chamado_selecionado': tipo_chamado,
-            'regionais': ChamadoAccessPolicy.bases_atendimento(
+            'regionais': ChamadoAccessPolicy.bases_visiveis(
                 request.user
             ).order_by('nome'),
             'tipo_choices': Chamado.Tipo.choices,
@@ -921,7 +938,10 @@ def exportar(request):
         raise PermissionDenied
     qs = _filtrar(
         request,
-        ChamadoAccessPolicy.queryset(request.user).select_related(
+        ChamadoAccessPolicy.queryset(
+            request.user,
+            action=ChamadoAccessPolicy.EXPORT,
+        ).select_related(
             'base', 'categoria', 'aberto_por', 'atendente', 'inventario__cliente'
         ),
     )

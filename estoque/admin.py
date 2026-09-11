@@ -243,12 +243,13 @@ class EquipamentoAdmin(EmpresaAdminMixin, admin.ModelAdmin):
     # -------- FOTO PREVIEW --------
     def preview_foto(self, obj):
         if obj.foto:
+            url = reverse('estoque:equipamento_arquivo', args=[obj.pk, 'foto'])
             return format_html(
                 '<a href="{}" target="_blank">'
                 '<img src="{}" style="height: 60px; border-radius: 6px;" />'
                 '</a>',
-                obj.foto.url,
-                obj.foto.url
+                url,
+                url
             )
         return "Sem foto"
 

@@ -26,6 +26,7 @@ from insumos.models import (
     OfertaPrecoOnline,
     PrecoFornecedorInsumo,
     PesquisaPrecoOnline,
+    SaldoInsumoBase,
 )
 from insumos.services.custo_service import CustoInsumoService
 from insumos.services.preco_online_service import PrecoOnlineErro, PrecoOnlineService
@@ -34,6 +35,29 @@ from insumos.policies import InsumosTenantPolicy
 
 def _pode_editar(user):
     return ComprasAccessPolicy.pode_editar_precos(user)
+
+
+def _empresa_preco(request, *, action=InsumosTenantPolicy.VIEW):
+    empresas = InsumosTenantPolicy.empresas(
+        request.user,
+        action=action,
+    ).order_by('nome')
+    empresa_id = (
+        request.POST.get('empresa')
+        or request.GET.get('empresa')
+        or ''
+    ).strip()
+    if empresa_id:
+        empresa = empresas.filter(pk=empresa_id).first() if empresa_id.isdigit() else None
+        if not empresa:
+            raise PermissionDenied('Empresa fora do escopo de preços.')
+        return empresas, empresa
+    perfil = getattr(request.user, 'perfil', None)
+    if perfil and perfil.empresa_id:
+        empresa = empresas.filter(pk=perfil.empresa_id).first()
+        if empresa:
+            return empresas, empresa
+    return empresas, empresas.first()
 
 
 def _periodo_padrao(request):
@@ -116,8 +140,14 @@ def dashboard_custos(request):
         'labels': [item['insumo__descricao'] for item in top_insumos],
         'values': [float(item['total']) for item in top_insumos],
     }
-    total_insumos = Insumo.objects.filter(ativo=True).count()
-    insumos_com_preco = Insumo.objects.filter(ativo=True, valor_medio__gt=0).count()
+    saldos_visiveis = InsumosTenantPolicy.balances(
+        request.user,
+        SaldoInsumoBase.objects.filter(insumo__ativo=True),
+    )
+    total_insumos = saldos_visiveis.values('insumo_id').distinct().count()
+    insumos_com_preco = saldos_visiveis.filter(
+        custo_medio__gt=0,
+    ).values('insumo_id').distinct().count()
     cobertura_precos = round(insumos_com_preco * 100 / total_insumos, 1) if total_insumos else 100
 
     context = {
@@ -157,12 +187,21 @@ def precos_insumos(request):
     if not CustoInsumoService.pode_visualizar(request.user):
         raise PermissionDenied
 
+    precos_edicao = InsumosTenantPolicy.prices(
+        request.user,
+        PrecoFornecedorInsumo.objects.all(),
+        action=InsumosTenantPolicy.EDIT,
+    )
     editar_id = request.GET.get('editar') or request.POST.get('preco_id')
-    instancia = PrecoFornecedorInsumo.objects.filter(pk=editar_id).first() if editar_id else None
+    instancia = get_object_or_404(precos_edicao, pk=editar_id) if editar_id else None
     if request.method == 'POST':
         if not _pode_editar(request.user):
             raise PermissionDenied
-        form = PrecoFornecedorInsumoForm(request.POST, instance=instancia)
+        form = PrecoFornecedorInsumoForm(
+            request.POST,
+            instance=instancia,
+            user=request.user,
+        )
         if form.is_valid():
             with transaction.atomic():
                 preco = form.save(commit=False)
@@ -170,14 +209,16 @@ def precos_insumos(request):
                 preco.full_clean()
                 preco.save()
                 if form.cleaned_data.get('aplicar_como_custo'):
-                    preco.insumo.valor_medio = preco.valor_unitario
-                    preco.insumo.preco_referencia = preco
-                    preco.insumo.save(update_fields=['valor_medio', 'preco_referencia'])
+                    SaldoInsumoBase.objects.filter(
+                        base__empresa=preco.empresa,
+                        insumo=preco.insumo,
+                    ).update(custo_medio=preco.valor_unitario)
                 HistoricoInsumo.objects.create(
                     tipo='PRECO',
                     usuario=request.user,
                     descricao=f'Preço atualizado para {preco.insumo.descricao}',
                     dados={
+                        'empresa_id': preco.empresa_id,
                         'insumo': preco.insumo.descricao,
                         'fornecedor': preco.fornecedor.nome,
                         'valor_unitario': str(preco.valor_unitario),
@@ -187,10 +228,13 @@ def precos_insumos(request):
             messages.success(request, _('Preço unitário registrado com sucesso.'))
             return redirect('insumos:precos_insumos')
     else:
-        form = PrecoFornecedorInsumoForm(instance=instancia)
+        form = PrecoFornecedorInsumoForm(instance=instancia, user=request.user)
 
-    precos_base = PrecoFornecedorInsumo.objects.select_related(
-        'insumo', 'fornecedor', 'cadastrado_por'
+    precos_base = InsumosTenantPolicy.prices(
+        request.user,
+        PrecoFornecedorInsumo.objects.select_related(
+            'empresa', 'insumo', 'fornecedor', 'cadastrado_por'
+        ),
     )
     precos = precos_base.order_by('-vigente_desde', 'insumo__descricao')
     busca = request.GET.get('q', '').strip()
@@ -210,9 +254,8 @@ def precos_insumos(request):
     comparacao_precos = []
     menor_preco = None
     if comparar_insumo:
-        cotacoes = PrecoFornecedorInsumo.objects.filter(
-            insumo=comparar_insumo,
-            ativo=True,
+        cotacoes = precos_base.filter(
+            insumo=comparar_insumo, ativo=True,
         ).select_related('fornecedor').order_by(
             'fornecedor__nome', '-vigente_desde', '-criado_em'
         )
@@ -249,9 +292,15 @@ def fornecedores_insumos(request):
         raise PermissionDenied
 
     editar_id = request.GET.get('editar') or request.POST.get('fornecedor_id')
-    instancia = FornecedorInsumo.objects.filter(pk=editar_id).first() if editar_id else None
+    pode_editar_fornecedor = ComprasAccessPolicy.pode_gerenciar_fornecedores(
+        request.user,
+    )
+    instancia = (
+        get_object_or_404(FornecedorInsumo, pk=editar_id)
+        if editar_id and pode_editar_fornecedor else None
+    )
     if request.method == 'POST':
-        if not _pode_editar(request.user):
+        if not pode_editar_fornecedor:
             raise PermissionDenied
         form = FornecedorInsumoForm(request.POST, instance=instancia)
         if form.is_valid():
@@ -261,12 +310,26 @@ def fornecedores_insumos(request):
     else:
         form = FornecedorInsumoForm(instance=instancia)
 
+    precos_visiveis = InsumosTenantPolicy.prices(
+        request.user,
+        PrecoFornecedorInsumo.objects.all(),
+    )
+    filtro_precos = Q(precos__in=precos_visiveis)
     fornecedores_base = FornecedorInsumo.objects.annotate(
-        itens=Count('precos__insumo', distinct=True),
-        cotacoes=Count('precos'),
-        menor_preco=Min('precos__valor_unitario', filter=Q(precos__ativo=True)),
-        preco_medio=Avg('precos__valor_unitario', filter=Q(precos__ativo=True)),
-        maior_preco=Max('precos__valor_unitario', filter=Q(precos__ativo=True)),
+        itens=Count('precos__insumo', filter=filtro_precos, distinct=True),
+        cotacoes=Count('precos', filter=filtro_precos),
+        menor_preco=Min(
+            'precos__valor_unitario',
+            filter=filtro_precos & Q(precos__ativo=True),
+        ),
+        preco_medio=Avg(
+            'precos__valor_unitario',
+            filter=filtro_precos & Q(precos__ativo=True),
+        ),
+        maior_preco=Max(
+            'precos__valor_unitario',
+            filter=filtro_precos & Q(precos__ativo=True),
+        ),
     )
     busca = request.GET.get('q', '').strip()
     status = request.GET.get('status', '').strip().lower()
@@ -284,23 +347,23 @@ def fornecedores_insumos(request):
         fornecedores = fornecedores.filter(ativo=False)
     fornecedores = fornecedores.order_by('nome')
 
-    precos_recentes = PrecoFornecedorInsumo.objects.select_related(
-        'fornecedor', 'insumo'
+    precos_recentes = precos_visiveis.select_related(
+        'fornecedor', 'insumo', 'empresa'
     ).filter(ativo=True).order_by('-vigente_desde')[:20]
     return render(request, 'insumos/custos/fornecedores_insumos.html', {
         'form': form,
         'fornecedores': fornecedores,
         'precos_recentes': precos_recentes,
-        'pode_editar': _pode_editar(request.user),
+        'pode_editar': pode_editar_fornecedor,
         'editando': instancia,
         'busca': busca,
         'status': status,
         'total_fornecedores': FornecedorInsumo.objects.count(),
         'total_fornecedores_ativos': FornecedorInsumo.objects.filter(ativo=True).count(),
-        'total_itens_cotados': PrecoFornecedorInsumo.objects.values(
+        'total_itens_cotados': precos_visiveis.values(
             'insumo_id'
         ).distinct().count(),
-        'total_cotacoes_ativas': PrecoFornecedorInsumo.objects.filter(ativo=True).count(),
+        'total_cotacoes_ativas': precos_visiveis.filter(ativo=True).count(),
     })
 
 
@@ -309,6 +372,16 @@ def pesquisa_precos_online(request):
     if not CustoInsumoService.pode_visualizar(request.user):
         raise PermissionDenied
 
+    empresas, empresa = _empresa_preco(
+        request,
+        action=(
+            InsumosTenantPolicy.EDIT
+            if request.method == 'POST'
+            else InsumosTenantPolicy.VIEW
+        ),
+    )
+    if not empresa:
+        raise PermissionDenied('Nenhuma empresa disponível para pesquisar preços.')
     insumo_id = _id_opcional(request.POST.get('insumo') or request.GET.get('insumo'))
     insumo = Insumo.objects.filter(pk=insumo_id, ativo=True).first()
     termo = (request.POST.get('termo') or request.GET.get('termo') or '').strip()
@@ -335,6 +408,7 @@ def pesquisa_precos_online(request):
                     insumo=insumo,
                     termo=termo or insumo.termo_pesquisa_online or insumo.descricao,
                     usuario=request.user,
+                    empresa=empresa,
                     fonte=fonte,
                 )
                 for aviso in getattr(nova_pesquisa, 'avisos', []):
@@ -345,6 +419,7 @@ def pesquisa_precos_online(request):
                     'quantidade': quantidade,
                     'termo': nova_pesquisa.termo,
                     'fonte': nova_pesquisa.fonte,
+                    'empresa': empresa.pk,
                 })
                 return redirect(
                     f"{reverse('insumos:pesquisa_precos_online')}?{parametros}"
@@ -355,7 +430,10 @@ def pesquisa_precos_online(request):
     pesquisa = None
     ofertas = OfertaPrecoOnline.objects.none()
     if insumo:
-        pesquisas = PesquisaPrecoOnline.objects.filter(insumo=insumo)
+        pesquisas = InsumosTenantPolicy.price_searches(
+            request.user,
+            PesquisaPrecoOnline.objects.filter(insumo=insumo),
+        ).filter(empresa=empresa)
         if fonte:
             pesquisas = pesquisas.filter(fonte=fonte)
         pesquisa = pesquisas.first()
@@ -393,11 +471,16 @@ def pesquisa_precos_online(request):
     )
     economia = (maior - menor) * quantidade if ofertas_lista else Decimal('0')
     historico = list(
-        OfertaPrecoOnline.objects.filter(insumo=insumo).order_by('-coletado_em')[:60]
+        InsumosTenantPolicy.price_offers(
+            request.user,
+            OfertaPrecoOnline.objects.filter(insumo=insumo),
+        ).filter(pesquisa__empresa=empresa).order_by('-coletado_em')[:60]
     ) if insumo else []
 
     return render(request, 'insumos/custos/pesquisa_precos.html', {
         'insumos': Insumo.objects.filter(ativo=True).order_by('descricao'),
+        'empresas': empresas,
+        'empresa_selecionada': empresa,
         'insumo_selecionado': insumo,
         'termo': termo or (
             (insumo.termo_pesquisa_online or insumo.descricao) if insumo else ''
@@ -435,9 +518,22 @@ def usar_oferta_como_preco(request, oferta_id):
         raise PermissionDenied
 
     oferta = get_object_or_404(
-        OfertaPrecoOnline.objects.select_related('insumo', 'pesquisa'),
+        InsumosTenantPolicy.price_offers(
+            request.user,
+            OfertaPrecoOnline.objects.select_related(
+                'insumo', 'pesquisa__empresa',
+            ),
+            action=InsumosTenantPolicy.EDIT,
+        ),
         pk=oferta_id,
     )
+    empresa = oferta.pesquisa.empresa or getattr(
+        getattr(oferta.pesquisa.pesquisado_por, 'perfil', None),
+        'empresa',
+        None,
+    )
+    if not empresa:
+        raise PermissionDenied('A pesquisa não possui empresa identificável.')
     fornecedor = FornecedorInsumo.objects.filter(
         fonte_online=oferta.fonte,
         ativo=True,
@@ -453,12 +549,17 @@ def usar_oferta_como_preco(request, oferta_id):
         )
 
     with transaction.atomic():
-        PrecoFornecedorInsumo.objects.filter(
+        InsumosTenantPolicy.prices(
+            request.user,
+            PrecoFornecedorInsumo.objects.all(),
+            action=InsumosTenantPolicy.EDIT,
+        ).filter(
             insumo=oferta.insumo,
             fornecedor=fornecedor,
             ativo=True,
         ).update(ativo=False)
         preco = PrecoFornecedorInsumo.objects.create(
+            empresa=empresa,
             insumo=oferta.insumo,
             fornecedor=fornecedor,
             valor_unitario=oferta.preco,
@@ -470,14 +571,16 @@ def usar_oferta_como_preco(request, oferta_id):
             ),
             cadastrado_por=request.user,
         )
-        oferta.insumo.valor_medio = oferta.preco
-        oferta.insumo.preco_referencia = preco
-        oferta.insumo.save(update_fields=['valor_medio', 'preco_referencia'])
+        SaldoInsumoBase.objects.filter(
+            base__empresa=empresa,
+            insumo=oferta.insumo,
+        ).update(custo_medio=oferta.preco)
         HistoricoInsumo.objects.create(
             tipo='PRECO',
             usuario=request.user,
             descricao=f'Preço online aplicado a {oferta.insumo.descricao}',
             dados={
+                'empresa_id': empresa.pk,
                 'insumo': oferta.insumo.descricao,
                 'fornecedor': fornecedor.nome,
                 'fonte': oferta.fonte,
@@ -490,7 +593,7 @@ def usar_oferta_como_preco(request, oferta_id):
 
     messages.success(
         request,
-        _('Preço da oferta aplicado como custo padrão do insumo.'),
+        _('Preço da oferta aplicado somente aos saldos desta empresa.'),
     )
     return redirect(
         f"{reverse('insumos:pesquisa_precos_online')}?insumo={oferta.insumo_id}"

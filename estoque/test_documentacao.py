@@ -288,7 +288,12 @@ class DocumentationViewsTests(TestCase):
         )
         admin = User.objects.create_user(username='admin-documentacao', password='segura-123')
         admin.perfil.role = 'admin'
+        admin.perfil.empresa = self.empresa
         admin.perfil.save()
+        Inventario.objects.create(
+            cliente=cliente, loja='Loja ADM', base=self.base,
+            data_inicio='2026-08-20', criado_por=admin,
+        )
         self.client.force_login(admin)
         url = reverse('estoque:documentacao_cliente_detalhe', args=[cliente.pk])
         resposta = self.client.post(
@@ -342,6 +347,7 @@ class DocumentationViewsTests(TestCase):
     def test_admin_gerencia_videos_da_documentacao(self):
         admin = User.objects.create_user(username='admin-videos', password='segura-123')
         admin.perfil.role = 'admin'
+        admin.perfil.empresa = self.empresa
         admin.perfil.save()
         self.client.force_login(admin)
 
@@ -365,7 +371,9 @@ class DocumentationViewsTests(TestCase):
         self.assertContains(pagina_videos, 'https://example.com/videos/phaser-3020')
         self.assertContains(pagina_videos, 'rel="noopener noreferrer"')
         self.assertEqual(
-            DocumentationService.listar(termo='wifi', tipo='VIDEO')[0]['objeto_id'],
+            DocumentationService.listar(
+                termo='wifi', tipo='VIDEO', user=admin
+            )[0]['objeto_id'],
             video.pk,
         )
 
@@ -402,6 +410,7 @@ class DocumentationViewsTests(TestCase):
     def test_video_do_youtube_e_incorporado_na_pagina(self):
         admin = User.objects.create_user(username='admin-youtube', password='segura-123')
         admin.perfil.role = 'admin'
+        admin.perfil.empresa = self.empresa
         admin.perfil.save()
         self.client.force_login(admin)
 
@@ -443,6 +452,7 @@ class DocumentationViewsTests(TestCase):
             password='segura-123',
         )
         admin.perfil.role = 'admin'
+        admin.perfil.empresa = self.empresa
         admin.perfil.save()
         self.client.force_login(admin)
         url = reverse('estoque:documentacao_resolucao')

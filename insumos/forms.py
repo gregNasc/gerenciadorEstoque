@@ -128,10 +128,11 @@ class PrecoFornecedorInsumoForm(forms.ModelForm):
     class Meta:
         model = PrecoFornecedorInsumo
         fields = [
-            'insumo', 'fornecedor', 'valor_unitario', 'vigente_desde',
+            'empresa', 'insumo', 'fornecedor', 'valor_unitario', 'vigente_desde',
             'vigente_ate', 'ativo', 'observacao',
         ]
         labels = {
+            'empresa': _('Empresa'),
             'insumo': _('Insumo'),
             'fornecedor': _('Fornecedor'),
             'valor_unitario': _('Preço unitário'),
@@ -141,6 +142,7 @@ class PrecoFornecedorInsumoForm(forms.ModelForm):
             'observacao': _('Observação'),
         }
         widgets = {
+            'empresa': forms.Select(attrs={'class': 'form-select'}),
             'insumo': forms.Select(attrs={'class': 'form-select'}),
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
             'valor_unitario': forms.NumberInput(attrs={
@@ -151,6 +153,24 @@ class PrecoFornecedorInsumoForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        empresas = InsumosTenantPolicy.empresas(
+            user,
+            action=InsumosTenantPolicy.EDIT,
+        ).order_by('nome')
+        self.fields['empresa'].queryset = empresas
+        self.fields['empresa'].required = True
+        perfil = getattr(user, 'perfil', None)
+        if self.instance.pk and self.instance.empresa_id:
+            self.fields['empresa'].initial = self.instance.empresa_id
+        elif perfil and perfil.empresa_id and empresas.filter(
+            pk=perfil.empresa_id,
+        ).exists():
+            self.fields['empresa'].initial = perfil.empresa_id
+        elif empresas.count() == 1:
+            self.fields['empresa'].initial = empresas.first().pk
 
 class SolicitacaoInsumoForm(forms.ModelForm):
     class Meta:

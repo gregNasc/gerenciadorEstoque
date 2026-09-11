@@ -359,7 +359,10 @@ class ToryPortalAnswerTests(SimpleTestCase):
             portal_status="in_progress",
             portal_metrics=["total_items", "productivity", "divergences"],
         )
-        user = SimpleNamespace(perfil=SimpleNamespace(is_admin=True))
+        user = SimpleNamespace(
+            is_superuser=True,
+            perfil=SimpleNamespace(is_admin=True),
+        )
 
         response = InventoryPortalAssistantService.respond(user, interpretation)
 

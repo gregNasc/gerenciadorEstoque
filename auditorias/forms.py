@@ -3,11 +3,23 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from estoque.models import Base
+from estoque.security import secure_company_queryset
+
+from .permissions import ACAO_CRIAR, RECURSO_AUDITORIAS
 
 from .models import AuditoriaBase, CampanhaAuditoria
 
 
 class CampanhaAuditoriaForm(forms.ModelForm):
+    def __init__(self, *args, user=None, action=ACAO_CRIAR, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['empresa'].queryset = secure_company_queryset(
+            self.fields['empresa'].queryset,
+            user,
+            resource=RECURSO_AUDITORIAS,
+            action=action,
+        ).order_by('nome')
+
     class Meta:
         model = CampanhaAuditoria
         fields = ['empresa', 'nome', 'descricao', 'instrucoes']

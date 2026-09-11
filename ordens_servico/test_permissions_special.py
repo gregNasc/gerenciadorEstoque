@@ -12,9 +12,14 @@ class OrdemServicoTecnicosEspeciaisTests(TestCase):
         self.empresa = Empresa.objects.create(nome='Empresa Tecnicos O.S.')
         self.admin = User.objects.create_user('admin.tecnicos.os')
         self.admin.perfil.role = Perfil.Role.ADMIN
-        self.admin.perfil.save(update_fields=['role'])
+        self.admin.perfil.empresa = self.empresa
+        self.admin.perfil.save(update_fields=['role', 'empresa'])
         self.rafael = User.objects.create_user('rafael.ribeiro')
         self.jose = User.objects.create_user('jose.barboza')
+        for usuario in (self.rafael, self.jose):
+            usuario.perfil.role = Perfil.Role.OPERADOR
+            usuario.perfil.empresa = self.empresa
+            usuario.perfil.save(update_fields=['role', 'empresa'])
         for indice, tipo in enumerate(
             [
                 OrdemServico.Tipo.SICK,

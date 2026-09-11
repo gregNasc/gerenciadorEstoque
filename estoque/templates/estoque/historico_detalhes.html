@@ -1,72 +1,292 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Detalhes do Historico" %}{% endblock %}
+{% block title %}{% trans "Detalhes do Histórico" %}{% endblock %}
 
 {% block content %}
-<div class="container py-3">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+
+<style>
+    .historico-detalhes-page {
+        --historico-radius: .85rem;
+    }
+
+    .historico-detalhes-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .historico-detalhes-title {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.4rem;
+    }
+
+    .historico-detalhes-data {
+        margin-top: .25rem;
+        color: var(--bs-secondary-color);
+        font-size: .85rem;
+    }
+
+    .historico-auditoria-info {
+        border: 0;
+        border-radius: var(--historico-radius);
+        font-size: .85rem;
+    }
+
+    .historico-grupo-card {
+        border: 0;
+        border-radius: var(--historico-radius);
+        overflow: hidden;
+    }
+
+    .historico-grupo-card .card-header {
+        padding: .9rem 1rem;
+        background: var(--bs-body-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    .historico-grupo-titulo {
+        font-weight: 700;
+    }
+
+    .historico-modelo {
+        color: var(--bs-secondary-color);
+        font-size: .72rem;
+    }
+
+    .historico-detalhes-table {
+        margin-bottom: 0;
+    }
+
+    .historico-detalhes-table thead th {
+        padding: .75rem 1rem;
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-secondary-color);
+        border-bottom: 1px solid var(--bs-border-color);
+        font-size: .7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .035rem;
+    }
+
+    .historico-detalhes-table tbody th,
+    .historico-detalhes-table tbody td {
+        padding: .8rem 1rem;
+        vertical-align: middle;
+    }
+
+    .historico-campo-rotulo {
+        display: block;
+        font-size: .8rem;
+        font-weight: 600;
+        color: var(--bs-body-color);
+    }
+
+    .historico-campo-nome {
+        display: block;
+        margin-top: .15rem;
+        color: var(--bs-secondary-color);
+        font-size: .68rem;
+        font-weight: 400;
+    }
+
+    .historico-campo-valor {
+        font-size: .8rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .historico-detalhes-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+</style>
+
+
+<div class="container py-3 historico-detalhes-page">
+
+    <!-- CABEÇALHO -->
+
+    <div class="historico-detalhes-header">
+
         <div>
-            <h4 class="mb-1">{% trans "Detalhes do Historico" %}</h4>
-            <p class="text-muted mb-0">
+
+            <h4 class="historico-detalhes-title">
+                <i class="bi bi-clock-history me-2"></i>
+                {% trans "Detalhes do Histórico" %}
+            </h4>
+
+            <div class="historico-detalhes-data">
+                <i class="bi bi-calendar-event me-1"></i>
                 {{ historico.data|date:"d/m/Y H:i:s" }}
-            </p>
+            </div>
+
         </div>
 
-        <a href="{% url 'estoque:historico' %}" class="btn btn-light border">
-            <i class="bi bi-arrow-left"></i>
+
+        <a
+            href="{% url 'estoque:historico' %}"
+            class="btn btn-outline-secondary"
+        >
+            <i class="bi bi-arrow-left me-1"></i>
             {% trans "Voltar" %}
         </a>
+
     </div>
 
-    <div class="alert alert-secondary border-0" role="note">
-        {% trans "Esta visão de auditoria apresenta todos os campos persistidos relacionados ao registro. O bloco do equipamento representa o estado atual; os valores do momento da ação permanecem em detalhes." %}
+
+    <!-- INFORMAÇÃO DE AUDITORIA -->
+
+    <div class="alert alert-secondary historico-auditoria-info" role="note">
+
+        <div class="d-flex align-items-start gap-2">
+
+            <i class="bi bi-info-circle mt-1"></i>
+
+            <div>
+                {% trans "Esta visão apresenta os dados persistidos relacionados ao registro. O bloco do equipamento representa o estado atual; os valores registrados no momento da movimentação permanecem preservados para auditoria." %}
+            </div>
+
+        </div>
+
     </div>
+
+
+    <!-- DADOS -->
 
     <div class="row g-4">
+
         {% for grupo in grupos_dados_banco %}
-        <div class="col-12 {% if not forloop.first %}col-xl-6{% endif %}">
-            <section class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
-                    <strong>{{ grupo.titulo }}</strong>
-                    <code class="small text-secondary">{{ grupo.modelo }}</code>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 34%;">{% trans "Campo" %}</th>
-                                <th>{% trans "Valor persistido" %}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for campo in grupo.campos %}
-                            <tr>
-                                <th>
-                                    <span class="d-block">{{ campo.rotulo|capfirst }}</span>
-                                    <code class="small fw-normal">{{ campo.nome }}</code>
-                                </th>
-                                <td class="text-break">
-                                    {% if campo.vazio %}
-                                        <span class="text-muted">—</span>
-                                    {% elif campo.formato == 'codigo' %}
-                                        <pre class="small mb-0 text-wrap">{{ campo.valor }}</pre>
-                                    {% else %}
-                                        {{ campo.valor }}
+
+            <div class="col-12 {% if not forloop.first %}col-xl-6{% endif %}">
+
+                <section class="card shadow-sm historico-grupo-card h-100">
+
+                    <!-- CABEÇALHO DO GRUPO -->
+
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+
+                        <div class="historico-grupo-titulo">
+                            {{ grupo.titulo }}
+                        </div>
+
+                        {% if grupo.modelo %}
+                            <code class="historico-modelo">
+                                {{ grupo.modelo }}
+                            </code>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- TABELA -->
+
+                    <div class="table-responsive">
+
+                        <table class="table table-hover align-middle historico-detalhes-table">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th style="width: 34%;">
+                                        {% trans "Campo" %}
+                                    </th>
+
+                                    <th>
+                                        {% trans "Valor persistido" %}
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                                {% for campo in grupo.campos %}
+
+                                    <!--
+                                        Campos internos do Django que não devem
+                                        ser expostos nesta interface.
+                                    -->
+
+                                    {% if campo.nome != 'is_superuser' and campo.nome != 'is_staff' and campo.nome != 'password' and campo.nome != 'groups' and campo.nome != 'user_permissions' %}
+
+                                        <tr>
+
+                                            <!-- CAMPO -->
+
+                                            <th>
+
+                                                <span class="historico-campo-rotulo">
+                                                    {{ campo.rotulo|capfirst }}
+                                                </span>
+
+                                                <code class="historico-campo-nome">
+                                                    {{ campo.nome }}
+                                                </code>
+
+                                            </th>
+
+
+                                            <!-- VALOR -->
+
+                                            <td class="text-break historico-campo-valor">
+
+                                                {% if campo.vazio %}
+
+                                                    <span class="text-muted">
+                                                        —
+                                                    </span>
+
+                                                {% elif campo.formato == 'codigo' %}
+
+                                                    <pre class="small mb-0 text-wrap">{{ campo.valor }}</pre>
+
+                                                {% else %}
+
+                                                    {{ campo.valor }}
+
+                                                {% endif %}
+
+                                            </td>
+
+                                        </tr>
+
                                     {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+
         {% empty %}
-        <div class="col-12">
-            <div class="alert alert-warning">{% trans "Nenhum dado persistido foi localizado." %}</div>
-        </div>
+
+            <div class="col-12">
+
+                <div class="alert alert-warning border-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    {% trans "Nenhum dado persistido foi localizado." %}
+                </div>
+
+            </div>
+
         {% endfor %}
+
     </div>
+
 </div>
+
 {% endblock %}

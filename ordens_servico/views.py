@@ -13,7 +13,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from estoque.policies.compras import ComprasAccessPolicy
-from ordens_servico.models import OrdemServico, OrdemServicoAssinatura
+from ordens_servico.models import OrdemServico, OrdemServicoAnexo, OrdemServicoAssinatura
 from ordens_servico.policies import OrdemServicoAccessPolicy
 from ordens_servico.services import OrdemServicoService
 
@@ -49,9 +49,32 @@ def detalhe(request, pk):
     return render(request, 'ordens_servico/detalhe.html', {
         'ordem': ordem,
         'tipos_assinatura': OrdemServicoAssinatura.Tipo.choices,
-        'pode_autorizar': OrdemServicoAccessPolicy.pode_autorizar(request.user),
+        'pode_autorizar': OrdemServicoAccessPolicy.pode_autorizar(
+            request.user, ordem
+        ),
         'pode_ver_valores': ComprasAccessPolicy.pode_visualizar_valores(request.user),
     })
+
+
+@login_required
+def baixar_anexo(request, pk):
+    anexo = get_object_or_404(
+        OrdemServicoAnexo.objects.select_related('ordem').filter(
+            ordem__in=OrdemServicoAccessPolicy.queryset(
+                request.user,
+                action=OrdemServicoAccessPolicy.EXPORT,
+            )
+        ),
+        pk=pk,
+    )
+    resposta = FileResponse(
+        anexo.arquivo.open('rb'),
+        as_attachment=True,
+        filename=anexo.nome_original,
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
 
 
 @login_required
@@ -76,7 +99,13 @@ def assinar(request, pk):
 
 @login_required
 def imprimir(request, pk):
-    ordem = get_object_or_404(OrdemServicoAccessPolicy.queryset(request.user), pk=pk)
+    ordem = get_object_or_404(
+        OrdemServicoAccessPolicy.queryset(
+            request.user,
+            action=OrdemServicoAccessPolicy.EXPORT,
+        ),
+        pk=pk,
+    )
     return render(request, 'ordens_servico/imprimir.html', {
         'ordem': ordem,
         'pode_ver_valores': ComprasAccessPolicy.pode_visualizar_valores(request.user),
@@ -86,7 +115,10 @@ def imprimir(request, pk):
 @login_required
 def pdf(request, pk):
     ordem = get_object_or_404(
-        OrdemServicoAccessPolicy.queryset(request.user).prefetch_related(
+        OrdemServicoAccessPolicy.queryset(
+            request.user,
+            action=OrdemServicoAccessPolicy.EXPORT,
+        ).prefetch_related(
             'linhas', 'assinaturas__usuario'
         ),
         pk=pk,
@@ -165,4 +197,7 @@ def pdf(request, pk):
     elementos.append(tabela_assinaturas)
     doc.build(elementos)
     buffer.seek(0)
-    return FileResponse(buffer, as_attachment=True, filename=f'{ordem.numero}.pdf')
+    resposta = FileResponse(buffer, as_attachment=True, filename=f'{ordem.numero}.pdf')
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta

@@ -118,6 +118,16 @@
 
                                     {{ field }}
 
+                                    {% if field.name == 'categoria' %}
+                                        <datalist id="categorias-equipamento-sugeridas">
+                                            <option value="Sistema"></option>
+                                            <option value="Coletores"></option>
+                                            <option value="Notebooks"></option>
+                                            <option value="Impressoras"></option>
+                                            <option value="Routers"></option>
+                                        </datalist>
+                                    {% endif %}
+
                                     {% if field.help_text %}
                                         <div class="form-text">
                                             {{ field.help_text }}

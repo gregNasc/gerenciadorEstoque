@@ -1,4 +1,4 @@
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Count, Exists, OuterRef, Q, Window
 from django.utils import timezone
 from estoque.permissions import pode_gerenciar_sick, pode_realizar_manutencao_sick
 from estoque.policies.compras import ComprasAccessPolicy
@@ -62,11 +62,15 @@ def notificacoes_context(request):
         .distinct()
     )
 
-    ultimo_comunicado_nao_lido = comunicados_nao_lidos_qs.order_by('-criado_em').first()
-
-    comunicados_nao_lidos = (
+    ultimo_comunicado_nao_lido = (
         comunicados_nao_lidos_qs
-        .count()
+        .annotate(total_nao_lidos=Window(expression=Count('pk')))
+        .order_by('-criado_em')
+        .first()
+    )
+    comunicados_nao_lidos = (
+        ultimo_comunicado_nao_lido.total_nao_lidos
+        if ultimo_comunicado_nao_lido else 0
     )
 
     # ---------------- SOLICITAÇÕES ----------------
@@ -83,54 +87,56 @@ def notificacoes_context(request):
 
     # ---------------- SEPARAÇÃO ----------------
 
-    separacoes_pendentes = (
-        Transferencia.objects
-        .filter(
-            regional_origem__in=perfil.regionais.all(),
-            status='PENDENTE'
-        )
-        .count()
+    transferencias = Transferencia.objects.aggregate(
+        separacoes=Count(
+            'pk',
+            filter=Q(
+                regional_origem__in=perfil.regionais.all(),
+                status='PENDENTE',
+            ),
+        ),
+        recebimentos=Count(
+            'pk',
+            filter=Q(
+                regional_destino__in=perfil.regionais.all(),
+                status='EM_TRANSITO',
+            ),
+        ),
     )
+    separacoes_pendentes = transferencias['separacoes']
 
     # ---------------- RECEBIMENTOS ----------------
 
-    transferencias_pendentes = (
-        Transferencia.objects
-        .filter(
-            regional_destino__in=perfil.regionais.all(),
-            status='EM_TRANSITO'
-        )
-        .count()
-    )
+    transferencias_pendentes = transferencias['recebimentos']
 
     # ---------------- EMPRÉSTIMOS ----------------
 
-    emprestimos_recebimento = (
-        Emprestimo.objects
-        .filter(
-            regional_destino__in=perfil.regionais.all(),
-            status='AGUARDANDO_RECEBIMENTO'
-        )
-        .count()
+    emprestimos = Emprestimo.objects.aggregate(
+        recebimento=Count(
+            'pk',
+            filter=Q(
+                regional_destino__in=perfil.regionais.all(),
+                status='AGUARDANDO_RECEBIMENTO',
+            ),
+        ),
+        devolucao=Count(
+            'pk',
+            filter=Q(
+                regional_destino__in=perfil.regionais.all(),
+                status='EMPRESTADO',
+            ),
+        ),
+        confirmacao=Count(
+            'pk',
+            filter=Q(
+                regional_origem__in=perfil.regionais.all(),
+                status='AGUARDANDO_CONFIRMACAO_DEVOLUCAO',
+            ),
+        ),
     )
-
-    emprestimos_devolucao = (
-        Emprestimo.objects
-        .filter(
-            regional_destino__in=perfil.regionais.all(),
-            status='EMPRESTADO'
-        )
-        .count()
-    )
-
-    emprestimos_confirmacao = (
-        Emprestimo.objects
-        .filter(
-            regional_origem__in=perfil.regionais.all(),
-            status='AGUARDANDO_CONFIRMACAO_DEVOLUCAO'
-        )
-        .count()
-    )
+    emprestimos_recebimento = emprestimos['recebimento']
+    emprestimos_devolucao = emprestimos['devolucao']
+    emprestimos_confirmacao = emprestimos['confirmacao']
     # ---------------- TOTAL EMPRÉSTIMOS ----------------
 
     emprestimos_pendentes = (

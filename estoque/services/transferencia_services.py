@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from uuid import uuid4
 from estoque.models import (
@@ -180,15 +181,35 @@ def criar_transferencia(*, equipamentos, regional_destino, solicitado_por, aloca
 
     return transferencia
 
+def _acesso_por_auditoria(transferencia, user):
+    if transferencia.origem_fluxo != Transferencia.Origem.AUDITORIA_DIVERGENCIA:
+        return False
+    from auditorias.models import AuditoriaResolucao
+    from auditorias.permissions import ACAO_EDITAR, exigir_acesso_base
+
+    resolucao = AuditoriaResolucao.objects.select_related(
+        'divergencia__auditoria_base__base__empresa'
+    ).filter(transferencia=transferencia).first()
+    if resolucao is None:
+        raise PermissionDenied('A transferência não possui auditoria de origem válida.')
+    exigir_acesso_base(
+        user,
+        resolucao.divergencia.auditoria_base.base,
+        acao=ACAO_EDITAR,
+    )
+    return True
+
+
 @transaction.atomic
 def enviar_transferencia(transferencia, user, codigo_rastreio=''):
 
-    TenantOperationPolicy.require_flow(
-        user,
-        transferencia.regional_origem,
-        transferencia.regional_destino,
-        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
-    )
+    if not _acesso_por_auditoria(transferencia, user):
+        TenantOperationPolicy.require_flow(
+            user,
+            transferencia.regional_origem,
+            transferencia.regional_destino,
+            CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+        )
 
     if transferencia.status != STATUS_PENDENTE:
         raise ValueError(
@@ -296,12 +317,13 @@ def enviar_transferencia(transferencia, user, codigo_rastreio=''):
 @transaction.atomic
 def receber_transferencia(transferencia, user):
 
-    TenantOperationPolicy.require_base(
-        user,
-        transferencia.regional_destino,
-        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
-        TenantOperationPolicy.MOVE,
-    )
+    if not _acesso_por_auditoria(transferencia, user):
+        TenantOperationPolicy.require_base(
+            user,
+            transferencia.regional_destino,
+            CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS,
+            TenantOperationPolicy.MOVE,
+        )
 
     if transferencia.status != STATUS_EM_TRANSITO:
         raise ValueError(

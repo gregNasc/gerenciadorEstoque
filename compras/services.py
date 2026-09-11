@@ -7,6 +7,7 @@ from django.utils.translation import gettext as _
 
 from compras.models import (
     Aquisicao,
+    CatalogoProdutoEmpresa,
     EventoCompra,
     HistoricoPrecoProduto,
     HistoricoValorEquipamento,
@@ -41,14 +42,38 @@ class ProdutoPrecoService:
     @classmethod
     @transaction.atomic
     def definir(
-        cls, *, produto, usuario, valor, origem, fonte='', fornecedor=None,
+        cls, *, produto, usuario, valor, origem, empresa=None, fonte='', fornecedor=None,
         observacao='', somente_inicial=False, comunicar=True,
     ):
         produto = Produto.objects.select_for_update().get(pk=produto.pk)
+        perfil = getattr(usuario, 'perfil', None)
+        empresa = empresa or getattr(perfil, 'empresa', None)
+        if empresa is None:
+            raise ValidationError('Informe a empresa do preço de referência.')
+        if not ComprasAccessPolicy.empresas(
+            usuario,
+            action=ComprasAccessPolicy.EDIT,
+            resource=ComprasAccessPolicy.CATALOGO,
+        ).filter(pk=empresa.pk).exists():
+            raise PermissionDenied('Empresa fora do escopo de precificação.')
+        catalogo, _ = CatalogoProdutoEmpresa.objects.select_for_update().get_or_create(
+            empresa=empresa,
+            produto=produto,
+            defaults={
+                'ativo': True,
+                'configurado_por': usuario,
+                'preco_referencia': produto.preco_referencia,
+                'preco_origem': produto.preco_origem,
+                'preco_fonte': produto.preco_fonte,
+                'preco_fornecedor': produto.preco_fornecedor,
+                'preco_validado_por': produto.preco_validado_por,
+                'preco_validado_em': produto.preco_validado_em,
+            },
+        )
         valor = Decimal(str(valor))
         if valor < 0:
             raise ValidationError('O preço de referência não pode ser negativo.')
-        inicial = produto.preco_referencia is None
+        inicial = catalogo.preco_referencia is None
         if somente_inicial and not inicial:
             raise ValidationError('O produto já possui preço; use a ação específica de alteração.')
         permitido = (
@@ -65,39 +90,66 @@ class ProdutoPrecoService:
             raise ValidationError('Origem do preço inválida.')
         fonte = str(fonte or '').strip()
         if (
-            produto.preco_referencia == valor
-            and produto.preco_origem == origem
-            and produto.preco_fonte == fonte
-            and produto.preco_fornecedor_id == getattr(fornecedor, 'pk', None)
+            catalogo.preco_referencia == valor
+            and catalogo.preco_origem == origem
+            and catalogo.preco_fonte == fonte
+            and catalogo.preco_fornecedor_id == getattr(fornecedor, 'pk', None)
         ):
             return produto
         HistoricoPrecoProduto.objects.create(
+            empresa=empresa,
             produto=produto,
-            valor_anterior=produto.preco_referencia,
+            valor_anterior=catalogo.preco_referencia,
             valor_novo=valor,
-            origem_anterior=produto.preco_origem,
+            origem_anterior=catalogo.preco_origem,
             origem_nova=origem,
             fonte=fonte,
             fornecedor=fornecedor,
             observacao=str(observacao or '').strip(),
             alterado_por=usuario,
         )
-        produto.preco_referencia = valor
-        produto.preco_origem = origem
-        produto.preco_fonte = fonte
-        produto.preco_fornecedor = fornecedor
-        produto.preco_validado_por = usuario
-        produto.preco_validado_em = timezone.now()
-        produto.save(update_fields=[
+        catalogo.preco_referencia = valor
+        catalogo.preco_origem = origem
+        catalogo.preco_fonte = fonte
+        catalogo.preco_fornecedor = fornecedor
+        catalogo.preco_validado_por = usuario
+        catalogo.preco_validado_em = timezone.now()
+        catalogo.save(update_fields=[
             'preco_referencia', 'preco_origem', 'preco_fonte', 'preco_fornecedor',
             'preco_validado_por', 'preco_validado_em', 'atualizado_em',
         ])
+        origem_equipamento = (
+            Equipamento.OrigemValor.LEGADO_SEM_DOCUMENTO
+            if origem == Produto.OrigemPreco.LEGADO
+            else origem
+        )
+        Equipamento.objects.filter(
+            regional__empresa=empresa,
+            produto=produto,
+        ).update(
+            preco_referencia=valor,
+            origem_valor=origem_equipamento,
+            fornecedor=fornecedor,
+            valor_validado_por=usuario,
+            valor_validado_em=catalogo.preco_validado_em,
+            data_atualizacao=timezone.now(),
+        )
         if comunicar:
             transaction.on_commit(lambda: ComunicadoService.criar_acao(
                 titulo=f'Preço de referência de {produto.descricao} atualizado',
                 mensagem='O preço do catálogo foi atualizado com histórico e rastreabilidade.',
                 usuario=usuario,
-                dados={'produto_id': produto.pk, 'acao': 'PRECO_PRODUTO_ATUALIZADO'},
+                usuarios=ComprasAccessPolicy.admins_para_empresa(
+                    empresa,
+                    resource=ComprasAccessPolicy.CATALOGO,
+                ),
+                empresa=empresa,
+                incluir_admins=False,
+                dados={
+                    'produto_id': produto.pk,
+                    'empresa_id': empresa.pk,
+                    'acao': 'PRECO_PRODUTO_ATUALIZADO',
+                },
                 url='/compras/valores/equipamentos/',
             ))
         return produto
@@ -111,7 +163,10 @@ class AquisicaoService:
             raise PermissionDenied('Sem permissão para gerenciar aquisições.')
         if not itens:
             raise ValidationError('Inclua ao menos um item na aquisição.')
-        if not ComprasAccessPolicy.empresas(usuario).filter(pk=empresa.pk).exists():
+        if not ComprasAccessPolicy.empresas(
+            usuario,
+            action=ComprasAccessPolicy.CREATE,
+        ).filter(pk=empresa.pk).exists():
             raise PermissionDenied('Empresa fora do escopo corporativo de Compras.')
         aquisicao = Aquisicao(
             empresa=empresa, fornecedor=fornecedor, cadastrado_por=usuario, **dados
@@ -133,7 +188,9 @@ class AquisicaoService:
                 f'{fornecedor.nome}, com {len(itens)} item(ns).'
             ),
             usuario=usuario,
+            usuarios=ComprasAccessPolicy.admins_para_empresa(empresa),
             empresa=empresa,
+            incluir_admins=False,
             dados={'aquisicao_id': aquisicao.pk, 'acao': 'CRIADA'},
             url=f'/compras/{aquisicao.pk}/',
         ))
@@ -142,7 +199,10 @@ class AquisicaoService:
     @classmethod
     @transaction.atomic
     def aprovar(cls, aquisicao, usuario):
-        if not AquisicaoAccessPolicy.pode_gerenciar(usuario):
+        if not AquisicaoAccessPolicy.queryset(
+            usuario,
+            action=ComprasAccessPolicy.APPROVE,
+        ).filter(pk=aquisicao.pk).exists():
             raise PermissionDenied('Sem permissão para aprovar a aquisição.')
         aquisicao = Aquisicao.objects.select_for_update().get(pk=aquisicao.pk)
         if aquisicao.status != Aquisicao.Status.RASCUNHO:
@@ -158,8 +218,11 @@ class AquisicaoService:
             titulo=f'Aquisicao #{aquisicao.pk} aprovada',
             mensagem=f'A aquisicao de {aquisicao.fornecedor.nome} foi aprovada.',
             usuario=usuario,
-            usuarios=[aquisicao.cadastrado_por],
+            usuarios=list(
+                ComprasAccessPolicy.admins_para_empresa(aquisicao.empresa)
+            ) + [aquisicao.cadastrado_por],
             empresa=aquisicao.empresa,
+            incluir_admins=False,
             dados={'aquisicao_id': aquisicao.pk, 'acao': 'APROVADA'},
             url=f'/compras/{aquisicao.pk}/',
         ))
@@ -168,9 +231,17 @@ class AquisicaoService:
     @classmethod
     @transaction.atomic
     def vincular_equipamento(cls, *, item, equipamento, usuario):
-        if not AquisicaoAccessPolicy.pode_gerenciar(usuario):
-            raise PermissionDenied('Sem permissão para vincular equipamentos.')
         item = ItemAquisicao.objects.select_for_update().select_related('aquisicao').get(pk=item.pk)
+        if not AquisicaoAccessPolicy.queryset(
+            usuario,
+            action=ComprasAccessPolicy.EDIT,
+        ).filter(pk=item.aquisicao_id).exists():
+            raise PermissionDenied('Sem permissão para vincular equipamentos.')
+        if not ComprasAccessPolicy.bases(
+            usuario,
+            action=ComprasAccessPolicy.EDIT,
+        ).filter(pk=equipamento.regional_id).exists():
+            raise PermissionDenied('Equipamento fora do escopo de Compras.')
         if item.tipo_item != ItemAquisicao.Tipo.EQUIPAMENTO:
             raise ValidationError('O item não é de equipamento.')
         if item.equipamentos_vinculados.count() >= int(item.quantidade):
@@ -206,6 +277,11 @@ class AquisicaoService:
         if not motivo:
             raise ValidationError('Informe o motivo da alteração de valor.')
         equipamento = Equipamento.objects.select_for_update().get(pk=equipamento.pk)
+        if not ComprasAccessPolicy.bases(
+            usuario,
+            action=ComprasAccessPolicy.EDIT,
+        ).filter(pk=equipamento.regional_id).exists():
+            raise PermissionDenied('Equipamento fora do escopo de Compras.')
         custo = Decimal(str(custo)) if custo not in (None, '') else None
         referencia = Decimal(str(referencia)) if referencia not in (None, '') else None
         if custo is not None and custo < 0 or referencia is not None and referencia < 0:
@@ -238,6 +314,7 @@ class AquisicaoService:
             ProdutoPrecoService.definir(
                 produto=equipamento.produto,
                 usuario=usuario,
+                empresa=equipamento.regional.empresa,
                 valor=referencia,
                 origem=origem,
                 fonte=documento,
@@ -248,8 +325,12 @@ class AquisicaoService:
             titulo=f'Valor do equipamento {equipamento.codigo} atualizado',
             mensagem=f'O valor patrimonial foi atualizado. Motivo: {motivo}',
             usuario=usuario,
+            usuarios=ComprasAccessPolicy.admins_para_empresa(
+                equipamento.regional.empresa
+            ),
             bases=[equipamento.regional],
             empresa=equipamento.regional.empresa,
+            incluir_admins=False,
             dados={'equipamento_id': equipamento.pk, 'acao': 'VALOR_ATUALIZADO'},
             url='/compras/valores/equipamentos/',
         ))
@@ -268,7 +349,13 @@ class AquisicaoService:
             equipamento.pk: equipamento
             for equipamento in Equipamento.objects.select_for_update().select_related(
                 'regional__empresa'
-            ).filter(pk__in=ids)
+            ).filter(
+                pk__in=ids,
+                regional__in=ComprasAccessPolicy.bases(
+                    usuario,
+                    action=ComprasAccessPolicy.EDIT,
+                ),
+            )
         }
         ausentes = [equipamento_id for equipamento_id in ids if equipamento_id not in equipamentos]
         if ausentes:
@@ -363,17 +450,21 @@ class AquisicaoService:
             if not equipamento.produto_id or equipamento.preco_referencia is None:
                 continue
             atual = (equipamento.preco_referencia, equipamento.origem_valor)
-            anterior = referencias_por_produto.get(equipamento.produto_id)
+            chave = (equipamento.regional.empresa_id, equipamento.produto_id)
+            anterior = referencias_por_produto.get(chave)
             if anterior and anterior != atual:
                 raise ValidationError(
                     'A planilha possui preços de referência conflitantes para o mesmo produto.'
                 )
-            referencias_por_produto[equipamento.produto_id] = atual
-        produtos = Produto.objects.in_bulk(referencias_por_produto)
-        for produto_id, (valor, origem) in referencias_por_produto.items():
+            referencias_por_produto[chave] = atual
+        produtos = Produto.objects.in_bulk(
+            {produto_id for _, produto_id in referencias_por_produto}
+        )
+        for (empresa_id, produto_id), (valor, origem) in referencias_por_produto.items():
             ProdutoPrecoService.definir(
                 produto=produtos[produto_id],
                 usuario=usuario,
+                empresa=empresas[empresa_id],
                 valor=valor,
                 origem=origem,
                 fonte='IMPORTAÇÃO XLSX',
@@ -394,6 +485,11 @@ class AquisicaoService:
             usuario=usuario,
             bases=list(bases_ids),
             empresa=empresa,
+            usuarios=(
+                ComprasAccessPolicy.admins_para_empresa(empresa)
+                if empresa else None
+            ),
+            incluir_admins=False,
             dados={
                 'equipamentos_ids': atualizados_ids,
                 'quantidade': quantidade,
@@ -412,9 +508,10 @@ class RemessaCompraService:
             titulo=titulo,
             mensagem=mensagem,
             usuario=usuario,
+            usuarios=ComprasAccessPolicy.admins_para_empresa(remessa.empresa),
             bases=[remessa.base_destino],
             empresa=remessa.empresa,
-            incluir_admins=True,
+            incluir_admins=False,
             dados={'remessa_id': remessa.pk, 'protocolo': remessa.protocolo},
         ))
 
@@ -425,8 +522,24 @@ class RemessaCompraService:
             raise PermissionDenied('Sem permissão para criar remessas.')
         if not itens:
             raise ValidationError('Inclua ao menos um item na remessa.')
-        if not ComprasAccessPolicy.bases(usuario).filter(pk=base_destino.pk).exists():
+        bases_permitidas = ComprasAccessPolicy.bases(
+            usuario,
+            action=ComprasAccessPolicy.CREATE,
+        )
+        if not ComprasAccessPolicy.empresas(
+            usuario,
+            action=ComprasAccessPolicy.CREATE,
+        ).filter(pk=empresa.pk).exists():
+            raise PermissionDenied('Empresa fora do escopo de Compras.')
+        if not bases_permitidas.filter(pk=base_destino.pk).exists():
             raise PermissionDenied('Base de destino fora do escopo de Compras.')
+        if base_origem and not bases_permitidas.filter(pk=base_origem.pk).exists():
+            raise PermissionDenied('Base de origem fora do escopo de Compras.')
+        if aquisicao and not AquisicaoAccessPolicy.queryset(
+            usuario,
+            action=ComprasAccessPolicy.CREATE,
+        ).filter(pk=aquisicao.pk).exists():
+            raise PermissionDenied('Aquisição fora do escopo de Compras.')
         remessa = RemessaCompra(
             empresa=empresa, fluxo=fluxo, base_destino=base_destino,
             base_origem=base_origem, aquisicao=aquisicao, criada_por=usuario, **dados,
@@ -466,6 +579,11 @@ class RemessaCompraService:
         if not ComprasAccessPolicy.pode_criar_remessa(usuario):
             raise PermissionDenied('Sem permissão para enviar remessas.')
         remessa = RemessaCompra.objects.select_for_update().get(pk=remessa.pk)
+        if not AquisicaoAccessPolicy.remessas(
+            usuario,
+            action=ComprasAccessPolicy.EDIT,
+        ).filter(pk=remessa.pk).exists():
+            raise PermissionDenied('Remessa fora do escopo de Compras.')
         if remessa.status != RemessaCompra.Status.PREPARADA:
             raise ValidationError('Somente remessas preparadas podem ser enviadas.')
         remessa.status = RemessaCompra.Status.AGUARDANDO_CONFERENCIA
@@ -549,7 +667,11 @@ class RemessaCompraService:
                     saldo_origem.save(update_fields=['saldo_reservado', 'recalculado_em'])
                     MovimentacaoService.saida(
                         base=remessa.base_origem, insumo=item.insumo, quantidade=qtd,
-                        usuario=usuario, observacao=f'Remessa {remessa.protocolo}',
+                        usuario=remessa.criada_por,
+                        observacao=(
+                            f'Remessa {remessa.protocolo}; conferida por '
+                            f'{usuario.get_username()}'
+                        ),
                     )
                 MovimentacaoService.entrada(
                     base=remessa.base_destino, insumo=item.insumo, quantidade=qtd,

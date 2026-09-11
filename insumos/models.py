@@ -137,6 +137,14 @@ class FornecedorInsumo(models.Model):
         )
 
 class PrecoFornecedorInsumo(models.Model):
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='precos_fornecedores_insumos',
+        help_text='Empresa proprietária da cotação; vazio identifica legado da plataforma.',
+    )
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='precos_fornecedores')
     fornecedor = models.ForeignKey(
         FornecedorInsumo,
@@ -175,6 +183,14 @@ class PrecoFornecedorInsumo(models.Model):
         return f'{self.insumo} - {self.fornecedor}: {self.valor_unitario}'
 
 class PesquisaPrecoOnline(models.Model):
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='pesquisas_preco_online',
+        help_text='Empresa proprietária da pesquisa; vazio identifica legado da plataforma.',
+    )
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='pesquisas_preco')
     termo = models.CharField(max_length=255)
     fonte = models.CharField(max_length=40, default='MERCADO_LIVRE')
@@ -432,10 +448,18 @@ class ClienteRelatorio(models.Model):
 
 
 class ClienteChecklistDocumento(models.Model):
-    cliente = models.OneToOneField(
+    cliente = models.ForeignKey(
         Cliente,
         on_delete=models.CASCADE,
-        related_name='checklist_documento',
+        related_name='checklist_documentos',
+    )
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='checklists_documentacao_clientes',
+        help_text='Vazio identifica documento global legado da plataforma.',
     )
     arquivo = models.FileField(
         upload_to=checklist_cliente_upload_to,
@@ -457,6 +481,18 @@ class ClienteChecklistDocumento(models.Model):
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cliente', 'empresa'],
+                condition=Q(empresa__isnull=False),
+                name='uq_checklist_cliente_empresa',
+            ),
+            models.UniqueConstraint(
+                fields=['cliente'],
+                condition=Q(empresa__isnull=True),
+                name='uq_checklist_cliente_global',
+            ),
+        ]
         verbose_name = 'arquivo de checklist do cliente'
         verbose_name_plural = 'arquivos de checklist dos clientes'
 

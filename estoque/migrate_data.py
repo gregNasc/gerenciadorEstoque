@@ -2,9 +2,18 @@ import psycopg2
 import os
 import django
 
+from integracao.scopes import IntegrationExecutionScope
+
 # Configurar Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "estoque_django.settings")
 django.setup()
+
+if os.getenv('LEGACY_IMPORT_SCOPE', '').strip().upper() != 'PLATFORM_GLOBAL':
+    raise RuntimeError(
+        'LEGACY_IMPORT_SCOPE=PLATFORM_GLOBAL deve ser declarado para executar '
+        'a importação legada.'
+    )
+IntegrationExecutionScope.platform_global('LEGACY_DATABASE')
 
 from estoque.models import Produto, Descricao, HistoricoTransferencia, Sick
 

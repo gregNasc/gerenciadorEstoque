@@ -356,7 +356,19 @@ class PrecoOnlineService:
         return next((item for item in cls.PROVIDERS if item.configurado()), None)
 
     @classmethod
-    def pesquisar(cls, *, insumo, termo, usuario, fonte=None):
+    def pesquisar(cls, *, insumo, termo, usuario, fonte=None, empresa=None):
+        if empresa is None:
+            raise PrecoOnlineErro(
+                'A empresa da pesquisa deve ser informada explicitamente.'
+            )
+        from insumos.policies import InsumosTenantPolicy
+        if not InsumosTenantPolicy.empresas(
+            usuario,
+            action=InsumosTenantPolicy.EDIT,
+        ).filter(pk=empresa.pk).exists():
+            raise PrecoOnlineErro(
+                'A empresa da pesquisa está fora do escopo autorizado.'
+            )
         termo = (
             termo
             or insumo.termo_pesquisa_online
@@ -404,6 +416,7 @@ class PrecoOnlineService:
             insumo=insumo,
             termo=termo,
             usuario=usuario,
+            empresa=empresa,
             fonte=fonte_pesquisa,
             resultados=resultados,
         )
@@ -412,8 +425,9 @@ class PrecoOnlineService:
 
     @staticmethod
     @transaction.atomic
-    def _salvar_pesquisa(*, insumo, termo, usuario, fonte, resultados):
+    def _salvar_pesquisa(*, insumo, termo, usuario, fonte, resultados, empresa=None):
         pesquisa = PesquisaPrecoOnline.objects.create(
+            empresa=empresa,
             insumo=insumo,
             termo=termo,
             fonte=fonte,

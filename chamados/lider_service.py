@@ -19,6 +19,10 @@ class InventarioLiderService:
         data = data or timezone.localdate()
         return Inventario.objects.filter(
             lider_usuario=usuario,
+            base__in=ChamadoAccessPolicy.bases(
+                usuario,
+                action=ChamadoAccessPolicy.CREATE,
+            ),
             data_inicio__lte=data,
         ).filter(
             Q(data_fim__isnull=True) | Q(data_fim__gte=data)
@@ -28,12 +32,22 @@ class InventarioLiderService:
     @transaction.atomic
     def resolver_texto_importado(cls, inventario, usuario_sistema):
         inventario = Inventario.objects.select_for_update().get(pk=inventario.pk)
+        if not ChamadoAccessPolicy.pode_configurar(usuario_sistema) or not (
+            ChamadoAccessPolicy.bases(
+                usuario_sistema,
+                action=ChamadoAccessPolicy.ADMIN,
+            ).filter(pk=inventario.base_id).exists()
+        ):
+            raise PermissionDenied('INVENTÁRIO FORA DO ESCOPO DE CONFIGURAÇÃO.')
         texto = (inventario.lider or '').strip()
         normalizado = normalizar_alias(texto)
         alias = AliasUsuario.objects.filter(
             alias_normalizado=normalizado, ativo=True,
         ).select_related('usuario').first() if normalizado else None
-        if alias:
+        if alias and ChamadoAccessPolicy.bases(
+            alias.usuario,
+            action=ChamadoAccessPolicy.CREATE,
+        ).filter(pk=inventario.base_id).exists():
             cls._vincular_locked(
                 inventario, alias.usuario, usuario_sistema,
                 'VÍNCULO AUTOMÁTICO POR ALIAS ADMINISTRATIVO.',
@@ -83,6 +97,16 @@ class InventarioLiderService:
         if not (justificativa or '').strip():
             raise ValidationError('INFORME A JUSTIFICATIVA DA SUBSTITUIÇÃO DO LÍDER.')
         inventario = Inventario.objects.select_for_update().get(pk=inventario.pk)
+        if not ChamadoAccessPolicy.bases(
+            autor,
+            action=ChamadoAccessPolicy.ADMIN,
+        ).filter(pk=inventario.base_id).exists():
+            raise PermissionDenied('INVENTÁRIO FORA DO ESCOPO DE CONFIGURAÇÃO.')
+        if not ChamadoAccessPolicy.bases(
+            lider_novo,
+            action=ChamadoAccessPolicy.CREATE,
+        ).filter(pk=inventario.base_id).exists():
+            raise ValidationError('O NOVO LÍDER NÃO POSSUI ACESSO À BASE DO INVENTÁRIO.')
         cls._vincular_locked(inventario, lider_novo, autor, justificativa)
         PendenciaVinculoLider.objects.filter(inventario=inventario).update(
             status=PendenciaVinculoLider.Status.RESOLVIDA,
@@ -100,6 +124,12 @@ class InventarioLiderService:
         normalizado = normalizar_alias(alias)
         if not normalizado:
             raise ValidationError('INFORME UM ALIAS VÁLIDO.')
+        empresa_id = getattr(getattr(usuario, 'perfil', None), 'empresa_id', None)
+        if not empresa_id or not ChamadoAccessPolicy.empresas(
+            autor,
+            action=ChamadoAccessPolicy.ADMIN,
+        ).filter(pk=empresa_id).exists():
+            raise PermissionDenied('USUÁRIO FORA DO ESCOPO DE CONFIGURAÇÃO.')
         registro = AliasUsuario(
             usuario=usuario, alias=alias, alias_normalizado=normalizado,
         )

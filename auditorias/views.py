@@ -9,7 +9,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from estoque.models import Equipamento
+from estoque.models import Empresa, Equipamento
+from estoque.security import secure_company_queryset
 
 from .forms import (
     AuditoriaBasesLoteForm,
@@ -22,7 +23,17 @@ from .forms import (
     TransferenciaAuditoriaForm,
 )
 from .models import AuditoriaBase, AuditoriaDivergencia, AuditoriaLeitura, CampanhaAuditoria
-from .permissions import exigir_admin, usuario_e_admin
+from .permissions import (
+    ACAO_ADMINISTRAR,
+    ACAO_APROVAR,
+    ACAO_CRIAR,
+    ACAO_EDITAR,
+    ACAO_EXPORTAR,
+    ACAO_VISUALIZAR,
+    RECURSO_AUDITORIAS,
+    exigir_admin,
+    usuario_e_admin,
+)
 from .selectors import auditorias_visiveis, campanhas_visiveis, divergencias_visiveis
 from .services.campanha_service import CampanhaService
 from .services.apuracao_service import ApuracaoService
@@ -35,16 +46,28 @@ from .services.relatorio_service import RelatorioService
 
 @login_required
 def campanha_lista(request):
+    pode_criar = secure_company_queryset(
+        Empresa.objects.all(),
+        request.user,
+        resource=RECURSO_AUDITORIAS,
+        action=ACAO_CRIAR,
+    ).exists() and usuario_e_admin(request.user)
     return render(request, 'auditorias/campanha_lista.html', {
         'campanhas': campanhas_visiveis(request.user),
-        'pode_criar': usuario_e_admin(request.user),
+        'pode_criar': pode_criar,
     })
 
 @login_required
 def campanha_criar(request):
-    exigir_admin(request.user)
-    form = CampanhaAuditoriaForm(request.POST or None)
+    empresas = secure_company_queryset(
+        Empresa.objects.all(), request.user,
+        resource=RECURSO_AUDITORIAS, action=ACAO_CRIAR,
+    )
+    if not usuario_e_admin(request.user) or not empresas.exists():
+        raise PermissionDenied
+    form = CampanhaAuditoriaForm(request.POST or None, user=request.user, action=ACAO_CRIAR)
     if request.method == 'POST' and form.is_valid():
+        exigir_admin(request.user, form.cleaned_data['empresa'], acao=ACAO_CRIAR)
         campanha = CampanhaService.criar_campanha(criado_por=request.user, **form.cleaned_data)
         messages.success(request, 'Campanha criada.')
         return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
@@ -59,7 +82,7 @@ def campanha_detalhe(request, campanha_id):
         campanha=campanha,
     )
     if request.method == 'POST':
-        exigir_admin(request.user)
+        exigir_admin(request.user, campanha.empresa, acao=ACAO_EDITAR)
         if form_base.is_valid():
             try:
                 auditorias = CampanhaService.adicionar_bases(
@@ -75,7 +98,14 @@ def campanha_detalhe(request, campanha_id):
                 return redirect('auditorias:campanha_detalhe', campanha_id=campanha.pk)
             except ValidationError as exc:
                 form_base.add_error(None, exc)
-    admin = usuario_e_admin(request.user)
+    pode_editar = usuario_e_admin(request.user, campanha.empresa, acao=ACAO_EDITAR)
+    pode_aprovar = usuario_e_admin(request.user, campanha.empresa, acao=ACAO_APROVAR)
+    pode_administrar = usuario_e_admin(
+        request.user, campanha.empresa, acao=ACAO_ADMINISTRAR
+    )
+    pode_exportar = usuario_e_admin(
+        request.user, campanha.empresa, acao=ACAO_EXPORTAR
+    )
     status_aberto = campanha.status not in {
         CampanhaAuditoria.Status.ENCERRADA,
         CampanhaAuditoria.Status.CANCELADA,
@@ -90,24 +120,31 @@ def campanha_detalhe(request, campanha_id):
         'bases_finalizadas': bases_finalizadas,
         'eventos': campanha.eventos.select_related('usuario').order_by('-criado_em', '-id')[:100],
         'form_base': form_base,
-        'pode_editar': admin and status_aberto,
-        'pode_adicionar': admin and campanha.status in {
+        'pode_editar': pode_editar and status_aberto,
+        'pode_adicionar': pode_editar and campanha.status in {
             CampanhaAuditoria.Status.RASCUNHO,
             CampanhaAuditoria.Status.AGENDADA,
             CampanhaAuditoria.Status.EM_ANDAMENTO,
         },
-        'pode_agendar': admin and campanha.status == CampanhaAuditoria.Status.RASCUNHO,
-        'pode_cancelar': admin and status_aberto,
-        'pode_encerrar': admin and status_aberto,
-        'pode_exportar_campanha': admin,
+        'pode_agendar': pode_aprovar and campanha.status == CampanhaAuditoria.Status.RASCUNHO,
+        'pode_cancelar': pode_administrar and status_aberto,
+        'pode_encerrar': pode_aprovar and status_aberto,
+        'pode_exportar_campanha': pode_exportar,
     })
 
 
 @login_required
 def campanha_editar(request, campanha_id):
-    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
-    exigir_admin(request.user)
-    form = CampanhaAuditoriaEdicaoForm(request.POST or None, instance=campanha)
+    campanha = get_object_or_404(
+        campanhas_visiveis(request.user, action=ACAO_EDITAR), pk=campanha_id
+    )
+    exigir_admin(request.user, campanha.empresa, acao=ACAO_EDITAR)
+    form = CampanhaAuditoriaEdicaoForm(
+        request.POST or None,
+        instance=campanha,
+        user=request.user,
+        action=ACAO_EDITAR,
+    )
     if request.method == 'POST' and form.is_valid():
         try:
             CampanhaService.editar_campanha(
@@ -130,7 +167,10 @@ def campanha_editar(request, campanha_id):
 @login_required
 @require_POST
 def campanha_agendar(request, campanha_id):
-    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
+    campanha = get_object_or_404(
+        campanhas_visiveis(request.user, action=ACAO_APROVAR), pk=campanha_id
+    )
+    exigir_admin(request.user, campanha.empresa, acao=ACAO_APROVAR)
     try:
         CampanhaService.agendar(campanha, request.user)
         messages.success(request, 'Campanha agendada.')
@@ -141,7 +181,10 @@ def campanha_agendar(request, campanha_id):
 @login_required
 @require_POST
 def campanha_cancelar(request, campanha_id):
-    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
+    campanha = get_object_or_404(
+        campanhas_visiveis(request.user, action=ACAO_ADMINISTRAR), pk=campanha_id
+    )
+    exigir_admin(request.user, campanha.empresa, acao=ACAO_ADMINISTRAR)
     try:
         CampanhaService.cancelar_campanha(
             campanha,
@@ -157,7 +200,10 @@ def campanha_cancelar(request, campanha_id):
 @login_required
 @require_POST
 def campanha_encerrar(request, campanha_id):
-    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
+    campanha = get_object_or_404(
+        campanhas_visiveis(request.user, action=ACAO_APROVAR), pk=campanha_id
+    )
+    exigir_admin(request.user, campanha.empresa, acao=ACAO_APROVAR)
     try:
         CampanhaService.encerrar_campanha(campanha, request.user)
         messages.success(request, 'Campanha encerrada.')
@@ -169,8 +215,10 @@ def campanha_encerrar(request, campanha_id):
 @login_required
 @require_POST
 def base_atualizar_periodo(request, auditoria_base_id):
-    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    exigir_admin(request.user)
+    auditoria = get_object_or_404(
+        auditorias_visiveis(request.user, action=ACAO_EDITAR), pk=auditoria_base_id
+    )
+    exigir_admin(request.user, auditoria.campanha.empresa, acao=ACAO_EDITAR)
     form = PeriodoAuditoriaBaseForm(request.POST)
     if form.is_valid():
         try:
@@ -192,8 +240,10 @@ def base_atualizar_periodo(request, auditoria_base_id):
 @login_required
 @require_POST
 def base_remover(request, auditoria_base_id):
-    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    exigir_admin(request.user)
+    auditoria = get_object_or_404(
+        auditorias_visiveis(request.user, action=ACAO_ADMINISTRAR), pk=auditoria_base_id
+    )
+    exigir_admin(request.user, auditoria.campanha.empresa, acao=ACAO_ADMINISTRAR)
     campanha_id = auditoria.campanha_id
     try:
         modo = CampanhaService.remover_base(
@@ -223,7 +273,9 @@ def base_iniciar(request, auditoria_base_id):
 @login_required
 def coleta(request, auditoria_base_id):
     auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    admin = usuario_e_admin(request.user)
+    admin = usuario_e_admin(
+        request.user, auditoria.campanha.empresa, acao=ACAO_VISUALIZAR
+    )
     pagina_equipamentos = None
     if admin:
         snapshots = auditoria.snapshot_equipamentos.select_related(
@@ -269,7 +321,9 @@ def registrar_leitura(request, auditoria_base_id):
             idempotency_key=payload.get('idempotency_key'),
         )
         dados = resultado.to_dict()
-        if not usuario_e_admin(request.user):
+        if not usuario_e_admin(
+            request.user, auditoria.campanha.empresa, acao=ACAO_VISUALIZAR
+        ):
             duplicada = dados.get('classificacao') == AuditoriaLeitura.Classificacao.LEITURA_DUPLICADA
             dados = {
                 'ok': True,
@@ -291,7 +345,9 @@ def base_enviar(request, auditoria_base_id):
     auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
     destino = (
         'auditorias:divergencias'
-        if usuario_e_admin(request.user)
+        if usuario_e_admin(
+            request.user, auditoria.campanha.empresa, acao=ACAO_VISUALIZAR
+        )
         else 'auditorias:coleta'
     )
     if request.POST.get('confirmar_envio') != '1':
@@ -310,7 +366,9 @@ def base_enviar(request, auditoria_base_id):
 @login_required
 def divergencias(request, auditoria_base_id):
     auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    admin = usuario_e_admin(request.user)
+    admin = usuario_e_admin(
+        request.user, auditoria.campanha.empresa, acao=ACAO_VISUALIZAR
+    )
     if not admin and not (
         auditoria.finalizada_em or auditoria.status == AuditoriaBase.Status.EM_REGULARIZACAO
     ):
@@ -347,8 +405,10 @@ def divergencias(request, auditoria_base_id):
 @login_required
 @require_POST
 def base_reabrir(request, auditoria_base_id):
-    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    exigir_admin(request.user)
+    auditoria = get_object_or_404(
+        auditorias_visiveis(request.user, action=ACAO_ADMINISTRAR), pk=auditoria_base_id
+    )
+    exigir_admin(request.user, auditoria.campanha.empresa, acao=ACAO_ADMINISTRAR)
     try:
         CampanhaService.reabrir_base(
             auditoria,
@@ -364,8 +424,10 @@ def base_reabrir(request, auditoria_base_id):
 @login_required
 @require_POST
 def base_finalizar(request, auditoria_base_id):
-    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    exigir_admin(request.user)
+    auditoria = get_object_or_404(
+        auditorias_visiveis(request.user, action=ACAO_APROVAR), pk=auditoria_base_id
+    )
+    exigir_admin(request.user, auditoria.campanha.empresa, acao=ACAO_APROVAR)
     if request.POST.get('confirmar_validacao') != '1':
         messages.error(request, 'Confirme a validação do resultado antes de continuar.')
         return redirect('auditorias:divergencias', auditoria_base_id=auditoria.pk)
@@ -382,8 +444,10 @@ def base_finalizar(request, auditoria_base_id):
 @login_required
 @require_POST
 def base_solicitar_correcao(request, auditoria_base_id):
-    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    exigir_admin(request.user)
+    auditoria = get_object_or_404(
+        auditorias_visiveis(request.user, action=ACAO_EDITAR), pk=auditoria_base_id
+    )
+    exigir_admin(request.user, auditoria.campanha.empresa, acao=ACAO_EDITAR)
     form = SolicitarCorrecaoForm(request.POST)
     if form.is_valid():
         try:
@@ -408,19 +472,28 @@ def divergencia_detalhe(request, divergencia_id):
         divergencia.auditoria_base.prazo_correcao_em
         and timezone.now() <= divergencia.auditoria_base.prazo_correcao_em
     )
-    if not usuario_e_admin(request.user) and not (
+    admin = usuario_e_admin(
+        request.user,
+        divergencia.auditoria_base.campanha.empresa,
+        acao=ACAO_VISUALIZAR,
+    )
+    if not admin and not (
         divergencia.auditoria_base.finalizada_em or em_correcao
     ):
         raise PermissionDenied('O resultado ainda está em apuração pelo administrador.')
     return render(request, 'auditorias/divergencia_detalhe.html', {
         'divergencia': divergencia,
         'pode_regularizar': em_correcao and prazo_ativo,
-        'pode_responder': em_correcao and prazo_ativo and not usuario_e_admin(request.user),
+        'pode_responder': em_correcao and prazo_ativo and not admin,
         'em_correcao': em_correcao,
         'prazo_ativo': prazo_ativo,
-        'admin': usuario_e_admin(request.user),
+        'admin': admin,
         'pode_inativar': bool(
-            usuario_e_admin(request.user)
+            usuario_e_admin(
+                request.user,
+                divergencia.auditoria_base.campanha.empresa,
+                acao=ACAO_ADMINISTRAR,
+            )
             and divergencia.tipo == AuditoriaDivergencia.Tipo.NAO_LOCALIZADO
             and divergencia.equipamento_id
             and divergencia.status in (
@@ -442,8 +515,14 @@ def divergencia_detalhe(request, divergencia_id):
 @login_required
 @require_POST
 def divergencia_inativar(request, divergencia_id):
-    divergencia = get_object_or_404(divergencias_visiveis(request.user), pk=divergencia_id)
-    exigir_admin(request.user)
+    divergencia = get_object_or_404(
+        divergencias_visiveis(request.user, action=ACAO_ADMINISTRAR), pk=divergencia_id
+    )
+    exigir_admin(
+        request.user,
+        divergencia.auditoria_base.campanha.empresa,
+        acao=ACAO_ADMINISTRAR,
+    )
     try:
         ApuracaoService.inativar_nao_localizado(
             divergencia,
@@ -516,8 +595,12 @@ def divergencia_transferir(request, divergencia_id):
 def relatorio_base(request, auditoria_base_id, formato):
     if formato != 'xlsx':
         raise Http404
-    auditoria = get_object_or_404(auditorias_visiveis(request.user), pk=auditoria_base_id)
-    if not usuario_e_admin(request.user) and not auditoria.finalizada_em:
+    auditoria = get_object_or_404(
+        auditorias_visiveis(request.user, action=ACAO_EXPORTAR), pk=auditoria_base_id
+    )
+    if not usuario_e_admin(
+        request.user, auditoria.campanha.empresa, acao=ACAO_EXPORTAR
+    ) and not auditoria.finalizada_em:
         raise PermissionDenied('O relatório final ainda não foi liberado pelo administrador.')
     titulo, linhas = RelatorioService.dados_base(auditoria)
     conteudo, content_type = RelatorioService.exportar(titulo, linhas, formato)
@@ -530,8 +613,10 @@ def relatorio_base(request, auditoria_base_id, formato):
 def relatorio_campanha(request, campanha_id, formato):
     if formato != 'xlsx':
         raise Http404
-    campanha = get_object_or_404(campanhas_visiveis(request.user), pk=campanha_id)
-    exigir_admin(request.user)
+    campanha = get_object_or_404(
+        campanhas_visiveis(request.user, action=ACAO_EXPORTAR), pk=campanha_id
+    )
+    exigir_admin(request.user, campanha.empresa, acao=ACAO_EXPORTAR)
     titulo, linhas = RelatorioService.dados_campanha(campanha)
     conteudo, content_type = RelatorioService.exportar(titulo, linhas, formato)
     resposta = HttpResponse(conteudo, content_type=content_type)

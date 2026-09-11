@@ -74,6 +74,8 @@ from .services.estoque_service import get_estoque_por_produto
 from django.contrib.auth import authenticate
 from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
 from estoque.policies.compras import ComprasAccessPolicy
+from estoque.policies.communications import CommunicationAccessPolicy
+from estoque.policies.documentation import DocumentationAccessPolicy
 from estoque.policies.tenant_operations import TenantOperationPolicy
 from insumos.policies import InsumosTenantPolicy
 from django.contrib.auth.decorators import user_passes_test
@@ -82,6 +84,34 @@ from django.contrib.auth.decorators import user_passes_test
 def is_superuser(user):
     return user.is_authenticated and user.is_superuser
 
+
+@login_required
+def equipamento_arquivo_view(request, equipamento_id, tipo):
+    equipamento = get_object_or_404(
+        secure_queryset(
+            Equipamento.objects.select_related('regional__empresa'),
+            request.user,
+        ),
+        pk=equipamento_id,
+    )
+    campo = {'foto': equipamento.foto, 'qrcode': equipamento.qr_code}.get(tipo)
+    if not campo:
+        raise Http404(_('Arquivo do equipamento não encontrado.'))
+    nome = Path(campo.name).name
+    content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    try:
+        arquivo = campo.open('rb')
+    except (FileNotFoundError, OSError):
+        raise Http404(_('Arquivo do equipamento não encontrado.'))
+    resposta = FileResponse(
+        arquivo,
+        as_attachment=False,
+        filename=nome,
+        content_type=content_type,
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
 
 @login_required
 def painel_superuser(request):
@@ -180,7 +210,6 @@ def painel_superuser(request):
         context,
     )
 
-
 def _normalizar_nome_base(valor):
     return re.sub(r'\s+', ' ', str(valor or '').strip()).upper()
 
@@ -218,7 +247,6 @@ def _base_contexto_usuario(request):
     if base:
         request.session['estoque_base_contexto_id'] = base.pk
     return base
-
 
 def _base_estoque_or_404(request, base_id, *, action='VISUALIZAR'):
     return get_object_or_404(
@@ -635,6 +663,7 @@ def documentacao_resolucao_view(request):
             documento = form.save(commit=False)
             documento.nome_original = Path(request.FILES['arquivo'].name).name
             documento.criado_por = request.user
+            documento.empresa = DocumentationAccessPolicy.owner_for_create(request.user)
             documento.save()
             messages.success(
                 request,
@@ -647,10 +676,10 @@ def documentacao_resolucao_view(request):
         'fabricante': request.GET.get('fabricante', '').strip(),
         'idioma': request.GET.get('idioma', '').strip(),
     }
-    catalogo = DocumentationService.listar(tipo='RESOLUCAO')
+    catalogo = DocumentationService.listar(tipo='RESOLUCAO', user=request.user)
     documentos = DocumentationService.listar(
         termo=filtros['q'], tipo='RESOLUCAO', fabricante=filtros['fabricante'],
-        idioma=filtros['idioma'],
+        idioma=filtros['idioma'], user=request.user,
     )
     return render(
         request,
@@ -663,7 +692,6 @@ def documentacao_resolucao_view(request):
             'pode_gerenciar_documentacao': pode_gerenciar,
         },
     )
-
 
 @login_required
 def drivers_impressoras_view(request):
@@ -684,6 +712,7 @@ def drivers_impressoras_view(request):
             driver.nome_original = Path(arquivo.name).name
             driver.tamanho_bytes = arquivo.size
             driver.criado_por = request.user
+            driver.empresa = DocumentationAccessPolicy.owner_for_create(request.user)
             driver.save()
             messages.success(request, _('Driver adicionado à biblioteca com sucesso.'))
             return redirect('estoque:drivers_impressoras')
@@ -693,7 +722,10 @@ def drivers_impressoras_view(request):
         'fabricante': request.GET.get('fabricante', '').strip(),
         'sistema_operacional': request.GET.get('sistema_operacional', '').strip(),
     }
-    drivers = DriverImpressora.objects.filter(ativo=True).select_related('criado_por')
+    drivers = DocumentationAccessPolicy.queryset(
+        DriverImpressora.objects.filter(ativo=True).select_related('criado_por'),
+        request.user,
+    )
     if filtros['q']:
         drivers = drivers.filter(
             Q(titulo__icontains=filtros['q'])
@@ -707,7 +739,9 @@ def drivers_impressoras_view(request):
     if filtros['sistema_operacional']:
         drivers = drivers.filter(sistema_operacional=filtros['sistema_operacional'])
 
-    ativos = DriverImpressora.objects.filter(ativo=True)
+    ativos = DocumentationAccessPolicy.queryset(
+        DriverImpressora.objects.filter(ativo=True), request.user
+    )
     return render(request, 'estoque/drivers_impressoras.html', {
         'drivers': drivers,
         'fabricantes': ativos.order_by('fabricante').values_list(
@@ -721,12 +755,17 @@ def drivers_impressoras_view(request):
         'pode_gerenciar_documentacao': pode_gerenciar,
     })
 
-
 @login_required
 def driver_impressora_arquivo_view(request, driver_id):
     from estoque.models import DriverImpressora
 
-    driver = get_object_or_404(DriverImpressora, pk=driver_id, ativo=True)
+    driver = get_object_or_404(
+        DocumentationAccessPolicy.queryset(
+            DriverImpressora.objects.all(), request.user
+        ),
+        pk=driver_id,
+        ativo=True,
+    )
     nome = driver.nome_original or Path(driver.arquivo.name).name
     content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
     try:
@@ -743,7 +782,6 @@ def driver_impressora_arquivo_view(request, driver_id):
     resposta['X-Content-Type-Options'] = 'nosniff'
     return resposta
 
-
 @login_required
 @require_POST
 def driver_impressora_desativar_view(request, driver_id):
@@ -751,27 +789,26 @@ def driver_impressora_desativar_view(request, driver_id):
 
     if not _pode_gerenciar_documentacao(request.user):
         raise PermissionDenied
-    driver = get_object_or_404(DriverImpressora, pk=driver_id, ativo=True)
+    driver = get_object_or_404(
+        DocumentationAccessPolicy.queryset(
+            DriverImpressora.objects.all(),
+            request.user,
+            action=DocumentationAccessPolicy.ADMIN,
+            include_global=False,
+        ),
+        pk=driver_id,
+        ativo=True,
+    )
     driver.ativo = False
     driver.save(update_fields=['ativo', 'atualizado_em'])
     messages.success(request, _('Driver removido da biblioteca.'))
     return redirect('estoque:drivers_impressoras')
 
-
 def _pode_gerenciar_documentacao(user):
-    perfil = getattr(user, 'perfil', None)
-    return bool(
-        user.is_superuser
-        or (perfil and perfil.is_admin)
-        or user.has_perm('estoque.gerenciar_documentacao')
-    )
-
+    return DocumentationAccessPolicy.can_manage(user)
 
 def _pode_gerenciar_documentacao_cliente(user):
-    return _pode_gerenciar_documentacao(user) or user.has_perm(
-        'insumos.gerenciar_documentacao',
-    )
-
+    return DocumentationAccessPolicy.can_manage(user)
 
 @login_required
 def documentacao_clientes_view(request):
@@ -781,6 +818,8 @@ def documentacao_clientes_view(request):
         clientes = clientes.filter(Q(sigla__icontains=termo) | Q(nome__icontains=termo))
     clientes = clientes.order_by('sigla')
     pagina_clientes = Paginator(clientes, 24).get_page(request.GET.get('page'))
+    for cliente in pagina_clientes:
+        cliente.checklist_documento = DocumentationService._checklist_do_cliente(cliente)
     return render(
         request,
         'estoque/documentacao/clientes.html',
@@ -800,7 +839,14 @@ def documentacao_cliente_detalhe_view(request, cliente_id):
         pk=cliente_id,
     )
     pode_gerenciar = _pode_gerenciar_documentacao_cliente(request.user)
-    documento = getattr(cliente, 'checklist_documento', None)
+    documento = DocumentationService._checklist_do_cliente(cliente)
+    from insumos.models import ClienteChecklistDocumento
+    documento_editavel = DocumentationAccessPolicy.queryset(
+        ClienteChecklistDocumento.objects.filter(cliente=cliente),
+        request.user,
+        action=DocumentationAccessPolicy.EDIT,
+        include_global=False,
+    ).first()
     relatorios_cliente = DocumentationService._relatorios_do_cliente(cliente)
     documento_preview_tipo = ''
     documento_preview_paragrafos = []
@@ -825,12 +871,17 @@ def documentacao_cliente_detalhe_view(request, cliente_id):
         form = ClienteChecklistUploadForm(
             request.POST,
             request.FILES,
-            instance=documento,
+            instance=documento_editavel,
         )
         if form.is_valid():
-            arquivo_anterior = documento.arquivo if documento and documento.arquivo else None
+            arquivo_anterior = (
+                documento_editavel.arquivo
+                if documento_editavel and documento_editavel.arquivo
+                else None
+            )
             checklist = form.save(commit=False)
             checklist.cliente = cliente
+            checklist.empresa = DocumentationAccessPolicy.owner_for_create(request.user)
             checklist.nome_original = Path(request.FILES['arquivo'].name).name
             checklist.enviado_por = request.user
             checklist.save()
@@ -841,7 +892,7 @@ def documentacao_cliente_detalhe_view(request, cliente_id):
             messages.success(request, 'Checklist do cliente enviado com sucesso.')
             return redirect('estoque:documentacao_cliente_detalhe', cliente_id=cliente.pk)
     elif pode_gerenciar:
-        form = ClienteChecklistUploadForm(instance=documento)
+        form = ClienteChecklistUploadForm(instance=documento_editavel)
 
     return render(
         request,
@@ -857,7 +908,6 @@ def documentacao_cliente_detalhe_view(request, cliente_id):
             'pode_gerenciar_documentacao': pode_gerenciar,
         },
     )
-
 
 def _extrair_preview_docx(documento):
     """Extrai somente texto de DOCX; não executa conteúdo incorporado."""
@@ -896,7 +946,6 @@ def _extrair_preview_docx(documento):
             paragrafos.append(texto)
     return paragrafos, ''
 
-
 @login_required
 @xframe_options_sameorigin
 def documentacao_cliente_arquivo_view(request, cliente_id):
@@ -906,7 +955,12 @@ def documentacao_cliente_arquivo_view(request, cliente_id):
         DocumentationService._clientes_autorizados(request.user),
         pk=cliente_id,
     )
-    documento = get_object_or_404(ClienteChecklistDocumento, cliente=cliente)
+    documento = DocumentationAccessPolicy.queryset(
+        ClienteChecklistDocumento.objects.filter(cliente=cliente),
+        request.user,
+    ).order_by('empresa_id', '-atualizado_em').first()
+    if documento is None:
+        raise Http404('O checklist não está disponível no seu escopo.')
     nome = documento.nome_original or Path(documento.arquivo.name).name
     content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
     try:
@@ -922,8 +976,8 @@ def documentacao_cliente_arquivo_view(request, cliente_id):
         content_type=content_type,
     )
     resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
     return resposta
-
 
 @login_required
 @xframe_options_sameorigin
@@ -931,7 +985,9 @@ def documentacao_resolucao_arquivo_view(request, documento_id):
     from estoque.models import ResolucaoDocumento
 
     documento = get_object_or_404(
-        ResolucaoDocumento,
+        DocumentationAccessPolicy.queryset(
+            ResolucaoDocumento.objects.all(), request.user
+        ),
         pk=documento_id,
         ativo=True,
     )
@@ -943,8 +999,8 @@ def documentacao_resolucao_arquivo_view(request, documento_id):
         content_type='application/pdf',
     )
     resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
     return resposta
-
 
 @login_required
 @require_POST
@@ -953,12 +1009,20 @@ def documentacao_resolucao_desativar_view(request, documento_id):
 
     if not _pode_gerenciar_documentacao(request.user):
         raise PermissionDenied
-    documento = get_object_or_404(ResolucaoDocumento, pk=documento_id, ativo=True)
+    documento = get_object_or_404(
+        DocumentationAccessPolicy.queryset(
+            ResolucaoDocumento.objects.all(),
+            request.user,
+            action=DocumentationAccessPolicy.ADMIN,
+            include_global=False,
+        ),
+        pk=documento_id,
+        ativo=True,
+    )
     documento.ativo = False
     documento.save(update_fields=['ativo', 'atualizado_em'])
     messages.success(request, 'Relatório removido da área ativa.')
     return redirect('estoque:documentacao_resolucao')
-
 
 @login_required
 def documentacao_videos_view(request):
@@ -971,6 +1035,7 @@ def documentacao_videos_view(request):
         if form.is_valid():
             video = form.save(commit=False)
             video.criado_por = request.user
+            video.empresa = DocumentationAccessPolicy.owner_for_create(request.user)
             video.save()
             messages.success(request, 'Vídeo adicionado à Central de Documentação.')
             return redirect('estoque:documentacao_videos')
@@ -978,13 +1043,14 @@ def documentacao_videos_view(request):
         request,
         'estoque/documentacao/videos.html',
         {
-            'documentos': DocumentationService.listar(termo=termo, tipo='VIDEO'),
+            'documentos': DocumentationService.listar(
+                termo=termo, tipo='VIDEO', user=request.user
+            ),
             'filtros': {'q': termo},
             'form': form,
             'pode_gerenciar_documentacao': pode_gerenciar,
         },
     )
-
 
 @login_required
 @require_POST
@@ -993,7 +1059,15 @@ def documentacao_video_desativar_view(request, video_id):
 
     if not _pode_gerenciar_documentacao(request.user):
         raise PermissionDenied
-    video = get_object_or_404(VideoDocumentacao, pk=video_id)
+    video = get_object_or_404(
+        DocumentationAccessPolicy.queryset(
+            VideoDocumentacao.objects.all(),
+            request.user,
+            action=DocumentationAccessPolicy.ADMIN,
+            include_global=False,
+        ),
+        pk=video_id,
+    )
     video.ativo = False
     video.save(update_fields=['ativo', 'atualizado_em'])
     messages.success(request, 'Vídeo removido da área ativa.')
@@ -1767,10 +1841,21 @@ def cadastrar_equipamento_view(request):
 @login_required
 def produtos_por_categoria(request):
     categoria = request.GET.get('categoria')
-
-    produtos = Produto.objects.filter(
-        categoria=categoria
-    ).order_by('descricao').values('id', 'descricao')
+    base_id = request.GET.get('base', '').strip()
+    base = None
+    if base_id.isdigit():
+        base = secure_base_queryset(
+            Base.objects.select_related('empresa'),
+            request.user,
+            resource='EQUIPAMENTOS',
+            action='CRIAR',
+        ).filter(pk=base_id).first()
+        if not base:
+            raise Http404
+    produtos = ComprasAccessPolicy.produtos_catalogo(
+        request.user,
+        empresa=base.empresa if base else None,
+    ).filter(categoria__iexact=categoria).order_by('descricao').values('id', 'descricao')
 
     return JsonResponse({
         'produtos': list(produtos)
@@ -2057,7 +2142,7 @@ def detalhes_produto(request, produto_id):
             "patrimonio": e.patrimonio,
             "status": e.status,
             "responsavel": e.responsavel,
-            "foto": e.foto.url if e.foto else None,
+            "foto": reverse('estoque:equipamento_arquivo', args=[e.pk, 'foto']) if e.foto else None,
             "pode_transferir": pode,
             "motivo_bloqueio": motivo,
             "regional": e.regional.nome if e.regional else None
@@ -2933,7 +3018,6 @@ def _campos_persistidos(instance, *, excluir=None):
 
     return campos
 
-
 def _grupos_dados_historico(historico):
     equipamento = historico.equipamento
     produto = equipamento.produto
@@ -2960,7 +3044,6 @@ def _grupos_dados_historico(historico):
         for titulo, objeto, excluir in objetos
         if objeto is not None
     ]
-
 
 @login_required
 @permission_or_role_required('estoque.visualizar_historico_equipamentos', 'admin', 'gestor')
@@ -3301,7 +3384,11 @@ def historico_equipamento_modal(request, equipamento_id):
             'bases': secure_base_queryset(
                 Base.objects.all(), request.user, action='EDITAR'
             ).order_by('nome'),
-            'produtos': Produto.objects.all().order_by('categoria', 'descricao'),
+            'produtos': ComprasAccessPolicy.produtos_catalogo(
+                request.user,
+                empresa=equipamento.regional.empresa,
+                action=ComprasAccessPolicy.EDIT,
+            ).order_by('categoria', 'descricao'),
             'status_choices': Equipamento.STATUS_CHOICES,
             'finalidade_choices': Equipamento.Finalidade.choices,
         }
@@ -3362,14 +3449,11 @@ def busca_avancada(request):
 @login_required
 @role_required('admin')
 def enviar_mensagem(request):
-
-    empresas = Empresa.objects.all()
-
-    usuarios = User.objects.select_related(
+    empresas = CommunicationAccessPolicy.companies(request.user).order_by('nome')
+    usuarios = CommunicationAccessPolicy.users(request.user).select_related(
         'perfil'
     ).order_by('username')
-
-    regionais = Base.objects.all().order_by('nome')
+    regionais = CommunicationAccessPolicy.bases(request.user).order_by('nome')
 
     if request.method == 'POST':
 
@@ -3384,6 +3468,18 @@ def enviar_mensagem(request):
         regionais_ids = request.POST.getlist('regionais')
 
         arquivos = request.FILES.getlist('arquivos')
+
+        empresa = None
+        if empresa_id:
+            empresa = get_object_or_404(empresas, pk=empresa_id)
+        if enviar_para_todos and empresa is None and not request.user.is_superuser:
+            raise PermissionDenied('Selecione uma empresa autorizada para o envio.')
+        bases_selecionadas = regionais.filter(pk__in=regionais_ids)
+        if len(set(regionais_ids)) != bases_selecionadas.count():
+            raise PermissionDenied('Uma das Bases informadas não pertence ao seu escopo.')
+        usuario_destino = None
+        if usuario_id:
+            usuario_destino = get_object_or_404(usuarios, pk=usuario_id)
 
         if not titulo or not conteudo:
 
@@ -3406,36 +3502,19 @@ def enviar_mensagem(request):
 
             # TODOS
             if enviar_para_todos:
-
-                destinatarios = User.objects.filter(
-                    is_active=True
-                )
-
-                if empresa_id:
-
-                    destinatarios = destinatarios.filter(
-                        perfil__empresa_id=empresa_id
-                    )
+                destinatarios = CommunicationAccessPolicy.users(request.user)
+                if empresa:
+                    destinatarios = destinatarios.filter(perfil__empresa=empresa)
 
             elif regionais_ids:
-
-                destinatarios = User.objects.filter(
-                    perfil__regionais__id__in=regionais_ids,
-                    is_active=True
+                destinatarios = CommunicationAccessPolicy.users(request.user).filter(
+                    perfil__regionais__in=bases_selecionadas,
                 )
-
-                if empresa_id:
-
-                    destinatarios = destinatarios.filter(
-                        perfil__empresa_id=empresa_id
-                    )
+                if empresa:
+                    destinatarios = destinatarios.filter(perfil__empresa=empresa)
 
             elif usuario_id:
-
-                destinatarios = User.objects.filter(
-                    id=usuario_id,
-                    is_active=True
-                )
+                destinatarios = User.objects.filter(pk=usuario_destino.pk)
 
             else:
 
@@ -3478,6 +3557,25 @@ def enviar_mensagem(request):
         'usuarios': usuarios,
         'regionais': regionais,
     })
+
+
+@login_required
+def baixar_arquivo_mensagem(request, arquivo_id):
+    arquivo = get_object_or_404(
+        CommunicationAccessPolicy.message_files(request.user),
+        pk=arquivo_id,
+    )
+    nome = Path(arquivo.nome_original or arquivo.arquivo.name).name
+    content_type = mimetypes.guess_type(nome)[0] or 'application/octet-stream'
+    resposta = FileResponse(
+        arquivo.arquivo.open('rb'),
+        as_attachment=True,
+        filename=nome,
+        content_type=content_type,
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
 
 @login_required
 def caixa_mensagens(request):
@@ -3539,6 +3637,8 @@ def visualizar_mensagem(request, destino_id):
 @login_required
 @role_required('admin')
 def criar_comunicado(request):
+    empresas = CommunicationAccessPolicy.companies(request.user).order_by('nome')
+    regionais = CommunicationAccessPolicy.bases(request.user).order_by('nome')
 
     if request.method == 'POST':
 
@@ -3547,12 +3647,18 @@ def criar_comunicado(request):
         tipo = request.POST.get('tipo')
 
         empresa_id = request.POST.get('empresa')
+        empresa = get_object_or_404(empresas, pk=empresa_id) if empresa_id else None
 
         enviar_para_todos = (
             request.POST.get('enviar_para_todos') == 'on'
         )
 
         regionais_ids = request.POST.getlist('regionais')
+        bases_selecionadas = regionais.filter(pk__in=regionais_ids)
+        if len(set(regionais_ids)) != bases_selecionadas.count():
+            raise PermissionDenied('Uma das Bases informadas não pertence ao seu escopo.')
+        if enviar_para_todos and empresa is None and not request.user.is_superuser:
+            raise PermissionDenied('Selecione uma empresa autorizada para o comunicado.')
 
         expira_em = request.POST.get('expira_em')
 
@@ -3585,21 +3691,16 @@ def criar_comunicado(request):
             mensagem=mensagem,
             tipo=tipo,
             criado_por=request.user,
-            empresa_id=empresa_id if empresa_id else None,
+            empresa=empresa,
             enviar_para_todos=enviar_para_todos,
             expira_em=data_expiracao
         )
 
         if enviar_para_todos:
 
-            usuarios = User.objects.filter(
-                is_active=True
-            )
-
-            if empresa_id:
-                usuarios = usuarios.filter(
-                    perfil__empresa_id=empresa_id
-                )
+            usuarios = CommunicationAccessPolicy.users(request.user)
+            if empresa:
+                usuarios = usuarios.filter(perfil__empresa=empresa)
 
             usuarios = (
                     usuarios |
@@ -3612,20 +3713,11 @@ def criar_comunicado(request):
 
         elif regionais_ids:
 
-            usuarios = User.objects.filter(
-
-                perfil__regionais__id__in=regionais_ids,
-
-                is_active=True
-
+            usuarios = CommunicationAccessPolicy.users(request.user).filter(
+                perfil__regionais__in=bases_selecionadas,
             )
-
-            if empresa_id:
-                usuarios = usuarios.filter(
-
-                    perfil__empresa_id=empresa_id
-
-                )
+            if empresa:
+                usuarios = usuarios.filter(perfil__empresa=empresa)
 
             usuarios = (
 
@@ -3651,10 +3743,6 @@ def criar_comunicado(request):
 
         return redirect('estoque:caixa_comunicados')
 
-    empresas = Empresa.objects.all().order_by('nome')
-
-    regionais = Base.objects.all().order_by('nome')
-
     return render(
         request,
         'estoque/comunicados/criar.html',
@@ -3669,7 +3757,7 @@ def criar_comunicado(request):
 def caixa_comunicados(request):
 
     comunicados = (
-        Comunicado.objects
+        CommunicationAccessPolicy.comunicados(request.user)
         .filter(
             ativo=True
         )
@@ -3698,22 +3786,11 @@ def caixa_comunicados(request):
 
 @login_required
 def detalhe_comunicado(request, comunicado_id):
-
-    perfil = request.user.perfil
-
     comunicado = get_object_or_404(
-
-        Comunicado.objects.prefetch_related(
+        CommunicationAccessPolicy.comunicados(request.user).prefetch_related(
             'leituras__usuario',
             'usuarios'
-        ).filter(
-
-            Q(enviar_para_todos=True) |
-            Q(usuarios=request.user) |
-            Q(empresa=perfil.empresa)
-
-        ).distinct(),
-
+        ),
         id=comunicado_id
     )
 
@@ -3731,7 +3808,7 @@ def detalhe_comunicado(request, comunicado_id):
     total_lidos = 0
     percentual_lido = 0
 
-    if perfil.role == 'admin':
+    if request.user.is_superuser or comunicado.criado_por_id == request.user.pk:
 
         # DESTINATÁRIOS
         if comunicado.enviar_para_todos:
@@ -3802,7 +3879,7 @@ def detalhe_comunicado(request, comunicado_id):
 def ocultar_comunicado(request, comunicado_id):
 
     comunicado = get_object_or_404(
-        Comunicado,
+        CommunicationAccessPolicy.comunicados(request.user),
         id=comunicado_id
     )
 
@@ -4586,7 +4663,6 @@ def dashboard_gestor(request):
     })
 
 @login_required
-@login_required
 @role_required('admin', 'gestor')
 def caixa_solicitacoes(request):
     bases_aprovacao = TenantOperationPolicy.bases(
@@ -4615,23 +4691,6 @@ def caixa_solicitacoes(request):
             'solicitacoes': solicitacoes
         }
     )
-#@login_required
-#@role_required('admin')
-#def caixa_solicitacoes(request):
-#    solicitacoes = (
-#        Solicitacao.objects
-#        .select_related('criado_por', 'regional_solicitante')
-#        .prefetch_related('itens__produto')
-#        .order_by('-data_criacao')
-#    )
-
-#    pendentes = solicitacoes.filter(status='PENDENTE')
-#    aprovadas = solicitacoes.filter(status='APROVADO')
-
-#    return render(request, 'estoque/solicitacoes/caixa.html', {
-#        'pendentes': pendentes,
-#        'aprovadas': aprovadas,
-#    })
 
 @login_required
 @permission_or_role_required('estoque.visualizar_transferencias', 'admin', 'gestor')
@@ -5684,7 +5743,7 @@ def equipamentos_por_regional(request, produto_id, regional_id):
                     }
                     if e.sicks_ordenados else None
                 ),
-                'foto': e.foto.url if e.foto else None
+                'foto': reverse('estoque:equipamento_arquivo', args=[e.pk, 'foto']) if e.foto else None
             }
             for e in equipamentos
         ],

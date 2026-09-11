@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from estoque.models import Empresa, Perfil
+from estoque.models import Base, Empresa, Perfil
 from insumos.models import (
     CategoriaInsumo,
     FornecedorInsumo,
@@ -13,6 +13,7 @@ from insumos.models import (
     OfertaPrecoOnline,
     PrecoFornecedorInsumo,
     PesquisaPrecoOnline,
+    SaldoInsumoBase,
 )
 from insumos.services.preco_online_service import (
     FidelityProvider,
@@ -76,11 +77,12 @@ class CatalogosFornecedoresTests(SimpleTestCase):
 
 class UsarOfertaComoPrecoTests(TestCase):
     def setUp(self):
-        empresa = Empresa.objects.create(nome='Empresa preço online')
+        self.empresa = Empresa.objects.create(nome='Empresa preço online')
+        self.base = Base.objects.create(nome='Base preço online', empresa=self.empresa)
         self.usuario = User.objects.create_user('admin_preco_online', password='teste')
         Perfil.objects.update_or_create(
             user=self.usuario,
-            defaults={'empresa': empresa, 'role': Perfil.Role.ADMIN},
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
         )
         categoria = CategoriaInsumo.objects.create(nome='Papelaria online')
         self.insumo = Insumo.objects.create(
@@ -97,6 +99,7 @@ class UsarOfertaComoPrecoTests(TestCase):
             },
         )
         pesquisa = PesquisaPrecoOnline.objects.create(
+            empresa=self.empresa,
             insumo=self.insumo,
             termo='papel sulfite a4',
             fonte='FIDELITY',
@@ -116,10 +119,17 @@ class UsarOfertaComoPrecoTests(TestCase):
             condicao='novo',
         )
         self.preco_anterior = PrecoFornecedorInsumo.objects.create(
+            empresa=self.empresa,
             insumo=self.insumo,
             fornecedor=self.fornecedor,
             valor_unitario=Decimal('30.00'),
             cadastrado_por=self.usuario,
+        )
+        self.saldo = SaldoInsumoBase.objects.create(
+            base=self.base,
+            insumo=self.insumo,
+            saldo=1,
+            custo_medio=Decimal('0'),
         )
         self.client.force_login(self.usuario)
 
@@ -132,10 +142,11 @@ class UsarOfertaComoPrecoTests(TestCase):
         self.assertEqual(resposta.status_code, 302)
         self.preco_anterior.refresh_from_db()
         self.insumo.refresh_from_db()
+        self.saldo.refresh_from_db()
         self.assertFalse(self.preco_anterior.ativo)
-        self.assertEqual(self.insumo.valor_medio, Decimal('28.90'))
-        self.assertEqual(self.insumo.preco_referencia.valor_unitario, Decimal('28.9000'))
-        self.assertEqual(self.insumo.preco_referencia.fornecedor, self.fornecedor)
+        self.assertEqual(self.saldo.custo_medio, Decimal('28.90'))
+        self.assertEqual(self.insumo.valor_medio, Decimal('0'))
+        self.assertIsNone(self.insumo.preco_referencia)
 
     def test_get_nao_aplica_oferta(self):
         resposta = self.client.get(reverse(
@@ -166,6 +177,7 @@ class UsarOfertaComoPrecoTests(TestCase):
             insumo=self.insumo,
             termo='papel sulfite a4',
             usuario=self.usuario,
+            empresa=self.empresa,
             fonte='GIMBA',
         )
 
@@ -205,6 +217,7 @@ class UsarOfertaComoPrecoTests(TestCase):
             insumo=self.insumo,
             termo='papel sulfite a4 500 folhas',
             usuario=self.usuario,
+            empresa=self.empresa,
             fonte='COMPARATIVO',
         )
 
@@ -230,6 +243,7 @@ class UsarOfertaComoPrecoTests(TestCase):
             insumo=self.insumo,
             termo='papel sulfite',
             usuario=self.usuario,
+            empresa=self.empresa,
             fonte='COMPARATIVO',
         )
 

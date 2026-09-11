@@ -28,17 +28,20 @@ class ToryPlanningTests(TestCase):
         self.tomorrow = timezone.localdate() + timedelta(days=1)
         self.company = Empresa.objects.create(nome="Empresa Tory Planning")
         self.base_campinas = Base.objects.create(
-            nome="SP INT CPN",
+            nome="OXXO SP INT CPN X",
             empresa=self.company,
         )
         self.base_sul = Base.objects.create(
-            nome="SP SUL",
+            nome="OXXO SP SUL X",
             empresa=self.company,
         )
         self.admin = User.objects.create_user("tory_planning_admin")
         Perfil.objects.update_or_create(
             user=self.admin,
-            defaults={"role": Perfil.Role.ADMIN},
+            defaults={
+                "empresa": self.company,
+                "role": Perfil.Role.ADMIN,
+            },
         )
         self.admin.refresh_from_db()
         self.operator = User.objects.create_user("tory_planning_operator")

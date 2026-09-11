@@ -16,15 +16,19 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
         if not user or not user.is_authenticated:
             await self.close(code=4403)
             return
+        self.e_superuser = bool(user.is_superuser)
         self.e_admin = await self._e_admin()
         self.e_atendente = await self._pode_atender()
         self.grupos_presenca = [f'chamados_usuario_{user.pk}']
         if self.e_atendente:
-            if not self.e_admin:
+            if not self.e_superuser:
                 self.grupos_presenca.extend(await self._grupos_atendimento())
             await self._registrar_presenca()
-        if self.e_admin:
-            self.grupos_presenca.append('chamados_admins')
+        if self.e_superuser:
+            self.grupos_presenca.append('chamados_superusers')
+        elif self.e_admin:
+            self.grupos_presenca.extend(await self._grupos_admin())
+        self.grupos_presenca = list(dict.fromkeys(self.grupos_presenca))
         for grupo in self.grupos_presenca:
             await self.channel_layer.group_add(grupo, self.channel_name)
         await self.accept()
@@ -42,7 +46,9 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json({'tipo': 'pong'})
 
     async def chamado_evento(self, event):
-        await self.send_json({'tipo': 'chamado_evento', 'evento': event['payload']})
+        payload = event['payload']
+        if await self._pode_receber_evento(payload):
+            await self.send_json({'tipo': 'chamado_evento', 'evento': payload})
 
     @database_sync_to_async
     def _pode_atender(self):
@@ -57,7 +63,44 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
         bases = ChamadoAccessPolicy.bases_atendimento(
             self.scope['user']
         ).values_list('pk', flat=True)
-        return [f'chamados_atendentes_base_{base_id}' for base_id in bases]
+        empresas = ChamadoAccessPolicy.empresas_atendimento(
+            self.scope['user']
+        ).values_list('pk', flat=True)
+        return (
+            [f'chamados_atendentes_base_{base_id}' for base_id in bases]
+            + [f'chamados_atendentes_empresa_{empresa_id}' for empresa_id in empresas]
+        )
+
+    @database_sync_to_async
+    def _grupos_admin(self):
+        empresas_ids = set(
+            ChamadoAccessPolicy.empresas(
+                self.scope['user'],
+                action=ChamadoAccessPolicy.VIEW,
+            ).values_list('pk', flat=True)
+        )
+        empresas_ids.update(
+            ChamadoAccessPolicy.empresas_atendimento(
+                self.scope['user']
+            ).values_list('pk', flat=True)
+        )
+        return [
+            f'chamados_admins_empresa_{empresa_id}'
+            for empresa_id in empresas_ids
+        ]
+
+    @database_sync_to_async
+    def _pode_receber_evento(self, payload):
+        chamado_id = payload.get('chamado_id')
+        if not chamado_id:
+            return False
+        user = self.scope['user']
+        chamado = ChamadoAccessPolicy.queryset(user).filter(pk=chamado_id).first()
+        if not chamado:
+            return False
+        if payload.get('tipo') == 'NOTA_INTERNA':
+            return ChamadoAccessPolicy.pode_atender_chamado(user, chamado)
+        return True
 
     @database_sync_to_async
     def _registrar_presenca(self):
@@ -153,12 +196,19 @@ class ChamadoChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _mensagem_visivel(self, mensagem_id):
         user = self.scope['user']
+        if not ChamadoAccessPolicy.queryset(user).filter(
+            pk=self.chamado_id,
+            tipo_chamado=Chamado.Tipo.OPERACIONAL,
+        ).exists():
+            return None
         mensagem = Chamado.objects.get(pk=self.chamado_id).mensagens.select_related(
             'autor'
         ).filter(pk=mensagem_id).first()
         if not mensagem:
             return None
-        if mensagem.nota_interna and not ChamadoAccessPolicy.pode_atender(user):
+        if mensagem.nota_interna and not (
+            ChamadoAccessPolicy.pode_atender_chamado(user, mensagem.chamado)
+        ):
             return None
         return {
             'id': mensagem.pk,

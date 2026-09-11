@@ -312,7 +312,7 @@
                                        accept="image/*">
 
                                 {% if equipamento.foto %}
-                                <img src="{{ equipamento.foto.url }}"
+                                <img src="{% url 'estoque:equipamento_arquivo' equipamento.pk 'foto' %}"
                                      id="previewImagem"
                                      class="img-fluid rounded border mt-3"
                                      style="max-height:260px;">

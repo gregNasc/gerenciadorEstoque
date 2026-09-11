@@ -3,6 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 
 from estoque.models import Comunicado, ComunicadoEntrega
+from integracao.scopes import IntegrationExecutionScope
 
 from .phone import normalizar_whatsapp, whatsapp_valido
 from .templates import codigo_template
@@ -11,10 +12,25 @@ from .templates import codigo_template
 class ComunicacaoDispatcher:
     normalizar_whatsapp = staticmethod(normalizar_whatsapp)
 
+    @staticmethod
+    def _integration_scope(comunicado):
+        if comunicado.empresa_id:
+            return IntegrationExecutionScope.tenant(
+                'WHATSAPP_COMUNICADOS', comunicado.empresa_id
+            )
+        if comunicado.criado_por.is_superuser:
+            return IntegrationExecutionScope.platform_global(
+                'WHATSAPP_COMUNICADOS'
+            )
+        return None
+
     @classmethod
     @transaction.atomic
     def criar_entregas(cls, comunicado_id):
-        comunicado = Comunicado.objects.prefetch_related('usuarios__perfil').get(pk=comunicado_id)
+        comunicado = Comunicado.objects.select_related(
+            'empresa', 'criado_por'
+        ).prefetch_related('usuarios__perfil').get(pk=comunicado_id)
+        integration_scope = cls._integration_scope(comunicado)
         criadas = []
         for usuario in comunicado.usuarios.filter(is_active=True):
             entrega, _ = ComunicadoEntrega.objects.get_or_create(
@@ -48,6 +64,8 @@ class ComunicacaoDispatcher:
                 erro = 'NÚMERO DE WHATSAPP INVÁLIDO.'
             elif not template:
                 erro = 'TEMPLATE DE WHATSAPP NÃO CADASTRADO.'
+            elif integration_scope is None:
+                erro = 'ESCOPO DE TENANT DA INTEGRAÇÃO NÃO DECLARADO.'
             entrega, _ = ComunicadoEntrega.objects.get_or_create(
                 comunicado=comunicado,
                 usuario=usuario,
@@ -55,7 +73,8 @@ class ComunicacaoDispatcher:
                 defaults={
                     'status': (
                         ComunicadoEntrega.Status.PENDENTE
-                        if valido and template else ComunicadoEntrega.Status.IGNORADA
+                        if valido and template and integration_scope
+                        else ComunicadoEntrega.Status.IGNORADA
                     ),
                     'destino': destino,
                     'provedor': settings.WHATSAPP_PROVIDER,
@@ -65,6 +84,10 @@ class ComunicacaoDispatcher:
                         'mensagem': comunicado.mensagem,
                         'url': comunicado.url,
                         'idioma': perfil.idioma,
+                        '_integration_scope': (
+                            integration_scope.as_dict()
+                            if integration_scope else {}
+                        ),
                     },
                     'ultimo_erro': erro,
                 },

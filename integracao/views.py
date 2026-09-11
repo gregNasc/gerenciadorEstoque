@@ -80,6 +80,12 @@ def _confirm_region_fallback(planning_region, local_base, user, source):
 @login_required
 @permission_required("integracao.gerenciar_mapeamentos_planning", raise_exception=True)
 def planning_mappings(request):
+    # Os catálogos externos e bindings desta tela são configuração global da
+    # plataforma. O tenant local só nasce quando um binding aponta uma Base.
+    if not request.user.is_superuser:
+        raise PermissionDenied(
+            "Mapeamentos globais do Planning são exclusivos do Superuser."
+        )
     if request.method == "POST":
         action = request.POST.get("action", "")
         with transaction.atomic():

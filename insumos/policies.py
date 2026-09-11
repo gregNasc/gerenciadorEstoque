@@ -1,7 +1,8 @@
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 
-from estoque.models import Base, CapacidadeRelacionamentoEmpresa
-from estoque.security import secure_base_queryset
+from estoque.models import Base, CapacidadeRelacionamentoEmpresa, Empresa
+from estoque.security import secure_base_queryset, secure_company_queryset
 
 
 class InsumosTenantPolicy:
@@ -17,6 +18,51 @@ class InsumosTenantPolicy:
     SUPPLIES = CapacidadeRelacionamentoEmpresa.Recurso.INSUMOS
     CHECKLISTS = CapacidadeRelacionamentoEmpresa.Recurso.CHECKLISTS
     INVENTORIES = CapacidadeRelacionamentoEmpresa.Recurso.INVENTARIOS
+
+    @classmethod
+    def empresas(cls, user, *, action=VIEW, queryset=None):
+        queryset = queryset if queryset is not None else Empresa.objects.all()
+        return secure_company_queryset(
+            queryset,
+            user,
+            resource=cls.SUPPLIES,
+            action=action,
+        )
+
+    @classmethod
+    def prices(cls, user, queryset, *, action=VIEW):
+        if getattr(user, 'is_superuser', False):
+            return queryset
+        empresas = cls.empresas(user, action=action)
+        return queryset.filter(
+            Q(empresa__in=empresas)
+            | Q(
+                empresa=None,
+                cadastrado_por__perfil__empresa__in=empresas,
+            )
+        ).distinct()
+
+    @classmethod
+    def price_searches(cls, user, queryset, *, action=VIEW):
+        if getattr(user, 'is_superuser', False):
+            return queryset
+        empresas = cls.empresas(user, action=action)
+        return queryset.filter(
+            Q(empresa__in=empresas)
+            | Q(
+                empresa=None,
+                pesquisado_por__perfil__empresa__in=empresas,
+            )
+        ).distinct()
+
+    @classmethod
+    def price_offers(cls, user, queryset, *, action=VIEW):
+        pesquisas = cls.price_searches(
+            user,
+            queryset.model._meta.get_field('pesquisa').related_model.objects.all(),
+            action=action,
+        )
+        return queryset.filter(pesquisa__in=pesquisas)
 
     @classmethod
     def bases(cls, user, *, resource=SUPPLIES, action=VIEW, queryset=None):

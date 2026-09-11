@@ -22,6 +22,7 @@ class OrdemServicoFluxosTests(TestCase):
         self.destino = Base.objects.create(nome='Destino', empresa=self.empresa)
         self.admin = User.objects.create_user('admin_os', password='Senha-forte-123')
         self.admin.perfil.role = Perfil.Role.ADMIN
+        self.admin.perfil.empresa = self.empresa
         self.admin.perfil.save(update_fields=['role', 'empresa'])
         self.produto = Produto.objects.create(
             codigo='PROD-OS', descricao='Notebook O.S.', fabricante='Fabricante',

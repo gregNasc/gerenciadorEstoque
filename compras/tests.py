@@ -11,6 +11,7 @@ from openpyxl import Workbook
 
 from compras.models import (
     Aquisicao,
+    CatalogoProdutoEmpresa,
     HistoricoPrecoProduto,
     HistoricoValorEquipamento,
     ItemAquisicao,
@@ -48,11 +49,10 @@ class ComprasRemessasTests(TestCase):
             modelo='Modelo', categoria='Coletores',
         )
 
-    @staticmethod
-    def _usuario(username, role, base=None):
+    def _usuario(self, username, role, base=None):
         user = User.objects.create_user(username, password='senha-forte')
         user.perfil.role = role
-        user.perfil.empresa = None if role == Perfil.Role.ADMIN else base.empresa
+        user.perfil.empresa = self.empresa if role == Perfil.Role.ADMIN else base.empresa
         user.perfil.save()
         if base:
             user.perfil.regionais.add(base)
@@ -409,10 +409,13 @@ class ManutencaoMatrizExclusivaTests(TestCase):
         self.gestor.perfil.regionais.add(self.base)
         self.admin_comum = User.objects.create_user('admin_sem_manutencao')
         self.admin_comum.perfil.role = Perfil.Role.ADMIN
+        self.admin_comum.perfil.empresa = empresa
         self.admin_comum.perfil.save()
         self.rafael = User.objects.create_user('rafael.ribeiro')
         self.rafael.perfil.role = Perfil.Role.OPERADOR
+        self.rafael.perfil.empresa = empresa
         self.rafael.perfil.save()
+        self.rafael.perfil.regionais.add(self.base)
         grupo, _ = Group.objects.get_or_create(name=GruposCorporativos.SICK_MANUTENCAO)
         self.rafael.groups.add(grupo)
 
@@ -438,7 +441,8 @@ class PrecificacaoProdutoTests(TestCase):
         self.base = Base.objects.create(nome='Base preço produto', empresa=self.empresa)
         self.admin = User.objects.create_user('admin_preco_produto', password='senha-forte')
         self.admin.perfil.role = Perfil.Role.ADMIN
-        self.admin.perfil.save(update_fields=['role'])
+        self.admin.perfil.empresa = self.empresa
+        self.admin.perfil.save(update_fields=['role', 'empresa'])
         self.operador = User.objects.create_user('operador_catalogo', password='senha-forte')
         self.operador.perfil.role = Perfil.Role.OPERADOR
         self.operador.perfil.empresa = self.empresa
@@ -448,9 +452,9 @@ class PrecificacaoProdutoTests(TestCase):
             Permission.objects.get(codename='cadastrar_equipamentos', content_type__app_label='estoque')
         )
 
-    @staticmethod
-    def dados_produto(codigo):
+    def dados_produto(self, codigo):
         return {
+            'empresa_catalogo': self.empresa.pk,
             'codigo': codigo,
             'descricao': 'Coletor de dados',
             'nome_resumido': 'Coletor',
@@ -476,8 +480,14 @@ class PrecificacaoProdutoTests(TestCase):
         resposta = self.client.post(reverse('compras:criar_produto_catalogo'), dados)
         self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
         produto = Produto.objects.get(codigo='PROD-PRECO-1')
-        self.assertEqual(produto.preco_referencia, Decimal('1850.00'))
-        self.assertEqual(produto.historico_precos.count(), 1)
+        catalogo = CatalogoProdutoEmpresa.objects.get(
+            empresa=self.empresa, produto=produto,
+        )
+        self.assertIsNone(produto.preco_referencia)
+        self.assertEqual(catalogo.preco_referencia, Decimal('1850.00'))
+        self.assertEqual(
+            produto.historico_precos.filter(empresa=self.empresa).count(), 1,
+        )
 
     def test_usuario_sem_preco_nao_define_valores_por_post_manual(self):
         self.client.force_login(self.operador)
@@ -514,9 +524,13 @@ class PrecificacaoProdutoTests(TestCase):
             origem=Produto.OrigemPreco.INFORMADO_COMPRAS,
             fonte='Cotação', observacao='Atualização controlada', comunicar=False,
         )
-        historico = HistoricoPrecoProduto.objects.get(produto=produto)
+        historico = HistoricoPrecoProduto.objects.get(
+            empresa=self.empresa, produto=produto,
+        )
         self.assertEqual(historico.valor_anterior, Decimal('500'))
         self.assertEqual(historico.valor_novo, Decimal('650'))
+        produto.refresh_from_db()
+        self.assertEqual(produto.preco_referencia, Decimal('500'))
 
     def test_painel_expansivel_altera_preco_sem_planilha(self):
         produto = Produto.objects.create(
@@ -550,8 +564,16 @@ class PrecificacaoProdutoTests(TestCase):
 
         self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
         produto.refresh_from_db()
-        self.assertEqual(produto.preco_referencia, Decimal('1450.50'))
-        historico = produto.historico_precos.latest('alterado_em')
+        equipamento.refresh_from_db()
+        catalogo = CatalogoProdutoEmpresa.objects.get(
+            empresa=self.empresa, produto=produto,
+        )
+        self.assertEqual(produto.preco_referencia, Decimal('1200'))
+        self.assertEqual(catalogo.preco_referencia, Decimal('1450.50'))
+        self.assertEqual(equipamento.preco_referencia, Decimal('1450.50'))
+        historico = produto.historico_precos.filter(
+            empresa=self.empresa,
+        ).latest('alterado_em')
         self.assertEqual(historico.valor_anterior, Decimal('1200'))
         self.assertEqual(historico.valor_novo, Decimal('1450.50'))
         self.assertEqual(historico.observacao, 'ATUALIZAÇÃO PELO PAINEL DETALHADO')
@@ -584,4 +606,10 @@ class PrecificacaoProdutoTests(TestCase):
 
         self.assertRedirects(resposta, reverse('compras:valores_equipamentos'))
         produto.refresh_from_db()
-        self.assertEqual(produto.preco_referencia, Decimal('875.00'))
+        equipamento.refresh_from_db()
+        catalogo = CatalogoProdutoEmpresa.objects.get(
+            empresa=self.empresa, produto=produto,
+        )
+        self.assertEqual(produto.preco_referencia, Decimal('800'))
+        self.assertEqual(catalogo.preco_referencia, Decimal('875.00'))
+        self.assertEqual(equipamento.preco_referencia, Decimal('875.00'))

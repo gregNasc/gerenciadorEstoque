@@ -17,8 +17,20 @@ from django.utils.translation import gettext as _
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoqueAuditoriaService
-from compras.forms import AquisicaoForm, ImportacaoPrecificacaoForm, ItemAquisicaoForm, RemessaForm
-from compras.models import Aquisicao, CodigoCatalogo, ItemRemessaCompra, RemessaCompra
+from compras.forms import (
+    AquisicaoForm,
+    CatalogoEmpresaForm,
+    ImportacaoPrecificacaoForm,
+    ItemAquisicaoForm,
+    RemessaForm,
+)
+from compras.models import (
+    Aquisicao,
+    CatalogoProdutoEmpresa,
+    CodigoCatalogo,
+    ItemRemessaCompra,
+    RemessaCompra,
+)
 from compras.policies import AquisicaoAccessPolicy
 from compras.services import AquisicaoService, ProdutoPrecoService, RemessaCompraService
 from estoque.forms import ProdutoForm
@@ -44,8 +56,11 @@ def criar_aquisicao(request):
     if not AquisicaoAccessPolicy.pode_gerenciar(request.user):
         raise PermissionDenied
     form = AquisicaoForm(request.POST or None, request.FILES or None)
-    item_form = ItemAquisicaoForm(request.POST or None)
-    form.fields['empresa'].queryset = ComprasAccessPolicy.empresas(request.user)
+    item_form = ItemAquisicaoForm(request.POST or None, user=request.user)
+    form.fields['empresa'].queryset = ComprasAccessPolicy.empresas(
+        request.user,
+        action=ComprasAccessPolicy.CREATE,
+    )
     if request.method == 'POST' and form.is_valid() and item_form.is_valid():
         dados = form.cleaned_data.copy()
         empresa = dados.pop('empresa')
@@ -74,14 +89,23 @@ def detalhe_aquisicao(request, pk):
     )
     return render(request, 'compras/aquisicao_detalhe.html', {
         'aquisicao': aquisicao,
-        'pode_gerenciar': AquisicaoAccessPolicy.pode_gerenciar(request.user),
+        'pode_gerenciar': AquisicaoAccessPolicy.queryset(
+            request.user,
+            action=ComprasAccessPolicy.APPROVE,
+        ).filter(pk=aquisicao.pk).exists(),
     })
 
 
 @login_required
 @require_POST
 def aprovar_aquisicao(request, pk):
-    aquisicao = get_object_or_404(AquisicaoAccessPolicy.queryset(request.user), pk=pk)
+    aquisicao = get_object_or_404(
+        AquisicaoAccessPolicy.queryset(
+            request.user,
+            action=ComprasAccessPolicy.APPROVE,
+        ),
+        pk=pk,
+    )
     try:
         AquisicaoService.aprovar(aquisicao, request.user)
         messages.success(request, 'Aquisição aprovada.')
@@ -92,11 +116,24 @@ def aprovar_aquisicao(request, pk):
 
 @login_required
 def documento_aquisicao(request, pk, tipo):
-    aquisicao = get_object_or_404(AquisicaoAccessPolicy.queryset(request.user), pk=pk)
+    aquisicao = get_object_or_404(
+        AquisicaoAccessPolicy.queryset(
+            request.user,
+            action=ComprasAccessPolicy.EXPORT,
+        ),
+        pk=pk,
+    )
     campo = {'danfe': aquisicao.arquivo_danfe_pdf, 'xml': aquisicao.arquivo_xml_nfe}.get(tipo)
     if not campo:
         raise PermissionDenied('Documento inexistente ou não autorizado.')
-    return FileResponse(campo.open('rb'), as_attachment=True, filename=campo.name.rsplit('/', 1)[-1])
+    resposta = FileResponse(
+        campo.open('rb'),
+        as_attachment=True,
+        filename=campo.name.rsplit('/', 1)[-1],
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
 
 
 @login_required
@@ -149,7 +186,13 @@ def detalhe_remessa(request, pk):
     )
     return render(request, 'compras/remessa_detalhe.html', {
         'remessa': remessa,
-        'pode_enviar': ComprasAccessPolicy.pode_criar_remessa(request.user),
+        'pode_enviar': (
+            ComprasAccessPolicy.pode_criar_remessa(request.user)
+            and AquisicaoAccessPolicy.remessas(
+                request.user,
+                action=ComprasAccessPolicy.EDIT,
+            ).filter(pk=remessa.pk).exists()
+        ),
         'pode_confirmar': AquisicaoAccessPolicy.pode_confirmar(request.user, remessa),
         'idempotency_key': uuid.uuid4(),
     })
@@ -158,7 +201,13 @@ def detalhe_remessa(request, pk):
 @login_required
 @require_POST
 def enviar_remessa(request, pk):
-    remessa = get_object_or_404(AquisicaoAccessPolicy.remessas(request.user), pk=pk)
+    remessa = get_object_or_404(
+        AquisicaoAccessPolicy.remessas(
+            request.user,
+            action=ComprasAccessPolicy.EDIT,
+        ),
+        pk=pk,
+    )
     try:
         RemessaCompraService.enviar(remessa, request.user, request.POST.get('codigo_rastreio', ''))
         messages.success(request, 'Remessa enviada para conferência do destino.')
@@ -170,7 +219,13 @@ def enviar_remessa(request, pk):
 @login_required
 @require_POST
 def confirmar_remessa(request, pk):
-    remessa = get_object_or_404(AquisicaoAccessPolicy.remessas(request.user), pk=pk)
+    remessa = get_object_or_404(
+        AquisicaoAccessPolicy.remessas(
+            request.user,
+            action=ComprasAccessPolicy.APPROVE,
+        ),
+        pk=pk,
+    )
     linhas = []
     for item in remessa.itens.all():
         linhas.append({
@@ -197,10 +252,10 @@ def confirmar_remessa(request, pk):
 def valores_insumos(request):
     if not ComprasAccessPolicy.pode_visualizar_valores(request.user):
         raise PermissionDenied
-    saldos = SaldoInsumoBase.objects.select_related('base__empresa', 'insumo__categoria')
     bases = ComprasAccessPolicy.bases(request.user)
-    if not request.user.perfil.is_admin:
-        saldos = saldos.filter(base__in=bases)
+    saldos = SaldoInsumoBase.objects.select_related(
+        'base__empresa', 'insumo__categoria'
+    ).filter(base__in=bases)
     base_id = request.GET.get('base', '').strip()
     categoria_id = request.GET.get('categoria', '').strip()
     insumo_id = request.GET.get('insumo', '').strip()
@@ -278,15 +333,77 @@ def valores_insumos(request):
 
 
 @login_required
+def configurar_catalogo_empresa(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied
+    empresas = ComprasAccessPolicy.empresas(
+        request.user,
+        action=ComprasAccessPolicy.ADMIN,
+        resource=ComprasAccessPolicy.CATALOGO,
+    ).order_by('nome')
+    empresa_id = (
+        request.POST.get('empresa', '').strip()
+        if request.method == 'POST'
+        else request.GET.get('empresa', '').strip()
+    )
+    empresa = (
+        empresas.filter(pk=empresa_id).first()
+        if empresa_id.isdigit()
+        else empresas.first()
+    )
+    if not empresa:
+        raise PermissionDenied('Nenhuma empresa disponível para configurar o catálogo.')
+
+    form = CatalogoEmpresaForm(
+        request.POST or None,
+        user=request.user,
+        empresa=empresa,
+        initial={
+            'empresa': empresa,
+            'produtos': ComprasAccessPolicy.produtos_catalogo(
+                request.user,
+                empresa=empresa,
+                action=ComprasAccessPolicy.ADMIN,
+            ),
+        },
+    )
+    if request.method == 'POST' and form.is_valid():
+        empresa = form.cleaned_data['empresa']
+        produtos_ids = set(form.cleaned_data['produtos'].values_list('pk', flat=True))
+        with transaction.atomic():
+            CatalogoProdutoEmpresa.objects.filter(empresa=empresa).exclude(
+                produto_id__in=produtos_ids
+            ).update(ativo=False, configurado_por=request.user)
+            for produto_id in produtos_ids:
+                CatalogoProdutoEmpresa.objects.update_or_create(
+                    empresa=empresa,
+                    produto_id=produto_id,
+                    defaults={'ativo': True, 'configurado_por': request.user},
+                )
+        messages.success(
+            request,
+            _('Catálogo de %(empresa)s atualizado: %(quantidade)s equipamento(s) disponível(is).') % {
+                'empresa': empresa.nome,
+                'quantidade': len(produtos_ids),
+            },
+        )
+        return redirect(f"{reverse('compras:catalogo_empresa')}?empresa={empresa.pk}")
+
+    return render(request, 'compras/catalogo_empresa.html', {
+        'form': form,
+        'empresas': empresas,
+        'empresa_selecionada': empresa,
+    })
+
+
+@login_required
 def valores_equipamentos(request):
     if not ComprasAccessPolicy.pode_visualizar_valores(request.user):
         raise PermissionDenied
     equipamentos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
         Equipamento.objects.select_related('produto', 'regional__empresa', 'fornecedor')
-    )
+    ).filter(regional__in=ComprasAccessPolicy.bases(request.user))
     bases = ComprasAccessPolicy.bases(request.user)
-    if not request.user.perfil.is_admin:
-        equipamentos = equipamentos.filter(regional__in=bases)
     base_id = request.GET.get('base')
     if base_id and base_id.isdigit():
         equipamentos = equipamentos.filter(regional_id=base_id)
@@ -306,15 +423,11 @@ def valores_equipamentos(request):
             | Q(codigo__icontains=busca)
             | Q(regional__nome__icontains=busca)
         )
-    valor = Coalesce(
-        'custo_aquisicao', 'produto__preco_referencia', 'preco_referencia', 0,
-        output_field=DecimalField(),
-    )
+    valor = Coalesce('custo_aquisicao', 'preco_referencia', 0, output_field=DecimalField())
     equipamentos = equipamentos.annotate(valor_considerado=valor)
     total_equipamentos = equipamentos.count()
     sem_preco = equipamentos.filter(
         custo_aquisicao=None,
-        produto__preco_referencia=None,
         preco_referencia=None,
     ).count()
     precificados = total_equipamentos - sem_preco
@@ -334,17 +447,48 @@ def valores_equipamentos(request):
     page_obj = Paginator(equipamentos_ordenados, 20).get_page(request.GET.get('page'))
     pode_definir_preco = ComprasAccessPolicy.pode_definir_preco_produto(request.user)
     pode_alterar_preco = ComprasAccessPolicy.pode_alterar_preco_produto(request.user)
+    catalogos = {
+        (item.empresa_id, item.produto_id): item
+        for item in CatalogoProdutoEmpresa.objects.filter(
+            empresa_id__in={e.regional.empresa_id for e in page_obj.object_list},
+            produto_id__in={e.produto_id for e in page_obj.object_list if e.produto_id},
+        ).select_related('preco_validado_por')
+    }
     for equipamento in page_obj.object_list:
+        catalogo = catalogos.get(
+            (equipamento.regional.empresa_id, equipamento.produto_id)
+        )
+        equipamento.preco_empresa_fonte = (
+            catalogo.preco_fonte if catalogo else equipamento.produto.preco_fonte
+        )
+        equipamento.preco_empresa_fornecedor_id = (
+            catalogo.preco_fornecedor_id
+            if catalogo else equipamento.fornecedor_id
+        )
+        equipamento.preco_empresa_validado_por = (
+            catalogo.preco_validado_por
+            if catalogo else equipamento.valor_validado_por
+        )
+        equipamento.preco_empresa_validado_em = (
+            catalogo.preco_validado_em
+            if catalogo else equipamento.valor_validado_em
+        )
         equipamento.pode_editar_preco = bool(
             equipamento.produto_id
             and (
-                (equipamento.produto.preco_referencia is None and pode_definir_preco)
-                or (equipamento.produto.preco_referencia is not None and pode_alterar_preco)
+                (equipamento.preco_referencia is None and pode_definir_preco)
+                or (equipamento.preco_referencia is not None and pode_alterar_preco)
             )
         )
     query_params = request.GET.copy()
     query_params.pop('page', None)
-    produtos = Produto.objects.filter(ativo=True)
+    produtos = Produto.objects.filter(
+        ativo=True,
+        pk__in=equipamentos.values('produto_id'),
+    )
+    categorias_catalogo = list(
+        produtos.order_by('categoria').values_list('categoria', flat=True).distinct()
+    )
     if categoria:
         produtos = produtos.filter(categoria=categoria)
     return render(request, 'compras/valores_equipamentos.html', {
@@ -363,7 +507,7 @@ def valores_equipamentos(request):
         'pode_editar_preco_direto': pode_definir_preco or pode_alterar_preco,
         'pode_importar': ComprasAccessPolicy.pode_importar_precos(request.user),
         'pode_catalogo': ComprasAccessPolicy.pode_gerenciar_catalogo(request.user),
-        'categorias': Produto.CATEGORIAS,
+        'categorias': [(item, item) for item in categorias_catalogo],
         'produtos': produtos.order_by('categoria', 'descricao'),
         'filtros': {
             'base': base_id or '', 'categoria': categoria,
@@ -394,8 +538,12 @@ def alterar_preco_produto(request, equipamento_id):
     equipamentos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
         Equipamento.objects.select_related('produto', 'regional__empresa')
     )
-    if not request.user.perfil.is_admin:
-        equipamentos = equipamentos.filter(regional__in=ComprasAccessPolicy.bases(request.user))
+    equipamentos = equipamentos.filter(
+        regional__in=ComprasAccessPolicy.bases(
+            request.user,
+            action=ComprasAccessPolicy.EDIT,
+        )
+    )
     equipamento = get_object_or_404(equipamentos, pk=equipamento_id)
 
     retorno = request.POST.get('retorno', '').strip()
@@ -411,7 +559,7 @@ def alterar_preco_produto(request, equipamento_id):
         return redirect(retorno)
     pode_editar = (
         ComprasAccessPolicy.pode_definir_preco_produto(request.user)
-        if equipamento.produto.preco_referencia is None
+        if equipamento.preco_referencia is None
         else ComprasAccessPolicy.pode_alterar_preco_produto(request.user)
     )
     if not pode_editar:
@@ -432,6 +580,7 @@ def alterar_preco_produto(request, equipamento_id):
         ProdutoPrecoService.definir(
             produto=equipamento.produto,
             usuario=request.user,
+            empresa=equipamento.regional.empresa,
             valor=valor,
             origem=request.POST.get('preco_origem', '').strip(),
             fonte=request.POST.get('preco_fonte', '').strip(),
@@ -459,8 +608,12 @@ def template_precificacao_equipamentos(request):
     equipamentos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
         Equipamento.objects.select_related('produto', 'regional')
     )
-    if not request.user.perfil.is_admin:
-        equipamentos = equipamentos.filter(regional__in=ComprasAccessPolicy.bases(request.user))
+    equipamentos = equipamentos.filter(
+        regional__in=ComprasAccessPolicy.bases(
+            request.user,
+            action=ComprasAccessPolicy.EXPORT,
+        )
+    )
     workbook = Workbook()
     planilha = workbook.active
     planilha.title = 'PRECIFICACAO'
@@ -469,16 +622,8 @@ def template_precificacao_equipamentos(request):
         'NUMERO_SERIE', 'CUSTO_AQUISICAO', 'PRECO_REFERENCIA', 'ORIGEM_VALOR', 'MOTIVO',
     ])
     for item in equipamentos.order_by('regional__nome', 'produto__descricao', 'patrimonio'):
-        referencia = (
-            item.produto.preco_referencia
-            if item.produto_id and item.produto.preco_referencia is not None
-            else item.preco_referencia
-        )
-        origem = (
-            item.produto.preco_origem
-            if item.produto_id and item.produto.preco_referencia is not None
-            else item.origem_valor
-        )
+        referencia = item.preco_referencia
+        origem = item.origem_valor if item.preco_referencia is not None else ''
         planilha.append([
             item.pk, item.regional.nome, item.produto.categoria if item.produto else '',
             item.produto.descricao if item.produto else '', item.patrimonio, item.numero_serie,
@@ -512,10 +657,12 @@ def importar_precificacao_equipamentos(request):
         equipamentos_permitidos = VisibilidadeEstoqueAuditoriaService.ocultar_equipamentos(
             Equipamento.objects.all()
         )
-        if not request.user.perfil.is_admin:
-            equipamentos_permitidos = equipamentos_permitidos.filter(
-                regional__in=ComprasAccessPolicy.bases(request.user)
+        equipamentos_permitidos = equipamentos_permitidos.filter(
+            regional__in=ComprasAccessPolicy.bases(
+                request.user,
+                action=ComprasAccessPolicy.EDIT,
             )
+        )
         itens_importacao = []
         linhas_por_id = {}
         for numero, linha in enumerate(linhas, start=2):
@@ -601,12 +748,22 @@ def criar_produto_catalogo(request):
             with transaction.atomic():
                 produto = form.save(commit=False)
                 produto.criado_por = request.user
+                empresa_catalogo = form.cleaned_data['empresa_catalogo']
+                produto.empresa_catalogo_origem = empresa_catalogo
                 produto.save()
+                if not empresa_catalogo:
+                    raise PermissionDenied('Nenhuma empresa disponível para o catálogo.')
+                CatalogoProdutoEmpresa.objects.update_or_create(
+                    empresa=empresa_catalogo,
+                    produto=produto,
+                    defaults={'ativo': True, 'configurado_por': request.user},
+                )
                 preco = form.cleaned_data.get('preco_referencia_inicial')
                 if preco is not None:
                     ProdutoPrecoService.definir(
                         produto=produto,
                         usuario=request.user,
+                        empresa=empresa_catalogo,
                         valor=preco,
                         origem=form.cleaned_data.get('preco_origem'),
                         fonte=form.cleaned_data.get('preco_fonte', ''),
@@ -636,12 +793,12 @@ def resolver_codigo(request):
     if not codigo:
         return JsonResponse({'erro': 'Informe o código.'}, status=400)
     qs = CodigoCatalogo.objects.filter(codigo=codigo, ativo=True).select_related('produto', 'insumo', 'empresa')
-    perfil = request.user.perfil
-    if not perfil.is_admin:
-        empresas_ids = list(ComprasAccessPolicy.empresas(request.user).values_list('id', flat=True))
-        if perfil.empresa_id:
-            empresas_ids.append(perfil.empresa_id)
-        qs = qs.filter(empresa_id__in=set(empresas_ids))
+    qs = qs.filter(
+        empresa__in=ComprasAccessPolicy.empresas(
+            request.user,
+            resource=ComprasAccessPolicy.CATALOGO,
+        )
+    )
     registro = qs.first()
     if not registro:
         return JsonResponse({'encontrado': False, 'codigo': codigo}, status=404)

@@ -7,6 +7,7 @@ app_name = 'compras'
 
 urlpatterns = [
     path('', views.lista_aquisicoes, name='aquisicao_lista'),
+    path('catalogo/configurar/', views.configurar_catalogo_empresa, name='catalogo_empresa'),
     path('nova/', views.criar_aquisicao, name='aquisicao_criar'),
     path('<int:pk>/', views.detalhe_aquisicao, name='aquisicao_detalhe'),
     path('<int:pk>/aprovar/', views.aprovar_aquisicao, name='aquisicao_aprovar'),

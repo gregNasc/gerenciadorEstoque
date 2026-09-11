@@ -47,7 +47,10 @@ class ChamadoForm(forms.ModelForm):
         self.fields['tipo_chamado'].label = _('Tipo de chamado')
 
         # BASES PERMITIDAS
-        bases = ChamadoAccessPolicy.bases(user)
+        bases = ChamadoAccessPolicy.bases(
+            user,
+            action=ChamadoAccessPolicy.CREATE,
+        )
 
         self.fields['base'].queryset = (
             bases

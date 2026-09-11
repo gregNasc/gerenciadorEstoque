@@ -6,7 +6,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import DeclaracaoCorreiosForm, DeclaracaoCorreiosItemFormSet, DeclaracaoEnderecoForm
-from .models import DeclaracaoCorreios, Emprestimo, Transferencia
+from .models import (
+    CapacidadeRelacionamentoEmpresa,
+    DeclaracaoCorreios,
+    Emprestimo,
+    Transferencia,
+)
+from .policies.tenant_operations import TenantOperationPolicy
 from .services.declaracao_correios_service import DeclaracaoCorreiosService
 
 
@@ -22,12 +28,27 @@ def _bases_operacao(declaracao):
 
 def _exigir_acesso_operacao(user, operacao, *, editar=False):
     perfil = _perfil(user)
-    if user.is_superuser or (perfil and perfil.is_admin):
+    if user.is_superuser:
         return
-    if not perfil or perfil.empresa_id != operacao.regional_origem.empresa_id:
+    if not perfil:
         raise PermissionDenied
-    bases = [operacao.regional_origem] if editar else [operacao.regional_origem, operacao.regional_destino]
-    if not perfil.regionais.filter(pk__in=[base.pk for base in bases]).exists():
+    recurso = (
+        CapacidadeRelacionamentoEmpresa.Recurso.TRANSFERENCIAS
+        if isinstance(operacao, Transferencia)
+        else CapacidadeRelacionamentoEmpresa.Recurso.EMPRESTIMOS
+    )
+    acao = (
+        CapacidadeRelacionamentoEmpresa.Acao.EDITAR
+        if editar
+        else CapacidadeRelacionamentoEmpresa.Acao.VISUALIZAR
+    )
+    bases = [operacao.regional_origem]
+    if not editar:
+        bases.append(operacao.regional_destino)
+    if not any(
+        TenantOperationPolicy.can_access_base(user, base, recurso, acao)
+        for base in bases
+    ):
         raise PermissionDenied
 
 def _exigir_acesso(user, declaracao, *, editar=False):
@@ -125,12 +146,15 @@ def baixar_declaracao(request, declaracao_id):
     _exigir_acesso(request.user, declaracao)
     if not declaracao.arquivo:
         return redirect('estoque:declaracao_detalhe', declaracao_id=declaracao.pk)
-    return FileResponse(
+    resposta = FileResponse(
         declaracao.arquivo.open('rb'),
         as_attachment=True,
         filename=declaracao.arquivo.name.rsplit('/', 1)[-1],
         content_type='application/pdf',
     )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
 
 @login_required
 @require_POST

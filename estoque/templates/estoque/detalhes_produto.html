@@ -56,10 +56,10 @@
                                 <!-- FOTO -->
                                 <td>
                                     {% if item.foto %}
-                                        <img src="{{ item.foto.url }}"
+                                        <img src="{% url 'estoque:equipamento_arquivo' item.pk 'foto' %}"
                                              class="img-thumbnail"
                                              style="max-height: 60px; cursor: pointer;"
-                                             onclick="abrirImagem('{{ item.foto.url }}')">
+                                             onclick="abrirImagem('{% url 'estoque:equipamento_arquivo' item.pk 'foto' %}')">
                                     {% else %}
                                         <span class="text-muted">{% trans "Sem Foto" %}</span>
                                     {% endif %}

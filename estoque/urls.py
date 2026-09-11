@@ -38,6 +38,7 @@ urlpatterns = [
     path('cadastrar-produto/', views.cadastrar_equipamento_view, name='cadastrar_equipamento'),
     path('produtos-por-categoria/', views.produtos_por_categoria, name='produtos_por_categoria'),
     path('detalhes-produto/<int:produto_id>/', views.detalhes_produto, name='detalhes_produto'),
+    path('equipamentos/<int:equipamento_id>/arquivos/<str:tipo>/', views.equipamento_arquivo_view, name='equipamento_arquivo'),
     path('equipamentos-por-regional/<int:produto_id>/<int:regional_id>/', views.equipamentos_por_regional, name='equipamentos_por_regional'),
 
 
@@ -89,6 +90,7 @@ urlpatterns = [
     path('mensagens/', views.caixa_mensagens, name='caixa_mensagens'),
     path('mensagens/enviar/', views.enviar_mensagem, name='enviar_mensagem'),
     path('mensagens/<int:destino_id>/', views.visualizar_mensagem, name='visualizar_mensagem'),
+    path('mensagens/arquivos/<int:arquivo_id>/baixar/', views.baixar_arquivo_mensagem, name='baixar_arquivo_mensagem'),
     path('comunicados/', views.caixa_comunicados, name='caixa_comunicados'),
     path('comunicados/novo/', views.criar_comunicado, name='criar_comunicado'),
     path('comunicados/<int:comunicado_id>/', views.detalhe_comunicado, name='detalhe_comunicado'),

@@ -114,11 +114,15 @@
             if (categoriaSelect && produtoSelect) {
                 const urlProdutos = "{% url 'estoque:produtos_por_categoria' %}";
                 const produtoSelecionado = produtoSelect.value;
+                const regionalSelect = document.querySelector('[name="regional"]');
 
                 async function carregarProdutos(categoria, selectedId = null) {
                     produtoSelect.innerHTML = '<option>Carregando...</option>';
                     try {
-                        const resp = await fetch(`${urlProdutos}?categoria=${encodeURIComponent(categoria)}`);
+                        const base = regionalSelect?.value || '';
+                        const resp = await fetch(
+                            `${urlProdutos}?categoria=${encodeURIComponent(categoria)}&base=${encodeURIComponent(base)}`
+                        );
                         if (!resp.ok) throw new Error();
                         const data = await resp.json();
                         produtoSelect.innerHTML = '<option value="">Selecione</option>';
@@ -146,6 +150,9 @@
                     } else {
                         produtoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
                     }
+                });
+                regionalSelect?.addEventListener('change', function() {
+                    if (categoriaSelect.value) carregarProdutos(categoriaSelect.value);
                 });
             }
 

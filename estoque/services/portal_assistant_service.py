@@ -219,7 +219,7 @@ class InventoryPortalAssistantService:
         perfil = getattr(user, "perfil", None)
         if not perfil:
             return []
-        if perfil.is_admin and not interpretacao.base:
+        if getattr(user, "is_superuser", False):
             return inventories
 
         queryset = secure_queryset_insumos(

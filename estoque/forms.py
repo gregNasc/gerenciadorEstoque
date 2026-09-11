@@ -1,7 +1,16 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import DeclaracaoCorreios, DeclaracaoCorreiosItem, Produto, Equipamento, Transferencia, Sick, Base
+from .models import (
+    Base,
+    DeclaracaoCorreios,
+    DeclaracaoCorreiosItem,
+    Empresa,
+    Equipamento,
+    Produto,
+    Sick,
+    Transferencia,
+)
 from django.utils.translation import gettext_lazy as _
 from insumos.models import FornecedorInsumo
 from estoque.security import secure_base_queryset
@@ -65,6 +74,24 @@ DeclaracaoCorreiosItemFormSet = forms.inlineformset_factory(
 
 # ================= PRODUTO =================
 class ProdutoForm(forms.ModelForm):
+    categoria = forms.CharField(
+        label=_('Categoria'),
+        max_length=50,
+        help_text=_(
+            'Informe uma categoria adequada ao uso da empresa. '
+            'Ela ficará disponível quando este item estiver habilitado no catálogo.'
+        ),
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'list': 'categorias-equipamento-sugeridas',
+            'placeholder': _('Ex.: Coletores, Notebooks ou uma categoria própria'),
+        }),
+    )
+    empresa_catalogo = forms.ModelChoiceField(
+        label=_('Empresa do catálogo'),
+        queryset=Empresa.objects.none(),
+        help_text=_('A nova ficha técnica ficará habilitada nesta empresa.'),
+    )
     preco_referencia_inicial = forms.DecimalField(
         label=_('Preço de referência'),
         required=False,
@@ -93,6 +120,17 @@ class ProdutoForm(forms.ModelForm):
         from estoque.policies.compras import ComprasAccessPolicy
 
         self.user = user
+        empresas_catalogo = ComprasAccessPolicy.empresas(
+            user,
+            action=ComprasAccessPolicy.ADMIN,
+            resource=ComprasAccessPolicy.CATALOGO,
+        ).order_by('nome')
+        self.fields['empresa_catalogo'].queryset = empresas_catalogo
+        perfil = getattr(user, 'perfil', None)
+        if perfil and perfil.empresa_id and empresas_catalogo.filter(
+            pk=perfil.empresa_id
+        ).exists():
+            self.fields['empresa_catalogo'].initial = perfil.empresa_id
         self.fields['preco_fornecedor'].queryset = FornecedorInsumo.objects.filter(
             ativo=True
         ).order_by('nome')
@@ -121,7 +159,7 @@ class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
         fields = [
-            'codigo', 'descricao', 'nome_resumido', 'fabricante', 'modelo',
+            'empresa_catalogo', 'codigo', 'descricao', 'nome_resumido', 'fabricante', 'modelo',
             'sku_fabricante', 'categoria', 'subcategoria', 'unidade_medida',
             'quantidade_embalagem', 'especificacoes_tecnicas', 'ativo',
         ]
@@ -137,6 +175,12 @@ class ProdutoForm(forms.ModelForm):
         if Produto.objects.filter(codigo=codigo).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Já existe um produto com esse código.")
         return codigo
+
+    def clean_categoria(self):
+        categoria = self.cleaned_data['categoria'].strip()
+        if not categoria:
+            raise ValidationError(_('Informe a categoria do equipamento.'))
+        return categoria
 
 # ================= EQUIPAMENTO =================
 class EquipamentoForm(forms.ModelForm):
@@ -179,20 +223,40 @@ class EquipamentoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         self.base_selecionada = base_selecionada
+        from estoque.policies.compras import ComprasAccessPolicy
 
-        self.fields['produto'].queryset = Produto.objects.none()
+        base_catalogo = base_selecionada
+        regional_id = self.data.get('regional') if self.is_bound else None
+        if base_catalogo is None and regional_id and str(regional_id).isdigit():
+            base_catalogo = secure_base_queryset(
+                Base.objects.select_related('empresa'),
+                user,
+                resource='EQUIPAMENTOS',
+                action='CRIAR',
+            ).filter(pk=regional_id).first()
+        if base_catalogo is None and self.instance.pk:
+            base_catalogo = self.instance.regional
 
-        if 'categoria' in self.data:
-            try:
-                categoria = self.data.get('categoria')
-                self.fields['produto'].queryset = Produto.objects.filter(categoria=categoria)
-            except:
-                pass
-
-        elif self.instance.pk:
-            self.fields['produto'].queryset = Produto.objects.filter(
-                categoria=self.instance.produto.categoria
-            )
+        produtos_permitidos = ComprasAccessPolicy.produtos_catalogo(
+            user,
+            empresa=base_catalogo.empresa if base_catalogo else None,
+        )
+        categorias = list(
+            produtos_permitidos.order_by('categoria').values_list(
+                'categoria', flat=True
+            ).distinct()
+        )
+        self.fields['categoria'].choices = [('', _('Selecione'))] + [
+            (categoria, categoria) for categoria in categorias
+        ]
+        categoria = self.data.get('categoria') if self.is_bound else None
+        if not categoria and self.instance.pk and self.instance.produto_id:
+            categoria = self.instance.produto.categoria
+        self.fields['produto'].queryset = (
+            produtos_permitidos.filter(categoria=categoria).order_by('descricao')
+            if categoria
+            else Produto.objects.none()
+        )
 
         if user and not user.is_superuser:
             perfil = getattr(user, 'perfil', None)
@@ -253,6 +317,26 @@ class EquipamentoForm(forms.ModelForm):
         if self.base_selecionada and regional.pk != self.base_selecionada.pk:
             raise ValidationError("A base informada diverge do contexto selecionado.")
         return regional
+
+    def clean(self):
+        dados = super().clean()
+        regional = dados.get('regional')
+        produto = dados.get('produto')
+        categoria = dados.get('categoria')
+        if produto and categoria and produto.categoria != categoria:
+            self.add_error('produto', 'O equipamento não pertence à categoria selecionada.')
+        if regional and produto:
+            from estoque.policies.compras import ComprasAccessPolicy
+
+            if not ComprasAccessPolicy.produtos_catalogo(
+                self.user,
+                empresa=regional.empresa,
+            ).filter(pk=produto.pk).exists():
+                self.add_error(
+                    'produto',
+                    'Este equipamento não está habilitado no catálogo da empresa.',
+                )
+        return dados
 
 # ================= TRANSFERÊNCIA =================
 class TransferenciaForm(forms.ModelForm):
