@@ -8,6 +8,8 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
+from estoque.tenant_scope import TenantScope
+
 
 logger = logging.getLogger("integracao.tory_llm")
 
@@ -97,7 +99,17 @@ class PortalQuestionInterpreter:
     }
 
     @classmethod
-    def interpret(cls, question, *, context=None, today=None, http_client=None):
+    def interpret(
+        cls,
+        question,
+        *,
+        tenant_scope,
+        context=None,
+        today=None,
+        http_client=None,
+    ):
+        if not isinstance(tenant_scope, TenantScope):
+            raise ValueError('Tenant Scope da Tory não foi declarado.')
         if not settings.TORY_LLM_ENABLED or not settings.OPENAI_API_KEY:
             return None
         today = today or timezone.localdate()

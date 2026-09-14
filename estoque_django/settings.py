@@ -166,6 +166,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'estoque.middleware.UserLanguageMiddleware',
     'estoque.middleware.EmpresaMiddleware',
+    'estoque.middleware.TenantMembershipMiddleware',
+    'estoque.middleware.TenantFeatureMiddleware',
     'estoque.middleware.OperatorScopeMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -189,6 +191,7 @@ TEMPLATES = [
                 'insumos.context_processors.menu_insumos',
                 'estoque.context_processors.notificacoes_context',
                 'estoque.context_processors.permissoes_especiais',
+                'estoque.context_processors.tenant_features_context',
 
             ],
         },

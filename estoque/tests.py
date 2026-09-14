@@ -15,6 +15,7 @@ from estoque.models import (
     Historico, Produto, Sick, Transferencia, TransferenciaItem,
 )
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
+from estoque.tenant_scope import TenantScope
 from estoque.services.assistente.response_builder import construir_erro, construir_resposta
 from estoque.services.comunicado_service import ComunicadoService
 from estoque.policies.compras import GruposCorporativos
@@ -796,6 +797,10 @@ class EmprestimoComPendenciaTests(TestCase):
         self.destino = Base.objects.create(
             nome='Destino Emprestimo', empresa=empresa, grupo_regional=grupo,
         )
+        self.usuario.perfil.role = Perfil.Role.GESTOR
+        self.usuario.perfil.empresa = empresa
+        self.usuario.perfil.save(update_fields=['role', 'empresa'])
+        self.usuario.perfil.regionais.add(self.origem, self.destino)
         produto = Produto.objects.create(
             codigo='PROD-EMP-PEND',
             descricao='Coletor emprestado',
@@ -892,7 +897,7 @@ class ComunicadoManutencaoTests(TestCase):
         self.admin = User.objects.create_user('admin_manutencao')
         Perfil.objects.update_or_create(
             user=self.admin,
-            defaults={'empresa': None, 'role': Perfil.Role.ADMIN},
+            defaults={'empresa': empresa, 'role': Perfil.Role.ADMIN},
         )
         self.rafael = User.objects.create_user('rafael.ribeiro')
         Perfil.objects.update_or_create(
@@ -1064,6 +1069,9 @@ class ToryInterfaceTests(TestCase):
             self.client.session['assistente_operacional_contexto'],
             {'intencao': 'equipamentos'},
         )
+        tenant_scope = responder.call_args.kwargs['tenant_scope']
+        self.assertIsInstance(tenant_scope, TenantScope)
+        self.assertEqual(tenant_scope.user_id, self.usuario.pk)
 
     def test_endpoint_ajax_rejeita_pergunta_vazia(self):
         response = self.client.post(
@@ -1502,7 +1510,7 @@ class ToryIsolamentoBasesTests(TestCase):
             user=self.usuario,
             defaults={'empresa': self.empresa, 'role': Perfil.Role.GESTOR},
         )
-        perfil.regionais.set([self.santa_isabel, self.base_outra_empresa])
+        perfil.regionais.set([self.santa_isabel])
         self.usuario.refresh_from_db()
 
         self.produto = Produto.objects.create(

@@ -9,13 +9,25 @@ from math import ceil
 from numbers import Number
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.db.models import Case, Count, DecimalField, Prefetch, Q, Sum, Value, When, prefetch_related_objects
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
-from estoque.models import Base, Equipamento, GrupoRegional, Historico, Produto, Transferencia
-from estoque.security import secure_queryset
+from estoque.models import (
+    Base,
+    CapacidadeRelacionamentoEmpresa,
+    Equipamento,
+    GrupoRegional,
+    Historico,
+    Modulo,
+    Produto,
+    Transferencia,
+)
+from estoque.security import secure_base_queryset, secure_queryset
 from estoque.services.documentation_service import DocumentationService
+from estoque.tenant_scope import TenantScope
+from estoque.tenant_features import TenantFeatureService
 
 
 @dataclass
@@ -61,6 +73,7 @@ class InterpretacaoOperacional:
     portal_client_code: str = ''
     portal_metrics: list[str] = field(default_factory=list)
     portal_llm_used: bool = False
+    tenant_scope: TenantScope | None = field(default=None, repr=False, compare=False)
 
 class AssistenteOperacionalService:
     NOME_ASSISTENTE = 'Tory'
@@ -145,8 +158,64 @@ class AssistenteOperacionalService:
         'inventarios_relatorio',
     }
 
+    INTENCAO_FEATURE = {
+        'ranking_base': Modulo.Codigo.ESTOQUE,
+        'capacidade_coletores': Modulo.Codigo.EQUIPAMENTOS,
+        'capacidade_equipamentos': Modulo.Codigo.EQUIPAMENTOS,
+        'equipamentos_categoria': Modulo.Codigo.EQUIPAMENTOS,
+        'equipamentos': Modulo.Codigo.EQUIPAMENTOS,
+        'historico': Modulo.Codigo.EQUIPAMENTOS,
+        'indicadores': Modulo.Codigo.ESTOQUE,
+        'transferencias': Modulo.Codigo.TRANSFERENCIAS,
+        'insumos': Modulo.Codigo.INSUMOS,
+        'custos_insumos': Modulo.Codigo.INSUMOS,
+        'comparacao_precos': Modulo.Codigo.INSUMOS,
+        'solicitacoes_insumos': Modulo.Codigo.INSUMOS,
+        'planejamento': Modulo.Codigo.INSUMOS,
+        'portal_tempo_real': Modulo.Codigo.INSUMOS,
+        'inventarios_data_base': Modulo.Codigo.INSUMOS,
+        'inventarios_relatorio': Modulo.Codigo.INSUMOS,
+        'inventarios_checklists': Modulo.Codigo.CHECKLIST,
+    }
+
+    @staticmethod
+    def _authorize_tenant_scope(user, tenant_scope=None):
+        """Aceita somente o snapshot canônico da identidade autenticada.
+
+        A Tory pode restringir consultas a partir deste escopo, mas nunca
+        acrescentar empresas, capabilities ou privilégio de plataforma.
+        """
+        canonical = TenantScope.fresh_for_user(user)
+        scope = tenant_scope or canonical
+        if not isinstance(scope, TenantScope):
+            raise PermissionDenied('Escopo de tenant da Tory não foi declarado.')
+        if scope != canonical:
+            raise PermissionDenied('Escopo de tenant incompatível com o usuário da Tory.')
+        user._tory_tenant_scope = scope
+        return scope
+
+    @staticmethod
+    def _declared_tenant_scope(user):
+        scope = getattr(user, '_tory_tenant_scope', None)
+        if not isinstance(scope, TenantScope) or scope.user_id != user.pk:
+            raise PermissionDenied('A Tory recebeu uma consulta sem Tenant Scope autorizado.')
+        return scope
+
     @classmethod
-    def responder(cls, user, pergunta, contexto=None):
+    def _require_feature(cls, user, tenant_scope, codigo):
+        if user.is_superuser:
+            return
+        if not TenantFeatureService.user_has_feature(
+            user,
+            codigo,
+            tenant=tenant_scope.primary_company,
+        ):
+            raise PermissionDenied('Este módulo não está habilitado para sua empresa.')
+
+    @classmethod
+    def responder(cls, user, pergunta, contexto=None, *, tenant_scope=None):
+        tenant_scope = cls._authorize_tenant_scope(user, tenant_scope)
+        cls._require_feature(user, tenant_scope, Modulo.Codigo.TORY)
         resposta_documentacao = DocumentationService.tentar_responder(pergunta, user=user)
         if resposta_documentacao:
             resposta_documentacao = cls._ocultar_terminologia_hierarquia(resposta_documentacao)
@@ -161,7 +230,15 @@ class AssistenteOperacionalService:
             )
             return resposta_documentacao
 
-        interpretacao = cls.interpretar(user, pergunta, contexto=contexto)
+        interpretacao = cls.interpretar(
+            user,
+            pergunta,
+            contexto=contexto,
+            tenant_scope=tenant_scope,
+        )
+        required_feature = cls.INTENCAO_FEATURE.get(interpretacao.intencao)
+        if required_feature:
+            cls._require_feature(user, tenant_scope, required_feature)
 
         intencoes_com_estoque_equipamentos = {
             'capacidade_coletores',
@@ -233,13 +310,19 @@ class AssistenteOperacionalService:
         return resposta
 
     @classmethod
-    def interpretar(cls, user, pergunta, contexto=None):
+    def interpretar(cls, user, pergunta, contexto=None, *, tenant_scope=None):
+        tenant_scope = cls._authorize_tenant_scope(user, tenant_scope)
         contexto = contexto or {}
         pergunta = (pergunta or '').strip()
         texto = cls._corrigir_termos(cls._normalizar(pergunta))
         texto = cls._remover_vocativo_tory(texto)
         texto = cls._interpretar_linguagem_cotidiana(texto)
-        semantic_plan = cls._interpretar_pergunta_llm(pergunta, texto, contexto)
+        semantic_plan = cls._interpretar_pergunta_llm(
+            pergunta,
+            texto,
+            contexto,
+            tenant_scope,
+        )
         portal_plan = (
             semantic_plan
             if semantic_plan and semantic_plan.is_portal_query
@@ -342,14 +425,14 @@ class AssistenteOperacionalService:
         )
         if base_explicita:
             uf_solicitada = ''
-            base_solicitada = cls._extrair_base_global(texto)
+            base_solicitada = cls._extrair_base_global(user, texto)
         else:
             uf_solicitada = None if todas_bases or opcoes_base_ambiguas else cls._extrair_uf(texto)
             base_solicitada = (
                 None if todas_bases or uf_solicitada or opcoes_base_ambiguas
-                else cls._extrair_base_global(texto)
+                else cls._extrair_base_global(user, texto)
             )
-        grupo_solicitado = cls._extrair_grupo_global(texto)
+        grupo_solicitado = cls._extrair_grupo_global(user, texto)
         if grupo_solicitado and cls._normalizar(grupo_solicitado.nome).startswith('oxxo '):
             uf_solicitada = ''
         base_visivel = cls._validar_base_visivel(user, base_solicitada) if base_solicitada else None
@@ -488,6 +571,7 @@ class AssistenteOperacionalService:
             ),
             portal_metrics=portal_plan.metrics if portal_plan else [],
             portal_llm_used=bool(portal_plan and portal_plan.is_portal_query),
+            tenant_scope=tenant_scope,
         )
 
         if not pergunta:
@@ -505,6 +589,7 @@ class AssistenteOperacionalService:
                 texto=texto,
                 intencao='saudacao',
                 base=cls._base_unica_visivel(user),
+                tenant_scope=tenant_scope,
             )
 
         if cls._pergunta_sobre_termo(texto):
@@ -733,13 +818,21 @@ class AssistenteOperacionalService:
     def _planejamento(cls, user, interpretacao):
         from estoque.services.planning_assistant_service import PlanningAssistantService
 
-        return PlanningAssistantService.respond(user, interpretacao)
+        return PlanningAssistantService.respond(
+            user,
+            interpretacao,
+            tenant_scope=interpretacao.tenant_scope,
+        )
 
     @classmethod
     def _portal_tempo_real(cls, user, interpretacao):
         from estoque.services.portal_assistant_service import InventoryPortalAssistantService
 
-        return InventoryPortalAssistantService.respond(user, interpretacao)
+        return InventoryPortalAssistantService.respond(
+            user,
+            interpretacao,
+            tenant_scope=interpretacao.tenant_scope,
+        )
 
     @classmethod
     def _aplicar_escopo_de_base(cls, user, interpretacao):
@@ -1956,6 +2049,7 @@ class AssistenteOperacionalService:
     @classmethod
     def _comparacao_precos(cls, user, interpretacao):
         from insumos.models import PrecoFornecedorInsumo, PesquisaPrecoOnline
+        from insumos.policies import InsumosTenantPolicy
         from insumos.services.custo_service import CustoInsumoService
 
         if not CustoInsumoService.pode_visualizar(user):
@@ -1969,9 +2063,12 @@ class AssistenteOperacionalService:
                 'qual insumo você deseja comparar? Pode informar parte do nome, por exemplo: “toner”, “papel sulfite” ou “luva”.'
             )
 
-        cotacoes = PrecoFornecedorInsumo.objects.filter(
-            insumo=interpretacao.insumo,
-            ativo=True,
+        cotacoes = InsumosTenantPolicy.prices(
+            user,
+            PrecoFornecedorInsumo.objects.filter(
+                insumo=interpretacao.insumo,
+                ativo=True,
+            ),
         ).select_related('fornecedor').order_by(
             'fornecedor__nome', '-vigente_desde', '-criado_em'
         )
@@ -1983,7 +2080,10 @@ class AssistenteOperacionalService:
             key=lambda item: (item.valor_unitario, item.fornecedor.nome),
         )
 
-        pesquisa = PesquisaPrecoOnline.objects.filter(insumo=interpretacao.insumo).first()
+        pesquisa = InsumosTenantPolicy.price_searches(
+            user,
+            PesquisaPrecoOnline.objects.filter(insumo=interpretacao.insumo),
+        ).first()
         online = list(pesquisa.ofertas.order_by('preco_total')[:10]) if pesquisa else []
         if not manuais and not online:
             return cls._resposta(
@@ -2036,6 +2136,7 @@ class AssistenteOperacionalService:
     @classmethod
     def _solicitacoes_insumos(cls, user, interpretacao):
         from insumos.models import SolicitacaoInsumo
+        from insumos.policies import InsumosTenantPolicy
 
         perfil = getattr(user, 'perfil', None)
         pode_ver_todas = bool(perfil and (
@@ -2047,8 +2148,11 @@ class AssistenteOperacionalService:
                 'o acompanhamento de solicitações de insumos não está disponível para o seu perfil.'
             )
 
-        qs = SolicitacaoInsumo.objects.select_related('base', 'solicitante').prefetch_related(
-            'itens__insumo'
+        qs = InsumosTenantPolicy.requests(
+            user,
+            SolicitacaoInsumo.objects.select_related(
+                'base', 'solicitante'
+            ).prefetch_related('itens__insumo'),
         )
         if not pode_ver_todas:
             qs = qs.filter(solicitante=user)
@@ -3604,28 +3708,18 @@ class AssistenteOperacionalService:
 
     @classmethod
     def _transferencias_visiveis(cls, user):
-        perfil = user.perfil
-        qs = Transferencia.objects.all()
-        if perfil.is_admin:
-            return qs
-        bases = cls._bases_visiveis(user)
-        return qs.filter(
-            Q(regional_origem__in=bases) |
-            Q(regional_destino__in=bases)
-        )
+        from estoque.policies.tenant_operations import TenantOperationPolicy
+
+        return TenantOperationPolicy.transferencias(user)
 
     @classmethod
     def _emprestimos_visiveis(cls, user):
         from estoque.models import Emprestimo
+        from estoque.policies.tenant_operations import TenantOperationPolicy
 
-        perfil = user.perfil
-        qs = Emprestimo.objects.all()
-        if perfil.is_admin:
-            return qs
-        bases = cls._bases_visiveis(user)
-        return qs.filter(
-            Q(regional_origem__in=bases) |
-            Q(regional_destino__in=bases)
+        return TenantOperationPolicy.emprestimos(
+            user,
+            Emprestimo.objects.all(),
         )
 
     @classmethod
@@ -3711,8 +3805,24 @@ class AssistenteOperacionalService:
         return cls._resolver_base(cls._bases_visiveis(user), texto)
 
     @classmethod
-    def _extrair_base_global(cls, texto):
-        return cls._resolver_base(Base.objects.all().order_by('nome'), texto)
+    def _extrair_base_global(cls, user, texto):
+        """Reconhece Base sem enumerar empresas fora do escopo autorizado.
+
+        Gestores e Operadores ainda recebem uma negativa explícita quando
+        citam outra Base da própria empresa, mas não conseguem usar a Tory
+        para descobrir se uma Base de outro tenant existe.
+        """
+        scope = cls._declared_tenant_scope(user)
+        bases = Base.objects.select_related('empresa').order_by('nome')
+        if not scope.is_platform_scope:
+            if scope.primary_tenant_id is None:
+                return None
+            visible_base_ids = [base.pk for base in cls._bases_visiveis(user)]
+            bases = bases.filter(
+                Q(pk__in=visible_base_ids) |
+                Q(empresa_id=scope.primary_tenant_id)
+            )
+        return cls._resolver_base(bases, texto)
 
     @classmethod
     def _extrair_uf(cls, texto):
@@ -3776,10 +3886,20 @@ class AssistenteOperacionalService:
         return candidatos[0][1]
 
     @classmethod
-    def _extrair_grupo_global(cls, texto):
+    def _extrair_grupo_global(cls, user, texto):
+        scope = cls._declared_tenant_scope(user)
+        grupos = GrupoRegional.objects.filter(ativo=True)
+        if not scope.is_platform_scope:
+            if scope.primary_tenant_id is None:
+                return None
+            visible_base_ids = [base.pk for base in cls._bases_visiveis(user)]
+            grupos = grupos.filter(
+                Q(bases__pk__in=visible_base_ids) |
+                Q(bases__empresa_id=scope.primary_tenant_id)
+            ).distinct()
         for alias, nome in cls.GRUPO_ALIASES.items():
             if re.search(rf'\b{re.escape(alias)}\b', texto):
-                grupo = GrupoRegional.objects.filter(nome__iexact=nome, ativo=True).first()
+                grupo = grupos.filter(nome__iexact=nome).first()
                 if grupo:
                     return grupo
         if cls._melhor_similaridade_token(texto, 'oxxo') >= 0.82:
@@ -3795,10 +3915,10 @@ class AssistenteOperacionalService:
             ]
             score, nome = max(candidatos, default=(0, ''))
             if score >= 0.78:
-                grupo = GrupoRegional.objects.filter(nome__iexact=nome, ativo=True).first()
+                grupo = grupos.filter(nome__iexact=nome).first()
                 if grupo:
                     return grupo
-        for grupo in GrupoRegional.objects.filter(ativo=True).order_by('-nome'):
+        for grupo in grupos.order_by('-nome'):
             nome = cls._normalizar(grupo.nome)
             if nome and (
                 nome in texto or
@@ -3811,7 +3931,7 @@ class AssistenteOperacionalService:
         depois_de_grupo = re.search(r'\b(?:grupo(?:\s+regional)?|regional)\s+([a-z0-9\s-]{2,80})', texto)
         if depois_de_grupo:
             trecho = depois_de_grupo.group(1).strip()
-            for grupo in GrupoRegional.objects.filter(ativo=True).order_by('nome'):
+            for grupo in grupos.order_by('nome'):
                 if trecho and trecho in cls._normalizar(grupo.nome):
                     return grupo
         return None
@@ -3843,8 +3963,20 @@ class AssistenteOperacionalService:
         nome = cls._normalizar(contexto.get('grupo', ''))
         if not nome:
             return None
+        visible_group_ids = {
+            base.grupo_regional_id
+            for base in cls._bases_visiveis(user)
+            if base.grupo_regional_id
+        }
         grupo = next(
-            (item for item in GrupoRegional.objects.filter(ativo=True) if cls._normalizar(item.nome) == nome),
+            (
+                item
+                for item in GrupoRegional.objects.filter(
+                    ativo=True,
+                    pk__in=visible_group_ids,
+                )
+                if cls._normalizar(item.nome) == nome
+            ),
             None,
         )
         return cls._validar_grupo_visivel(user, grupo)
@@ -4006,15 +4138,17 @@ class AssistenteOperacionalService:
         match = re.search(r'\btipo\s+(apoio|pre|ca|cp|im|lo|t|d|r|rc)\b', texto)
         return match.group(1).upper() if match else ''
 
-    @staticmethod
-    def _bases_visiveis(user):
-        perfil = user.perfil
-        if perfil.is_admin:
-            bases = Base.objects.all().order_by('nome')
-        elif perfil.empresa_id:
-            bases = perfil.regionais.filter(empresa_id=perfil.empresa_id).order_by('nome')
-        else:
-            bases = Base.objects.none()
+    @classmethod
+    def _bases_visiveis(cls, user):
+        scope = cls._declared_tenant_scope(user)
+        bases = secure_base_queryset(
+            Base.objects.select_related('empresa').order_by('nome'),
+            user,
+            resource=CapacidadeRelacionamentoEmpresa.Recurso.TORY,
+            action=CapacidadeRelacionamentoEmpresa.Acao.VISUALIZAR,
+        )
+        if not scope.is_platform_scope:
+            bases = bases.filter(empresa_id__in=scope.visible_company_ids)
         return [base for base in bases if AssistenteOperacionalService._base_operacional(base)]
 
     @classmethod
@@ -4416,7 +4550,13 @@ class AssistenteOperacionalService:
         )
 
     @classmethod
-    def _interpretar_pergunta_llm(cls, pergunta, texto, contexto):
+    def _interpretar_pergunta_llm(
+        cls,
+        pergunta,
+        texto,
+        contexto,
+        tenant_scope,
+    ):
         if not getattr(settings, 'TORY_LLM_ENABLED', False):
             return None
         if re.search(
@@ -4438,7 +4578,11 @@ class AssistenteOperacionalService:
         from estoque.services.portal_question_interpreter import PortalQuestionInterpreter
         from estoque.services.portal_question_interpreter import PortalQuestionPlan
 
-        plan = PortalQuestionInterpreter.interpret(pergunta, context=contexto)
+        plan = PortalQuestionInterpreter.interpret(
+            pergunta,
+            context=contexto,
+            tenant_scope=tenant_scope,
+        )
         return plan if isinstance(plan, PortalQuestionPlan) else None
 
     @classmethod

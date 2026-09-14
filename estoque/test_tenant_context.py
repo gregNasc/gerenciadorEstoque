@@ -30,13 +30,13 @@ class EmpresaMiddlewareTenantContextTests(TestCase):
         profile.save()
         return user
 
-    def test_authenticated_user_exposes_compatible_tenant_aliases(self):
+    def test_authenticated_user_exposes_canonical_tenant_context(self):
         user = self._user('admin.tenant', empresa=self.empresa)
 
         request = self._execute(user)
 
-        self.assertIs(request.tenant, request.empresa)
         self.assertEqual(request.tenant, self.empresa)
+        self.assertFalse(hasattr(request, 'empresa'))
         self.assertEqual(request.tenant_scope.primary_tenant_id, self.empresa.pk)
         self.assertEqual(request.tenant_scope.tenant_ids, {self.empresa.pk})
         self.assertTrue(request.tenant_scope.has_fixed_tenant)
@@ -48,7 +48,7 @@ class EmpresaMiddlewareTenantContextTests(TestCase):
         request = self._execute(AnonymousUser())
 
         self.assertIsNone(request.tenant)
-        self.assertIsNone(request.empresa)
+        self.assertFalse(hasattr(request, 'empresa'))
         self.assertTrue(request.tenant_scope.is_empty)
         self.assertFalse(request.tenant_scope.is_platform_superuser)
         self.assertTrue(request.tenant_context.is_empty)
@@ -84,7 +84,7 @@ class EmpresaMiddlewareTenantContextTests(TestCase):
             request = self._execute(user)
 
         self.assertIsNone(request.tenant)
-        self.assertIsNone(request.empresa)
+        self.assertFalse(hasattr(request, 'empresa'))
         self.assertTrue(request.tenant_scope.is_empty)
 
     def test_context_can_represent_explicit_related_tenants(self):

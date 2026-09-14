@@ -132,7 +132,6 @@ class DocumentationViewsTests(TestCase):
         cliente_fora = Cliente.objects.create(sigla='FORA', nome='Cliente fora do escopo')
         outra_empresa = Empresa.objects.create(nome='Outra empresa')
         outra_base = Base.objects.create(nome='Outra base', empresa=outra_empresa)
-        self.user.perfil.regionais.add(outra_base)
         ClienteChecklistDocumento.objects.create(
             cliente=cliente_permitido,
             arquivo=SimpleUploadedFile(
@@ -432,6 +431,7 @@ class DocumentationViewsTests(TestCase):
     def test_url_nao_incorporavel_mantem_link_externo(self):
         admin = User.objects.create_user(username='admin-video-link', password='segura-123')
         admin.perfil.role = 'admin'
+        admin.perfil.empresa = self.empresa
         admin.perfil.save()
         self.client.force_login(admin)
 
@@ -541,7 +541,10 @@ class DocumentationViewsTests(TestCase):
 
 class ToryDocumentationTests(TestCase):
     def setUp(self):
+        empresa = Empresa.objects.create(nome='Empresa Tory Documentação')
         self.user = User.objects.create_user(username='usuario-tory-documentacao', password='segura-123')
+        self.user.perfil.empresa = empresa
+        self.user.perfil.save(update_fields=['empresa'])
 
     def test_tory_distingue_procedimento_interno_de_manual_oficial(self):
         resolucao = AssistenteOperacionalService.responder(

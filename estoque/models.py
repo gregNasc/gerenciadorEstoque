@@ -14,6 +14,7 @@ from django.core.files.storage import storages
 from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from django.utils.text import slugify
 from insumos.constants import GruposInsumos
 
 
@@ -54,13 +55,115 @@ def _url_rastreamento_correios(codigo):
 # ---------------- BASE ----------------
 class Empresa(models.Model):
     nome = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=220, null=True, blank=True, db_index=True)
+    slug = models.SlugField(max_length=220, unique=True)
     ativa = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        normalized_slug = slugify(self.slug or '')
+        if not normalized_slug:
+            base_slug = slugify(self.nome) or f'empresa-{uuid.uuid4().hex[:12]}'
+            normalized_slug = base_slug[:220]
+            suffix = 2
+            existing = type(self).objects.exclude(pk=self.pk)
+            while existing.filter(slug=normalized_slug).exists():
+                marker = f'-{suffix}'
+                normalized_slug = f'{base_slug[:220 - len(marker)]}{marker}'
+                suffix += 1
+        self.slug = normalized_slug
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and 'slug' not in update_fields:
+            kwargs['update_fields'] = tuple(update_fields) + ('slug',)
+        super().save(*args, **kwargs)
+
+    def has_feature(self, codigo):
+        """Retorna o estado efetivo de um módulo para este tenant."""
+        from estoque.tenant_features import TenantFeatureService
+
+        return TenantFeatureService.has_feature(self, codigo)
+
+
+class Modulo(models.Model):
+    class Codigo(models.TextChoices):
+        ESTOQUE = 'estoque', 'Estoque'
+        EQUIPAMENTOS = 'equipamentos', 'Equipamentos'
+        SICK = 'sick', 'SICK'
+        TRANSFERENCIAS = 'transferencias', 'Transferências'
+        EMPRESTIMOS = 'emprestimos', 'Empréstimos'
+        INSUMOS = 'insumos', 'Insumos'
+        CHECKLIST = 'checklist', 'Checklist'
+        CHAMADOS = 'chamados', 'Chamados'
+        ORDENS_SERVICO = 'ordens_servico', 'Ordens de serviço'
+        CATALOGO = 'catalogo', 'Catálogo'
+        TORY = 'tory', 'Tory'
+
+    codigo = models.SlugField(
+        max_length=40,
+        choices=Codigo.choices,
+        unique=True,
+    )
+    nome = models.CharField(max_length=100)
+    descricao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    ordem = models.PositiveSmallIntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Módulo da plataforma'
+        verbose_name_plural = 'Módulos da plataforma'
+        ordering = ('ordem', 'nome', 'codigo')
+
+    def __str__(self):
+        return self.nome
+
+
+class ModuloEmpresa(models.Model):
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='modulos_configurados',
+    )
+    modulo = models.ForeignKey(
+        Modulo,
+        on_delete=models.PROTECT,
+        related_name='empresas_configuradas',
+    )
+    habilitado = models.BooleanField(default=True, db_index=True)
+    configurado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='modulos_empresa_configurados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Módulo por empresa'
+        verbose_name_plural = 'Módulos por empresa'
+        ordering = ('empresa__nome', 'modulo__ordem', 'modulo__nome')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'modulo'),
+                name='empresa_modulo_unico',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'habilitado'),
+                name='empresa_modulo_habil_idx',
+            ),
+        ]
+
+    def __str__(self):
+        estado = 'habilitado' if self.habilitado else 'desabilitado'
+        return f'{self.empresa} | {self.modulo.codigo} | {estado}'
 
 
 class RelacionamentoEmpresa(models.Model):
@@ -273,6 +376,16 @@ class Perfil(models.Model):
             ('reativar_usuario', 'Pode reativar usuários'),
             ('excluir_usuario', 'Pode excluir usuários'),
         ]
+
+    def clean(self):
+        super().clean()
+        if not self.user_id:
+            return
+        user = self.user
+        if user.is_active and not user.is_superuser and not self.empresa_id:
+            raise ValidationError({
+                'empresa': 'Usuários ativos que não são Superuser devem possuir uma empresa.',
+            })
 
     @property
     def grupos_insumos(self):

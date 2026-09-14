@@ -13,7 +13,8 @@ class CadastroCapacidadesUsuarioTests(TestCase):
         self.base = Base.objects.create(empresa=self.empresa, nome='Base Perfis')
         self.admin = User.objects.create_user('admin.perfis', password='SenhaForte123!')
         self.admin.perfil.role = Perfil.Role.ADMIN
-        self.admin.perfil.save(update_fields=['role'])
+        self.admin.perfil.empresa = self.empresa
+        self.admin.perfil.save(update_fields=['role', 'empresa'])
         self.client.force_login(self.admin)
 
     def _dados(self, **extras):
@@ -91,7 +92,8 @@ class CadastroCapacidadesUsuarioTests(TestCase):
             is_staff=False,
         )
         outro_admin.perfil.role = Perfil.Role.ADMIN
-        outro_admin.perfil.save(update_fields=['role'])
+        outro_admin.perfil.empresa = self.empresa
+        outro_admin.perfil.save(update_fields=['role', 'empresa'])
         self.assertNotEqual(outro_admin.pk, 1)
         self.assertFalse(outro_admin.is_superuser)
         self.client.force_login(outro_admin)

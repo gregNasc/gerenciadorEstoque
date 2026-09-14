@@ -1,8 +1,10 @@
 from datetime import datetime, time, timedelta
 
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 
 from insumos.services.planning_service import PlanningService
+from estoque.tenant_scope import TenantScope
 
 
 class PlanningAssistantService:
@@ -22,7 +24,13 @@ class PlanningAssistantService:
     }
 
     @classmethod
-    def respond(cls, user, interpretacao):
+    def respond(cls, user, interpretacao, *, tenant_scope):
+        if (
+            not isinstance(tenant_scope, TenantScope)
+            or tenant_scope.user_id != getattr(user, 'pk', None)
+            or tenant_scope != TenantScope.fresh_for_user(user)
+        ):
+            raise PermissionDenied('Escopo da Tory inválido para o Planning.')
         health = PlanningService.sync_health()
         start, end = cls._period_bounds(interpretacao)
         statuses = interpretacao.planning_statuses or PlanningService.ACTIVE_EVENT_STATUSES

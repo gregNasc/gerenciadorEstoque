@@ -223,7 +223,10 @@ class SickService:
                 queryset,
                 action='MOVIMENTAR',
             )
-        sick = queryset.get(pk=sick_id)
+        try:
+            sick = queryset.get(pk=sick_id)
+        except Sick.DoesNotExist as exc:
+            raise PermissionDenied('Usuário sem acesso a este SICK.') from exc
         sick.equipamento = Equipamento.objects.select_for_update(of=('self',)).select_related(
             'produto', 'regional__empresa'
         ).get(pk=sick.equipamento_id)

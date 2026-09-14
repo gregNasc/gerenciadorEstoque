@@ -12,6 +12,7 @@ from estoque.models import Base, Comunicado, Empresa, Perfil
 from estoque.services.comunicacoes.dispatcher import ComunicacaoDispatcher
 from estoque.services.assistente_operacional_service import InterpretacaoOperacional
 from estoque.services.portal_assistant_service import InventoryPortalAssistantService
+from estoque.tenant_scope import TenantScope
 from insumos.models import CategoriaInsumo, Cliente, Insumo, Inventario
 from insumos.services.preco_online_service import PrecoOnlineErro, PrecoOnlineService
 from integracao.clients.inventory_portal import PortalInventorySummary
@@ -76,6 +77,7 @@ class Stage19IntegrationTenantIsolationTests(TestCase):
             interpretation,
             self.day,
             self.day,
+            tenant_scope=TenantScope.fresh_for_user(self.admin_a),
         )
 
         self.assertEqual([(row.client_code, row.store_number) for row in visible], [("S19A", "10")])

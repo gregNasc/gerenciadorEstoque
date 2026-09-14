@@ -4,6 +4,7 @@ import httpx
 from django.test import SimpleTestCase, override_settings
 
 from estoque.services.portal_question_interpreter import PortalQuestionInterpreter
+from estoque.tenant_scope import TenantScope
 
 
 @override_settings(
@@ -45,6 +46,7 @@ class PortalQuestionInterpreterTests(SimpleTestCase):
 
         plan = PortalQuestionInterpreter.interpret(
             "Quanto já contamos na OXXO 58 agora e quais as piores diferenças?",
+            tenant_scope=TenantScope.empty(user_id=1),
             http_client=http_client,
         )
 
@@ -91,6 +93,7 @@ class PortalQuestionInterpreterTests(SimpleTestCase):
         with self.assertLogs("integracao.tory_llm", level="ERROR"):
             plan = PortalQuestionInterpreter.interpret(
                 "Como estão as lojas agora?",
+                tenant_scope=TenantScope.empty(user_id=1),
                 http_client=http_client,
             )
 

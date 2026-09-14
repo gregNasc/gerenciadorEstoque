@@ -55,8 +55,8 @@ class InventoryBrasilRelationshipMigrationTests(TestCase):
     def test_ambiguous_company_fails_before_writing(self):
         self._companies()
         Empresa.objects.create(
-            nome='Outra empresa com slug conflitante',
-            slug='inventory-brasil',
+            nome='Inventory Brasil',
+            slug='inventory-brasil-duplicada',
         )
 
         with self.assertRaisesRegex(RuntimeError, 'Correspondências'):

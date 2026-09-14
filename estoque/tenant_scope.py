@@ -105,6 +105,13 @@ class TenantScope:
             user._tenant_scope_request_cache = scope
         return scope
 
+    @classmethod
+    def fresh_for_user(cls, user):
+        """Reconstrói o escopo autorizado sem confiar em cache do chamador."""
+        if not user or not user.is_authenticated:
+            return cls.empty()
+        return cls.for_user(user, context=cls._load_context(user))
+
     @staticmethod
     def _load_context(user):
         try:

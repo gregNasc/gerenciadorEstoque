@@ -10,6 +10,7 @@ from estoque.models import (
     Transferencia,
 )
 from estoque.security import secure_base_queryset
+from estoque.policies.compras import GruposCorporativos
 
 
 class TenantOperationPolicy:
@@ -142,11 +143,16 @@ class TenantOperationPolicy:
         if perfil is None:
             return queryset.none()
 
-        bases = cls.bases(
-            user,
-            CapacidadeRelacionamentoEmpresa.Recurso.SICK,
-            action,
-        )
+        if user.groups.filter(name=GruposCorporativos.SICK_MANUTENCAO).exists():
+            # A equipe de manutenção é funcionalmente multi-base, mas nunca
+            # atravessa o tenant principal do próprio perfil.
+            bases = Base.objects.filter(empresa_id=perfil.empresa_id)
+        else:
+            bases = cls.bases(
+                user,
+                CapacidadeRelacionamentoEmpresa.Recurso.SICK,
+                action,
+            )
         internal = Q(
             ~Q(tipo_destino=Sick.TipoDestino.TERCEIRIZADA),
             equipamento__regional__in=bases,

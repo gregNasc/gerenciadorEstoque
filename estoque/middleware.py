@@ -6,6 +6,8 @@ from django.utils import translation
 
 from estoque.policies.compras import GruposCorporativos
 from estoque.tenant_context import TenantRequestContext
+from estoque.tenant_feature_routes import TenantFeatureRoutePolicy
+from estoque.tenant_features import TenantFeatureService
 from estoque.tenant_scope import TenantScope
 
 class EmpresaMiddleware:
@@ -43,10 +45,64 @@ class EmpresaMiddleware:
         request.tenant_context = context
         request.tenant_scope = TenantScope.for_user(user, context=context)
         request.tenant = request.tenant_scope.primary_company
-        # Alias legado mantido durante a migracao incremental.
-        request.empresa = request.tenant
 
         return self.get_response(request)
+
+
+class TenantFeatureMiddleware:
+    """Bloqueia no backend módulos desabilitados para o tenant da requisição."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated or user.is_superuser:
+            return None
+        features = TenantFeatureRoutePolicy.required_features(
+            request.resolver_match,
+            view_kwargs,
+        )
+        if not features:
+            return None
+        tenant = getattr(request, 'tenant', None)
+        for feature in features:
+            if not TenantFeatureService.user_has_feature(
+                user,
+                feature,
+                tenant=tenant,
+            ):
+                raise PermissionDenied(
+                    'Este módulo não está habilitado para sua empresa.'
+                )
+        return None
+
+
+class TenantMembershipMiddleware:
+    """Nega toda a aplicação a usuários sem tenant ativo, salvo logout."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated or user.is_superuser:
+            return None
+        match = request.resolver_match
+        if match and match.url_name == 'logout':
+            return None
+        tenant = getattr(request, 'tenant', None)
+        if tenant is not None and tenant.ativa:
+            return None
+        raise PermissionDenied(
+            'Seu usuário não possui uma empresa ativa. Contate o administrador da plataforma.'
+        )
 
 class UserLanguageMiddleware:
 

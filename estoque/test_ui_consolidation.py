@@ -111,7 +111,7 @@ class UIConsolidationTests(TestCase):
         self.assertContains(resposta, 'for="chamados-q"')
         self.assertContains(resposta, 'for="chamados-status"')
         self.assertContains(resposta, 'app-empty-state')
-        self.assertContains(resposta, 'chamados encontrados')
+        self.assertContains(resposta, 'Nenhum chamado encontrado')
 
     def test_alerta_sonoro_nao_e_suprimido_na_conversa_aberta(self):
         conteudo = self.client.get(reverse('estoque:index')).content.decode()

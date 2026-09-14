@@ -1,5 +1,4 @@
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
 
 from estoque.models import Base, CapacidadeRelacionamentoEmpresa, Empresa
 from estoque.security import secure_base_queryset, secure_company_queryset
@@ -34,26 +33,14 @@ class InsumosTenantPolicy:
         if getattr(user, 'is_superuser', False):
             return queryset
         empresas = cls.empresas(user, action=action)
-        return queryset.filter(
-            Q(empresa__in=empresas)
-            | Q(
-                empresa=None,
-                cadastrado_por__perfil__empresa__in=empresas,
-            )
-        ).distinct()
+        return queryset.filter(empresa__in=empresas).distinct()
 
     @classmethod
     def price_searches(cls, user, queryset, *, action=VIEW):
         if getattr(user, 'is_superuser', False):
             return queryset
         empresas = cls.empresas(user, action=action)
-        return queryset.filter(
-            Q(empresa__in=empresas)
-            | Q(
-                empresa=None,
-                pesquisado_por__perfil__empresa__in=empresas,
-            )
-        ).distinct()
+        return queryset.filter(empresa__in=empresas).distinct()
 
     @classmethod
     def price_offers(cls, user, queryset, *, action=VIEW):

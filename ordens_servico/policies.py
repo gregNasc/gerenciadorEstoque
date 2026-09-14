@@ -1,7 +1,7 @@
 from django.db.models import Q
 
 from estoque.models import Base, CapacidadeRelacionamentoEmpresa, Empresa
-from estoque.policies.compras import ComprasAccessPolicy
+from estoque.policies.compras import ComprasAccessPolicy, GruposCorporativos
 from estoque.security import secure_base_queryset, secure_company_queryset
 from ordens_servico.models import OrdemServico
 
@@ -71,6 +71,11 @@ class OrdemServicoAccessPolicy:
         empresas = cls.empresas(user, action=action)
         bases = cls.bases(user, action=action)
         escopo_tenant = Q(empresa__in=empresas)
+        if user.groups.filter(name=GruposCorporativos.SICK_MANUTENCAO).exists():
+            return OrdemServico.objects.filter(
+                escopo_tenant,
+                tipo=OrdemServico.Tipo.SICK,
+            )
         username = user.get_username().strip().lower()
         if username == 'rafael.ribeiro':
             return OrdemServico.objects.filter(

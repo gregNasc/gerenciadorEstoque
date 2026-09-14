@@ -30,7 +30,7 @@
     <!-- CSS -->
     <link rel="stylesheet"
           href="{% static 'css/style.css' %}?v=14">
-    {% if request.user.is_authenticated %}
+    {% if request.user.is_authenticated and 'tory' in tenant_features %}
     <link rel="stylesheet"
           href="{% static 'css/tory.css' %}?v=3">
     {% endif %}
@@ -47,7 +47,7 @@
         <div class="app-sidebar-header">
             <!-- LOGO -->
             <a class="navbar-brand fw-bold"
-               href="{% url 'estoque:index' %}">
+               href="{{ tenant_home_url }}">
                 <i class="bi bi-box-seam"></i>
                 <span class="app-sidebar-label">{% trans "Gerenciador de Estoque" %}</span>
             </a>
@@ -72,6 +72,7 @@
             {% with perfil=request.user.perfil url_name=request.resolver_match.url_name %}
 
             <ul class="navbar-nav">
+                {% if 'estoque' in tenant_features %}
                 <li class="nav-item">
                     <a class="nav-link {% if url_name == 'index' %}active{% endif %}"
                        href="{% url 'estoque:index' %}">
@@ -79,8 +80,9 @@
                         {% trans "Dashboard de Ativos" %}
                     </a>
                 </li>
+                {% endif %}
 
-                {% if pode_acessar_checklist %}
+                {% if pode_acessar_checklist and 'checklist' in tenant_features %}
                 <!-- CHECKLIST -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if url_name == 'checklist' or url_name == 'lista_checklists' %}active{% endif %}"
@@ -120,6 +122,7 @@
                 {% endif %}
 
                 {% if not operador_restrito %}
+                {% if 'equipamentos' in tenant_features or 'insumos' in tenant_features %}
                 <!-- ESTOQUE -->
                 <li class="nav-item dropdown">
 
@@ -140,6 +143,7 @@
                         class="dropdown-menu dropdown-menu-dark"
                         aria-labelledby="navbarEstoque">
 
+                        {% if 'equipamentos' in tenant_features %}
                         <li>
 
                             <a class="dropdown-item"
@@ -151,7 +155,9 @@
                             </a>
 
                         </li>
+                        {% endif %}
 
+                        {% if 'insumos' in tenant_features %}
                         <li>
 
                             <a class="dropdown-item"
@@ -163,19 +169,31 @@
                             </a>
 
                         </li>
+                        {% endif %}
                         {% if pode_visualizar_saude_estoque %}
                         <li><h6 class="dropdown-header"><i class="bi bi-heart-pulse me-1"></i> Saúde do Estoque</h6></li>
+                        {% if 'insumos' in tenant_features %}
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_insumos' %}"><i class="bi bi-box me-2"></i>Insumos</a></li>
+                        {% endif %}
+                        {% if 'equipamentos' in tenant_features %}
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_equipamentos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_equipamentos' %}"><i class="bi bi-pc-display me-2"></i>Equipamentos</a></li>
+                        {% endif %}
+                        {% if 'insumos' in tenant_features and 'equipamentos' in tenant_features %}
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_geral' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_geral' %}"><i class="bi bi-speedometer2 me-2"></i>Geral</a></li>
+                        {% endif %}
                         {% endif %}
                         {% if pode_visualizar_valores %}
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header"><i class="bi bi-cart-check me-1"></i> Compras</h6></li>
                         <!--li><a class="dropdown-item" href="{% url 'compras:aquisicao_lista' %}"><i class="bi bi-receipt me-2"></i>Aquisições</a></li-->
                         <!--li><a class="dropdown-item" href="{% url 'compras:remessa_lista' %}"><i class="bi bi-truck me-2"></i>Remessas</a></li-->
+                        {% if 'insumos' in tenant_features %}
                         <li><a class="dropdown-item" href="{% url 'compras:valores_insumos' %}"><i class="bi bi-boxes me-2"></i>Valor de insumos</a></li>
+                        {% endif %}
+                        {% if 'equipamentos' in tenant_features %}
                         <li><a class="dropdown-item" href="{% url 'compras:valores_equipamentos' %}"><i class="bi bi-pc-display-horizontal me-2"></i>Valor dos equipamentos</a></li>
+                        {% endif %}
+                        {% if 'insumos' in tenant_features %}
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_custos' %}">
                                 <i class="bi bi-bar-chart-line"></i>
@@ -202,6 +220,7 @@
                                 {% trans "Pesquisa de preços" %}
                             </a>
                         </li>
+                        {% endif %}
                         {% endif %}
                         {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
                         <!--
@@ -264,8 +283,10 @@
                     </ul>
 
                 </li>
+                {% endif %}
 
                 <!-- SOLICITAÇÕES -->
+            {% if 'insumos' in tenant_features or 'transferencias' in tenant_features %}
             {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.is_compras_insumos or perfil.is_financeiro_insumos %}
                 <li class="nav-item dropdown">
 
@@ -282,6 +303,7 @@
 
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
 
+                        {% if 'insumos' in tenant_features %}
                         <li>
                             <a class="dropdown-item {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' %}active{% endif %}"
                                href="{% url 'insumos:lista_solicitacoes_insumo' %}">
@@ -290,8 +312,9 @@
                                 {% trans "Solicitações de insumos" %}
                             </a>
                         </li>
+                        {% endif %}
 
-                        {% if perfil.role == 'gestor' %}
+                        {% if perfil.role == 'gestor' and 'transferencias' in tenant_features %}
                             <li>
                                 <a class="dropdown-item {% if url_name == 'criar_solicitacao' %}active{% endif %}"
                                    href="{% url 'estoque:criar_solicitacao' %}">
@@ -305,6 +328,7 @@
                     </ul>
 
                 </li>
+            {% endif %}
             {% endif %}
 
                 <!-- ASSISTENTE -->
@@ -331,6 +355,7 @@
 
                 {% endif %}
                 <!-- CHAMADOS -->
+                {% if 'chamados' in tenant_features %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if request.resolver_match.namespace == 'chamados' %}active{% endif %}"
                        href="#" id="chamadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -357,6 +382,7 @@
                         {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
                 <!-- COMUNICADOS -->
                 <li class="nav-item dropdown">
@@ -422,6 +448,7 @@
                 </li>
 
                 <!-- TRANSFERÊNCIAS -->
+                {% if 'transferencias' in tenant_features or 'emprestimos' in tenant_features or 'estoque' in tenant_features %}
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item dropdown">
 
@@ -448,7 +475,7 @@
                         aria-labelledby="transferenciasDropdown">
 
                         <!-- PEDIDOS -->
-                        {% if perfil.role == 'admin' %}
+                        {% if perfil.role == 'admin' and 'transferencias' in tenant_features %}
                         <li>
 
                             <a class="dropdown-item d-flex justify-content-between align-items-center"
@@ -471,6 +498,7 @@
                         {% endif %}
 
                         <!-- SEPARAÇÃO -->
+                        {% if 'transferencias' in tenant_features %}
                         <li>
 
                             <a class="dropdown-item d-flex justify-content-between align-items-center"
@@ -490,8 +518,10 @@
                             </a>
 
                         </li>
+                        {% endif %}
 
                         <!-- RECEBIMENTOS -->
+                        {% if 'transferencias' in tenant_features %}
                         <li>
 
                             <a class="dropdown-item d-flex justify-content-between align-items-center"
@@ -511,8 +541,10 @@
                             </a>
 
                         </li>
+                        {% endif %}
 
                         <!-- EMPRÉSTIMOS -->
+                        {% if 'emprestimos' in tenant_features %}
                         <li>
 
                             <a class="dropdown-item d-flex justify-content-between align-items-center"
@@ -538,16 +570,19 @@
                             </a>
 
                         </li>
+                        {% endif %}
 
+                        {% if 'estoque' in tenant_features %}
                         <li>
                             <a class="dropdown-item" href="{% url 'auditorias:campanha_lista' %}">
                                 <i class="bi bi-clipboard-check"></i>
                                 {% trans "Auditorias" %}
                             </a>
                         </li>
+                        {% endif %}
 
                         <!-- TODAS -->
-                        {% if perfil.role == 'admin' %}
+                        {% if perfil.role == 'admin' and 'transferencias' in tenant_features %}
 
                         <li>
                             <hr class="dropdown-divider">
@@ -571,8 +606,10 @@
 
                 </li>
                 {% endif %}
+                {% endif %}
 
                 <!-- SICK -->
+                {% if 'sick' in tenant_features %}
                 {% if not operador_restrito or pode_gerenciar_sick %}
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' or pode_gerenciar_sick or pode_realizar_manutencao_sick %}
                 <li class="nav-item">
@@ -589,8 +626,10 @@
                 {% endif %}
 
                 {% endif %}
+                {% endif %}
 
                 <!-- CADASTROS -->
+                {% if 'equipamentos' in tenant_features or 'insumos' in tenant_features %}
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item dropdown">
 
@@ -609,6 +648,7 @@
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="cadastrosDropdown">
 
+                        {% if 'equipamentos' in tenant_features %}
                         <li>
                             <a class="dropdown-item"
                                href="{% url 'estoque:cadastrar_equipamento' %}">
@@ -616,7 +656,9 @@
                                 Equipamentos
                             </a>
                         </li>
+                        {% endif %}
 
+                        {% if 'insumos' in tenant_features %}
                         <li>
                             <a class="dropdown-item"
                                href="{% url 'insumos:cadastrar_insumos' %}">
@@ -624,6 +666,7 @@
                                 Insumos
                             </a>
                         </li>
+                        {% endif %}
 
                     </ul>
 
@@ -672,12 +715,15 @@
                         {% trans "Painel Superuser" %}
                     </a>
                 </li>
+                <!--
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'admin:index' %}">
                         <i class="bi bi-tools"></i>
                         {% trans "Admin técnico" %}
                     </a>
                 </li>
+                -->
+                {% endif %}
                 {% endif %}
 
             </ul>
@@ -1000,14 +1046,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {% block extra_js %}{% endblock %}
-{% if request.user.is_authenticated and not operador_restrito %}
+{% if request.user.is_authenticated and not operador_restrito and 'tory' in tenant_features %}
     {% include 'estoque/partials/assistente_widget.html' %}
     <script src="{% static 'js/tory-api.js' %}?v=1" defer></script>
     <script src="{% static 'js/tory-renderer.js' %}?v=3" defer></script>
     <script src="{% static 'js/tory-resultados.js' %}?v=3" defer></script>
     <script src="{% static 'js/tory.js' %}?v=1" defer></script>
 {% endif %}
-{% if request.user.is_authenticated %}
+{% if request.user.is_authenticated and 'chamados' in tenant_features %}
 <script>
 (function () {
     let socket;

@@ -325,6 +325,7 @@ class FluxoSickTests(EquipamentosSickBaseTests):
     def test_terceirizada_fica_restrita_a_base_e_controla_envio_e_retorno(self):
         rafael = User.objects.create_user(username='rafael.ribeiro', password='senha-forte')
         rafael.perfil.role = Perfil.Role.OPERADOR
+        rafael.perfil.empresa = self.empresa
         rafael.perfil.save()
         sick = self._abrir(usuario=self.operador)
 
@@ -465,7 +466,7 @@ class FluxoSickTests(EquipamentosSickBaseTests):
     def test_base_envia_e_manutencao_recebe_sem_vinculo_regional(self):
         manutencao = User.objects.create_user(username='tecnico.manutencao', password='senha-forte')
         manutencao.perfil.role = Perfil.Role.OPERADOR
-        manutencao.perfil.empresa = None
+        manutencao.perfil.empresa = self.empresa
         manutencao.perfil.save()
         grupo, _ = Group.objects.get_or_create(name=GruposCorporativos.SICK_MANUTENCAO)
         manutencao.groups.add(grupo)

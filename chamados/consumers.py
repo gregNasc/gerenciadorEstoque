@@ -6,6 +6,8 @@ from django.utils import timezone
 from chamados.models import Chamado, ChamadoConexaoAtendente
 from chamados.policies import ChamadoAccessPolicy
 from chamados.services import ChamadoService
+from estoque.models import Modulo
+from estoque.tenant_features import TenantFeatureService
 
 
 class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
@@ -14,6 +16,9 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         user = self.scope.get('user')
         if not user or not user.is_authenticated:
+            await self.close(code=4403)
+            return
+        if not await self._feature_enabled():
             await self.close(code=4403)
             return
         self.e_superuser = bool(user.is_superuser)
@@ -53,6 +58,13 @@ class PresencaChamadosConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _pode_atender(self):
         return ChamadoAccessPolicy.pode_atender(self.scope['user'])
+
+    @database_sync_to_async
+    def _feature_enabled(self):
+        return TenantFeatureService.user_has_feature(
+            self.scope['user'],
+            Modulo.Codigo.CHAMADOS,
+        )
 
     @database_sync_to_async
     def _e_admin(self):
@@ -126,7 +138,7 @@ class ChamadoChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.chamado_id = self.scope['url_route']['kwargs']['pk']
         self.grupo = f'chamado_{self.chamado_id}'
-        if not await self._pode_acessar():
+        if not await self._feature_enabled() or not await self._pode_acessar():
             await self.close(code=4403)
             return
         await self.channel_layer.group_add(self.grupo, self.channel_name)
@@ -179,6 +191,13 @@ class ChamadoChatConsumer(AsyncJsonWebsocketConsumer):
                 pk=self.chamado_id,
                 tipo_chamado=Chamado.Tipo.OPERACIONAL,
             ).exists()
+        )
+
+    @database_sync_to_async
+    def _feature_enabled(self):
+        return TenantFeatureService.user_has_feature(
+            self.scope['user'],
+            Modulo.Codigo.CHAMADOS,
         )
 
     @database_sync_to_async

@@ -84,14 +84,18 @@ class ManuaisViewTests(TestCase):
 
 class DriversImpressorasTests(TestCase):
     def setUp(self):
+        self.empresa = Empresa.objects.create(nome='Empresa drivers')
         self.admin = User.objects.create_user(
             username='admin-drivers', password='segura-123'
         )
         self.admin.perfil.role = 'admin'
+        self.admin.perfil.empresa = self.empresa
         self.admin.perfil.save()
         self.operador = User.objects.create_user(
             username='operador-drivers', password='segura-123'
         )
+        self.operador.perfil.empresa = self.empresa
+        self.operador.perfil.save(update_fields=['empresa'])
         self.url = reverse('estoque:drivers_impressoras')
 
     def tearDown(self):
@@ -148,6 +152,7 @@ class DriversImpressorasTests(TestCase):
             titulo='Driver HP', fabricante='HP', modelo='Laser 107',
             sistema_operacional='Windows 11', arquivo='arquivo.zip',
             nome_original='arquivo.zip', criado_por=self.admin,
+            empresa=self.empresa,
         )
         self.client.force_login(self.admin)
         resposta = self.client.post(reverse(
@@ -204,7 +209,10 @@ class DriversImpressorasTests(TestCase):
 
 class ToryManuaisTests(TestCase):
     def setUp(self):
+        empresa = Empresa.objects.create(nome='Empresa Tory Manuais')
         self.user = User.objects.create_user(username='usuario-tory-manual', password='segura-123')
+        self.user.perfil.empresa = empresa
+        self.user.perfil.save(update_fields=['empresa'])
 
     def test_tory_localiza_manual_por_modelo(self):
         resposta = AssistenteOperacionalService.responder(

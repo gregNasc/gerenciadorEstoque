@@ -6,6 +6,7 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 
 from integracao.clients.inventory_portal import InventoryPortalClient
@@ -16,6 +17,7 @@ from integracao.exceptions import (
 )
 from insumos.models import Inventario
 from insumos.utils import secure_queryset_insumos
+from estoque.tenant_scope import TenantScope
 
 
 logger = logging.getLogger("integracao.inventory_portal")
@@ -70,7 +72,13 @@ class InventoryPortalAssistantService:
     }
 
     @classmethod
-    def respond(cls, user, interpretacao):
+    def respond(cls, user, interpretacao, *, tenant_scope):
+        if (
+            not isinstance(tenant_scope, TenantScope)
+            or tenant_scope.user_id != getattr(user, 'pk', None)
+            or tenant_scope != TenantScope.fresh_for_user(user)
+        ):
+            raise PermissionDenied('Escopo da Tory inválido para o Inventory Portal.')
         if not settings.INVENTORY_PORTAL_ENABLED:
             return cls._response(
                 "A leitura do Portal está desativada neste ambiente. Configure as credenciais da conta técnica e habilite INVENTORY_PORTAL_ENABLED.",
@@ -95,6 +103,7 @@ class InventoryPortalAssistantService:
                     interpretacao,
                     start,
                     end,
+                    tenant_scope=tenant_scope,
                 )
                 if not inventories:
                     return cls._empty_response(
@@ -215,18 +224,33 @@ class InventoryPortalAssistantService:
         ))
 
     @classmethod
-    def _filter_authorized(cls, user, inventories, interpretacao, start, end):
+    def _filter_authorized(
+        cls,
+        user,
+        inventories,
+        interpretacao,
+        start,
+        end,
+        *,
+        tenant_scope=None,
+    ):
         perfil = getattr(user, "perfil", None)
         if not perfil:
             return []
-        if getattr(user, "is_superuser", False):
+        tenant_scope = tenant_scope or getattr(user, '_tory_tenant_scope', None)
+        if not isinstance(tenant_scope, TenantScope):
+            return []
+        if tenant_scope.is_platform_scope and getattr(user, "is_superuser", False):
             return inventories
 
         queryset = secure_queryset_insumos(
             Inventario.objects.select_related("cliente", "base"),
             user,
             campo_base="base",
-        ).filter(data_inicio__range=(start, end))
+        ).filter(
+            data_inicio__range=(start, end),
+            base__empresa_id__in=tenant_scope.visible_company_ids,
+        )
         if interpretacao.base:
             queryset = queryset.filter(base=interpretacao.base)
         authorized = {

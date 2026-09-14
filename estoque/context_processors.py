@@ -3,9 +3,11 @@ from django.utils import timezone
 from estoque.permissions import pode_gerenciar_sick, pode_realizar_manutencao_sick
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.services.comunicado_service import ComunicadoService
+from estoque.tenant_features import TenantFeatureService
 from .models import (
     Comunicado,
     ComunicadoLeitura,
+    Modulo,
     Solicitacao,
     Transferencia,
     Emprestimo,
@@ -21,6 +23,22 @@ def notificacoes_context(request):
     ComunicadoService.excluir_expirados()
 
     perfil = request.user.perfil
+    tenant = getattr(request, 'tenant', None)
+    transferencias_habilitadas = TenantFeatureService.user_has_feature(
+        request.user,
+        Modulo.Codigo.TRANSFERENCIAS,
+        tenant=tenant,
+    )
+    emprestimos_habilitados = TenantFeatureService.user_has_feature(
+        request.user,
+        Modulo.Codigo.EMPRESTIMOS,
+        tenant=tenant,
+    )
+    chamados_habilitados = TenantFeatureService.user_has_feature(
+        request.user,
+        Modulo.Codigo.CHAMADOS,
+        tenant=tenant,
+    )
 
     # ---------------- COMUNICADOS ----------------
 
@@ -77,7 +95,7 @@ def notificacoes_context(request):
 
     solicitacoes_pendentes = 0
 
-    if perfil.role == 'admin':
+    if transferencias_habilitadas and perfil.role == 'admin':
 
         solicitacoes_pendentes = (
             Solicitacao.objects
@@ -87,56 +105,60 @@ def notificacoes_context(request):
 
     # ---------------- SEPARAÇÃO ----------------
 
-    transferencias = Transferencia.objects.aggregate(
-        separacoes=Count(
-            'pk',
-            filter=Q(
-                regional_origem__in=perfil.regionais.all(),
-                status='PENDENTE',
+    separacoes_pendentes = 0
+    transferencias_pendentes = 0
+    if transferencias_habilitadas:
+        transferencias = Transferencia.objects.aggregate(
+            separacoes=Count(
+                'pk',
+                filter=Q(
+                    regional_origem__in=perfil.regionais.all(),
+                    status='PENDENTE',
+                ),
             ),
-        ),
-        recebimentos=Count(
-            'pk',
-            filter=Q(
-                regional_destino__in=perfil.regionais.all(),
-                status='EM_TRANSITO',
+            recebimentos=Count(
+                'pk',
+                filter=Q(
+                    regional_destino__in=perfil.regionais.all(),
+                    status='EM_TRANSITO',
+                ),
             ),
-        ),
-    )
-    separacoes_pendentes = transferencias['separacoes']
-
-    # ---------------- RECEBIMENTOS ----------------
-
-    transferencias_pendentes = transferencias['recebimentos']
+        )
+        separacoes_pendentes = transferencias['separacoes']
+        transferencias_pendentes = transferencias['recebimentos']
 
     # ---------------- EMPRÉSTIMOS ----------------
 
-    emprestimos = Emprestimo.objects.aggregate(
-        recebimento=Count(
-            'pk',
-            filter=Q(
-                regional_destino__in=perfil.regionais.all(),
-                status='AGUARDANDO_RECEBIMENTO',
+    emprestimos_recebimento = 0
+    emprestimos_devolucao = 0
+    emprestimos_confirmacao = 0
+    if emprestimos_habilitados:
+        emprestimos = Emprestimo.objects.aggregate(
+            recebimento=Count(
+                'pk',
+                filter=Q(
+                    regional_destino__in=perfil.regionais.all(),
+                    status='AGUARDANDO_RECEBIMENTO',
+                ),
             ),
-        ),
-        devolucao=Count(
-            'pk',
-            filter=Q(
-                regional_destino__in=perfil.regionais.all(),
-                status='EMPRESTADO',
+            devolucao=Count(
+                'pk',
+                filter=Q(
+                    regional_destino__in=perfil.regionais.all(),
+                    status='EMPRESTADO',
+                ),
             ),
-        ),
-        confirmacao=Count(
-            'pk',
-            filter=Q(
-                regional_origem__in=perfil.regionais.all(),
-                status='AGUARDANDO_CONFIRMACAO_DEVOLUCAO',
+            confirmacao=Count(
+                'pk',
+                filter=Q(
+                    regional_origem__in=perfil.regionais.all(),
+                    status='AGUARDANDO_CONFIRMACAO_DEVOLUCAO',
+                ),
             ),
-        ),
-    )
-    emprestimos_recebimento = emprestimos['recebimento']
-    emprestimos_devolucao = emprestimos['devolucao']
-    emprestimos_confirmacao = emprestimos['confirmacao']
+        )
+        emprestimos_recebimento = emprestimos['recebimento']
+        emprestimos_devolucao = emprestimos['devolucao']
+        emprestimos_confirmacao = emprestimos['confirmacao']
     # ---------------- TOTAL EMPRÉSTIMOS ----------------
 
     emprestimos_pendentes = (
@@ -147,18 +169,20 @@ def notificacoes_context(request):
 
     # ---------------- CHAMADOS ----------------
 
-    from chamados.models import Chamado
-    from chamados.policies import ChamadoAccessPolicy
+    chamados_pendentes = 0
+    if chamados_habilitados:
+        from chamados.models import Chamado
+        from chamados.policies import ChamadoAccessPolicy
 
-    chamados_pendentes = (
-        ChamadoAccessPolicy.queryset(request.user)
-        .exclude(status__in=[
-            Chamado.Status.RESOLVIDO,
-            Chamado.Status.ENCERRADO,
-            Chamado.Status.CANCELADO,
-        ])
-        .count()
-    )
+        chamados_pendentes = (
+            ChamadoAccessPolicy.queryset(request.user)
+            .exclude(status__in=[
+                Chamado.Status.RESOLVIDO,
+                Chamado.Status.ENCERRADO,
+                Chamado.Status.CANCELADO,
+            ])
+            .count()
+        )
 
     # ---------------- TOTAL MENU ----------------
 
@@ -271,4 +295,16 @@ def permissoes_especiais(request):
         'pode_visualizar_checklists': False,
         'pode_acessar_checklist': False,
         'operador_restrito': False,
+    }
+
+
+def tenant_features_context(request):
+    user = getattr(request, 'user', None)
+    tenant = getattr(request, 'tenant', None)
+    return {
+        'tenant_features': TenantFeatureService.enabled_features_for_user(
+            user,
+            tenant=tenant,
+        ),
+        'tenant_home_url': TenantFeatureService.home_url(user, tenant=tenant),
     }

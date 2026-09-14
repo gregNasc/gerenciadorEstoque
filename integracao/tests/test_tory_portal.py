@@ -13,6 +13,7 @@ from estoque.services.assistente_operacional_service import (
 )
 from estoque.services.portal_assistant_service import InventoryPortalAssistantService
 from estoque.services.portal_question_interpreter import PortalQuestionPlan
+from estoque.tenant_scope import TenantScope
 from integracao.clients.inventory_portal import PortalInventoryDetail, PortalInventorySummary
 from insumos.models import Cliente, Inventario
 
@@ -360,11 +361,22 @@ class ToryPortalAnswerTests(SimpleTestCase):
             portal_metrics=["total_items", "productivity", "divergences"],
         )
         user = SimpleNamespace(
+            pk=1,
             is_superuser=True,
             perfil=SimpleNamespace(is_admin=True),
         )
 
-        response = InventoryPortalAssistantService.respond(user, interpretation)
+        tenant_scope = TenantScope(user_id=1, is_platform_scope=True)
+        with patch.object(
+            TenantScope,
+            'fresh_for_user',
+            return_value=tenant_scope,
+        ):
+            response = InventoryPortalAssistantService.respond(
+                user,
+                interpretation,
+                tenant_scope=tenant_scope,
+            )
 
         self.assertIn("3.000", response["resposta"])
         self.assertIn("600", response["resposta"])
@@ -410,6 +422,7 @@ class ToryPortalPermissionTests(TestCase):
             interpretation,
             date(2026, 7, 28),
             date(2026, 7, 28),
+            tenant_scope=TenantScope.for_user(operator),
         )
 
         self.assertEqual([row.store_number for row in result], ["58"])

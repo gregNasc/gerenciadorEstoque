@@ -115,7 +115,7 @@ class AuditTenantProfilesCommandTests(TestCase):
         self.assertIn('conflita com atividade em outro tenant', output)
 
     def test_report_includes_role_groups_and_related_bases(self):
-        user = self._admin('admin.relatorio')
+        user = self._admin('admin.relatorio', empresa=self.empresa_a)
         group = Group.objects.create(name='GRUPO_AUDITORIA_TESTE')
         user.groups.add(group)
         user.perfil.bases_checklist.add(self.base_a)

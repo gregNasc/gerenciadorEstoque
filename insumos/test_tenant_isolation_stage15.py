@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
@@ -20,6 +22,9 @@ from insumos.models import (
     Insumo,
     Inventario,
     MovimentacaoInsumo,
+    FornecedorInsumo,
+    PrecoFornecedorInsumo,
+    PesquisaPrecoOnline,
     SolicitacaoInsumo,
 )
 from insumos.policies import InsumosTenantPolicy
@@ -112,6 +117,39 @@ class Stage15TenantIsolationTests(TestCase):
             set(InsumosTenantPolicy.requests(self.admin_a, SolicitacaoInsumo.objects.all())),
             {self.request_a},
         )
+
+    def test_global_legacy_prices_and_searches_are_superuser_only(self):
+        supplier = FornecedorInsumo.objects.create(
+            nome='Fornecedor Global Etapa 24',
+            documento='GLOBAL-ETAPA-24',
+        )
+        legacy_price = PrecoFornecedorInsumo.objects.create(
+            empresa=None,
+            insumo=self.supply,
+            fornecedor=supplier,
+            valor_unitario=Decimal('10.00'),
+            cadastrado_por=self.admin_a,
+        )
+        legacy_search = PesquisaPrecoOnline.objects.create(
+            empresa=None,
+            insumo=self.supply,
+            termo='Pesquisa global legada etapa 24',
+            fonte='TESTE',
+            pesquisado_por=self.admin_a,
+        )
+
+        self.assertFalse(InsumosTenantPolicy.prices(
+            self.admin_a,
+            PrecoFornecedorInsumo.objects.all(),
+        ).filter(pk=legacy_price.pk).exists())
+        self.assertFalse(InsumosTenantPolicy.price_searches(
+            self.admin_a,
+            PesquisaPrecoOnline.objects.all(),
+        ).filter(pk=legacy_search.pk).exists())
+        self.assertTrue(InsumosTenantPolicy.prices(
+            self.superuser,
+            PrecoFornecedorInsumo.objects.all(),
+        ).filter(pk=legacy_price.pk).exists())
 
     def test_functional_group_without_explicit_tenant_scope_sees_nothing(self):
         self.assertFalse(

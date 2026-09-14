@@ -15,6 +15,7 @@ from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
 from .services.manual_service import ManualService
 from .services.documentation_service import DocumentationService
+from .tenant_features import TenantFeatureService
 from .forms_documentacao import (
     ClienteChecklistUploadForm,
     DriverImpressoraForm,
@@ -29,7 +30,7 @@ from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import FileResponse, Http404, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
-from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento) #Regional
+from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento, Modulo, ModuloEmpresa, RelacionamentoEmpresa) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
 from .models import (PendenciaTransferencia, DivergenciaTransferencia)
 from estoque.models import Base
@@ -123,26 +124,11 @@ def painel_superuser(request):
 
         # ---------------- NOVA EMPRESA ----------------
         if acao == 'criar_empresa':
-            nome = request.POST.get('nome', '').strip()
-
-            if not nome:
-                messages.error(request, "Informe o nome da empresa.")
-
-            elif Empresa.objects.filter(nome__iexact=nome).exists():
-                messages.warning(
-                    request,
-                    f'A empresa "{nome}" já está cadastrada.'
-                )
-
-            else:
-                Empresa.objects.create(nome=nome)
-
-                messages.success(
-                    request,
-                    f'Empresa "{nome}" cadastrada com sucesso.'
-                )
-
-            return redirect('estoque:painel_superuser')
+            messages.info(
+                request,
+                'O cadastro de empresas agora usa o onboarding seguro em etapas.',
+            )
+            return redirect(f'{reverse("estoque:onboarding_empresa")}?novo=1')
 
         # ---------------- NOVA BASE ----------------
         if acao == 'criar_base':
@@ -179,7 +165,64 @@ def painel_superuser(request):
 
             return redirect('estoque:painel_superuser')
 
-    empresas = (
+        # ---------------- STATUS DO TENANT ----------------
+        if acao == 'alterar_status_empresa':
+            empresa = Empresa.objects.filter(pk=request.POST.get('empresa')).first()
+            status = request.POST.get('ativa')
+            if not empresa:
+                messages.error(request, "Selecione uma empresa válida.")
+            elif status not in {'0', '1'}:
+                messages.error(request, "Informe um status válido para a empresa.")
+            else:
+                novo_status = status == '1'
+                if empresa.ativa == novo_status:
+                    messages.info(
+                        request,
+                        f'{empresa.nome} já está {"ativa" if novo_status else "inativa"}.',
+                    )
+                else:
+                    empresa.ativa = novo_status
+                    empresa.save(update_fields=['ativa', 'atualizado_em'])
+                    messages.success(
+                        request,
+                        f'{empresa.nome} foi {"ativada" if novo_status else "desativada"}.',
+                    )
+            return redirect('estoque:painel_superuser')
+
+        # ---------------- MÓDULOS DO TENANT ----------------
+        if acao == 'configurar_modulos':
+            empresa = Empresa.objects.filter(pk=request.POST.get('empresa')).first()
+            selecionados = {
+                str(codigo).strip().lower()
+                for codigo in request.POST.getlist('modulos')
+                if str(codigo).strip()
+            }
+            modulos = list(Modulo.objects.filter(ativo=True).order_by('ordem', 'nome'))
+            codigos_validos = {modulo.codigo for modulo in modulos}
+            if not empresa:
+                messages.error(request, "Selecione uma empresa válida.")
+            elif not selecionados.issubset(codigos_validos):
+                messages.error(request, "A configuração contém um módulo inválido.")
+            else:
+                with transaction.atomic():
+                    for modulo in modulos:
+                        TenantFeatureService.configure(
+                            tenant=empresa,
+                            codigo=modulo.codigo,
+                            enabled=modulo.codigo in selecionados,
+                            actor=request.user,
+                        )
+                messages.success(
+                    request,
+                    f'Módulos de {empresa.nome} atualizados com sucesso.',
+                )
+            return redirect('estoque:painel_superuser')
+
+        messages.error(request, "Ação administrativa inválida.")
+        return redirect('estoque:painel_superuser')
+
+    modulos_catalogo = list(Modulo.objects.filter(ativo=True).order_by('ordem', 'nome'))
+    empresas = list(
         Empresa.objects
         .annotate(
             total_bases=Count(
@@ -188,20 +231,118 @@ def painel_superuser(request):
             ),
             total_usuarios=Count(
                 'perfis',
+                filter=Q(perfis__user__is_superuser=False),
+                distinct=True,
+            ),
+            total_usuarios_ativos=Count(
+                'perfis',
+                filter=Q(
+                    perfis__user__is_superuser=False,
+                    perfis__user__is_active=True,
+                ),
                 distinct=True,
             ),
         )
-        .prefetch_related('bases')
+        .prefetch_related(
+            'bases',
+            Prefetch(
+                'perfis',
+                queryset=(
+                    Perfil.objects
+                    .filter(role=Perfil.Role.ADMIN, user__is_superuser=False)
+                    .select_related('user')
+                    .order_by('user__date_joined', 'user_id')
+                ),
+                to_attr='admins_tenant',
+            ),
+            Prefetch(
+                'modulos_configurados',
+                queryset=(
+                    ModuloEmpresa.objects
+                    .select_related('modulo', 'configurado_por')
+                    .filter(modulo__ativo=True)
+                    .order_by('modulo__ordem', 'modulo__nome')
+                ),
+                to_attr='configuracoes_modulos',
+            ),
+            Prefetch(
+                'relacionamentos_saida',
+                queryset=(
+                    RelacionamentoEmpresa.objects
+                    .select_related('empresa_origem', 'empresa_destino')
+                    .filter(ativo=True)
+                ),
+                to_attr='relacionamentos_saida_ativos',
+            ),
+            Prefetch(
+                'relacionamentos_entrada',
+                queryset=(
+                    RelacionamentoEmpresa.objects
+                    .select_related('empresa_origem', 'empresa_destino')
+                    .filter(ativo=True)
+                ),
+                to_attr='relacionamentos_entrada_ativos',
+            ),
+        )
         .order_by('nome')
+    )
+
+    for empresa in empresas:
+        empresa.primeiro_admin = (
+            empresa.admins_tenant[0].user if empresa.admins_tenant else None
+        )
+        configuracoes = {
+            configuracao.modulo_id: configuracao
+            for configuracao in empresa.configuracoes_modulos
+        }
+        empresa.modulos_painel = [
+            {
+                'codigo': modulo.codigo,
+                'nome': modulo.nome,
+                'habilitado': bool(
+                    configuracoes.get(modulo.pk)
+                    and configuracoes[modulo.pk].habilitado
+                ),
+            }
+            for modulo in modulos_catalogo
+        ]
+        empresa.total_modulos_habilitados = sum(
+            item['habilitado'] for item in empresa.modulos_painel
+        )
+        relacionamentos = {
+            relacionamento.pk: relacionamento
+            for relacionamento in (
+                empresa.relacionamentos_saida_ativos
+                + empresa.relacionamentos_entrada_ativos
+            )
+        }
+        empresa.relacionamentos_ativos = list(relacionamentos.values())
+        empresa.total_relacionamentos = len(empresa.relacionamentos_ativos)
+
+    relacionamentos = (
+        RelacionamentoEmpresa.objects
+        .select_related('empresa_origem', 'empresa_destino', 'criado_por')
+        .annotate(
+            total_capacidades=Count(
+                'capacidades',
+                filter=Q(capacidades__ativo=True),
+                distinct=True,
+            )
+        )
+        .order_by('-ativo', 'empresa_origem__nome', 'empresa_destino__nome')
     )
 
     context = {
         'empresas': empresas,
-        'total_empresas': Empresa.objects.count(),
+        'modulos_catalogo': modulos_catalogo,
+        'relacionamentos': relacionamentos,
+        'total_empresas': len(empresas),
+        'total_empresas_ativas': sum(empresa.ativa for empresa in empresas),
         'total_bases': Base.objects.count(),
         'total_usuarios': User.objects.exclude(
             is_superuser=True
         ).count(),
+        'total_relacionamentos': relacionamentos.filter(ativo=True).count(),
     }
 
     return render(
@@ -558,6 +699,7 @@ def assistente_operacional(request):
                     request.user,
                     pergunta,
                     contexto=contexto,
+                    tenant_scope=request.tenant_scope,
                 )
                 request.session['assistente_operacional_contexto'] = resposta_servico.get('contexto', {})
                 resultado = construir_resposta(resposta_servico)
@@ -3242,7 +3384,7 @@ def exportar_historico_excel(request):
             eq.produto.descricao
             if eq.produto else '',
 
-            eq.produto.get_categoria_display()
+            str(eq.produto.get_categoria_display())
             if eq.produto else '',
 
             eq.numero_serie or '',

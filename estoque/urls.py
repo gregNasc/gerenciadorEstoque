@@ -5,6 +5,7 @@ from . import views
 from .views import lista_transferencias
 from . import declaracao_views
 from . import comunicacao_views
+from . import onboarding_views
 
 app_name = 'estoque'
 
@@ -145,5 +146,7 @@ urlpatterns = [
     path('api/equipamentos-disponiveis/', views.get_equipamentos_disponiveis, name='api_equipamentos'),
     path('api/lotes-tags-disponiveis/', views.get_lotes_tags_disponiveis, name='api_lotes_tags'),
 
+    path("painel-superuser/nova-empresa/", onboarding_views.onboarding_empresa, name="onboarding_empresa"),
+    path("painel-superuser/nova-empresa/<str:etapa>/", onboarding_views.onboarding_empresa, name="onboarding_empresa_etapa"),
     path("painel-superuser/", views.painel_superuser, name="painel_superuser"),
     ]
