@@ -59,3 +59,14 @@ class IndexFinalidadeFilterTests(TestCase):
         self.assertEqual(response.context['kpis_totais']['ativos'], 0)
         self.assertEqual(response.context['kpis_totais']['administrativos'], 1)
         self.assertContains(response, 'value="ADMINISTRATIVO" selected')
+
+    def test_api_kpis_serializa_categorias_traduzidas_como_chaves_json(self):
+        response = self.client.get(reverse('estoque:api_kpis_json'))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload['kpis_regionais']), 1)
+        self.assertEqual(
+            set(payload['kpis_regionais'][0]['produtos']),
+            {'Coletores', 'Impressoras', 'Notebooks', 'Routers'},
+        )

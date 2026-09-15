@@ -119,7 +119,9 @@ class EstoqueService:
 
                 produto_data['disponibilidade'] = cls.get_disponibilidade(equip_produto)
 
-                regional_data['produtos'][produto['nome']] = produto_data
+                # ``gettext_lazy`` devolve um objeto Proxy. Ele funciona bem em
+                # templates, mas não pode ser usado diretamente como chave JSON.
+                regional_data['produtos'][str(produto['nome'])] = produto_data
 
             kpis_regionais.append(regional_data)
 
