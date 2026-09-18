@@ -241,7 +241,8 @@
                         type="search"
                         id="buscaTabelaEstoque"
                         class="form-control form-control-sm"
-                        placeholder="{% trans 'Filtrar por descrição...' %}"
+                        placeholder="{% trans 'Modelo, patrimônio ou número de série...' %}"
+                        autocomplete="off"
                     >
                 </div>
             </div>
@@ -1178,6 +1179,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return response;
         },
 
+        async buscaEquipamento(termo) {
+            const response = await this.request(
+                `{% url 'estoque:busca_rapida_equipamento_api' %}?q=${encodeURIComponent(termo)}`
+            );
+
+            return response.json();
+        },
+
         async regionais(produtoId) {
             const response = await this.request(
                 `/api/produto/${encodeURIComponent(produtoId)}/regionais/`
@@ -1334,7 +1343,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadEquipamentos(
         produtoId,
         regionalId,
-        regionalNome
+        regionalNome,
+        opcoes = {}
     ) {
         setLoading();
 
@@ -1345,7 +1355,9 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             const produtoNome =
-                navigationStack[0]?.context?.produtoNome || '';
+                opcoes.produtoNome ||
+                navigationStack[0]?.context?.produtoNome ||
+                '';
 
             pushToStack(
                 'equipamentos',
@@ -1478,8 +1490,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             class="form-control"
                             placeholder="{% trans 'Pesquisar por patrimônio, número de série, empresa ou base...' %}"
                         >
-                    </div>
-
                     </div>
                 </div>
 
@@ -1641,6 +1651,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const contador =
                 document.getElementById('contadorEquipamentosFiltrados');
 
+            if (
+                filtro &&
+                opcoes.filtroInicial
+            ) {
+                filtro.value = opcoes.filtroInicial;
+            }
+
             const aplicarFiltroEquipamentos = () => {
                 const termo =
                     (filtro?.value || '')
@@ -1714,6 +1731,22 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             aplicarFiltroEquipamentos();
+
+            if (opcoes.equipamentoId) {
+                const equipamentoEncontrado =
+                    modalBody.querySelector(
+                        `.eq-row[data-id="${opcoes.equipamentoId}"]`
+                    );
+
+                if (equipamentoEncontrado) {
+                    equipamentoEncontrado.classList.add('table-active');
+
+                    equipamentoEncontrado.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+            }
 
             modalBody
                 .querySelectorAll('.eq-row')
@@ -2062,16 +2095,105 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizarInfoFiltroStatus(visiveis);
     };
 
+    let timerBuscaEquipamento = null;
+
     const configurarBuscaTabelaPrincipal = () => {
         const busca =
             document.getElementById('buscaTabelaEstoque');
 
         if (!busca) return;
 
-        busca.addEventListener(
-            'input',
-            aplicarFiltrosTabelaPrincipal
-        );
+        busca.addEventListener('input', () => {
+            /*
+             * Mantém exatamente o comportamento atual:
+             * filtrar modelos pela descrição.
+             */
+            aplicarFiltrosTabelaPrincipal();
+
+            clearTimeout(timerBuscaEquipamento);
+
+            const termo =
+                busca.value.trim();
+
+            if (termo.length < 2) {
+                return;
+            }
+
+            /*
+             * Evita uma requisição a cada tecla digitada.
+             */
+            timerBuscaEquipamento = setTimeout(
+                async () => {
+                    /*
+                     * O usuário pode ter continuado digitando
+                     * enquanto aguardávamos o debounce.
+                     */
+                    if (
+                        termo !== busca.value.trim()
+                    ) {
+                        return;
+                    }
+
+                    try {
+                        const resultado =
+                            await api.buscaEquipamento(termo);
+
+                        if (termo !== busca.value.trim()) {
+                            return;
+                        }
+
+                        if (
+                            !resultado.encontrado ||
+                            !resultado.equipamento
+                        ) {
+                            return;
+                        }
+
+                        const equipamento =
+                            resultado.equipamento;
+
+                        /*
+                         * Equipamentos sem produto não podem usar
+                         * o fluxo atual produto -> base.
+                         */
+                        if (!equipamento.produto_id) {
+                            return;
+                        }
+
+                        /*
+                         * A busca rápida começa uma navegação
+                         * independente dentro do modal.
+                         */
+                        navigationStack = [];
+
+                        openModal();
+
+                        await loadEquipamentos(
+                            equipamento.produto_id,
+                            equipamento.regional_id,
+                            equipamento.regional_nome,
+                            {
+                                produtoNome:
+                                    equipamento.produto_nome,
+
+                                filtroInicial:
+                                    termo,
+
+                                equipamentoId:
+                                    equipamento.id
+                            }
+                        );
+
+                    } catch (error) {
+                        console.error(
+                            'Erro na busca rápida de equipamento:',
+                            error
+                        );
+                    }
+                },
+                450
+            );
+        });
     };
 
     const configurarCardsFiltroStatus = () => {

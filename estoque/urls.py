@@ -85,6 +85,7 @@ urlpatterns = [
     path('api/produto/<int:produto_id>/regionais/', views.api_regionais_produto, name='api_regionais_produto'),
     path('estoque/detalhes-regional/<int:regional_id>/', views.detalhes_regional_api, name='detalhes_regional_api'),
     path('estoque/api/kpis/', views.api_kpis_json, name='api_kpis_json'),
+    path('estoque/api/busca-equipamento/', views.busca_rapida_equipamento_api, name='busca_rapida_equipamento_api'),
     path('regionais/json/', views.lista_regionais_json, name='lista_regionais_json'),
 
     # ---------------- MENSAGENS ----------------

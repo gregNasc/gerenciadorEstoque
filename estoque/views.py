@@ -2160,6 +2160,75 @@ def estoque_view(request):
         }
     )
 
+@login_required
+@permission_or_role_required('estoque.visualizar_equipamentos','admin', 'gestor')
+def busca_rapida_equipamento_api(request):
+    termo = request.GET.get('q', '').strip()
+
+    if len(termo) < 2:
+        return JsonResponse({
+            'encontrado': False
+        })
+
+    equipamentos = secure_queryset(
+        Equipamento.objects.select_related(
+            'produto',
+            'regional',
+            'regional__empresa',
+        ),
+        request.user
+    )
+
+    # Prioriza patrimônio.
+    equipamento = equipamentos.filter(
+        patrimonio__iexact=termo
+    ).first()
+
+    tipo = 'patrimonio'
+
+    # Se não encontrou, procura por número de série.
+    if not equipamento:
+        equipamento = equipamentos.filter(
+            numero_serie__iexact=termo
+        ).first()
+
+        tipo = 'numero_serie'
+
+    if not equipamento:
+        return JsonResponse({
+            'encontrado': False
+        })
+
+    return JsonResponse({
+        'encontrado': True,
+        'tipo': tipo,
+        'equipamento': {
+            'id': equipamento.id,
+
+            'numero_serie': equipamento.numero_serie,
+            'patrimonio': equipamento.patrimonio,
+
+            'produto_id': equipamento.produto_id,
+            'produto_nome': (
+                equipamento.produto.descricao
+                if equipamento.produto
+                else ''
+            ),
+
+            'regional_id': equipamento.regional_id,
+            'regional_nome': equipamento.regional.nome,
+
+            'empresa_id': equipamento.regional.empresa_id,
+            'empresa_nome': equipamento.regional.empresa.nome,
+
+            'status': equipamento.status,
+            'status_label': equipamento.get_status_display(),
+
+            'finalidade': equipamento.finalidade,
+            'finalidade_label': equipamento.get_finalidade_display(),
+        }
+    })
+
 
 # ----------------- DETALHES DO PRODUTO -----------------
 @login_required
