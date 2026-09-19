@@ -123,6 +123,42 @@ class InventoryTenantIsolationTests(TestCase):
         self.assertEqual(returned_ids, {self.equip_brasil.pk, self.equip_latam.pk})
         self.assertNotIn(self.equip_externo.pk, returned_ids)
 
+    def test_quick_search_finds_only_equipment_in_visible_tenants(self):
+        self.client.force_login(self.admin)
+        url = reverse('estoque:busca_rapida_equipamento_api')
+
+        for field, value, expected_type in (
+            ('numero_serie', self.equip_brasil.numero_serie, 'numero_serie'),
+            ('patrimonio', self.equip_latam.patrimonio, 'patrimonio'),
+        ):
+            with self.subTest(field=field):
+                response = self.client.get(url, {'q': value})
+
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertTrue(payload['encontrado'])
+                self.assertEqual(payload['tipo'], expected_type)
+                self.assertEqual(payload['equipamento'][field], value)
+
+        external_response = self.client.get(
+            url,
+            {'q': self.equip_externo.numero_serie},
+        )
+
+        self.assertEqual(external_response.status_code, 200)
+        self.assertEqual(external_response.json(), {'encontrado': False})
+
+    def test_quick_search_rejects_short_terms_without_exposing_data(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(
+            reverse('estoque:busca_rapida_equipamento_api'),
+            {'q': 'A'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'encontrado': False})
+
     def test_selected_company_without_equipment_capability_is_not_visible(self):
         self.relationship.capacidades.all().delete()
 
