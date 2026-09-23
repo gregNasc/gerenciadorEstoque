@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 import unicodedata
 from uuid import uuid4
-from estoque.models import Base, Empresa, Equipamento, Produto, Sick
+from estoque.models import Base, Empresa, Equipamento, Sick
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
@@ -190,7 +190,7 @@ class Chamado(models.Model):
         default='',
         db_index=True,
     )
-    categoria_equipamento = models.CharField(max_length=50, choices=Produto.CATEGORIAS, blank=True, db_index=True)
+    categoria_equipamento = models.CharField(max_length=100, blank=True, db_index=True)
     equipamento = models.ForeignKey(Equipamento, null=True, blank=True, on_delete=models.PROTECT, related_name='chamados')
     categoria = models.ForeignKey(CategoriaChamado, null=True, blank=True,  on_delete=models.PROTECT, related_name='chamados')
     loja = models.CharField(max_length=100, blank=True)
@@ -272,6 +272,9 @@ class Chamado(models.Model):
     def duracao(self):
         fim = self.fechado_em or self.resolvido_em or timezone.now()
         return fim - self.aberto_em
+
+    def get_categoria_equipamento_display(self):
+        return self.categoria_equipamento
 
     @property
     def sla_vencido(self):

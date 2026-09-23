@@ -6,10 +6,16 @@ from chamados.models import CategoriaChamado, Chamado
 from chamados.policies import ChamadoAccessPolicy
 from estoque.models import Equipamento
 from estoque.security import secure_queryset
+from estoque.services.tenant_catalog_service import TenantCatalogService
 from insumos.models import Inventario
 
 
 class ChamadoForm(forms.ModelForm):
+    categoria_equipamento = forms.ChoiceField(
+        choices=(),
+        label=_('Categoria'),
+    )
+
     class Meta:
         model = Chamado
         fields = [
@@ -157,11 +163,14 @@ class ChamadoForm(forms.ModelForm):
         self.fields[
             'categoria_equipamento'
         ].label = _('Categoria')
-        if not operacional:
-            self.fields['categoria_equipamento'].choices = [
-                (valor, _('Rede') if valor == 'Routers' else rotulo)
-                for valor, rotulo in self.fields['categoria_equipamento'].choices
-            ]
+        categorias = TenantCatalogService.category_names(
+            user,
+            company=base_selecionada.empresa if base_selecionada else None,
+        )
+        self.fields['categoria_equipamento'].choices = [
+            ('Sistema', _('Sistema')),
+            *((categoria, categoria) for categoria in categorias),
+        ]
 
         # Descobrir categoria selecionada
         categoria_selecionada = ''
@@ -192,7 +201,7 @@ class ChamadoForm(forms.ModelForm):
         ):
             equipamentos = Equipamento.objects.filter(
                 regional=base_selecionada,
-                produto__categoria=categoria_selecionada,
+                produto__categoria__iexact=categoria_selecionada,
             ).select_related(
                 'produto',
                 'regional',
@@ -201,6 +210,11 @@ class ChamadoForm(forms.ModelForm):
             equipamentos = secure_queryset(
                 equipamentos,
                 user,
+            )
+            equipamentos = TenantCatalogService.scope_equipment(
+                equipamentos,
+                user,
+                company=base_selecionada.empresa,
             )
 
         self.fields['equipamento'].queryset = (

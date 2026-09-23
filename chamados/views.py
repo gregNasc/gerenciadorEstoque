@@ -6,9 +6,10 @@ from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from estoque.models import Equipamento, Produto
+from estoque.models import Equipamento
 from estoque.security import secure_queryset
 from estoque.services.documentation_service import DocumentationService
+from estoque.services.tenant_catalog_service import TenantCatalogService
 from chamados.forms import (
     ChamadoAvaliacaoForm,
     ChamadoForm,
@@ -112,22 +113,6 @@ def equipamentos_por_categoria(request):
             'equipamento_opcional': True,
         })
 
-    # Validar categoria
-    categorias_validas = {
-        valor
-        for valor, _rotulo
-        in Produto.CATEGORIAS
-    }
-
-    if categoria not in categorias_validas:
-        return JsonResponse(
-            {
-                'erro': 'Categoria inválida.',
-                'equipamentos': [],
-            },
-            status=400,
-        )
-
     # Bases que o usuário realmente pode acessar
     bases_permitidas = (
         ChamadoAccessPolicy.bases(
@@ -158,6 +143,23 @@ def equipamentos_por_categoria(request):
             status=400,
         )
 
+    categorias_validas = {
+        nome.casefold(): nome
+        for nome in TenantCatalogService.category_names(
+            request.user,
+            company=base.empresa,
+        )
+    }
+    categoria = categorias_validas.get(categoria.casefold())
+    if categoria is None:
+        return JsonResponse(
+            {
+                'erro': 'Categoria inválida.',
+                'equipamentos': [],
+            },
+            status=400,
+        )
+
     # Equipamentos:
     # - da base
     # - da categoria
@@ -165,7 +167,7 @@ def equipamentos_por_categoria(request):
         Equipamento.objects
         .filter(
             regional=base,
-            produto__categoria=categoria,
+            produto__categoria__iexact=categoria,
         )
         .select_related(
             'produto',
@@ -178,6 +180,11 @@ def equipamentos_por_categoria(request):
     equipamentos = secure_queryset(
         equipamentos,
         request.user,
+    )
+    equipamentos = TenantCatalogService.scope_equipment(
+        equipamentos,
+        request.user,
+        company=base.empresa,
     )
 
     equipamentos = equipamentos.order_by(
@@ -742,6 +749,7 @@ def dashboard(request):
         .values(
             'categoria__nome',
             'categoria_equipamento',
+            'equipamento__produto__categoria',
             'tipo_chamado',
         )
         .annotate(
@@ -754,11 +762,10 @@ def dashboard(request):
     for item in tipos_suporte_brutos:
         tipo = (
             item['categoria__nome']
+            or item['equipamento__produto__categoria']
             or item['categoria_equipamento']
             or 'Não informado'
         )
-        if item['tipo_chamado'] == Chamado.Tipo.REPARACAO and tipo == 'Routers':
-            tipo = 'Rede'
         tipos_suporte_acumulados[tipo] = (
             tipos_suporte_acumulados.get(tipo, 0)
             + item['total']
@@ -960,12 +967,7 @@ def exportar(request):
             chamado.base.nome if chamado.base_id else '',
             chamado.inventario.cliente.sigla if chamado.inventario_id else '',
             chamado.loja,
-            (
-                'Rede'
-                if chamado.tipo_chamado == Chamado.Tipo.REPARACAO
-                and chamado.categoria_equipamento == 'Routers'
-                else chamado.get_categoria_equipamento_display()
-            ),
+            chamado.get_categoria_equipamento_display(),
             chamado.titulo,
             chamado.get_prioridade_display(),
             chamado.get_status_display(),

@@ -17,7 +17,7 @@
                     </h2>
 
                     <p class="text-secondary small mt-1 mb-0">
-                        {% trans "Acompanhe movimentações de equipamentos entre bases e regionais." %}
+                        Acompanhe movimentações de {{ tenant_labels.equipamento.plural|lower }} entre {{ tenant_labels.base.plural|lower }} e {{ tenant_labels.regional.plural|lower }}.
                     </p>
                 </div>
             </div>
@@ -96,7 +96,7 @@
                                 id="filtroTransferencia"
                                 name="q"
                                 value="{{ filtros.q }}"
-                                placeholder="{% trans 'Protocolo, regional, usuário ou equipamento...' %}"
+                                placeholder="Protocolo, {{ tenant_labels.regional.singular|lower }}, {{ tenant_labels.usuario.singular|lower }} ou {{ tenant_labels.equipamento.singular|lower }}..."
                             >
                         </div>
                     </div>

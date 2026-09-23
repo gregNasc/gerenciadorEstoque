@@ -80,20 +80,6 @@ class AssistenteOperacionalService:
     ENTRADAS_INSUMO = {'ENTRADA', 'DEVOLUCAO', 'AJUSTE_ENTRADA'}
     SAIDAS_INSUMO = {'SAIDA', 'PERDA', 'AJUSTE_SAIDA'}
 
-    CATEGORIAS = {
-        'coletores': 'Coletores',
-        'coletor': 'Coletores',
-        'coletora': 'Coletores',
-        'coletoras': 'Coletores',
-        'impressora': 'Impressoras',
-        'impressoras': 'Impressoras',
-        'notebook': 'Notebooks',
-        'notebooks': 'Notebooks',
-        'router': 'Routers',
-        'routers': 'Routers',
-        'roteador': 'Routers',
-        'roteadores': 'Routers',
-    }
 
     BASE_ALIASES = {
         'campinas': 'SP INT CPN',
@@ -295,7 +281,10 @@ class AssistenteOperacionalService:
             'orientacao': cls._orientacao,
         }
 
-        resposta = roteadores.get(interpretacao.intencao, cls._orientacao)(user, interpretacao)
+        if interpretacao.intencao in {'capacidade_coletores', 'capacidade_equipamentos'} and not cls._categoria_capacidade(user, interpretacao.base):
+            resposta = cls._resposta('capacidade', 'Configure uma categoria de referência para comparar equipamentos com a quantidade de pessoas.')
+        else:
+            resposta = roteadores.get(interpretacao.intencao, cls._orientacao)(user, interpretacao)
         resposta = cls._ocultar_terminologia_hierarquia(resposta)
         acoes_contextuais = resposta.pop('acoes', [])
         resposta['resposta'] = cls._personalizar_resposta(
@@ -464,7 +453,7 @@ class AssistenteOperacionalService:
         ):
             if len(bases_visiveis) == 1:
                 base_visivel = bases_visiveis[0]
-        categoria = cls._extrair_categoria(texto)
+        categoria = cls._extrair_categoria(texto, user)
         pergunta_ranking_base = cls._pergunta_ranking_por_base(texto)
         consulta_ranking_base = pergunta_ranking_base and bool(
             categoria or insumo or re.search(
@@ -474,7 +463,7 @@ class AssistenteOperacionalService:
             )
         )
         if contexto.get('intencao') == 'capacidade_coletores' and (todas_bases or grupo_visivel) and not categoria:
-            categoria = 'Coletores'
+            categoria = cls._categoria_capacidade(user)
         if todas_bases and not categoria:
             categoria = contexto.get('categoria', '')
         equipamento_identificador = cls._extrair_identificador_equipamento(texto)
@@ -726,11 +715,11 @@ class AssistenteOperacionalService:
             interpretacao.intencao = 'equipamentos_categoria'
         elif cls._tem(texto, 'pessoas', 'equipe', 'atende', 'atendida', 'atendido', 'suficiente') and (
             not interpretacao.categoria or
-            interpretacao.categoria == 'Coletores' or
+            interpretacao.categoria == cls._categoria_capacidade(user) or
             cls._tem(texto, 'coletor', 'coletores')
         ):
             interpretacao.intencao = 'capacidade_coletores'
-            interpretacao.categoria = 'Coletores'
+            interpretacao.categoria = cls._categoria_capacidade(user)
             interpretacao.data = interpretacao.data or cls._data_contexto(contexto)
         elif (
             interpretacao.base and
@@ -738,7 +727,7 @@ class AssistenteOperacionalService:
             not cls._tem(texto, 'insumo', 'insumos')
         ):
             interpretacao.intencao = 'capacidade_coletores'
-            interpretacao.categoria = 'Coletores'
+            interpretacao.categoria = cls._categoria_capacidade(user)
             interpretacao.data = interpretacao.data or cls._data_contexto(contexto)
         elif (
             cls._tem(texto, 'inventario', 'inventarios') and
@@ -809,7 +798,7 @@ class AssistenteOperacionalService:
             interpretacao.categoria = interpretacao.categoria or contexto.get('categoria', '')
             interpretacao.data = interpretacao.data or cls._data_contexto(contexto)
 
-        cls._aplicar_intencao_semantica(interpretacao, semantic_plan)
+        cls._aplicar_intencao_semantica(interpretacao, semantic_plan, user)
 
         cls._aplicar_escopo_de_base(user, interpretacao)
         return interpretacao
@@ -911,9 +900,10 @@ class AssistenteOperacionalService:
         inventarios_lista = list(inventarios)
         grupos_inventario = cls._agrupar_inventarios_logicos(inventarios_lista)
         pessoas = sum(cls._pessoas_inventario(inv) for inv in inventarios_lista)
+        categoria_referencia = cls._categoria_capacidade(user, interpretacao.base)
         coletores = cls._equipamentos_visiveis(user).filter(
             regional=interpretacao.base,
-            produto__categoria__iexact='Coletores',
+            produto__categoria__iexact=categoria_referencia,
         )
         coletores_cadastrados = coletores.count()
         coletores_ativos = coletores.filter(
@@ -925,16 +915,16 @@ class AssistenteOperacionalService:
             return cls._resposta(
                 'capacidade',
                 f'nao encontrei inventario para {interpretacao.base.nome} em {data_ref:%d/%m/%Y} no seu escopo. '
-                'Sem inventario do dia, nao consigo ler a coluna Pessoas para comparar com os coletores cadastrados.'
+                f'Sem inventario do dia, nao consigo ler a coluna Pessoas para comparar com {categoria_referencia}.'
             )
 
         saldo = coletores_ativos - pessoas
         if saldo >= 0:
             situacao = 'ATENDE'
-            diferenca = f'Sobram {saldo} coletor(es)'
+            diferenca = f'Sobram {saldo} item(ns) de {categoria_referencia}'
         else:
             situacao = 'NÃO ATENDE'
-            diferenca = f'Faltam {abs(saldo)} coletor(es)'
+            diferenca = f'Faltam {abs(saldo)} item(ns) de {categoria_referencia}'
 
         titulo = (
             f'Confirmação da capacidade da base {interpretacao.base.nome} em {data_ref:%d/%m/%Y}'
@@ -944,7 +934,7 @@ class AssistenteOperacionalService:
         linhas = [
             titulo,
             '',
-            'INVENTÁRIOS | PESSOAS PREVISTAS | COLETORES CADASTRADOS | COLETORES ATIVOS',
+            f'INVENTÁRIOS | PESSOAS PREVISTAS | {categoria_referencia.upper()} CADASTRADOS | {categoria_referencia.upper()} ATIVOS',
             f'{len(grupos_inventario)} | {pessoas} | {coletores_cadastrados} | {coletores_ativos}',
             '',
             'SITUAÇÃO | DIFERENÇA',
@@ -971,8 +961,9 @@ class AssistenteOperacionalService:
         grupos_inventario = cls._agrupar_inventarios_logicos(inventarios)
         pessoas = sum(cls._pessoas_inventario(inv) for inv in inventarios)
         equipamentos = cls._equipamentos_visiveis(user).filter(regional=interpretacao.base)
+        categoria_referencia = cls._categoria_capacidade(user, interpretacao.base)
         coletores_ativos = equipamentos.filter(
-            produto__categoria__iexact='Coletores',
+            produto__categoria__iexact=categoria_referencia,
             status='ATIVO',
             finalidade=Equipamento.Finalidade.OPERACIONAL,
         ).count()
@@ -980,9 +971,9 @@ class AssistenteOperacionalService:
         if not inventarios:
             resultado = 'SEM DEMANDA: não há inventário programado para comparar neste dia.'
         elif saldo >= 0:
-            resultado = f'ATENDE: sobram {saldo} coletor(es).'
+            resultado = f'ATENDE: sobram {saldo} item(ns) de {categoria_referencia}.'
         else:
-            resultado = f'NÃO ATENDE: faltam {abs(saldo)} coletor(es).'
+            resultado = f'NÃO ATENDE: faltam {abs(saldo)} item(ns) de {categoria_referencia}.'
 
         linhas = [
             f'Análise operacional de {interpretacao.base.nome} em {data_ref:%d/%m/%Y}',
@@ -1002,7 +993,7 @@ class AssistenteOperacionalService:
         linhas.extend([
             '',
             f'Demanda total: {pessoas} pessoa(s)',
-            f'Resultado para coletores: {resultado}',
+            f'Resultado para {categoria_referencia}: {resultado}',
             '',
             'CATEGORIA | PRODUTO | ATIVOS | EM USO | MANUTENÇÃO | TOTAL',
         ])
@@ -1026,7 +1017,7 @@ class AssistenteOperacionalService:
 
         linhas.extend([
             '',
-            'Observação: a suficiência é calculada para coletores, usando 1 coletor ativo por pessoa prevista. '
+            f'Observação: a suficiência é calculada para {categoria_referencia}, usando 1 equipamento ativo por pessoa prevista. '
             'As demais categorias são exibidas para conferência, pois ainda não existe uma quantidade mínima configurada para elas.',
         ])
         return cls._resposta('capacidade', '\n'.join(linhas))
@@ -1076,13 +1067,13 @@ class AssistenteOperacionalService:
         linhas = [
             f'Análise operacional de {escopo} em {data_ref:%d/%m/%Y}',
             '',
-            'BASE | INVENTÁRIOS | PESSOAS | COLETORES | IMPRESSORAS | NOTEBOOKS | ROUTERS | RESULTADO',
+            'BASE | INVENTÁRIOS | PESSOAS | EQUIPAMENTOS POR CATEGORIA | RESULTADO',
         ]
         bases_com_demanda = [base for base in bases if inventarios_por_base.get(base.pk, 0)]
         for base in bases_com_demanda:
             por_categoria = equipamentos_por_base.get(base.pk, {})
             pessoas = pessoas_por_base.get(base.pk, 0)
-            coletores = por_categoria.get('Coletores', 0)
+            coletores = por_categoria.get(cls._categoria_capacidade(user, base), 0)
             if not inventarios_por_base.get(base.pk, 0):
                 resultado = 'Sem inventário no dia'
             elif coletores >= pessoas:
@@ -1092,9 +1083,9 @@ class AssistenteOperacionalService:
                 nao_atendem += 1
                 resultado = f'Não atende, faltam {pessoas - coletores}'
             linhas.append(
-                f'{base.nome} | {inventarios_por_base.get(base.pk, 0)} | {pessoas} | {coletores} | '
-                f"{por_categoria.get('Impressoras', 0)} | {por_categoria.get('Notebooks', 0)} | "
-                f"{por_categoria.get('Routers', 0)} | {resultado}"
+                f'{base.nome} | {inventarios_por_base.get(base.pk, 0)} | {pessoas} | '
+                + ', '.join(f'{name}: {count}' for name, count in sorted(por_categoria.items()))
+                + f' | {resultado}'
             )
 
         verbo_atendem = 'atende' if atendem == 1 else 'atendem'
@@ -1102,8 +1093,8 @@ class AssistenteOperacionalService:
         linhas.extend([
             '',
             f'Resumo: {len(bases_com_demanda)} base(s) possuem inventários; '
-            f'{atendem} {verbo_atendem} e {nao_atendem} {verbo_nao_atendem} à demanda de coletores do dia.',
-            'Os números das quatro categorias consideram apenas equipamentos com status ATIVO.',
+            f'{atendem} {verbo_atendem} e {nao_atendem} {verbo_nao_atendem} à demanda da categoria de referência do dia.',
+            'Os números das categorias configuradas consideram apenas equipamentos com status ATIVO.',
         ])
         return cls._resposta('capacidade', '\n'.join(linhas))
 
@@ -2324,15 +2315,19 @@ class AssistenteOperacionalService:
             pessoas_por_base[inv.base_id] = pessoas_por_base.get(inv.base_id, 0) + cls._pessoas_inventario(inv)
             inventarios_por_base[inv.base_id] = inventarios_por_base.get(inv.base_id, 0) + 1
 
-        coletores_por_base = {
-            item['regional_id']: item['total']
-            for item in cls._equipamentos_visiveis(user).filter(
-                regional__in=bases,
-                produto__categoria__iexact='Coletores',
-                status='ATIVO',
-                finalidade=Equipamento.Finalidade.OPERACIONAL,
-            ).values('regional_id').annotate(total=Count('id'))
+        categorias_por_base = {
+            base.pk: cls._categoria_capacidade(user, base)
+            for base in bases
         }
+        coletores_por_base = {}
+        for item in cls._equipamentos_visiveis(user).filter(
+            regional__in=bases,
+            status='ATIVO',
+            finalidade=Equipamento.Finalidade.OPERACIONAL,
+        ).values('regional_id', 'produto__categoria').annotate(total=Count('id')):
+            referencia = categorias_por_base.get(item['regional_id'], '')
+            if referencia and (item['produto__categoria'] or '').casefold() == referencia.casefold():
+                coletores_por_base[item['regional_id']] = item['total']
 
         atendem = 0
         nao_atendem = 0
@@ -2358,14 +2353,14 @@ class AssistenteOperacionalService:
             )
 
         linhas = [
-            f'Analise de coletores de {escopo} em {data_ref:%d/%m/%Y}:',
+            f'Analise da categoria de referencia de {escopo} em {data_ref:%d/%m/%Y}:',
             '',
             f'- Bases analisadas: {len(bases)}',
             f'- Bases que atendem: {atendem}',
             f'- Bases que nao atendem: {nao_atendem}',
             f'- Bases sem inventario no dia: {sem_inventario}',
             '',
-            'BASE | INVENTÁRIOS | PESSOAS | COLETORES ATIVOS | RESULTADO',
+            'BASE | INVENTÁRIOS | PESSOAS | EQUIPAMENTOS DE REFERÊNCIA ATIVOS | RESULTADO',
             *linhas_base,
         ]
         return cls._resposta('capacidade', '\n'.join(linhas))
@@ -3302,7 +3297,7 @@ class AssistenteOperacionalService:
         if cls._tem(texto, 'equipamento', 'equipamentos', 'router', 'roteador', 'coletor', 'notebook', 'impressora') and cls._tem(
             texto, 'cadastrar', 'cadastro', 'registrar', 'adicionar', 'incluir'
         ):
-            categoria = cls._extrair_categoria(texto)
+            categoria = cls._extrair_categoria(texto, user)
             categoria_texto = f' da categoria {categoria}' if categoria else ''
             if role not in {'admin', 'gestor'}:
                 if espanhol:
@@ -3501,12 +3496,20 @@ class AssistenteOperacionalService:
 
     @classmethod
     def _equipamentos_visiveis(cls, user):
-        return secure_queryset(
+        from estoque.services.tenant_catalog_service import TenantCatalogService
+        return TenantCatalogService.scope_equipment(secure_queryset(
             Equipamento.objects.select_related('produto', 'regional'),
             user,
             campo_empresa='regional__empresa',
             campo_regional='regional',
-        )
+        ), user, restrict_companies=False)
+
+    @classmethod
+    def _categoria_capacidade(cls, user, base=None):
+        from estoque.services.tenant_catalog_service import TenantCatalogService
+        categories = TenantCatalogService.categories(user, company=base.empresa if base else None).filter(referencia_capacidade=True)
+        names = list(categories.values_list('nome', flat=True).distinct())
+        return names[0] if len(names) == 1 else ''
 
     @staticmethod
     def _aplicar_filtros_equipamentos(qs, interpretacao):
@@ -3723,10 +3726,19 @@ class AssistenteOperacionalService:
         )
 
     @classmethod
-    def _extrair_categoria(cls, texto):
-        for termo, categoria in cls.CATEGORIAS.items():
-            if re.search(rf'\b{re.escape(termo)}\b', texto):
-                return categoria
+    def _extrair_categoria(cls, texto, user):
+        from estoque.services.tenant_catalog_service import TenantCatalogService
+        texto = cls._normalizar(texto)
+        candidates = []
+        for category in TenantCatalogService.categories(user):
+            aliases = category.aliases if isinstance(category.aliases, list) else []
+            for alias in [category.nome, *aliases]:
+                term = cls._normalizar(str(alias))
+                if term:
+                    candidates.append((term, category.nome))
+        for term, category in sorted(candidates, key=lambda item: -len(item[0])):
+            if re.search(rf'\b{re.escape(term)}\b', texto):
+                return category
         return ''
 
     @staticmethod
@@ -4586,7 +4598,7 @@ class AssistenteOperacionalService:
         return plan if isinstance(plan, PortalQuestionPlan) else None
 
     @classmethod
-    def _aplicar_intencao_semantica(cls, interpretacao, semantic_plan):
+    def _aplicar_intencao_semantica(cls, interpretacao, semantic_plan, user=None):
         """Usa a classificação semântica sem contornar escopo ou autorização."""
         if not semantic_plan or not semantic_plan.intent:
             return
@@ -4605,7 +4617,7 @@ class AssistenteOperacionalService:
 
         interpretacao.intencao = semantic_plan.intent
         if semantic_plan.intent == 'capacidade_coletores':
-            interpretacao.categoria = 'Coletores'
+            interpretacao.categoria = cls._categoria_capacidade(user)
         if semantic_plan.intent == 'portal_tempo_real':
             interpretacao.portal_llm_used = True
 
@@ -5403,7 +5415,7 @@ class AssistenteOperacionalService:
         if intencao == 'escolher_base':
             if (
                 ('pessoas' in interpretacao.texto or 'atende' in interpretacao.texto or 'atendem' in interpretacao.texto) and
-                (interpretacao.categoria == 'Coletores' or 'coletor' in interpretacao.texto or 'coletores' in interpretacao.texto)
+                bool(interpretacao.categoria)
             ):
                 intencao = 'capacidade_coletores'
             elif (

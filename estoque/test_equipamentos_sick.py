@@ -8,6 +8,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from estoque.forms import EquipamentoForm
+from compras.models import CatalogoProdutoEmpresa
+from estoque.models import CategoriaEquipamentoEmpresa
 from estoque.models import Base, Comunicado, Empresa, Equipamento, Historico, Perfil, Produto, Sick
 from estoque.services.sick_service import SickService
 from estoque.policies.compras import GruposCorporativos
@@ -24,6 +26,8 @@ class EquipamentosSickBaseTests(TestCase):
             modelo='Latitude', categoria='Notebooks',
         )
         self.admin = self._usuario('admin_sick', Perfil.Role.ADMIN)
+        CategoriaEquipamentoEmpresa.objects.create(empresa=self.empresa, nome=self.produto.categoria)
+        CatalogoProdutoEmpresa.objects.create(empresa=self.empresa, produto=self.produto)
         self.admin2 = self._usuario('admin_sick_2', Perfil.Role.ADMIN)
         self.admin_inativo = self._usuario('admin_inativo_sick', Perfil.Role.ADMIN, ativo=False)
         self.gestor = self._usuario('gestor_sick', Perfil.Role.GESTOR, self.base)

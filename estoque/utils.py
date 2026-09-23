@@ -80,13 +80,13 @@ class EstoqueService:
         return 0
 
     @classmethod
-    def get_kpis_por_regional(cls, queryset, regionais_lista):
-        produtos_especificos = [
-            {'nome': _('Coletores'), 'filtro': 'Coletores'},
-            {'nome': _('Impressoras'), 'filtro': 'Impressoras'},
-            {'nome': _('Notebooks'), 'filtro': 'Notebooks'},
-            {'nome': _('Routers'), 'filtro': 'Routers'},
-        ]
+    def get_kpis_por_regional(cls, queryset, regionais_lista, categorias=None):
+        if categorias is None:
+            categorias = list(
+                queryset.exclude(produto__categoria='').order_by(
+                    'produto__categoria'
+                ).values_list('produto__categoria', flat=True).distinct()
+            )
 
         kpis_regionais = []
 
@@ -109,19 +109,16 @@ class EstoqueService:
                 'produtos': {}
             }
 
-            for produto in produtos_especificos:
+            for categoria in categorias:
                 equip_produto = equip_regional.filter(
-                    Q(produto__descricao__icontains=produto['filtro']) |
-                    Q(produto__descricao__icontains=produto['nome'])
+                    produto__categoria__iexact=categoria,
                 )
 
                 produto_data = cls.get_kpis_gerais(equip_produto)
 
                 produto_data['disponibilidade'] = cls.get_disponibilidade(equip_produto)
 
-                # ``gettext_lazy`` devolve um objeto Proxy. Ele funciona bem em
-                # templates, mas não pode ser usado diretamente como chave JSON.
-                regional_data['produtos'][str(produto['nome'])] = produto_data
+                regional_data['produtos'][str(categoria)] = produto_data
 
             kpis_regionais.append(regional_data)
 

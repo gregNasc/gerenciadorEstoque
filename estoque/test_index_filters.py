@@ -2,25 +2,43 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from estoque.models import Base, Empresa, Equipamento, Perfil, Produto
+from compras.models import CatalogoProdutoEmpresa
+from estoque.models import (
+    Base,
+    CategoriaEquipamentoEmpresa,
+    Empresa,
+    Equipamento,
+    Perfil,
+    Produto,
+)
 
 
 class IndexFinalidadeFilterTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Inventory Teste')
         self.regional = Base.objects.create(nome='Regional Teste', empresa=self.empresa)
+        self.categoria = CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Máquinas Operacionais',
+        )
         self.produto = Produto.objects.create(
             codigo='PROD-INDEX-1',
             descricao='Coletor de teste',
             fabricante='Fabricante',
             modelo='Modelo',
-            categoria='Coletores',
+            categoria=self.categoria.nome,
+            empresa_catalogo_origem=self.empresa,
         )
         self.usuario = User.objects.create_user(username='admin_index', password='senha')
         perfil = self.usuario.perfil
         perfil.role = Perfil.Role.ADMIN
         perfil.empresa = self.empresa
         perfil.save(update_fields=['role', 'empresa'])
+        CatalogoProdutoEmpresa.objects.create(
+            empresa=self.empresa,
+            produto=self.produto,
+            configurado_por=self.usuario,
+        )
         self.client.force_login(self.usuario)
 
         for finalidade in Equipamento.Finalidade.values:
@@ -60,7 +78,7 @@ class IndexFinalidadeFilterTests(TestCase):
         self.assertEqual(response.context['kpis_totais']['administrativos'], 1)
         self.assertContains(response, 'value="ADMINISTRATIVO" selected')
 
-    def test_api_kpis_serializa_categorias_traduzidas_como_chaves_json(self):
+    def test_api_kpis_usa_somente_categorias_configuradas_no_tenant(self):
         response = self.client.get(reverse('estoque:api_kpis_json'))
 
         self.assertEqual(response.status_code, 200)
@@ -68,5 +86,5 @@ class IndexFinalidadeFilterTests(TestCase):
         self.assertEqual(len(payload['kpis_regionais']), 1)
         self.assertEqual(
             set(payload['kpis_regionais'][0]['produtos']),
-            {'Coletores', 'Impressoras', 'Notebooks', 'Routers'},
+            {self.categoria.nome},
         )

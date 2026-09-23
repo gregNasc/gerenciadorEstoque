@@ -15,7 +15,7 @@
         <div class="app-page-header__content">
             <h1><i class="bi bi-box-seam me-2" aria-hidden="true"></i>{% trans "Estoque Geral" %}</h1>
             <p class="app-page-header__description">
-                {% trans "Gestão de equipamentos por regional" %}
+                Gestão de {{ tenant_labels.equipamento.plural|lower }} por {{ tenant_labels.regional.singular|lower }}
             </p>
         </div>
     </header>
@@ -30,7 +30,7 @@
                 <form method="get" class="d-flex flex-wrap align-items-end gap-2">
                     <div>
                         <label class="form-label small mb-1">
-                            {% trans "Regional" %}
+                            {{ tenant_labels.regional.singular }}
                         </label>
 
                         <select
@@ -71,7 +71,7 @@
                 <form method="get" class="row g-3 align-items-end">
                     <div class="col-auto">
                         <label class="form-label small text-secondary fw-semibold mb-1">
-                            {% trans "Regional" %}
+                            {{ tenant_labels.regional.singular }}
                         </label>
 
                         <select
@@ -187,7 +187,7 @@
                         tabindex="0"
                         aria-pressed="false"
                     >
-                        <span>{% trans "Manutenção" %}</span>
+                        <span>{{ tenant_labels.manutencao.singular }}</span>
                         <strong id="kpiManutencao">0</strong>
                     </div>
                 </div>
@@ -210,7 +210,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
                 <div>
                     <h6 class="fw-semibold mb-1">
-                        {% trans "Equipamentos por modelo" %}
+                        {{ tenant_labels.equipamento.plural }} por modelo
                     </h6>
 
                     <small class="text-secondary">
@@ -286,7 +286,7 @@
                             <th class="text-center">{% trans "Administrativos" %}</th>
                             <th class="text-center">{% trans "Sick" %}</th>
                             <th class="text-center">{% trans "Em trânsito" %}</th>
-                            <th class="text-center">{% trans "Manutenção" %}</th>
+                            <th class="text-center">{{ tenant_labels.manutencao.singular }}</th>
                             <th class="text-center">{% trans "Inativos" %}</th>
                             <th class="text-center">{% trans "Disponibilidade" %}</th>
                             <th class="text-end">{% trans "Ação" %}</th>
@@ -379,7 +379,7 @@
                         {% empty %}
                         <tr>
                             <td colspan="10" class="text-center py-5">
-                                {% trans "Nenhum equipamento encontrado." %}
+                                Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} encontrado(a).
                             </td>
                         </tr>
                         {% endfor %}
@@ -389,7 +389,7 @@
                             style="display: none;"
                         >
                             <td colspan="10" class="text-center py-5 text-muted">
-                                {% trans "Nenhum equipamento encontrado nesta categoria." %}
+                                Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} encontrado(a) nesta categoria.
                             </td>
                         </tr>
                     </tbody>
@@ -456,7 +456,7 @@
     <div class="sick-modal-content card border-0 shadow-lg">
         <div class="estoque-modal-header bg-light px-4 py-3 border-0 d-flex justify-content-between align-items-center">
             <h5 id="sick-modal-title" class="fw-semibold mb-0">
-                {% trans "Marcar equipamento como SICK" %}
+                Registrar {{ tenant_labels.equipamento.singular|lower }} em {{ tenant_module_labels.sick }}
             </h5>
 
             <button
@@ -473,7 +473,7 @@
             </p>
 
             <div class="alert alert-light border small mb-3">
-                <strong>{% trans "Equipamento" %}:</strong>
+                <strong>{{ tenant_labels.equipamento.singular }}:</strong>
                 <span id="sickEquipamentoLabel">-</span>
             </div>
 
@@ -1444,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <span class="badge bg-secondary">
                         ${equipamentos.length}
-                        {% trans "equipamento(s)" %}
+                        {{ tenant_labels.equipamento.plural|lower|escapejs }}
                     </span>
                 </div>
 
@@ -1462,11 +1462,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </span>
 
                     <span class="badge bg-danger">
-                        SICK: ${resumoEquipamentos.sick}
+                        {{ tenant_module_labels.sick|escapejs }}: ${resumoEquipamentos.sick}
                     </span>
 
                     <span class="badge bg-primary">
-                        {% trans "Manutenção" %}: ${resumoEquipamentos.manutencao}
+                        {{ tenant_labels.manutencao.singular|escapejs }}: ${resumoEquipamentos.manutencao}
                     </span>
 
                     <span class="badge bg-warning text-dark">
@@ -1481,14 +1481,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             for="filtroEquipamentos"
                             class="form-label small text-secondary fw-semibold mb-1"
                         >
-                            {% trans "Pesquisar equipamento" %}
+                            Pesquisar {{ tenant_labels.equipamento.singular|lower|escapejs }}
                         </label>
 
                         <input
                             type="search"
                             id="filtroEquipamentos"
                             class="form-control"
-                            placeholder="{% trans 'Pesquisar por patrimônio, número de série, empresa ou base...' %}"
+                            placeholder="Pesquisar por patrimônio, número de série, {{ tenant_labels.empresa.singular|lower|escapejs }} ou {{ tenant_labels.base.singular|lower|escapejs }}..."
                         >
                     </div>
                 </div>
@@ -1603,7 +1603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ? `
                                         <br>
                                         <small class="text-danger">
-                                            SICK / ${escapeHtml(etapaSickLabel)}
+                                            {{ tenant_module_labels.sick|escapejs }} / ${escapeHtml(etapaSickLabel)}
                                         </small>
                                     `
                                     : ''
@@ -1620,7 +1620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             data-id="${escapeHtml(eq.id)}"
                                             data-serie="${escapeHtml(serie)}"
                                         >
-                                            SICK
+                                            {{ tenant_module_labels.sick|escapejs }}
                                         </button>
                                     `
                                     : `
@@ -1919,9 +1919,9 @@ document.addEventListener('DOMContentLoaded', () => {
         total: '{% trans "Todos" %}',
         ativos: '{% trans "Ativos" %}',
         administrativos: '{% trans "Administrativos" %}',
-        sick: '{% trans "Sick" %}',
+        sick: '{{ tenant_module_labels.sick|escapejs }}',
         transito: '{% trans "Em trânsito" %}',
-        manutencao: '{% trans "Manutenção" %}',
+        manutencao: '{{ tenant_labels.manutencao.singular|escapejs }}',
         inativos: '{% trans "Inativos" %}'
     };
 

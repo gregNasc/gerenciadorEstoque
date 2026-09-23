@@ -12,14 +12,14 @@
 
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">
-                        📦 {% trans "Nova Solicitação de Equipamentos" %}
+                        📦 Nova solicitação: {{ tenant_labels.equipamento.plural }}
                     </h5>
                 </div>
 
                 <div class="card-body">
 
                     <p class="text-muted mb-4">
-                        {% trans "Preencha os dados abaixo para solicitar equipamentos para sua regional." %}
+                        Preencha os dados abaixo para solicitar {{ tenant_labels.equipamento.plural|lower }} para sua {{ tenant_labels.regional.singular|lower }}.
                     </p>
 
                     <form method="post">
@@ -28,12 +28,12 @@
                         {% if regionais|length > 1 %}
                             <div class="mb-3">
                                 <label class="form-label fw-bold">
-                                    {% trans "Regional Solicitante" %}
+                                    {{ tenant_labels.regional.singular }} solicitante
                                 </label>
 
                                 <select name="regional" class="form-select" required>
                                     <option value="" selected disabled>
-                                        {% trans "Selecione a regional" %}
+                                        Selecione: {{ tenant_labels.regional.singular|lower }}
                                     </option>
 
                                     {% for regional in regionais %}
@@ -49,24 +49,23 @@
                                    value="{{ regionais.0.id }}">
 
                             <div class="alert alert-info">
-                                {% trans "Regional solicitante" %}:
+                                {{ tenant_labels.regional.singular }} solicitante:
                                 <strong>{{ regionais.0.nome }}</strong>
                             </div>
                         {% endif %}
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">
-                                {% trans "Tipo de Equipamento" %}
+                                Tipo de {{ tenant_labels.equipamento.singular|lower }}
                             </label>
 
                             <select name="categoria" class="form-select" required>
                                 <option value="" selected disabled>
-                                    {% trans "Selecione o tipo de equipamento" %}
+                                    Selecione o tipo de {{ tenant_labels.equipamento.singular|lower }}
                                 </option>
-                                <option value="Coletores">{% trans "Coletores" %}</option>
-                                <option value="Impressoras">{% trans "Impressoras" %}</option>
-                                <option value="Notebooks">{% trans "Notebooks" %}</option>
-                                <option value="Routers">{% trans "Routers" %}</option>
+                                {% for categoria in categorias %}
+                                    <option value="{{ categoria }}">{{ categoria }}</option>
+                                {% endfor %}
                             </select>
                         </div>
 

@@ -17,6 +17,7 @@ from django.contrib import messages
 from insumos.models import Insumo
 from insumos.forms import (InsumoForm, CadastroInsumoForm)
 from insumos.services.movimentacao_service import MovimentacaoService
+from insumos.services.checklist_catalog_service import ChecklistCatalogService
 from decimal import Decimal
 from django.http import JsonResponse
 from estoque.models import Equipamento, Produto
@@ -364,14 +365,14 @@ def cadastrar_insumo(request):
 
 @login_required
 def get_equipamentos_disponiveis(request, categoria):
-    equipamentos = secure_queryset(
+    equipamentos = ChecklistCatalogService.equipment(secure_queryset(
         Equipamento.objects.filter(
             status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL,
-            produto__categoria=categoria,
+            produto__categoria__iexact=categoria,
         ),
         request.user,
         resource=InsumosTenantPolicy.CHECKLISTS,
-    )
+    ))
 
     data = [{
         'id': eq.id,
@@ -1111,16 +1112,13 @@ def inventario_detalhes(request, inventario_id):
             if inventario.horario_inicio else ''
         ),
         'pessoas': inventario.pessoas,
-        'limite_coletores': (
-            inventario.pessoas + 5
-            if inventario.pessoas is not None
-            else None
-        ),
+        'limites_equipamentos': {
+            f'categoria_{category.pk}': ChecklistCatalogService.limit(category, inventario.pessoas)
+            for category in ChecklistCatalogService.categories(inventario.base)
+        },
         'saldos_equipamentos': {
-            'router': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Routers'),
-            'coletor': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Coletores'),
-            'notebook': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Notebooks'),
-            'impressora': ChecklistService.saldo_equipamentos_categoria(inventario.base, 'Impressoras'),
+            f'categoria_{category.pk}': ChecklistService.saldo_equipamentos_categoria(inventario.base, category.nome)
+            for category in ChecklistCatalogService.categories(inventario.base)
         },
     }
     return JsonResponse(data)
@@ -2802,10 +2800,10 @@ def editar_checklist(request, pk):
 
     context = {
         'checklist': checklist,
-        'coletores': equipamentos.filter(produto__categoria='Coletores'),
-        'impressoras': equipamentos.filter(produto__categoria='Impressoras'),
-        'notebooks': equipamentos.filter(produto__categoria='Notebooks'),
-        'routers': equipamentos.filter(produto__categoria='Routers'),
+        'categorias_checklist': ChecklistCatalogService.context(
+            checklist.inventario.base.__class__.objects.filter(pk=checklist.inventario.base_id),
+            equipamentos.filter(regional_id=checklist.inventario.base_id),
+        ),
         'inventarios': [checklist.inventario],  # apenas o inventário atual
         'insumos': insumos_do_checklist,  # insumos já adicionados
         'lotes_tags': lotes_tags,

@@ -125,6 +125,26 @@ def secure_company_queryset(
     return qs.filter(pk__in=company_ids)
 
 
+def secure_tenant_group_company_queryset(qs, user):
+    """Empresas do mesmo grupo operacional explicitamente administrável.
+
+    Compartilhar apenas um recurso com outro tenant não o inclui em seletores
+    organizacionais. O escopo ampliado exige OPERACAO:ADMINISTRAR e o vínculo
+    adicional explícito do Admin; Superuser mantém a visão da plataforma.
+    """
+    scope = TenantScope.for_user(user)
+    if scope.is_platform_scope:
+        return qs
+    company_ids = _allowed_company_ids(
+        scope,
+        resource=CapacidadeRelacionamentoEmpresa.Recurso.OPERACAO,
+        action=CapacidadeRelacionamentoEmpresa.Acao.ADMINISTRAR,
+    )
+    if not company_ids:
+        return qs.none()
+    return qs.filter(pk__in=company_ids)
+
+
 def secure_history_queryset(qs, user):
     return secure_queryset(
         qs,

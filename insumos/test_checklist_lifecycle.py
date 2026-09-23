@@ -3,6 +3,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from estoque.models import Base, Empresa, Equipamento, Perfil, Produto
+from estoque.models import CategoriaEquipamentoEmpresa
+from compras.models import CatalogoProdutoEmpresa
 from insumos.models import (
     ChecklistEquipamentoQuantidade,
     Cliente,
@@ -42,6 +44,39 @@ class ChecklistLifecycleTests(TestCase):
             )
             for indice in range(10)
         ]
+        self.categoria = CategoriaEquipamentoEmpresa.objects.create(
+            empresa=empresa, nome='Coletores', limite_checklist_por_pessoas=5,
+        )
+        CatalogoProdutoEmpresa.objects.create(empresa=empresa, produto=self.produto)
+
+    def test_custom_category_and_configured_limit(self):
+        self.categoria.nome = 'Máquinas industriais'
+        self.categoria.limite_checklist_por_pessoas = 1
+        self.categoria.save()
+        self.produto.categoria = self.categoria.nome
+        self.produto.save()
+        checklist = ChecklistService.criar(inventario=self.inventario, usuario=self.usuario)
+        with self.assertRaises(ValueError):
+            ChecklistService.registrar_envio_equipamentos(
+                checklist=checklist, categoria=self.categoria.nome, quantidade=5,
+                equipamentos=[], usuario=self.usuario,
+            )
+        self.categoria.limite_checklist_por_pessoas = None
+        self.categoria.save()
+        registro = ChecklistService.registrar_envio_equipamentos(
+            checklist=checklist, categoria=self.categoria.nome, quantidade=5,
+            equipamentos=[], usuario=self.usuario,
+        )
+        self.assertEqual(registro.quantidade_enviada, 5)
+
+    def test_missing_catalog_rejects_equipment(self):
+        CatalogoProdutoEmpresa.objects.filter(empresa=self.base.empresa).delete()
+        checklist = ChecklistService.criar(inventario=self.inventario, usuario=self.usuario)
+        with self.assertRaises(ValueError):
+            ChecklistService.registrar_envio_equipamentos(
+                checklist=checklist, categoria=self.categoria.nome, quantidade=1,
+                equipamentos=self.equipamentos[:1], usuario=self.usuario,
+            )
 
     def test_criar_inicia_inventario_e_finalizar_conclui_ambos(self):
         checklist = ChecklistService.criar(

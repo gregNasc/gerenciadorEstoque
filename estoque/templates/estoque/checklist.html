@@ -1118,10 +1118,10 @@
                         </thead>
                         <tbody id="insumosBody"><tr><td colspan="7" class="text-muted">{% trans "Selecione um inventário para carregar os insumos da base." %}</td></tr></tbody>
                         <tbody>
-                            <tr class="equipment-official-row"><td rowspan="4">{% trans "EQUIPAMENTOS" %}</td><td><strong>{% trans "ROTEADORES" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('router')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="router-contador" class="contador">0 {% trans "identificados" %}</span><div id="router-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_router" data-equipment-count="router" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de roteadores' %}"><small data-equipment-available="router"></small></td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>{% trans "COLETORES DE DADOS" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('coletor')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="coletor-contador" class="contador">0 {% trans "identificados" %}</span><div id="coletor-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_coletor" data-equipment-count="coletor" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de coletores' %}"><small data-equipment-available="coletor"></small></td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>{% trans "NOTEBOOKS" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('notebook')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="notebook-contador" class="contador">0 {% trans "identificados" %}</span><div id="notebook-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_notebook" data-equipment-count="notebook" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de notebooks' %}"><small data-equipment-available="notebook"></small></td><td></td><td></td><td></td><td></td></tr>
-                            <tr class="equipment-official-row"><td><strong>{% trans "IMPRESSORAS" %}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('impressora')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="impressora-contador" class="contador">0 {% trans "identificados" %}</span><div id="impressora-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_impressora" data-equipment-count="impressora" min="0" step="1" value="0" aria-label="{% trans 'Quantidade de impressoras' %}"><small data-equipment-available="impressora"></small></td><td></td><td></td><td></td><td></td></tr>
+                            {% for categoria in categorias_checklist %}
+                            <tr class="equipment-official-row" data-category-key="{{ categoria.key }}">
+                            <td>{% trans "EQUIPAMENTOS" %}</td><td><strong>{{ categoria.nome }}</strong><button type="button" class="btn-selecionar" onclick="abrirModal('{{ categoria.key }}')">{% trans "Identificar patrimônios (opcional)" %}</button><span id="{{ categoria.key }}-contador" class="contador">0</span><div id="{{ categoria.key }}-selecionados" class="resumo-selecionados"></div></td><td><input type="number" class="equipment-quantity" name="quantidade_equipamento_{{ categoria.key }}" data-equipment-count="{{ categoria.key }}" min="0" step="1" value="0" aria-label="{{ categoria.nome }}"><small data-equipment-available="{{ categoria.key }}"></small></td><td></td><td></td><td></td><td></td></tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                     <div id="insumosAlert" class="alert-inline error"></div>
@@ -1297,10 +1297,6 @@
 {% trans "A quantidade de {nome} é maior que o saldo disponível." as t_insumo_saldo %}
 {% trans "Selecione um inventário para carregar os insumos da base." as t_selecione_inventario %}
 {% trans "Erro ao carregar insumos da base." as t_erro_insumos %}
-{% trans "Selecionar roteadores" as t_selecionar_roteadores %}
-{% trans "Selecionar coletores" as t_selecionar_coletores %}
-{% trans "Selecionar notebooks" as t_selecionar_notebooks %}
-{% trans "Selecionar impressoras" as t_selecionar_impressoras %}
 {% trans "Selecionar itens" as t_selecionar_itens %}
 {% trans "máximo {limite}" as t_maximo %}
 {% trans "Selecione primeiro o inventário e a base." as t_selecione_inventario_base %}
@@ -1310,7 +1306,7 @@
 {% trans "selecionados" as t_selecionados %}
 {% trans "identificado" as t_identificado %}
 {% trans "identificados" as t_identificados %}
-{% trans "Selecione no máximo {limite} coletores ({pessoas} pessoas + 5 de backup)." as t_limite_coletores %}
+{% trans "Selecione no máximo {limite} itens nesta categoria." as t_limite_categoria %}
 {% trans "Selecione se o rolo será novo ou reutilização." as t_selecione_modo_rolo %}
 {% trans "Informe o número inicial enviado em todos os rolos marcados." as t_numero_inicial_rolo %}
 {% trans "O número inicial deve estar dentro da faixa disponível do rolo selecionado." as t_faixa_rolo %}
@@ -1324,7 +1320,7 @@
 {% trans "Revise a quantidade de {categoria}: deve ser inteira, respeitar o saldo e não ser menor que os patrimônios identificados." as t_revise_quantidade %}
 {% trans "Preencha ao menos um item no checklist: insumo, equipamento ou lote de TAG." as t_preencha_item %}
 {% trans "Existem campos inválidos no checklist. Revise os insumos e/ou o lote de TAG." as t_campos_invalidos %}
-{% trans "O limite deste inventário é {limite} coletores ({pessoas} pessoas + 5 de backup)." as t_limite_inventario %}
+{% trans "O limite deste inventário é {limite} itens nesta categoria." as t_limite_inventario %}
 <script>
 const mensagensChecklist = {
     tipoEnvioTag: "{{ t_tipo_envio_tag|escapejs }}",
@@ -1335,10 +1331,6 @@ const mensagensChecklist = {
     insumoSaldo: "{{ t_insumo_saldo|escapejs }}",
     selecioneInventario: "{{ t_selecione_inventario|escapejs }}",
     erroInsumos: "{{ t_erro_insumos|escapejs }}",
-    selecionarRoteadores: "{{ t_selecionar_roteadores|escapejs }}",
-    selecionarColetores: "{{ t_selecionar_coletores|escapejs }}",
-    selecionarNotebooks: "{{ t_selecionar_notebooks|escapejs }}",
-    selecionarImpressoras: "{{ t_selecionar_impressoras|escapejs }}",
     selecionarItens: "{{ t_selecionar_itens|escapejs }}",
     maximo: "{{ t_maximo|escapejs }}",
     selecioneInventarioBase: "{{ t_selecione_inventario_base|escapejs }}",
@@ -1348,7 +1340,7 @@ const mensagensChecklist = {
     selecionados: "{{ t_selecionados|escapejs }}",
     identificado: "{{ t_identificado|escapejs }}",
     identificados: "{{ t_identificados|escapejs }}",
-    limiteColetores: "{{ t_limite_coletores|escapejs }}",
+    limiteCategoria: "{{ t_limite_categoria|escapejs }}",
     selecioneModoRolo: "{{ t_selecione_modo_rolo|escapejs }}",
     numeroInicialRolo: "{{ t_numero_inicial_rolo|escapejs }}",
     faixaRolo: "{{ t_faixa_rolo|escapejs }}",
@@ -1374,27 +1366,17 @@ function formatarMensagem(template, valores = {}) {
 
 /*    ESTADO
 */
+const categoriasChecklist = {
+{% for categoria in categorias_checklist %}"{{ categoria.key }}": "{{ categoria.nome|escapejs }}",{% endfor %}
+};
 const equipamentos = {
-    router: [
-        {% for eq in routers %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
-        {% endfor %}
-    ],
-    coletor: [
-        {% for eq in coletores %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
-        {% endfor %}
-    ],
-    notebook: [
-        {% for eq in notebooks %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
-        {% endfor %}
-    ],
-    impressora: [
-        {% for eq in impressoras %}
-            { id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.patrimonio|default:t_sem_patrimonio|escapejs }} · {{ eq.numero_serie|default:t_sem_serie|escapejs }} · {{ eq.produto.descricao|escapejs }}" },
-        {% endfor %}
-    ]
+{% for categoria in categorias_checklist %}
+"{{ categoria.key }}": [
+{% for eq in categoria.equipamentos %}
+{ id: {{ eq.id }}, baseId: {{ eq.regional_id }}, patrimonio: "{{ eq.patrimonio|default:''|escapejs }}", numeroSerie: "{{ eq.numero_serie|default:''|escapejs }}", descricao: "{{ eq.produto.descricao|escapejs }} · {{ eq.numero_serie|escapejs }}" },
+{% endfor %}
+],
+{% endfor %}
 };
 
 const textoPreenchidoHistorico = "{% trans 'Pré-preenchido com o checklist anterior' %}";
@@ -1415,13 +1397,8 @@ const rolosTags = [
 ];
 
 let categoriaAtual = '';
-let selecionados = {
-    router: [],
-    coletor: [],
-    notebook: [],
-    impressora: []
-};
-let limiteColetores = null;
+let selecionados = Object.fromEntries(Object.keys(equipamentos).map(key => [key, []]));
+let limitesEquipamentos = {};
 let quantidadePessoasInventario = null;
 const declaracaoPossuiDadosSalvos = {% if editando and checklist.declaracao_dados %}true{% else %}false{% endif %};
 
@@ -1721,18 +1698,10 @@ function preencherEquipamentosDoChecklist(lista) {
     });
 
     Object.keys(equipPorCategoria).forEach(cat => {
-        const categoriaMap = {
-            coletor: 'coletor',
-            coletores: 'coletor',
-            router: 'router',
-            routers: 'router',
-            notebook: 'notebook',
-            notebooks: 'notebook',
-            impressora: 'impressora',
-            impressoras: 'impressora'
-        };
-
-        const nomeCategoria = categoriaMap[cat] || cat;
+        const nomeCategoria = Object.keys(categoriasChecklist).find(key =>
+            categoriasChecklist[key].toLowerCase() === cat &&
+            equipamentos[key].some(eq => equipPorCategoria[cat].includes(eq.id))
+        );
         if (!equipamentos[nomeCategoria]) return;
 
         const idsValidos = equipPorCategoria[cat].filter(id =>
@@ -1828,15 +1797,9 @@ function abrirModal(categoria) {
     const body = document.getElementById('customModalBody');
     const title = document.getElementById('customModalTitle');
 
-    const nomes = {
-        router: mensagensChecklist.selecionarRoteadores,
-        coletor: mensagensChecklist.selecionarColetores,
-        notebook: mensagensChecklist.selecionarNotebooks,
-        impressora: mensagensChecklist.selecionarImpressoras
-    };
-    title.textContent = nomes[categoria] || mensagensChecklist.selecionarItens;
-    if (categoria === 'coletor' && limiteColetores !== null) {
-        title.textContent += ` · ${formatarMensagem(mensagensChecklist.maximo, {limite: limiteColetores})}`;
+    title.textContent = categoriasChecklist[categoria] || mensagensChecklist.selecionarItens;
+    if (limitesEquipamentos[categoria] != null) {
+        title.textContent += ` · ${formatarMensagem(mensagensChecklist.maximo, {limite: limitesEquipamentos[categoria]})}`;
     }
 
     let html = '';
@@ -1919,12 +1882,11 @@ function confirmarSelecao() {
     const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
     if (
-        categoriaAtual === 'coletor' &&
-        limiteColetores !== null &&
-        ids.length > limiteColetores
+        limitesEquipamentos[categoriaAtual] != null &&
+        ids.length > limitesEquipamentos[categoriaAtual]
     ) {
-        alert(formatarMensagem(mensagensChecklist.limiteColetores, {
-            limite: limiteColetores,
+        alert(formatarMensagem(mensagensChecklist.limiteCategoria, {
+            limite: limitesEquipamentos[categoriaAtual],
             pessoas: quantidadePessoasInventario
         }));
         return;
@@ -2132,7 +2094,7 @@ function carregarDadosInventario(inventarioId) {
         campoCidade.value = '';
         aplicarLider('');
         preencherDadosDeclaracaoPadrao({});
-        limiteColetores = null;
+        limitesEquipamentos = {};
         quantidadePessoasInventario = null;
         document.getElementById('insumosContainer').style.display = 'block';
         return;
@@ -2163,14 +2125,14 @@ function carregarDadosInventario(inventarioId) {
             aplicarLider(data.lider || '');
             preencherDadosDeclaracaoPadrao(data);
             quantidadePessoasInventario = data.pessoas;
-            limiteColetores = data.limite_coletores;
+            limitesEquipamentos = data.limites_equipamentos || {};
 
             Object.entries(data.saldos_equipamentos || {}).forEach(([categoria, saldo]) => {
                 const input = document.querySelector(`[data-equipment-count="${categoria}"]`);
                 const ajuda = document.querySelector(`[data-equipment-available="${categoria}"]`);
                 let limite = Number(saldo || 0);
-                if (categoria === 'coletor' && limiteColetores !== null) {
-                    limite = Math.min(limite, Number(limiteColetores));
+                if (limitesEquipamentos[categoria] != null) {
+                    limite = Math.min(limite, Number(limitesEquipamentos[categoria]));
                 }
                 if (input) {
                     input.max = String(limite);
@@ -2182,14 +2144,16 @@ function carregarDadosInventario(inventarioId) {
                 );
             });
 
-            if (
-                limiteColetores !== null &&
-                (selecionados.coletor || []).length > limiteColetores
-            ) {
-                selecionados.coletor = selecionados.coletor.slice(0, limiteColetores);
-                atualizarResumoCategoria('coletor');
-                atualizarInputsEquipamentosETags();
-            }
+            Object.keys(equipamentos).forEach(categoria => {
+                const allowed = Object.hasOwn(data.saldos_equipamentos || {}, categoria);
+                const row = document.querySelector('[data-category-key="' + categoria + '"]');
+                if (row) row.hidden = !allowed;
+                const input = document.querySelector('[data-equipment-count="' + categoria + '"]');
+                if (input) { input.disabled = !allowed; if (!allowed) input.value = '0'; }
+                selecionados[categoria] = (selecionados[categoria] || []).slice(0, allowed ? Number(input?.max || 0) : 0);
+                atualizarResumoCategoria(categoria);
+            });
+            atualizarInputsEquipamentosETags();
 
             const baseId = selectInventario.options[selectInventario.selectedIndex].dataset.base;
             carregarInsumos(baseId).then(() => {
@@ -2218,10 +2182,12 @@ function preencherEdicaoChecklistAtual() {
         // EQUIPAMENTOS
         {% for eq in equipamentos_selecionados %}
             (function() {
-                const categoria = "{{ eq.equipamento.produto.categoria|lower }}";
-                if (!selecionados[categoria]) {
-                    selecionados[categoria] = [];
-                }
+                const categoriaNome = "{{ eq.equipamento.produto.categoria|escapejs }}".toLocaleLowerCase();
+                const categoria = Object.keys(categoriasChecklist).find(chave =>
+                    categoriasChecklist[chave].toLocaleLowerCase() === categoriaNome &&
+                    (equipamentos[chave] || []).some(item => item.id === {{ eq.equipamento.id }})
+                );
+                if (!categoria) return;
                 if (!selecionados[categoria].includes({{ eq.equipamento.id }})) {
                     selecionados[categoria].push({{ eq.equipamento.id }});
                 }
@@ -2368,16 +2334,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        if (
-            limiteColetores !== null &&
-            Number(document.querySelector('[data-equipment-count="coletor"]')?.value || 0) > limiteColetores
-        ) {
-            e.preventDefault();
-            alert(formatarMensagem(mensagensChecklist.limiteInventario, {
-                limite: limiteColetores,
-                pessoas: quantidadePessoasInventario
-            }));
-        }
+
     });
 
     // se já abriu em edição com inventário selecionado

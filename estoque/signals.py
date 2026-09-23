@@ -28,7 +28,14 @@ def provisionar_modulos_empresa(
         from estoque.tenant_features import TenantFeatureService
 
         TenantFeatureService.ensure_catalog(using=using)
-        TenantFeatureService.provision_defaults(instance, using=using)
+        # O onboarding cria o tenant inativo e, portanto, fail-closed. A criação
+        # direta de um tenant já ativo é um caminho legado interno e preserva o
+        # comportamento anterior para não interromper integrações existentes.
+        TenantFeatureService.provision_defaults(
+            instance,
+            using=using,
+            enabled=instance.ativa,
+        )
 
 
 @receiver(post_migrate, dispatch_uid='estoque.garantir_catalogo_modulos')

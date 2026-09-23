@@ -131,9 +131,10 @@ class TenantOnboardingStage24Tests(TestCase):
         company.refresh_from_db()
         self.assertFalse(company.ativa)
 
-        for config in company.modulos_configurados.all():
+        for index, config in enumerate(company.modulos_configurados.all()):
             config.configurado_por = self.superuser
-            config.save(update_fields=['configurado_por'])
+            config.habilitado = index == 0
+            config.save(update_fields=['configurado_por', 'habilitado'])
         response = self.client.post(self.step_url('revisar', company))
         self.assertRedirects(response, self.step_url('admin', company))
         company.refresh_from_db()

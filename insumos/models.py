@@ -800,13 +800,6 @@ class ChecklistEquipamento(models.Model):
 
 
 class ChecklistEquipamentoQuantidade(models.Model):
-    CATEGORIAS = [
-        ('Sistema', 'Sistema'),
-        ('Coletores', 'Coletores'),
-        ('Notebooks', 'Notebooks'),
-        ('Impressoras', 'Impressoras'),
-        ('Routers', 'Routers'),
-    ]
     class StatusRetorno(models.TextChoices):
         PENDENTE = 'PENDENTE', 'Pendente'
         CONFERIDO = 'CONFERIDO', 'Conferido'
@@ -816,7 +809,10 @@ class ChecklistEquipamentoQuantidade(models.Model):
         on_delete=models.CASCADE,
         related_name='equipamentos_quantitativos',
     )
-    categoria = models.CharField(max_length=50, choices=CATEGORIAS)
+    categoria = models.CharField(max_length=100)
+
+    def get_categoria_display(self):
+        return self.categoria
     quantidade_enviada = models.PositiveIntegerField()
     quantidade_identificada = models.PositiveIntegerField(default=0)
     quantidade_retornada = models.PositiveIntegerField(default=0)

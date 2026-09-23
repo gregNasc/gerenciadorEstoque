@@ -13,7 +13,9 @@ from estoque.models import (
     Base, Comunicado, DivergenciaTransferencia, Empresa, Emprestimo,
     Equipamento, GrupoRegional, ItemEmprestimo, PendenciaTransferencia, Perfil,
     Historico, Produto, Sick, Transferencia, TransferenciaItem,
+    CategoriaEquipamentoEmpresa,
 )
+from compras.models import CatalogoProdutoEmpresa
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.tenant_scope import TenantScope
 from estoque.services.assistente.response_builder import construir_erro, construir_resposta
@@ -73,6 +75,12 @@ class ToryTemposOperacionaisTests(TestCase):
             },
         )
         self.usuario.refresh_from_db()
+        self.categoria_equipamento = CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Coletores',
+            aliases=['coletor', 'coletores'],
+            referencia_capacidade=True,
+        )
         self.cliente = Cliente.objects.create(sigla='OXX', nome='Mercado OXXO')
         self.inventario = Inventario.objects.create(
             cliente=self.cliente,
@@ -111,6 +119,30 @@ class ToryTemposOperacionaisTests(TestCase):
         self.assertIn('42 min depois', resultado['resposta'])
         self.assertIn('635,30 peças por pessoa/hora', resultado['resposta'])
 
+    def test_categoria_e_alias_personalizados_respeitam_o_tenant(self):
+        self.categoria_equipamento.nome = 'Scanners industriais'
+        self.categoria_equipamento.aliases = ['scanner', 'scanners de chão']
+        self.categoria_equipamento.save()
+
+        outra_empresa = Empresa.objects.create(nome='Empresa Tory Isolada')
+        CategoriaEquipamentoEmpresa.objects.create(
+            empresa=outra_empresa,
+            nome='Equipamento secreto',
+            aliases=['apelido sigiloso'],
+        )
+
+        self.assertEqual(
+            AssistenteOperacionalService._extrair_categoria(
+                'quantos scanners de chão existem?', self.usuario,
+            ),
+            'Scanners industriais',
+        )
+        self.assertEqual(
+            AssistenteOperacionalService._extrair_categoria(
+                'quantos equipamentos com apelido sigiloso existem?', self.usuario,
+            ),
+            '',
+        )
     def test_simula_duas_pessoas_a_mais_com_hipotese_explicita(self):
         primeira = AssistenteOperacionalService.responder(
             self.usuario,
@@ -339,6 +371,10 @@ class ToryTemposOperacionaisTests(TestCase):
             modelo='B',
             categoria='Coletores',
         )
+        CatalogoProdutoEmpresa.objects.bulk_create([
+            CatalogoProdutoEmpresa(empresa=self.empresa, produto=produto_a),
+            CatalogoProdutoEmpresa(empresa=self.empresa, produto=produto_b),
+        ])
         for indice, (produto, status) in enumerate((
             (produto_a, 'ATIVO'),
             (produto_a, 'ATIVO'),
@@ -394,6 +430,7 @@ class ToryTemposOperacionaisTests(TestCase):
             modelo='CAP',
             categoria='Coletores',
         )
+        CatalogoProdutoEmpresa.objects.create(empresa=self.empresa, produto=produto)
         for indice in range(3):
             Equipamento.objects.create(
                 produto=produto,
@@ -421,7 +458,7 @@ class ToryTemposOperacionaisTests(TestCase):
         )
         self.assertIn('1 | 4 | 3 | 3', resultado['resposta'])
         self.assertIn('SITUAÇÃO | DIFERENÇA', resultado['resposta'])
-        self.assertIn('NÃO ATENDE | Faltam 1 coletor(es)', resultado['resposta'])
+        self.assertIn('NÃO ATENDE | Faltam 1 item(ns) de Coletores', resultado['resposta'])
         self.assertNotIn('- Pessoas previstas:', resultado['resposta'])
 
     def test_uf_sp_explicita_consulta_estado_sem_desambiguar(self):
@@ -1190,6 +1227,15 @@ class ToryEquipamentosOperacionaisTests(TestCase):
             modelo='Modelo Tory',
             categoria='Notebooks',
         )
+        CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Notebooks',
+            aliases=['notebook', 'notebooks'],
+        )
+        CatalogoProdutoEmpresa.objects.create(
+            empresa=self.empresa,
+            produto=self.produto,
+        )
         self.administrativo = Equipamento.objects.create(
             produto=self.produto,
             numero_serie='SER-ADM-01',
@@ -1378,6 +1424,13 @@ class ToryRankingPorBaseTests(TestCase):
             descricao='Coletor Ranking',
             categoria='Coletores',
         )
+        CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Coletores',
+            aliases=['coletor', 'coletores'],
+            referencia_capacidade=True,
+        )
+        CatalogoProdutoEmpresa.objects.create(empresa=self.empresa, produto=produto)
         for indice, base in enumerate((self.base_a, self.base_a, self.base_a, self.base_b), start=1):
             Equipamento.objects.create(
                 produto=produto,
@@ -1520,6 +1573,17 @@ class ToryIsolamentoBasesTests(TestCase):
             modelo='Modelo Tory',
             categoria='Coletores',
         )
+        for empresa in (self.empresa, self.outra_empresa):
+            CategoriaEquipamentoEmpresa.objects.create(
+                empresa=empresa,
+                nome='Coletores',
+                aliases=['coletor', 'coletores'],
+                referencia_capacidade=True,
+            )
+            CatalogoProdutoEmpresa.objects.create(
+                empresa=empresa,
+                produto=self.produto,
+            )
         self.equipamento_permitido = Equipamento.objects.create(
             produto=self.produto,
             numero_serie='SER-STA-01',

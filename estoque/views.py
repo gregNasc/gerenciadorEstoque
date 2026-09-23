@@ -15,6 +15,8 @@ from .services.sick_service import SickService
 from .services.assistente_operacional_service import AssistenteOperacionalService
 from .services.manual_service import ManualService
 from .services.documentation_service import DocumentationService
+from .services.tenant_catalog_service import TenantCatalogService
+from .services.tenant_terminology_service import TenantTerminologyService
 from .tenant_features import TenantFeatureService
 from .forms_documentacao import (
     ClienteChecklistUploadForm,
@@ -26,11 +28,12 @@ from django.utils.translation import gettext as _
 from .services.assistente.response_builder import construir_erro, construir_resposta
 from insumos.models import Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
+from insumos.services.checklist_catalog_service import ChecklistCatalogService
 from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import FileResponse, Http404, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
-from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento, Modulo, ModuloEmpresa, RelacionamentoEmpresa) #Regional
+from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento, Modulo, ModuloEmpresa, RelacionamentoEmpresa, CategoriaEquipamentoEmpresa, TermoEmpresa) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
 from .models import (PendenciaTransferencia, DivergenciaTransferencia)
 from estoque.models import Base
@@ -57,7 +60,6 @@ from django.contrib.auth.models import User
 from .utils import EstoqueService
 from .security import (
     secure_base_queryset,
-    secure_company_queryset,
     secure_history_queryset,
     secure_queryset,
 )
@@ -204,6 +206,16 @@ def painel_superuser(request):
             elif not selecionados.issubset(codigos_validos):
                 messages.error(request, "A configuração contém um módulo inválido.")
             else:
+                configura_rotulo = 'rotulo_empresa_dashboard' in request.POST
+                rotulo_dashboard = request.POST.get(
+                    'rotulo_empresa_dashboard', ''
+                ).strip()
+                if len(rotulo_dashboard) > 150:
+                    messages.error(
+                        request,
+                        'O rótulo do Dashboard deve possuir no máximo 150 caracteres.',
+                    )
+                    return redirect('estoque:painel_superuser')
                 with transaction.atomic():
                     for modulo in modulos:
                         TenantFeatureService.configure(
@@ -212,9 +224,46 @@ def painel_superuser(request):
                             enabled=modulo.codigo in selecionados,
                             actor=request.user,
                         )
+                    if configura_rotulo and rotulo_dashboard:
+                        TermoEmpresa.objects.update_or_create(
+                            empresa=empresa,
+                            chave=TermoEmpresa.Chave.EMPRESA,
+                            defaults={'valor_singular': rotulo_dashboard},
+                        )
+                    elif configura_rotulo:
+                        TermoEmpresa.objects.filter(
+                            empresa=empresa,
+                            chave=TermoEmpresa.Chave.EMPRESA,
+                        ).delete()
                 messages.success(
                     request,
                     f'Módulos de {empresa.nome} atualizados com sucesso.',
+                )
+            return redirect('estoque:painel_superuser')
+
+        # ---------------- APRESENTAÇÃO DO DASHBOARD ----------------
+        if acao == 'configurar_rotulo_dashboard':
+            empresa = Empresa.objects.filter(pk=request.POST.get('empresa')).first()
+            rotulo = request.POST.get('rotulo_empresa_dashboard', '').strip()
+            if not empresa:
+                messages.error(request, 'Selecione uma empresa válida.')
+            elif len(rotulo) > 150:
+                messages.error(request, 'O rótulo deve possuir no máximo 150 caracteres.')
+            else:
+                if rotulo:
+                    TermoEmpresa.objects.update_or_create(
+                        empresa=empresa,
+                        chave=TermoEmpresa.Chave.EMPRESA,
+                        defaults={'valor_singular': rotulo},
+                    )
+                else:
+                    TermoEmpresa.objects.filter(
+                        empresa=empresa,
+                        chave=TermoEmpresa.Chave.EMPRESA,
+                    ).delete()
+                messages.success(
+                    request,
+                    f'Rótulo do Dashboard de {empresa.nome} atualizado.',
                 )
             return redirect('estoque:painel_superuser')
 
@@ -318,6 +367,10 @@ def painel_superuser(request):
         }
         empresa.relacionamentos_ativos = list(relacionamentos.values())
         empresa.total_relacionamentos = len(empresa.relacionamentos_ativos)
+        empresa.rotulo_empresa_dashboard = TenantTerminologyService.label(
+            empresa,
+            TermoEmpresa.Chave.EMPRESA,
+        )
 
     relacionamentos = (
         RelacionamentoEmpresa.objects
@@ -426,30 +479,55 @@ def index(request):
     categoria = request.GET.get('categoria')
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
+    base_contexto = None
     if regional_id and regional_id.isdigit():
-        _base_estoque_or_404(request, regional_id)
+        base_contexto = _base_estoque_or_404(request, regional_id)
     estoque_oculto_auditoria = bool(
         regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
     )
     inventory_id = request.GET.get('inventory')
     finalidade = request.GET.get('finalidade', '').strip().upper()
 
-    if not perfil.is_admin:
+    if not perfil.is_admin and not request.user.is_superuser:
         inventory_id = str(perfil.empresa_id) if perfil.empresa_id else ''
 
+    empresa_contexto = None
     if inventory_id and inventory_id.isdigit():
-        get_object_or_404(
-            secure_company_queryset(Empresa.objects.all(), request.user),
+        empresa_contexto = get_object_or_404(
+            TenantCatalogService.companies(request.user),
             pk=inventory_id,
         )
-        equipamentos = equipamentos.filter(
-            regional__empresa_id=inventory_id
-        )
+
+    if base_contexto is not None:
+        if empresa_contexto is not None and base_contexto.empresa_id != empresa_contexto.pk:
+            raise Http404
+        empresa_contexto = base_contexto.empresa
+
+    produtos_catalogo = TenantCatalogService.products(
+        request.user,
+        company=empresa_contexto,
+    )
+    categorias_catalogo = TenantCatalogService.category_names(
+        request.user,
+        company=empresa_contexto,
+    )
+    equipamentos = TenantCatalogService.scope_equipment(
+        equipamentos,
+        request.user,
+        company=empresa_contexto,
+    )
 
     if categoria:
-        equipamentos = equipamentos.filter(produto__categoria=categoria)
+        categorias_por_chave = {
+            nome.casefold(): nome for nome in categorias_catalogo
+        }
+        categoria = categorias_por_chave.get(categoria.casefold())
+        if categoria is None:
+            raise Http404
+        equipamentos = equipamentos.filter(produto__categoria__iexact=categoria)
 
     if produto_id and produto_id.isdigit():
+        get_object_or_404(produtos_catalogo, pk=produto_id)
         equipamentos = equipamentos.filter(produto_id=produto_id)
 
     if finalidade in Equipamento.Finalidade.values:
@@ -457,7 +535,6 @@ def index(request):
     else:
         finalidade = ''
 
-    regional_id = request.GET.get('regional')
     if regional_id and regional_id.isdigit():
         equipamentos = equipamentos.filter(regional_id=regional_id)
         request.session['estoque_base_contexto_id'] = int(regional_id)
@@ -505,8 +582,8 @@ def index(request):
             p['nome'] = p.pop('produto__descricao')
 
     else:
-        # Por categoria
-        produtos_na_categoria = list(
+        # Por categoria tenant-specific
+        categorias_agregadas = list(
             equipamentos
             .values('produto__categoria')
             .annotate(
@@ -526,10 +603,39 @@ def index(request):
             .order_by('produto__categoria')
         )
 
-        for c in produtos_na_categoria:
-            c['id'] = c['produto__categoria']
-            c['nome'] = c['produto__categoria']
-            c['icone'] = 'bi-box'
+        metricas_por_categoria = {}
+        for dados in categorias_agregadas:
+            chave = str(dados['produto__categoria'] or '').casefold()
+            acumulado = metricas_por_categoria.setdefault(chave, {
+                'total': 0,
+                'ativos': 0,
+                'administrativos': 0,
+                'sick': 0,
+                'inativos': 0,
+                'transferencia': 0,
+                'emprestados': 0,
+                'manutencao': 0,
+            })
+            for campo in acumulado:
+                acumulado[campo] += dados.get(campo, 0)
+        produtos_na_categoria = [
+            {
+                'id': nome,
+                'nome': nome,
+                'icone': 'bi-box-seam',
+                **metricas_por_categoria.get(nome.casefold(), {
+                    'total': 0,
+                    'ativos': 0,
+                    'administrativos': 0,
+                    'sick': 0,
+                    'inativos': 0,
+                    'transferencia': 0,
+                    'emprestados': 0,
+                    'manutencao': 0,
+                }),
+            }
+            for nome in categorias_catalogo
+        ]
 
 
     # KPIs REGIONAIS
@@ -583,9 +689,7 @@ def index(request):
             regional_data['produtos_detalhados'] = list(produtos)
 
         else:
-            # resumo por categoria
-            categorias_base = ['Coletores', 'Impressoras', 'Notebooks', 'Routers']
-
+            # resumo por categoria tenant-specific
             produtos_query = (
                 equip_regional
                 .values('produto__categoria')
@@ -603,28 +707,33 @@ def index(request):
                 )
             )
 
-            produtos_dict = {p['produto__categoria']: p for p in produtos_query}
+            produtos_dict = {
+                str(p['produto__categoria'] or '').casefold(): p
+                for p in produtos_query
+            }
 
             regional_data['produtos'] = {
                 categoria: {
-                    'total': produtos_dict.get(categoria, {}).get('total', 0),
-                    'ativos': produtos_dict.get(categoria, {}).get('ativos', 0),
-                    'administrativos': produtos_dict.get(categoria, {}).get('administrativos', 0),
-                    'sick': produtos_dict.get(categoria, {}).get('sick', 0),
-                    'transferencia': produtos_dict.get(categoria, {}).get('transferencia', 0),
+                    'total': produtos_dict.get(categoria.casefold(), {}).get('total', 0),
+                    'ativos': produtos_dict.get(categoria.casefold(), {}).get('ativos', 0),
+                    'administrativos': produtos_dict.get(categoria.casefold(), {}).get('administrativos', 0),
+                    'sick': produtos_dict.get(categoria.casefold(), {}).get('sick', 0),
+                    'transferencia': produtos_dict.get(categoria.casefold(), {}).get('transferencia', 0),
                 }
-                for categoria in categorias_base
+                for categoria in categorias_catalogo
             }
         kpis_regionais.append(regional_data)
 
 
     # SELECTS
-    produtos_lista = Produto.objects.all()
+    produtos_lista = produtos_catalogo
     if categoria:
-        produtos_lista = produtos_lista.filter(categoria=categoria)
+        produtos_lista = produtos_lista.filter(categoria__iexact=categoria)
 
-    if perfil.is_admin:
-        regionais_select = secure_base_queryset(Base.objects.all(), request.user)
+    if perfil.is_admin or request.user.is_superuser:
+        regionais_select = secure_base_queryset(Base.objects.all(), request.user).filter(
+            empresa__in=TenantCatalogService.companies(request.user),
+        )
 
         if inventory_id and inventory_id.isdigit():
             regionais_select = regionais_select.filter(
@@ -636,9 +745,8 @@ def index(request):
         )
 
     regionais_select = _bases_unicas_por_nome(regionais_select)
-    empresas = secure_company_queryset(
-        Empresa.objects.all(), request.user
-    ).order_by('nome')
+    empresas = TenantCatalogService.companies(request.user).order_by('nome')
+    empresa_terminologia = empresa_contexto or getattr(request, 'tenant', None) or perfil.empresa
 
     context = {
         'produtos_na_categoria': produtos_na_categoria,
@@ -654,10 +762,15 @@ def index(request):
         'categoria_selecionada': categoria,
         'kpis_regionais': kpis_regionais,
         'produtos_lista': produtos_lista,
+        'categorias_catalogo': categorias_catalogo,
         'regionais': regionais_select,
         'filtro_produto_id': produto_id,
         'filtro_regional_id': regional_id,
         'empresas': empresas,
+        'rotulo_empresa_dashboard': TenantTerminologyService.label(
+            empresa_terminologia,
+            TermoEmpresa.Chave.EMPRESA,
+        ),
         'filtro_inventory_id': inventory_id,
         'filtro_finalidade': finalidade,
         'finalidade_choices': Equipamento.Finalidade.choices,
@@ -1224,16 +1337,55 @@ def api_kpis_json(request):
 
     produto_id = request.GET.get('produto')
     regional_id = request.GET.get('regional')
+    inventory_id = request.GET.get('inventory')
+    categoria = request.GET.get('categoria', '').strip()
+    finalidade = request.GET.get('finalidade', '').strip().upper()
+    empresa_contexto = None
 
     if regional_id and regional_id.isdigit():
-        _base_estoque_or_404(request, regional_id)
+        base_contexto = _base_estoque_or_404(request, regional_id)
+        empresa_contexto = base_contexto.empresa
         if _base_em_auditoria(regional_id):
             return _resposta_base_em_auditoria()
 
+    if inventory_id and inventory_id.isdigit():
+        empresa_inventory = get_object_or_404(
+            TenantCatalogService.companies(request.user),
+            pk=inventory_id,
+        )
+        if empresa_contexto is not None and empresa_contexto.pk != empresa_inventory.pk:
+            raise Http404
+        empresa_contexto = empresa_inventory
+
+    produtos_catalogo = TenantCatalogService.products(
+        request.user,
+        company=empresa_contexto,
+    )
+    categorias_catalogo = TenantCatalogService.category_names(
+        request.user,
+        company=empresa_contexto,
+    )
+    equipamentos = TenantCatalogService.scope_equipment(
+        equipamentos,
+        request.user,
+        company=empresa_contexto,
+    )
+
     if produto_id and produto_id.isdigit():
+        get_object_or_404(produtos_catalogo, pk=produto_id)
         equipamentos = equipamentos.filter(produto_id=produto_id)
     if regional_id and regional_id.isdigit():
         equipamentos = equipamentos.filter(regional_id=regional_id)
+    if categoria:
+        categorias_por_chave = {
+            nome.casefold(): nome for nome in categorias_catalogo
+        }
+        categoria = categorias_por_chave.get(categoria.casefold())
+        if categoria is None:
+            raise Http404
+        equipamentos = equipamentos.filter(produto__categoria__iexact=categoria)
+    if finalidade in Equipamento.Finalidade.values:
+        equipamentos = equipamentos.filter(finalidade=finalidade)
 
     kpis = EstoqueService.get_kpis_gerais(equipamentos)
     disponibilidade = EstoqueService.get_disponibilidade(equipamentos)
@@ -1241,7 +1393,15 @@ def api_kpis_json(request):
     regionais_lista = secure_base_queryset(
         Base.objects.all(), request.user
     ).order_by('nome')
-    kpis_regionais = EstoqueService.get_kpis_por_regional(equipamentos, regionais_lista)
+    if empresa_contexto is not None:
+        regionais_lista = regionais_lista.filter(empresa=empresa_contexto)
+    if regional_id and regional_id.isdigit():
+        regionais_lista = regionais_lista.filter(pk=regional_id)
+    kpis_regionais = EstoqueService.get_kpis_por_regional(
+        equipamentos,
+        regionais_lista,
+        categorias=categorias_catalogo,
+    )
 
     return JsonResponse({
         'kpis': kpis,
@@ -1261,6 +1421,11 @@ def detalhes_regional_api(request, regional_id):
         Equipamento.objects.select_related('regional', 'produto'),
         request.user
     ).filter(regional_id__in=[regional_id])
+    equipamentos = TenantCatalogService.scope_equipment(
+        equipamentos,
+        request.user,
+        company=regional.empresa,
+    )
 
     produtos_agrupados = (
         equipamentos
@@ -1321,10 +1486,15 @@ def detalhes_regional_api(request, regional_id):
 @login_required
 @role_required('admin', 'gestor')
 def api_regionais_produto(request, produto_id):
+    produto = get_object_or_404(
+        TenantCatalogService.products(request.user),
+        pk=produto_id,
+    )
     qs = secure_queryset(
         Equipamento.objects.filter(produto_id=produto_id),
         request.user
     )
+    qs = TenantCatalogService.scope_equipment(qs, request.user)
     dados = (
         qs
         .values('regional__id', 'regional__nome')
@@ -1994,9 +2164,19 @@ def produtos_por_categoria(request):
         ).filter(pk=base_id).first()
         if not base:
             raise Http404
-    produtos = ComprasAccessPolicy.produtos_catalogo(
+    categorias = {
+        nome.casefold(): nome
+        for nome in TenantCatalogService.category_names(
+            request.user,
+            company=base.empresa if base else None,
+        )
+    }
+    categoria = categorias.get(str(categoria or '').casefold())
+    if categoria is None:
+        raise Http404
+    produtos = TenantCatalogService.products(
         request.user,
-        empresa=base.empresa if base else None,
+        company=base.empresa if base else None,
     ).filter(categoria__iexact=categoria).order_by('descricao').values('id', 'descricao')
 
     return JsonResponse({
@@ -2019,8 +2199,11 @@ def estoque_view(request):
     )
 
     regional_id = request.GET.get('regional')
+    empresa_contexto = None
     if regional_id and regional_id.isdigit():
-        _base_estoque_or_404(request, regional_id)
+        empresa_contexto = _base_estoque_or_404(
+            request, regional_id
+        ).empresa
     estoque_oculto_auditoria = bool(
         regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
     )
@@ -2031,6 +2214,16 @@ def estoque_view(request):
             regional_id=regional_id
         )
         request.session['estoque_base_contexto_id'] = int(regional_id)
+
+    equipamentos = TenantCatalogService.scope_equipment(
+        equipamentos,
+        request.user,
+        company=empresa_contexto,
+    )
+    categorias_catalogo = TenantCatalogService.category_names(
+        request.user,
+        company=empresa_contexto,
+    )
 
     total_estoque = equipamentos.count()
     ativos_estoque = equipamentos.filter(
@@ -2112,17 +2305,16 @@ def estoque_view(request):
         })
 
     categorias_estoque = [
-        {'nome': 'Coletores', 'total_modelos': 0},
-        {'nome': 'Notebooks', 'total_modelos': 0},
-        {'nome': 'Impressoras', 'total_modelos': 0},
-        {'nome': 'Routers', 'total_modelos': 0},
+        {'nome': nome, 'total_modelos': 0}
+        for nome in categorias_catalogo
     ]
 
     for categoria in categorias_estoque:
         categoria['total_modelos'] = sum(
             1
             for produto in produtos_processados
-            if produto.get('produto__categoria') == categoria['nome']
+            if str(produto.get('produto__categoria') or '').casefold()
+            == categoria['nome'].casefold()
         )
 
     if perfil.is_admin:
@@ -4197,13 +4389,14 @@ def criar_emprestimo(request):
             'numero_serie',
         )
     )
+    equipamentos = TenantCatalogService.scope_equipment(
+        equipamentos,
+        request.user,
+    )
 
     produtos_lista = (
-        Produto.objects
-        .filter(
-            equipamento__status='ATIVO',
-            equipamento__regional__in=regionais_usuario
-        )
+        TenantCatalogService.products(request.user)
+        .filter(equipamento__in=equipamentos)
         .distinct()
         .order_by('descricao')
     )
@@ -4304,7 +4497,10 @@ def criar_emprestimo(request):
     context = {
         'regionais_usuario': regionais_usuario,
         'regionais_destino': regionais_destino,
-        'categorias': Produto.CATEGORIAS,
+        'categorias': [
+            (categoria, categoria)
+            for categoria in TenantCatalogService.category_names(request.user)
+        ],
         'equipamentos': equipamentos,
         'produtos_lista': produtos_lista,
     }
@@ -5136,6 +5332,14 @@ def criar_solicitacao(request):
             )
             return redirect('estoque:criar_solicitacao')
 
+        categorias_permitidas = {
+            nome.casefold(): nome
+            for nome in TenantCatalogService.category_names(
+                request.user,
+                company=regional.empresa,
+            )
+        }
+
         try:
             with transaction.atomic():
 
@@ -5151,6 +5355,12 @@ def criar_solicitacao(request):
 
                     if not categoria or not qtd:
                         continue
+
+                    categoria = categorias_permitidas.get(categoria.casefold())
+                    if categoria is None:
+                        raise ValidationError(
+                            'Categoria de equipamento inválida para a empresa.'
+                        )
 
                     qtd = int(qtd)
 
@@ -5194,7 +5404,8 @@ def criar_solicitacao(request):
         request,
         'estoque/solicitacoes/criar.html',
         {
-            'regionais': perfil.regionais.order_by('nome')
+            'regionais': perfil.regionais.order_by('nome'),
+            'categorias': TenantCatalogService.category_names(request.user),
         }
     )
 
@@ -5994,8 +6205,10 @@ def editar_equipamento(request, equipamento_id):
     )
 
     produtos = (
-        Produto.objects.all()
-        .order_by(
+        TenantCatalogService.products(
+            request.user,
+            company=equipamento.regional.empresa,
+        ).order_by(
             'categoria',
             'descricao'
         )
@@ -6165,7 +6378,7 @@ def editar_equipamento(request, equipamento_id):
                 if produto_id:
 
                     novo_produto = get_object_or_404(
-                        Produto,
+                        produtos,
                         id=produto_id
                     )
 
@@ -6238,6 +6451,14 @@ def editar_equipamento(request, equipamento_id):
                     }
 
                     equipamento.status = status
+
+            if equipamento.produto_id and not TenantCatalogService.products(
+                request.user,
+                company=equipamento.regional.empresa,
+            ).filter(pk=equipamento.produto_id).exists():
+                raise ValidationError(
+                    'O produto não está habilitado no catálogo da empresa de destino.'
+                )
 
             if not alteracoes:
 
@@ -6424,14 +6645,17 @@ def checklist_view(request):
 
             # Captura equipamentos selecionados
             categorias_equipamentos = {
-                'router': 'Routers',
-                'coletor': 'Coletores',
-                'notebook': 'Notebooks',
-                'impressora': 'Impressoras',
+                f'categoria_{categoria.pk}': categoria.nome
+                for categoria in ChecklistCatalogService.categories(inventario.base)
             }
             equipamentos_ids = []
             equipamentos_por_categoria = {}
             quantidades_equipamentos = {}
+            for field in request.POST:
+                if field.startswith(('equipamentos_', 'quantidade_equipamento_')):
+                    key = field.removeprefix('quantidade_equipamento_').removeprefix('equipamentos_')
+                    if key not in categorias_equipamentos:
+                        raise ValidationError('Categoria não autorizada para esta empresa.')
             for chave, categoria in categorias_equipamentos.items():
                 ids_categoria = request.POST.getlist(f'equipamentos_{chave}')
                 equipamentos_por_categoria[categoria] = ids_categoria
@@ -6746,10 +6970,7 @@ def checklist_view(request):
     ]
 
     context = {
-        'coletores': equipamentos.filter(produto__categoria='Coletores'),
-        'impressoras': equipamentos.filter(produto__categoria='Impressoras'),
-        'notebooks': equipamentos.filter(produto__categoria='Notebooks'),
-        'routers': equipamentos.filter(produto__categoria='Routers'),
+        'categorias_checklist': ChecklistCatalogService.context(bases_checklist, equipamentos),
         'inventarios': inventarios,
         'insumos': [],  # será preenchido via JavaScript
         'lotes_tags': lotes_tags,
@@ -6784,8 +7005,10 @@ def get_equipamentos_disponiveis(request):
             status='ATIVO',
             finalidade=Equipamento.Finalidade.OPERACIONAL,
             regional=base,
-            produto__categoria=categoria,
+            produto__categoria__iexact=categoria,
         ).select_related('produto')
+
+    equipamentos = ChecklistCatalogService.equipment(equipamentos)
 
     data = [{
         'id': eq.id,

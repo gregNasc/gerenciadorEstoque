@@ -203,10 +203,8 @@ class ItemAquisicao(models.Model):
             and self.produto_id
             and self.aquisicao_id
         ):
-            configuracoes = CatalogoProdutoEmpresa.objects.filter(
+            if not CatalogoProdutoEmpresa.objects.filter(
                 empresa_id=self.aquisicao.empresa_id,
-            )
-            if configuracoes.exists() and not configuracoes.filter(
                 produto_id=self.produto_id,
                 ativo=True,
             ).exists():

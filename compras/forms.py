@@ -81,11 +81,18 @@ class CatalogoEmpresaForm(forms.Form):
             resource=ComprasAccessPolicy.CATALOGO,
         ).order_by('nome')
         self.fields['empresa'].queryset = empresas
-        self.fields['produtos'].queryset = Produto.objects.filter(
-            Q(empresa_catalogo_origem=None)
-            | Q(empresa_catalogo_origem__in=empresas),
-            ativo=True,
-        ).order_by('categoria', 'descricao')
+        produtos = Produto.objects.filter(ativo=True)
+        if not (user and user.is_superuser):
+            produtos = produtos.filter(
+                Q(empresa_catalogo_origem__in=empresas)
+                | Q(
+                    catalogos_empresa__empresa=empresa,
+                    catalogos_empresa__ativo=True,
+                ),
+            ).distinct()
+        self.fields['produtos'].queryset = produtos.order_by(
+            'categoria', 'descricao'
+        )
 
 
 class RemessaForm(forms.Form):

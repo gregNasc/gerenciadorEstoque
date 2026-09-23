@@ -5,7 +5,7 @@ class TenantFeatureRoutePolicy:
     """Resolve a feature exigida por cada ponto de entrada HTTP."""
 
     NAMESPACE_FEATURES = {
-        'auditorias': Modulo.Codigo.ESTOQUE,
+        'auditorias': Modulo.Codigo.AUDITORIAS,
         'chamados': Modulo.Codigo.CHAMADOS,
         'compras': Modulo.Codigo.CATALOGO,
         'insumos': Modulo.Codigo.INSUMOS,
@@ -18,8 +18,14 @@ class TenantFeatureRoutePolicy:
         ('estoque', 'assistente_operacional'): Modulo.Codigo.TORY,
 
         ('estoque', 'estoque'): Modulo.Codigo.EQUIPAMENTOS,
-        ('estoque', 'cadastrar_equipamento'): Modulo.Codigo.EQUIPAMENTOS,
-        ('estoque', 'produtos_por_categoria'): Modulo.Codigo.EQUIPAMENTOS,
+        ('estoque', 'cadastrar_equipamento'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'produtos_por_categoria'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
         ('estoque', 'detalhes_produto'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'equipamento_arquivo'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'equipamentos_por_regional'): Modulo.Codigo.EQUIPAMENTOS,
@@ -28,7 +34,10 @@ class TenantFeatureRoutePolicy:
         ('estoque', 'historico_modal'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'exportar_historico_excel'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'exportar_historico_pdf'): Modulo.Codigo.EQUIPAMENTOS,
-        ('estoque', 'editar_equipamento'): Modulo.Codigo.EQUIPAMENTOS,
+        ('estoque', 'editar_equipamento'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
         ('estoque', 'api_regionais_produto'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'detalhes_regional_api'): Modulo.Codigo.EQUIPAMENTOS,
 
@@ -62,6 +71,21 @@ class TenantFeatureRoutePolicy:
         ('estoque', 'api_kpis_json'): Modulo.Codigo.ESTOQUE,
         ('estoque', 'lista_regionais_json'): Modulo.Codigo.ESTOQUE,
 
+        ('estoque', 'manuais'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'drivers_impressoras'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'driver_impressora_arquivo'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'driver_impressora_desativar'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_resolucao'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_resolucao_arquivo'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_resolucao_desativar'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_clientes'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_cliente_detalhe'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_cliente_arquivo'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_videos'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_video_desativar'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'cadastrar_usuario'): Modulo.Codigo.USUARIOS,
+
         ('insumos', 'dashboard_saude_equipamentos'): Modulo.Codigo.EQUIPAMENTOS,
         ('insumos', 'dashboard_saude_geral'): (
             Modulo.Codigo.INSUMOS,
@@ -77,12 +101,32 @@ class TenantFeatureRoutePolicy:
         ('insumos', 'editar_checklist'): Modulo.Codigo.CHECKLIST,
         ('insumos', 'api_ultimo_checklist'): Modulo.Codigo.CHECKLIST,
         ('insumos', 'api_insumos_por_base'): Modulo.Codigo.CHECKLIST,
+        ('insumos', 'lista_insumos'): (
+            Modulo.Codigo.INSUMOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('insumos', 'cadastrar_insumos'): (
+            Modulo.Codigo.INSUMOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('insumos', 'editar_insumos'): (
+            Modulo.Codigo.INSUMOS,
+            Modulo.Codigo.CADASTROS,
+        ),
 
         ('compras', 'valores_insumos'): Modulo.Codigo.INSUMOS,
         ('compras', 'valores_equipamentos'): Modulo.Codigo.EQUIPAMENTOS,
         ('compras', 'alterar_preco_produto'): Modulo.Codigo.EQUIPAMENTOS,
         ('compras', 'template_precificacao_equipamentos'): Modulo.Codigo.EQUIPAMENTOS,
         ('compras', 'importar_precificacao_equipamentos'): Modulo.Codigo.EQUIPAMENTOS,
+        ('compras', 'criar_produto_catalogo'): (
+            Modulo.Codigo.CATALOGO,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('compras', 'resolver_codigo'): (
+            Modulo.Codigo.CATALOGO,
+            Modulo.Codigo.CADASTROS,
+        ),
     }
 
     DECLARATION_ROUTES = {

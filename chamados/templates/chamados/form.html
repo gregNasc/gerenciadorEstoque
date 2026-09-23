@@ -924,7 +924,7 @@
               </h2>
 
               <p class="create-section-description">
-                {% trans "Informe o equipamento afetado e descreva claramente o que está acontecendo." %}
+                Informe o(a) {{ tenant_labels.equipamento.singular|lower }} afetado(a) e descreva claramente o que está acontecendo.
               </p>
 
             </div>
@@ -955,7 +955,7 @@
               {% endfor %}
 
               <div class="form-text">
-                {% trans "Selecione Sistema para problemas de software ou a categoria do equipamento físico." %}
+                Selecione Sistema para problemas de software ou a categoria do(a) {{ tenant_labels.equipamento.singular|lower }} físico(a).
               </div>
 
             </div>
@@ -969,7 +969,7 @@
                 class="form-label"
                 for="{{ form.equipamento.id_for_label }}"
               >
-                {% trans "Equipamento" %}
+                {{ tenant_labels.equipamento.singular }}
               </label>
 
               {{ form.equipamento }}
@@ -985,7 +985,7 @@
                 class="form-text equipment-feedback"
                 aria-live="polite"
               >
-                {% trans "Obrigatório para equipamentos físicos e opcional para Sistema." %}
+                Obrigatório para {{ tenant_labels.equipamento.plural|lower }} físicos e opcional para Sistema.
               </div>
 
             </div>
@@ -1247,7 +1247,7 @@
               </span>
 
               <span>
-                {% trans "Confirme o equipamento ou sistema afetado." %}
+                Confirme o(a) {{ tenant_labels.equipamento.singular|lower }} ou sistema afetado.
               </span>
             </li>
 
@@ -1341,15 +1341,10 @@ document.addEventListener('DOMContentLoaded', function () {
         camposOperacionais.forEach(campo => { campo.disabled = reparacao; });
         if (equipamentoSelect) equipamentoSelect.disabled = reparacao || categoriaSelect?.value === 'Sistema';
 
-        const opcaoRede = categoriaSelect?.querySelector('option[value="Routers"]');
-        if (opcaoRede) {
-            opcaoRede.dataset.operationalLabel ||= 'Routers';
-            opcaoRede.textContent = reparacao ? 'Rede' : opcaoRede.dataset.operationalLabel;
-        }
         if (tipoAjuda) {
             tipoAjuda.textContent = reparacao
-                ? 'SLA de 24 horas corridas. Regional, inventário, loja, equipamento e chat não são necessários.'
-                : 'SLA de 30 minutos. Regional, inventário e loja são obrigatórios.';
+                ? 'SLA de 24 horas corridas. {{ tenant_labels.regional.singular|escapejs }}, inventário, loja, {{ tenant_labels.equipamento.singular|lower|escapejs }} e chat não são necessários.'
+                : 'SLA de 30 minutos. {{ tenant_labels.regional.singular|escapejs }}, inventário e loja são obrigatórios.';
         }
     }
 
@@ -1525,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (equipamentoFeedback) {
 
                     equipamentoFeedback.textContent =
-                        'Selecione uma categoria para carregar os equipamentos.';
+                        'Selecione uma categoria para carregar: {{ tenant_labels.equipamento.plural|lower|escapejs }}.';
 
                 }
 
@@ -1551,7 +1546,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (equipamentoFeedback) {
 
                     equipamentoFeedback.textContent =
-                        'Equipamento opcional para chamados relacionados a sistema ou software.';
+                        '{{ tenant_labels.equipamento.singular|escapejs }} opcional para chamados relacionados a sistema ou software.';
 
                 }
 
@@ -1563,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', function () {
             /* LOADING */
 
             opcaoInicial.textContent =
-                'Carregando equipamentos...';
+                'Carregando {{ tenant_labels.equipamento.plural|lower|escapejs }}...';
 
             equipamentoSelect.appendChild(
                 opcaoInicial
@@ -1582,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         aria-hidden="true"
                       ></span>
                       <span>
-                        Carregando equipamentos...
+                        Carregando {{ tenant_labels.equipamento.plural|lower|escapejs }}...
                       </span>
                     </span>
                     `;
@@ -1610,7 +1605,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     throw new Error(
                         dados.erro
-                        || 'Erro ao carregar equipamentos.'
+                        || 'Erro ao carregar {{ tenant_labels.equipamento.plural|lower|escapejs }}.'
                     );
 
                 }
@@ -1634,7 +1629,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ) {
 
                     selecione.textContent =
-                        'Nenhum equipamento encontrado';
+                        'Nenhum(a) {{ tenant_labels.equipamento.singular|lower|escapejs }} encontrado(a)';
 
                     equipamentoSelect.appendChild(
                         selecione
@@ -1646,7 +1641,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (equipamentoFeedback) {
 
                         equipamentoFeedback.textContent =
-                            'Nenhum equipamento disponível para a categoria e a base selecionadas.';
+                        'Nenhum(a) {{ tenant_labels.equipamento.singular|lower|escapejs }} disponível para a categoria e a {{ tenant_labels.base.singular|lower|escapejs }} selecionadas.';
 
                     }
 
@@ -1658,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 /* SUCCESS */
 
                 selecione.textContent =
-                    'Selecione um equipamento';
+                    'Selecione: {{ tenant_labels.equipamento.singular|lower|escapejs }}';
 
                 equipamentoSelect.appendChild(
                     selecione
@@ -1720,7 +1715,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.value = '';
 
                 option.textContent =
-                    'Erro ao carregar equipamentos';
+                    'Erro ao carregar {{ tenant_labels.equipamento.plural|lower|escapejs }}';
 
                 equipamentoSelect.appendChild(
                     option
@@ -1735,7 +1730,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         `
                         <span class="text-danger">
                           <i class="bi bi-exclamation-circle me-1"></i>
-                          Não foi possível carregar os equipamentos.
+                          Não foi possível carregar: {{ tenant_labels.equipamento.plural|lower|escapejs }}.
                         </span>
 
                         <button
@@ -1799,7 +1794,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (equipamentoFeedback) {
 
                 equipamentoFeedback.textContent =
-                    'Selecione uma categoria para carregar os equipamentos.';
+                    'Selecione uma categoria para carregar: {{ tenant_labels.equipamento.plural|lower|escapejs }}.';
 
             }
 

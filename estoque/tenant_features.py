@@ -8,8 +8,8 @@ class TenantFeatureService:
     """API central para configuração e consulta de módulos por tenant.
 
     A ausência de configuração nunca equivale a módulo habilitado. Empresas
-    existentes são populadas pela migration e empresas novas são provisionadas
-    pelo signal de criação para preservar o comportamento anterior.
+    existentes são populadas pela migration e empresas novas recebem registros
+    explicitamente desabilitados até a configuração no onboarding.
     """
 
     @classmethod
@@ -125,7 +125,7 @@ class TenantFeatureService:
         return configuracao
 
     @classmethod
-    def provision_defaults(cls, tenant, *, using='default'):
+    def provision_defaults(cls, tenant, *, using='default', enabled=False):
         tenant_id = cls._tenant_id(tenant)
         if not tenant_id:
             return 0
@@ -140,7 +140,7 @@ class TenantFeatureService:
             ModuloEmpresa(
                 empresa_id=tenant_id,
                 modulo_id=modulo_id,
-                habilitado=True,
+                habilitado=bool(enabled),
             )
             for modulo_id in Modulo.objects.using(using).filter(ativo=True).values_list(
                 'pk', flat=True

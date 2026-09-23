@@ -10,6 +10,7 @@ from estoque.models import (
     ModuloEmpresa,
     Perfil,
     RelacionamentoEmpresa,
+    TermoEmpresa,
 )
 
 
@@ -152,6 +153,26 @@ class SuperuserPanelStage23Tests(TestCase):
         self.assertEqual(response.status_code, 403)
         config.refresh_from_db()
         self.assertTrue(config.habilitado)
+
+    def test_superuser_can_customize_dashboard_company_label(self):
+        self.client.force_login(self.superuser)
+        enabled_codes = list(
+            Modulo.objects.filter(ativo=True).values_list('codigo', flat=True)
+        )
+
+        response = self.client.post(self.url, {
+            'acao': 'configurar_modulos',
+            'empresa': self.company_a.pk,
+            'modulos': enabled_codes,
+            'rotulo_empresa_dashboard': 'Operação industrial',
+        })
+
+        self.assertRedirects(response, self.url)
+        term = TermoEmpresa.objects.get(
+            empresa=self.company_a,
+            chave=TermoEmpresa.Chave.EMPRESA,
+        )
+        self.assertEqual(term.valor_singular, 'Operação industrial')
 
     def test_invalid_module_payload_is_rejected_without_partial_update(self):
         self.client.force_login(self.superuser)

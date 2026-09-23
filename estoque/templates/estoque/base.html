@@ -77,7 +77,7 @@
                     <a class="nav-link {% if url_name == 'index' %}active{% endif %}"
                        href="{% url 'estoque:index' %}">
                         <i class="bi bi-speedometer2"></i>
-                        {% trans "Dashboard de Ativos" %}
+                        Dashboard de {{ tenant_dashboard_label }}
                     </a>
                 </li>
                 {% endif %}
@@ -92,7 +92,7 @@
                        data-bs-toggle="dropdown"
                        aria-expanded="false">
                         <i class="bi bi-plus-circle"></i>
-                        {% trans "Checklist" %}
+                        {{ tenant_module_labels.checklist }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="checklistDropdown">
@@ -135,7 +135,7 @@
                        aria-expanded="false">
 
                         <i class="bi bi-box-seam"></i>
-                        {% trans "Estoque" %}
+                        {{ tenant_module_labels.estoque }}
 
                     </a>
 
@@ -150,7 +150,7 @@
                                href="{% url 'estoque:estoque' %}">
 
                                 <i class="bi bi-pc-display"></i>
-                                Equipamentos
+                                {{ tenant_module_labels.equipamentos }}
 
                             </a>
 
@@ -164,7 +164,7 @@
                                href="{% url 'insumos:estoque_insumos' %}">
 
                                 <i class="bi bi-box"></i>
-                                Insumos
+                                {{ tenant_module_labels.insumos }}
 
                             </a>
 
@@ -176,7 +176,7 @@
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_insumos' %}"><i class="bi bi-box me-2"></i>Insumos</a></li>
                         {% endif %}
                         {% if 'equipamentos' in tenant_features %}
-                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_equipamentos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_equipamentos' %}"><i class="bi bi-pc-display me-2"></i>Equipamentos</a></li>
+                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_equipamentos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_equipamentos' %}"><i class="bi bi-pc-display me-2"></i>{{ tenant_labels.equipamento.plural }}</a></li>
                         {% endif %}
                         {% if 'insumos' in tenant_features and 'equipamentos' in tenant_features %}
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_geral' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_geral' %}"><i class="bi bi-speedometer2 me-2"></i>Geral</a></li>
@@ -191,7 +191,7 @@
                         <li><a class="dropdown-item" href="{% url 'compras:valores_insumos' %}"><i class="bi bi-boxes me-2"></i>Valor de insumos</a></li>
                         {% endif %}
                         {% if 'equipamentos' in tenant_features %}
-                        <li><a class="dropdown-item" href="{% url 'compras:valores_equipamentos' %}"><i class="bi bi-pc-display-horizontal me-2"></i>Valor dos equipamentos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'compras:valores_equipamentos' %}"><i class="bi bi-pc-display-horizontal me-2"></i>Valor: {{ tenant_labels.equipamento.plural }}</a></li>
                         {% endif %}
                         {% if 'insumos' in tenant_features %}
                         <li>
@@ -360,7 +360,7 @@
                     <a class="nav-link dropdown-toggle {% if request.resolver_match.namespace == 'chamados' %}active{% endif %}"
                        href="#" id="chamadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-headset"></i>
-                        {% trans "Chamados" %}
+                        {{ tenant_module_labels.chamados }}
                         <span id="chamados-badge" class="badge rounded-pill text-bg-danger ms-1 {% if chamados_pendentes <= 0 %}d-none{% endif %}">{{ chamados_pendentes|default:0 }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="chamadosDropdown">
@@ -461,7 +461,7 @@
 
                         <i class="bi bi-arrow-left-right"></i>
 
-                        {% trans "Transferências" %}
+                        {{ tenant_module_labels.transferencias }}
 
                         {% if notificacoes_pendentes > 0 %}
                             <span class="badge rounded-pill text-bg-warning text-dark ms-1 badge-notificacao">
@@ -553,7 +553,7 @@
                                 <span>
 
                                     <i class="bi bi-cart-plus"></i>
-                                    {% trans "Empréstimos" %}
+                                    {{ tenant_module_labels.emprestimos }}
 
                                 </span>
 
@@ -569,15 +569,6 @@
 
                             </a>
 
-                        </li>
-                        {% endif %}
-
-                        {% if 'estoque' in tenant_features %}
-                        <li>
-                            <a class="dropdown-item" href="{% url 'auditorias:campanha_lista' %}">
-                                <i class="bi bi-clipboard-check"></i>
-                                {% trans "Auditorias" %}
-                            </a>
                         </li>
                         {% endif %}
 
@@ -608,6 +599,19 @@
                 {% endif %}
                 {% endif %}
 
+                <!-- AUDITORIAS -->
+                {% if 'auditorias' in tenant_features %}
+                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.namespace == 'auditorias' %}active{% endif %}"
+                       href="{% url 'auditorias:campanha_lista' %}">
+                        <i class="bi bi-clipboard-check"></i>
+                        {{ tenant_module_labels.auditorias }}
+                    </a>
+                </li>
+                {% endif %}
+                {% endif %}
+
                 <!-- SICK -->
                 {% if 'sick' in tenant_features %}
                 {% if not operador_restrito or pode_gerenciar_sick %}
@@ -618,7 +622,7 @@
                        href="{% url 'estoque:sick' %}">
 
                         <i class="bi bi-exclamation-triangle"></i>
-                        {% trans "SICK" %}
+                        {{ tenant_module_labels.sick }}
 
                     </a>
 
@@ -629,7 +633,7 @@
                 {% endif %}
 
                 <!-- CADASTROS -->
-                {% if 'equipamentos' in tenant_features or 'insumos' in tenant_features %}
+                {% if 'cadastros' in tenant_features and 'equipamentos' in tenant_features or 'cadastros' in tenant_features and 'insumos' in tenant_features %}
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item dropdown">
 
@@ -641,24 +645,24 @@
                        aria-expanded="false">
 
                         <i class="bi bi-folder2-open"></i>
-                        {% trans "Cadastros" %}
+                        {{ tenant_module_labels.cadastros }}
 
                     </a>
 
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="cadastrosDropdown">
 
-                        {% if 'equipamentos' in tenant_features %}
+                        {% if 'cadastros' in tenant_features and 'equipamentos' in tenant_features %}
                         <li>
                             <a class="dropdown-item"
                                href="{% url 'estoque:cadastrar_equipamento' %}">
                                 <i class="bi bi-pc-display"></i>
-                                Equipamentos
+                                {{ tenant_labels.equipamento.plural }}
                             </a>
                         </li>
                         {% endif %}
 
-                        {% if 'insumos' in tenant_features %}
+                        {% if 'cadastros' in tenant_features and 'insumos' in tenant_features %}
                         <li>
                             <a class="dropdown-item"
                                href="{% url 'insumos:cadastrar_insumos' %}">
@@ -672,35 +676,38 @@
 
                 </li>
                 {% endif %}
+                {% endif %}
 
                 <!-- DOCUMENTAÇÃO -->
+                {% if 'documentacao' in tenant_features %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if url_name == 'documentacao' or url_name == 'manuais' or url_name == 'drivers_impressoras' or url_name == 'documentacao_resolucao' or url_name == 'documentacao_clientes' or url_name == 'documentacao_videos' %}active{% endif %}"
                        href="#" id="documentacaoDropdown" role="button"
                        data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-journal-bookmark"></i>
-                        {% trans "Documentação" %}
+                        {{ tenant_module_labels.documentacao }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="documentacaoDropdown">
                         <li><a class="dropdown-item" href="{% url 'estoque:documentacao' %}"><i class="bi bi-collection"></i> {% trans "Biblioteca" %}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> {% trans "Manuais de equipamentos" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> Manuais: {{ tenant_labels.equipamento.plural }}</a></li>
                         <li><a class="dropdown-item" href="{% url 'estoque:drivers_impressoras' %}"><i class="bi bi-printer"></i> {% trans "Drivers de impressoras" %}</a></li>
                         <li><a class="dropdown-item" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i> {% trans "Resolução de problemas" %}</a></li>
                         <li><a class="dropdown-item" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i> {% trans "Checklist de clientes" %}</a></li>
                         <li><a class="dropdown-item" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i> {% trans "Vídeos" %}</a></li>
                     </ul>
                 </li>
+                {% endif %}
 
                 <!-- USUÁRIOS -->
-                {% if perfil.is_admin %}
+                {% if perfil.is_admin and 'usuarios' in tenant_features %}
                 <li class="nav-item">
 
                     <a class="nav-link {% if url_name == 'cadastrar_usuario' %}active{% endif %}"
                        href="{% url 'estoque:cadastrar_usuario' %}">
 
                         <i class="bi bi-person-add"></i>
-                        {% trans "Usuários" %}
+                        {{ tenant_module_labels.usuarios }}
 
                     </a>
 
@@ -723,7 +730,6 @@
                     </a>
                 </li>
                 -->
-                {% endif %}
                 {% endif %}
 
             </ul>

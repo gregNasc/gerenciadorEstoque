@@ -27,13 +27,13 @@
   {% if total_bases %}
   <div class="app-action-toolbar mb-3" role="status">
     <span><strong>{{ bases_finalizadas }}</strong> {% blocktrans count total=total_bases %}de {{ total }} base finalizada{% plural %}de {{ total }} bases finalizadas{% endblocktrans %}</span>
-    <span class="text-secondary small">{% trans "O detalhamento por base está disponível na tabela abaixo." %}</span>
+    <span class="text-secondary small">O detalhamento por {{ tenant_labels.base.singular|lower }} está disponível na tabela abaixo.</span>
   </div>
   {% endif %}
 
   <div class="table-responsive">
     <table class="table align-middle">
-      <thead><tr><th>{% trans "Base" %}</th><th>{% trans "Início" %}</th><th>{% trans "Fim" %}</th><th>{% trans "Status" %}</th><th>{% trans "Ações" %}</th></tr></thead>
+      <thead><tr><th>{{ tenant_labels.base.singular }}</th><th>{% trans "Início" %}</th><th>{% trans "Fim" %}</th><th>{% trans "Status" %}</th><th>{% trans "Ações" %}</th></tr></thead>
       <tbody>
       {% for auditoria in auditorias %}
         <tr>
@@ -66,7 +66,7 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="5"><div class="app-empty-state"><i class="bi bi-building app-empty-state__icon" aria-hidden="true"></i>{% trans "Nenhuma base incluída." %}</div></td></tr>
+        <tr><td colspan="5"><div class="app-empty-state"><i class="bi bi-building app-empty-state__icon" aria-hidden="true"></i>Nenhuma {{ tenant_labels.base.singular|lower }} incluída.</div></td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -74,9 +74,9 @@
 
   {% if pode_adicionar %}
   <div class="card card-body mb-3">
-    <h4>{% trans "Adicionar bases em lote" %}</h4>
-    <p class="text-muted">{% trans "Todas as bases recebem o mesmo período. Se uma validação falhar, nenhuma inclusão será gravada." %}</p>
-    <form method="post">{% csrf_token %}{{ form_base.as_p }}<button class="btn btn-primary">{% trans "Adicionar bases" %}</button></form>
+    <h4>Adicionar {{ tenant_labels.base.plural|lower }} em lote</h4>
+    <p class="text-muted">Todas as {{ tenant_labels.base.plural|lower }} recebem o mesmo período. Se uma validação falhar, nenhuma inclusão será gravada.</p>
+    <form method="post">{% csrf_token %}{{ form_base.as_p }}<button class="btn btn-primary">Adicionar {{ tenant_labels.base.plural|lower }}</button></form>
   </div>
   {% endif %}
 
@@ -93,7 +93,7 @@
   {% if eventos %}
   <div class="card card-body">
     <h4>{% trans "Histórico imutável" %}</h4>
-    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>{% trans "Data" %}</th><th>{% trans "Evento" %}</th><th>{% trans "Usuário" %}</th><th>{% trans "Dados" %}</th></tr></thead><tbody>
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>{% trans "Data" %}</th><th>{% trans "Evento" %}</th><th>{{ tenant_labels.usuario.singular }}</th><th>{% trans "Dados" %}</th></tr></thead><tbody>
     {% for evento in eventos %}<tr><td>{{ evento.criado_em }}</td><td>{{ evento.tipo }}</td><td>{{ evento.usuario|default:'SISTEMA' }}</td><td><small>{{ evento.dados }}</small></td></tr>{% endfor %}
     </tbody></table></div>
   </div>

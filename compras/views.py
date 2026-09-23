@@ -750,9 +750,24 @@ def criar_produto_catalogo(request):
                 produto.criado_por = request.user
                 empresa_catalogo = form.cleaned_data['empresa_catalogo']
                 produto.empresa_catalogo_origem = empresa_catalogo
-                produto.save()
                 if not empresa_catalogo:
                     raise PermissionDenied('Nenhuma empresa disponível para o catálogo.')
+                from estoque.models import CategoriaEquipamentoEmpresa
+                categoria = CategoriaEquipamentoEmpresa.objects.filter(
+                    empresa=empresa_catalogo,
+                    nome__iexact=produto.categoria,
+                ).first()
+                if categoria is None:
+                    categoria = CategoriaEquipamentoEmpresa.objects.create(
+                        empresa=empresa_catalogo,
+                        nome=produto.categoria,
+                    )
+                if not categoria.ativo:
+                    raise ValidationError(
+                        'A categoria está desativada para esta empresa.'
+                    )
+                produto.categoria = categoria.nome
+                produto.save()
                 CatalogoProdutoEmpresa.objects.update_or_create(
                     empresa=empresa_catalogo,
                     produto=produto,

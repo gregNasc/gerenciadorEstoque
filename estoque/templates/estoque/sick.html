@@ -1,7 +1,7 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Fluxo SICK" %}{% endblock %}
+{% block title %}Fluxo {{ tenant_module_labels.sick }}{% endblock %}
 
 {% block content %}
 
@@ -13,11 +13,11 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
                     <h2 class="h4 fw-semibold mb-0">
-                        {% trans "🛠️ Equipamentos em SICK" %}
+                        🛠️ {{ tenant_labels.equipamento.plural }} — {{ tenant_module_labels.sick }}
                     </h2>
 
                     <p class="text-secondary small mt-1 mb-0">
-                        {% trans "Gestão de equipamentos com problemas, manutenção e retorno às bases" %}
+                        Gestão de {{ tenant_labels.equipamento.plural|lower }} com problemas, {{ tenant_labels.manutencao.singular|lower }} e retorno às {{ tenant_labels.base.plural|lower }}
                     </p>
                 </div>
 
@@ -36,9 +36,9 @@
                         <i class="bi bi-tools text-secondary fs-5" aria-hidden="true"></i>
 
                         <div>
-                            <strong>{% trans "Fila da manutenção" %}</strong>
+                            <strong>Fila de {{ tenant_labels.manutencao.singular|lower }}</strong>
                             <div class="small text-secondary mt-1">
-                                {% trans "Equipamentos destinados ao fluxo de recebimento, avaliação e manutenção." %}
+                                {{ tenant_labels.equipamento.plural }} destinados ao fluxo de recebimento, avaliação e {{ tenant_labels.manutencao.singular|lower }}.
                             </div>
                         </div>
                     </div>
@@ -49,9 +49,9 @@
                         <i class="bi bi-building-check text-secondary fs-5" aria-hidden="true"></i>
 
                         <div>
-                            <strong>{% trans "SICKs das suas bases" %}</strong>
+                            <strong>{{ tenant_module_labels.sick }} — suas {{ tenant_labels.base.plural|lower }}</strong>
                             <div class="small text-secondary mt-1">
-                                {% trans "Acompanhe os equipamentos vinculados às bases permitidas para o seu usuário." %}
+                                Acompanhe os {{ tenant_labels.equipamento.plural|lower }} vinculados às {{ tenant_labels.base.plural|lower }} permitidas para o seu {{ tenant_labels.usuario.singular|lower }}.
                             </div>
                         </div>
                     </div>
@@ -67,14 +67,14 @@
                         </h6>
 
                         <small class="text-secondary">
-                            {% trans "Selecione uma etapa para visualizar os equipamentos correspondentes." %}
+                            Selecione uma etapa para visualizar os {{ tenant_labels.equipamento.plural|lower }} correspondentes.
                         </small>
                     </div>
                 </div>
 
                 <nav
                     class="sick-stage-tabs"
-                    aria-label="{% trans 'Etapas do SICK' %}"
+                    aria-label="Etapas: {{ tenant_module_labels.sick }}"
                 >
                     <a
                         class="stage-tab {% if etapa_filter == 'IDENTIFICADO' %}active{% endif %}"
@@ -112,7 +112,7 @@
                         class="stage-tab {% if etapa_filter == 'EM_MANUTENCAO' %}active{% endif %}"
                         href="?etapa=EM_MANUTENCAO{% if filtros_abas %}&{{ filtros_abas }}{% endif %}"
                     >
-                        <span>{% trans "Manutenção" %}</span>
+                        <span>{{ tenant_labels.manutencao.singular }}</span>
                         <strong>{{ total_manutencao }}</strong>
                     </a>
 
@@ -147,7 +147,7 @@
                 <form
                     method="get"
                     class="sick-filter-form"
-                    aria-label="{% trans 'Filtros de equipamentos SICK' %}"
+                    aria-label="Filtros: {{ tenant_labels.equipamento.plural }} — {{ tenant_module_labels.sick }}"
                 >
                     <input type="hidden" name="etapa" value="{{ etapa_filter }}">
 
@@ -157,7 +157,7 @@
                                 for="filtroRegional"
                                 class="form-label small text-secondary fw-semibold mb-1"
                             >
-                                {% trans "Regional" %}
+                                {{ tenant_labels.regional.singular }}
                             </label>
 
                             <select
@@ -213,7 +213,7 @@
                                 for="filtroProduto"
                                 class="form-label small text-secondary fw-semibold mb-1"
                             >
-                                {% trans "Equipamento" %}
+                                {{ tenant_labels.equipamento.singular }}
                             </label>
 
                             <select
@@ -274,7 +274,7 @@
                                     value="manutencao"
                                     {% if situacao_filter == 'manutencao' %}selected{% endif %}
                                 >
-                                    {% trans "Em manutenção" %}
+                                    Em {{ tenant_labels.manutencao.singular|lower }}
                                 </option>
 
                                 <option
@@ -307,7 +307,7 @@
                                 id="filtroBusca"
                                 value="{{ busca }}"
                                 class="form-control form-control-sm bg-white"
-                                placeholder="{% trans 'Equipamento, série, patrimônio ou regional...' %}"
+                                placeholder="{{ tenant_labels.equipamento.singular }}, série, patrimônio ou {{ tenant_labels.regional.singular|lower }}..."
                             >
                         </div>
 
@@ -334,7 +334,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <div>
                     <h6 class="fw-semibold mb-1">
-                        {% trans "Equipamentos encontrados" %}
+                        {{ tenant_labels.equipamento.plural }} encontrados
                     </h6>
 
                     <small class="text-secondary">
@@ -362,8 +362,8 @@
     </div>
     <div class="card-body px-4 pb-4">
       <div class="row g-3 small mb-4 sick-info-grid">
-        <div class="col-6 col-md-3"><strong>{% trans "Empresa" %}</strong><br>{{ sick.equipamento.regional.empresa.nome }}</div>
-        <div class="col-6 col-md-3"><strong>{% trans "Base" %}</strong><br>{{ sick.equipamento.regional.nome }}</div>
+        <div class="col-6 col-md-3"><strong>{{ tenant_labels.empresa.singular }}</strong><br>{{ sick.equipamento.regional.empresa.nome }}</div>
+        <div class="col-6 col-md-3"><strong>{{ tenant_labels.base.singular }}</strong><br>{{ sick.equipamento.regional.nome }}</div>
         <div class="col-6 col-md-3"><strong>{% trans "Série" %}</strong><br>{{ sick.equipamento.numero_serie|default:"—" }}</div>
         <div class="col-6 col-md-3"><strong>{% trans "Patrimônio" %}</strong><br>{{ sick.equipamento.patrimonio|default:"—" }}</div>
         <div class="col-12 col-md-3"><strong>{% trans "Categoria do problema" %}</strong><br>{{ sick.categoria }}</div>
@@ -404,11 +404,11 @@
 
       <details class="equipment-history mb-4">
         <summary class="history-summary">
-          <span><i class="bi bi-clock-history me-2"></i>{% trans "Histórico do equipamento" %}</span>
+          <span><i class="bi bi-clock-history me-2"></i>Histórico do {{ tenant_labels.equipamento.singular|lower }}</span>
           <span class="d-flex flex-wrap gap-2 justify-content-end">
             {% if sick.reincidente %}<span class="badge text-bg-warning">{% trans "Reincidente" %}</span>{% endif %}
             <span class="badge text-bg-secondary">{{ sick.total_ocorrencias }} {% trans "ocorrência(s)" %}</span>
-            <span class="badge text-bg-primary">{{ sick.total_envios_manutencao }} {% trans "envio(s) à manutenção" %}</span>
+            <span class="badge text-bg-primary">{{ sick.total_envios_manutencao }} envio(s) a {{ tenant_labels.manutencao.singular|lower }}</span>
           </span>
         </summary>
         <div class="history-content">
@@ -417,7 +417,7 @@
             <div class="history-row {% if ocorrencia.id == sick.id %}current{% endif %}">
               <div><small>{% trans "Abertura" %}</small><strong>{{ ocorrencia.data_ocorrencia|date:"d/m/Y H:i" }}</strong></div>
               <div><small>{% trans "Problema" %}</small><strong>{{ ocorrencia.categoria|default:"—" }}</strong><span>{{ ocorrencia.motivo|default:"—" }}</span></div>
-              <div><small>{% trans "Envio à manutenção" %}</small><strong>{{ ocorrencia.enviado_manutencao_em|date:"d/m/Y H:i"|default:"Não enviado" }}</strong></div>
+              <div><small>Envio a {{ tenant_labels.manutencao.singular|lower }}</small><strong>{{ ocorrencia.enviado_manutencao_em|date:"d/m/Y H:i"|default:"Não enviado" }}</strong></div>
               <div><small>{% trans "Resultado" %}</small><strong>{{ ocorrencia.get_etapa_display }}</strong><span>{% if ocorrencia.status_final %}{{ ocorrencia.get_status_final_display }}{% else %}{% trans "Em aberto" %}{% endif %}</span></div>
               {% if ocorrencia.id == sick.id %}<span class="current-label">{% trans "Atual" %}</span>{% endif %}
             </div>
@@ -432,19 +432,19 @@
         <details class="action-box"><summary class="btn btn-outline-secondary">{% trans "Editar informações" %}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="atualizar_informacoes"><input type="hidden" name="sick_id" value="{{ sick.id }}"><input name="categoria" value="{{ sick.categoria }}" required class="form-control mb-2" placeholder="{% trans 'Categoria' %}"><textarea name="motivo" required class="form-control mb-2" placeholder="{% trans 'Motivo' %}">{{ sick.motivo }}</textarea><textarea name="observacao" required class="form-control mb-2" placeholder="{% trans 'Observação' %}">{{ sick.descricao }}</textarea><button class="btn btn-secondary">{% trans "Salvar informações" %}</button></form></details>
         {% endif %}
         {% if sick.etapa == 'IDENTIFICADO' and sick.pode_enviar_base %}
-        <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-building me-1"></i>{% trans "Etapa 1 — responsabilidade da base onde o equipamento está parado" %}</div>
+        <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-building me-1"></i>Etapa 1 — responsabilidade da {{ tenant_labels.base.singular|lower }} onde o(a) {{ tenant_labels.equipamento.singular|lower }} está parado(a)</div>
         <details class="action-box">
-          <summary class="btn btn-primary">{% trans "Enviar para manutenção — etapa 2" %}</summary>
+          <summary class="btn btn-primary">Enviar para {{ tenant_labels.manutencao.singular|lower }} — etapa 2</summary>
           <form method="post" class="card card-body mt-2">
             {% csrf_token %}
             <input type="hidden" name="acao" value="enviar_para_manutencao">
             <input type="hidden" name="sick_id" value="{{ sick.id }}">
-            <label class="form-label">{% trans "Fluxo da manutenção" %} *</label>
+            <label class="form-label">Fluxo de {{ tenant_labels.manutencao.singular|lower }} *</label>
             <select name="tipo_destino" required class="form-select mb-2">
               <option value="MATRIZ">{% trans "Enviar para a matriz" %}</option>
-              <option value="TERCEIRIZADA">{% trans "Enviar para manutenção terceirizada" %}</option>
+              <option value="TERCEIRIZADA">Enviar para {{ tenant_labels.manutencao.singular|lower }} terceirizada</option>
             </select>
-            <div class="form-text mb-2">{% trans "No fluxo terceirizado, somente a base de origem controla e visualiza o envio e o retorno." %}</div>
+            <div class="form-text mb-2">No fluxo terceirizado, somente a {{ tenant_labels.base.singular|lower }} de origem controla e visualiza o envio e o retorno.</div>
             <label class="form-label">{% trans "Destino" %} *</label>
             <input name="destino_manutencao" required class="form-control mb-2">
             <label class="form-label">{% trans "Transportadora ou portador" %}</label>
@@ -454,28 +454,28 @@
             <label class="form-label">{% trans "Código de rastreio dos Correios" %}</label>
             <input name="codigo_rastreio_envio" class="form-control mb-2" placeholder="AA123456789BR">
             <textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observação' %}"></textarea>
-            <button class="btn btn-primary">{% trans "Confirmar envio para manutenção" %}</button>
+            <button class="btn btn-primary">Confirmar envio para {{ tenant_labels.manutencao.singular|lower }}</button>
           </form>
         </details>
         {% elif sick.etapa == 'IDENTIFICADO' %}
-        <div class="alert alert-dark border w-100 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>{% trans "Aguardando a base responsável registrar o envio para a manutenção." %}</div>
+        <div class="alert alert-dark border w-100 mb-0 small"><i class="bi bi-hourglass-split me-1"></i>Aguardando a {{ tenant_labels.base.singular|lower }} responsável registrar o envio para {{ tenant_labels.manutencao.singular|lower }}.</div>
         {% elif sick.etapa == 'EM_TRANSITO' and sick.pode_confirmar_recebimento %}
-        <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-person-check me-1"></i>{% trans "Etapa 2 — confirmação exclusiva Manutenção" %}</div>
+        <div class="w-100 small text-primary fw-semibold mb-1"><i class="bi bi-person-check me-1"></i>Etapa 2 — confirmação exclusiva: {{ tenant_labels.manutencao.singular }}</div>
         <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="confirmar_recebimento"><input type="hidden" name="sick_id" value="{{ sick.id }}"><button class="btn btn-primary">{% trans "Confirmar recebimento" %}</button></form>
         {% elif sick.etapa == 'EM_TRANSITO' %}
-        <div class="alert alert-success border-0 w-100 mb-0 small"><i class="bi bi-truck me-1"></i>{% trans "Envio registrado. Aguardando manutenção confirmar o recebimento." %}</div>
+        <div class="alert alert-success border-0 w-100 mb-0 small"><i class="bi bi-truck me-1"></i>Envio registrado. Aguardando {{ tenant_labels.manutencao.singular|lower }} confirmar o recebimento.</div>
         {% elif sick.etapa == 'RECEBIDO' and sick.pode_acao_manutencao %}
         <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="iniciar_avaliacao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><button class="btn btn-primary">{% trans "Iniciar avaliação" %}</button></form>
         {% elif sick.etapa == 'EM_AVALIACAO' and sick.pode_acao_manutencao %}
-        <details class="action-box"><summary class="btn btn-outline-primary">{% trans "Iniciar manutenção" %}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="iniciar_manutencao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><input name="causa_identificada" required class="form-control mb-2" placeholder="{% trans 'Causa identificada' %}"><textarea name="diagnostico" required class="form-control mb-2" placeholder="{% trans 'Diagnóstico' %}"></textarea><textarea name="observacao_tecnica" required class="form-control mb-2" placeholder="{% trans 'Ação planejada/observação técnica' %}"></textarea><label class="form-label" for="previsao-{{ sick.id }}">{% trans "Previsão para conclusão/retorno" %} *</label><input id="previsao-{{ sick.id }}" type="date" name="previsao_retorno" required class="form-control mb-3"><button class="btn btn-primary">{% trans "Iniciar manutenção" %}</button></form></details>
+        <details class="action-box"><summary class="btn btn-outline-primary">Iniciar {{ tenant_labels.manutencao.singular|lower }}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="iniciar_manutencao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><input name="causa_identificada" required class="form-control mb-2" placeholder="{% trans 'Causa identificada' %}"><textarea name="diagnostico" required class="form-control mb-2" placeholder="{% trans 'Diagnóstico' %}"></textarea><textarea name="observacao_tecnica" required class="form-control mb-2" placeholder="{% trans 'Ação planejada/observação técnica' %}"></textarea><label class="form-label" for="previsao-{{ sick.id }}">{% trans "Previsão para conclusão/retorno" %} *</label><input id="previsao-{{ sick.id }}" type="date" name="previsao_retorno" required class="form-control mb-3"><button class="btn btn-primary">Iniciar {{ tenant_labels.manutencao.singular|lower }}</button></form></details>
         {% elif sick.etapa == 'EM_MANUTENCAO' and sick.pode_acao_manutencao %}
-        <details class="action-box"><summary class="btn btn-outline-success">{% trans "Concluir manutenção" %}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="concluir_manutencao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><textarea name="solucao_aplicada" required class="form-control mb-2" placeholder="{% trans 'Solução aplicada' %}"></textarea><textarea name="resultado_manutencao" required class="form-control mb-2" placeholder="{% trans 'Resultado' %}"></textarea><label class="form-label">{% trans "Possui condição de retornar?" %}</label><select name="apto_retorno" class="form-select mb-2"><option value="true">{% trans "Sim" %}</option><option value="false">{% trans "Não — requer decisão administrativa" %}</option></select><textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observações' %}"></textarea><button class="btn btn-success">{% trans "Registrar conclusão" %}</button></form></details>
+        <details class="action-box"><summary class="btn btn-outline-success">Concluir {{ tenant_labels.manutencao.singular|lower }}</summary><form method="post" class="card card-body mt-2">{% csrf_token %}<input type="hidden" name="acao" value="concluir_manutencao"><input type="hidden" name="sick_id" value="{{ sick.id }}"><textarea name="solucao_aplicada" required class="form-control mb-2" placeholder="{% trans 'Solução aplicada' %}"></textarea><textarea name="resultado_manutencao" required class="form-control mb-2" placeholder="{% trans 'Resultado' %}"></textarea><label class="form-label">{% trans "Possui condição de retornar?" %}</label><select name="apto_retorno" class="form-select mb-2"><option value="true">{% trans "Sim" %}</option><option value="false">{% trans "Não — requer decisão administrativa" %}</option></select><textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observações' %}"></textarea><button class="btn btn-success">{% trans "Registrar conclusão" %}</button></form></details>
         {% if sick.apto_retorno == False %}
         <details class="action-box"><summary class="btn btn-outline-danger">{% trans "Inativar sem reparo" %}</summary><form method="post" class="card card-body mt-2 border-danger">{% csrf_token %}<input type="hidden" name="acao" value="inativar_sem_reparo"><input type="hidden" name="sick_id" value="{{ sick.id }}"><p class="small text-secondary">{% trans "Use somente após confirmar tecnicamente que o equipamento não possui mais conserto." %}</p><label class="form-label">{% trans "Justificativa técnica" %} *</label><textarea name="motivo_inativacao" required class="form-control mb-3" placeholder="{% trans 'Descreva por que o equipamento não pode ser reparado' %}"></textarea><button class="btn btn-danger">{% trans "Confirmar inativação" %}</button></form></details>
         {% endif %}
         {% elif sick.etapa == 'AGUARDANDO_RETORNO' and sick.pode_acao_base %}
         <details class="action-box">
-          <summary class="btn btn-success">{% trans "Confirmar retorno para a base" %}</summary>
+          <summary class="btn btn-success">Confirmar retorno para a {{ tenant_labels.base.singular|lower }}</summary>
           <form method="post" class="card card-body mt-2">
             {% csrf_token %}
             <input type="hidden" name="acao" value="confirmar_retorno">
@@ -483,14 +483,14 @@
             <label class="form-label">{% trans "Código de rastreio do retorno" %}</label>
             <input name="codigo_rastreio_retorno" class="form-control mb-2" placeholder="AA123456789BR">
             <textarea name="observacao" class="form-control mb-2" placeholder="{% trans 'Observação do recebimento' %}"></textarea>
-            <button class="btn btn-success">{% trans "Confirmar retorno para a base" %}</button>
+            <button class="btn btn-success">Confirmar retorno para a {{ tenant_labels.base.singular|lower }}</button>
           </form>
         </details>
         {% endif %}
       </div>
     </div>
   </article>
-  {% empty %}<div class="alert alert-light border text-center py-4">{% if etapa_filter == 'IDENTIFICADO' %}{% trans "Nenhum equipamento em SICK." %}{% else %}{% trans "Nenhum registro SICK encontrado para os filtros informados." %}{% endif %}</div>{% endfor %}
+  {% empty %}<div class="alert alert-light border text-center py-4">{% if etapa_filter == 'IDENTIFICADO' %}Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} em {{ tenant_module_labels.sick }}.{% else %}Nenhum registro de {{ tenant_module_labels.sick }} encontrado para os filtros informados.{% endif %}</div>{% endfor %}
 </div>
 
         </div>

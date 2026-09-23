@@ -143,5 +143,5 @@ class AdminCompanyUserManagementTests(TestCase):
 
         resposta_tela = self.client.get(reverse('estoque:cadastrar_usuario'))
         self.assertContains(resposta_tela, reverse('admin:index'))
-        self.assertContains(resposta_tela, 'Painel Superuser')
+        self.assertContains(resposta_tela, 'Painel Administrativo')
         self.assertEqual(self.client.get(reverse('admin:index')).status_code, 200)

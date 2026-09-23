@@ -1,7 +1,7 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Usuarios - Gerenciador de Estoque" %}{% endblock %}
+{% block title %}{{ tenant_module_labels.usuarios }} - Gerenciador de Estoque{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-3 usuarios-page">
@@ -9,13 +9,13 @@
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-people fs-3 text-secondary"></i>
             <div>
-                <h1 class="h3 fw-semibold mb-0">{% trans "Usuarios" %}</h1>
-                <p class="text-secondary small mb-0">{% trans "Cadastro, acesso por empresa/base e contatos para comunicados." %}</p>
+                <h1 class="h3 fw-semibold mb-0">{{ tenant_module_labels.usuarios }}</h1>
+                <p class="text-secondary small mb-0">Cadastro, acesso por {{ tenant_labels.empresa.singular|lower }}/{{ tenant_labels.base.singular|lower }} e contatos para comunicados.</p>
             </div>
         </div>
         <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" id="btnNovoUsuario">
             <i class="bi bi-plus-circle"></i>
-            {% trans "Novo usuario" %}
+            Novo(a) {{ tenant_labels.usuario.singular|lower }}
         </button>
     </div>
 
@@ -25,7 +25,7 @@
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                         <div>
-                            <h2 class="h5 fw-semibold mb-1" id="formTitulo">{% trans "Cadastrar usuario" %}</h2>
+                            <h2 class="h5 fw-semibold mb-1" id="formTitulo">Cadastrar {{ tenant_labels.usuario.singular|lower }}</h2>
                             <p class="text-secondary small mb-0" id="formSubtitulo">{% trans "Preencha o essencial para liberar o acesso." %}</p>
                         </div>
                         <span class="badge text-bg-light border" id="modoBadge">{% trans "Novo" %}</span>
@@ -43,7 +43,7 @@
 
                             <div class="row g-3">
                                 <div class="col-md-7">
-                                    <label for="username" class="form-label">{% trans "Usuario" %} <span class="text-danger">*</span></label>
+                                    <label for="username" class="form-label">{{ tenant_labels.usuario.singular }} <span class="text-danger">*</span></label>
                                     <input type="text" name="username" id="username" class="form-control form-control-sm" required autocomplete="username">
                                 </div>
                                 <div class="col-md-5">
@@ -67,7 +67,7 @@
                                 <div class="col-md-5 d-flex align-items-end">
                                     <div class="form-check form-switch mb-1">
                                         <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="is_active" checked>
-                                        <label class="form-check-label small" for="is_active">{% trans "Usuario ativo" %}</label>
+                                        <label class="form-check-label small" for="is_active">{{ tenant_labels.usuario.singular }} ativo</label>
                                     </div>
                                 </div>
                                 <div class="col-12">
@@ -79,7 +79,7 @@
                                         </div>
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" name="usuario_sick" id="usuario_sick">
-                                            <label class="form-check-label small" for="usuario_sick">{% trans "Operador SICK" %}</label>
+                                            <label class="form-check-label small" for="usuario_sick">Operador {{ tenant_module_labels.sick }}</label>
                                         </div>
                                     </div>
                                 </div>
@@ -164,12 +164,12 @@
                         <section class="form-section mb-0" id="escopoAcesso">
                             <div class="section-title">
                                 <i class="bi bi-building"></i>
-                                <span>{% trans "Empresa e bases operacionais" %}</span>
+                                <span>{{ tenant_labels.empresa.singular }} e {{ tenant_labels.base.plural|lower }} operacionais</span>
                             </div>
 
                             <div class="row g-3">
                                 <div class="col-12">
-                                    <label for="empresa" class="form-label">{% trans "Empresa" %} <span class="text-danger">*</span></label>
+                                    <label for="empresa" class="form-label">{{ tenant_labels.empresa.singular }} <span class="text-danger">*</span></label>
                                     <select name="empresa" id="empresa" class="form-select form-select-sm">
                                         <option value="">{% trans "Selecione a empresa" %}</option>
                                         {% for empresa in empresas_usuario %}
@@ -202,7 +202,7 @@
                                 </div>
                                 <div class="col-12 escopo-bases-operacionais">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                        <label for="buscaBase" class="form-label mb-0">{% trans "Bases" %} <span class="text-danger">*</span></label>
+                                        <label for="buscaBase" class="form-label mb-0">{{ tenant_labels.base.plural }} <span class="text-danger">*</span></label>
                                         <div class="d-flex align-items-center gap-2 base-actions">
                                             <button type="button" class="btn btn-light btn-sm" id="btnBasesVisiveis" title="{% trans 'Selecionar bases visiveis' %}">
                                                 <i class="bi bi-check2-square"></i>
@@ -212,7 +212,7 @@
                                             </button>
                                             <div class="input-group input-group-sm">
                                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                                <input type="search" id="buscaBase" class="form-control" placeholder="{% trans "Buscar base" %}">
+                                                <input type="search" id="buscaBase" class="form-control" placeholder="Buscar {{ tenant_labels.base.singular|lower }}">
                                             </div>
                                         </div>
                                     </div>
@@ -238,7 +238,7 @@
                                 </div>
                                 <div class="col-12 escopo-bases-operacionais">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                        <label for="buscaBaseChecklist" class="form-label mb-0">{% trans "Bases do checklist" %}</label>
+                                        <label for="buscaBaseChecklist" class="form-label mb-0">{{ tenant_labels.base.plural }} do checklist</label>
                                         <div class="d-flex align-items-center gap-2 base-actions">
                                             <button type="button" class="btn btn-light btn-sm" id="btnCopiarBasesAcesso" title="{% trans 'Copiar bases de acesso' %}">
                                                 <i class="bi bi-copy"></i>
@@ -248,7 +248,7 @@
                                             </button>
                                             <div class="input-group input-group-sm">
                                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                                <input type="search" id="buscaBaseChecklist" class="form-control" placeholder="{% trans "Buscar base" %}">
+                                                <input type="search" id="buscaBaseChecklist" class="form-control" placeholder="Buscar {{ tenant_labels.base.singular|lower }}">
                                             </div>
                                         </div>
                                     </div>

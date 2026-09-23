@@ -7,6 +7,7 @@ from django.test import TestCase
 from estoque.models import (
     Base,
     CapacidadeRelacionamentoEmpresa,
+    CategoriaEquipamentoEmpresa,
     Empresa,
     Equipamento,
     Perfil,
@@ -14,6 +15,7 @@ from estoque.models import (
     RelacionamentoEmpresa,
     Transferencia,
 )
+from compras.models import CatalogoProdutoEmpresa
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.tenant_scope import TenantScope
 from insumos.models import (
@@ -54,6 +56,14 @@ class ToryTenantIsolationStage20Tests(TestCase):
             modelo='T20',
             categoria='Coletores',
         )
+        for empresa in (self.brasil, self.latam, self.oxxo, self.antropic):
+            CategoriaEquipamentoEmpresa.objects.create(
+                empresa=empresa,
+                nome='Coletores',
+                aliases=['coletor', 'coletores'],
+                referencia_capacidade=True,
+            )
+            CatalogoProdutoEmpresa.objects.create(empresa=empresa, produto=produto)
         for codigo, base in self.bases.items():
             Equipamento.objects.create(
                 produto=produto,

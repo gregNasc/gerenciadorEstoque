@@ -223,11 +223,7 @@ class ComprasAccessPolicy:
 
     @classmethod
     def produtos_catalogo(cls, user, *, empresa=None, action=VIEW):
-        """Produtos habilitados nas empresas acessíveis ao usuário.
-
-        Empresas ainda não configuradas preservam o catálogo global legado até
-        que o Admin salve sua primeira seleção explícita.
-        """
+        """Produtos explicitamente habilitados nas empresas acessíveis ao usuário."""
         from compras.models import CatalogoProdutoEmpresa
 
         empresas = cls.empresas(user, action=action, resource=cls.CATALOGO)
@@ -237,20 +233,14 @@ class ComprasAccessPolicy:
         if not empresas_ids:
             return Produto.objects.none()
 
-        configuradas = set(
-            CatalogoProdutoEmpresa.objects.filter(
-                empresa_id__in=empresas_ids
-            ).values_list('empresa_id', flat=True)
-        )
-        sem_configuracao = set(empresas_ids) - configuradas
         produtos_ids = CatalogoProdutoEmpresa.objects.filter(
-            empresa_id__in=configuradas,
+            empresa_id__in=empresas_ids,
             ativo=True,
         ).values('produto_id')
-        filtro = Q(pk__in=produtos_ids)
-        if sem_configuracao:
-            filtro |= Q(ativo=True)
-        return Produto.objects.filter(filtro, ativo=True).distinct()
+        return Produto.objects.filter(
+            pk__in=produtos_ids,
+            ativo=True,
+        ).distinct()
 
     @classmethod
     def admins_para_empresa(cls, empresa, *, action=VIEW, resource=COMPRAS):

@@ -48,7 +48,7 @@
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
                                 <div class="small text-muted">
-                                    {% trans "Usuário" %}
+                                    {{ tenant_labels.usuario.singular }}
                                 </div>
 
                                 <div class="fw-semibold">
@@ -81,7 +81,7 @@
                 <div class="card-header bg-white border-bottom">
                     <h5 class="mb-0 fw-semibold">
                         <i class="bi bi-pc-display me-2 text-secondary"></i>
-                        {% trans "Equipamento" %}
+                        {{ tenant_labels.equipamento.singular }}
                     </h5>
                 </div>
 
@@ -159,7 +159,7 @@
                 <div class="card-header bg-warning-subtle">
                     <strong>
                         <i class="bi bi-pencil-square me-2"></i>
-                        {% trans "Editar Equipamento" %}
+                        Editar {{ tenant_labels.equipamento.singular }}
                     </strong>
                 </div>
 
@@ -269,7 +269,7 @@
                             <div class="col-12">
                                 <fieldset>
                                     <legend class="form-label fw-semibold mb-2">
-                                        {% trans "Finalidade do equipamento" %}
+                                        Finalidade: {{ tenant_labels.equipamento.singular|lower }}
                                     </legend>
                                     <div class="row g-2">
                                         {% for valor, descricao in finalidade_choices %}

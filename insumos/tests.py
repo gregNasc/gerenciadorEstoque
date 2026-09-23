@@ -13,7 +13,10 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from estoque.models import Base, Empresa, Equipamento, Perfil, Produto
+from estoque.models import (
+    Base, CategoriaEquipamentoEmpresa, Empresa, Equipamento, Perfil, Produto,
+)
+from compras.models import CatalogoProdutoEmpresa
 from insumos.constants import GruposInsumos
 from insumos.management.commands.carga_inicial_insumos import TAG_DESCRICOES
 from insumos.models import (
@@ -381,6 +384,18 @@ class ChecklistModeloOficialTests(TestCase):
             user=self.admin,
             defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
         )
+        self.categoria_coletores = CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Coletores',
+            aliases=['coletor', 'coletores'],
+            limite_checklist_por_pessoas=5,
+            referencia_capacidade=True,
+        )
+        self.categoria_routers = CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Routers',
+            aliases=['router', 'routers', 'roteador', 'roteadores'],
+        )
         self.cliente = Cliente.objects.create(
             sigla='MOD',
             nome='Cliente Modelo',
@@ -532,6 +547,7 @@ class ChecklistModeloOficialTests(TestCase):
             )
             for indice in range(21)
         ]
+        CatalogoProdutoEmpresa.objects.create(empresa=self.empresa, produto=produto)
         self.client.force_login(self.admin)
 
         resposta = self.client.post(
@@ -539,7 +555,7 @@ class ChecklistModeloOficialTests(TestCase):
             {
                 'inventario': self.inventario.pk,
                 'quantidade_volumes': 1,
-                'equipamentos_coletor': [
+                f'equipamentos_categoria_{self.categoria_coletores.pk}': [
                     equipamento.pk for equipamento in equipamentos
                 ],
             },
@@ -559,7 +575,12 @@ class ChecklistModeloOficialTests(TestCase):
             )
         )
         self.assertEqual(resposta.status_code, 200)
-        self.assertEqual(resposta.json()['limite_coletores'], 20)
+        self.assertEqual(
+            resposta.json()['limites_equipamentos'][
+                f'categoria_{self.categoria_coletores.pk}'
+            ],
+            20,
+        )
 
     def test_formulario_exibe_checklist_e_declaracao_editaveis(self):
         self.client.force_login(self.admin)
@@ -672,6 +693,7 @@ class ChecklistModeloOficialTests(TestCase):
             codigo='EQ-DECLARACAO',
             status='ATIVO',
         )
+        CatalogoProdutoEmpresa.objects.create(empresa=self.empresa, produto=produto)
         self.client.force_login(self.admin)
 
         resposta = self.client.post(
@@ -683,7 +705,7 @@ class ChecklistModeloOficialTests(TestCase):
                 'ponto_encontro': 'Doca principal',
                 'horario_ponto': '06:45',
                 'horario_inicio': '07:10',
-                'equipamentos_router': equipamento.pk,
+                f'equipamentos_categoria_{self.categoria_routers.pk}': equipamento.pk,
                 'declaracao_departamento_pessoal': 2,
                 'declaracao_fios_cabos': 1,
                 'declaracao_coletor_dados': 3,

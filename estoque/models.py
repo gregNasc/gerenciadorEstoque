@@ -100,6 +100,10 @@ class Modulo(models.Model):
         ORDENS_SERVICO = 'ordens_servico', 'Ordens de serviço'
         CATALOGO = 'catalogo', 'Catálogo'
         TORY = 'tory', 'Tory'
+        AUDITORIAS = 'auditorias', 'Auditorias'
+        DOCUMENTACAO = 'documentacao', 'Documentação'
+        USUARIOS = 'usuarios', 'Usuários'
+        CADASTROS = 'cadastros', 'Cadastros'
 
     codigo = models.SlugField(
         max_length=40,
@@ -133,7 +137,12 @@ class ModuloEmpresa(models.Model):
         on_delete=models.PROTECT,
         related_name='empresas_configuradas',
     )
-    habilitado = models.BooleanField(default=True, db_index=True)
+    nome_exibicao = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    habilitado = models.BooleanField(default=False, db_index=True)
     configurado_por = models.ForeignKey(
         User,
         null=True,
@@ -164,6 +173,195 @@ class ModuloEmpresa(models.Model):
     def __str__(self):
         estado = 'habilitado' if self.habilitado else 'desabilitado'
         return f'{self.empresa} | {self.modulo.codigo} | {estado}'
+
+    @property
+    def nome_apresentacao(self):
+        return self.nome_exibicao.strip() or self.modulo.nome
+
+
+class TermoEmpresa(models.Model):
+    class Chave(models.TextChoices):
+        EMPRESA = 'empresa', 'Empresa'
+        EQUIPAMENTO = 'equipamento', 'Equipamento'
+        BASE = 'base', 'Base'
+        REGIONAL = 'regional', 'Regional'
+        MANUTENCAO = 'manutencao', 'Manutenção'
+        USUARIO = 'usuario', 'Usuário'
+        DOCUMENTACAO = 'documentacao', 'Documentação'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='termos_personalizados',
+    )
+    chave = models.CharField(
+        max_length=100,
+        choices=Chave.choices,
+    )
+    valor_singular = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+    )
+    valor_plural = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Termo por empresa'
+        verbose_name_plural = 'Termos por empresa'
+        ordering = ('empresa__nome', 'chave')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'chave'),
+                name='termo_empresa_unico',
+            ),
+            models.CheckConstraint(
+                condition=Q(chave__in=(
+                    'empresa',
+                    'equipamento',
+                    'base',
+                    'regional',
+                    'manutencao',
+                    'usuario',
+                    'documentacao',
+                )),
+                name='termo_empresa_chave_valida',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.empresa} | {self.chave}'
+
+
+class CategoriaEquipamentoEmpresa(models.Model):
+    aliases = models.JSONField(default=list, blank=True)
+    limite_checklist_por_pessoas = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='Margem adicional ao número de pessoas. Vazio desabilita o limite.',
+    )
+    referencia_capacidade = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not isinstance(self.aliases, list) or any(
+            not isinstance(alias, str) or not alias.strip()
+            for alias in self.aliases
+        ):
+            raise ValidationError({'aliases': 'Informe uma lista de nomes alternativos válidos.'})
+        aliases_normalizados = []
+        vistos = set()
+        for alias in self.aliases:
+            alias = alias.strip()
+            chave = alias.casefold()
+            if chave not in vistos:
+                vistos.add(chave)
+                aliases_normalizados.append(alias)
+        self.aliases = aliases_normalizados
+        if type(self).objects.filter(
+            empresa_id=self.empresa_id, nome__iexact=self.nome,
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError({'nome': 'Já existe esta categoria na empresa.'})
+        if self.ativo and self.referencia_capacidade and type(self).objects.filter(
+            empresa_id=self.empresa_id,
+            ativo=True,
+            referencia_capacidade=True,
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError({
+                'referencia_capacidade': 'A empresa já possui uma categoria de referência ativa.'
+            })
+        return super().save(*args, **kwargs)
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='categorias_equipamento',
+    )
+    nome = models.CharField(max_length=100)
+    ativo = models.BooleanField(default=True, db_index=True)
+    ordem = models.PositiveSmallIntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Categoria de equipamento por empresa'
+        verbose_name_plural = 'Categorias de equipamento por empresa'
+        ordering = ('empresa__nome', 'ordem', 'nome')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'nome'),
+                name='categoria_equipamento_empresa_unica',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'ativo', 'ordem'),
+                name='categoria_emp_ativa_ord_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.empresa} | {self.nome}'
+
+
+class SecaoDocumentacaoEmpresa(models.Model):
+    class Codigo(models.TextChoices):
+        BIBLIOTECA = 'biblioteca', 'Biblioteca'
+        MANUAIS = 'manuais', 'Manuais de equipamentos'
+        DRIVERS = 'drivers', 'Drivers'
+        RESOLUCOES = 'resolucoes', 'Resolução de problemas'
+        CHECKLISTS = 'checklists', 'Checklist de clientes'
+        VIDEOS = 'videos', 'Vídeos'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='secoes_documentacao',
+    )
+    codigo = models.CharField(
+        max_length=30,
+        choices=Codigo.choices,
+    )
+    habilitado = models.BooleanField(default=False, db_index=True)
+    nome_exibicao = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Seção de documentação por empresa'
+        verbose_name_plural = 'Seções de documentação por empresa'
+        ordering = ('empresa__nome', 'codigo')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'codigo'),
+                name='secao_documentacao_empresa_unica',
+            ),
+            models.CheckConstraint(
+                condition=Q(codigo__in=(
+                    'biblioteca',
+                    'manuais',
+                    'drivers',
+                    'resolucoes',
+                    'checklists',
+                    'videos',
+                )),
+                name='secao_documentacao_codigo_valido',
+            ),
+        ]
+
+    @property
+    def nome_apresentacao(self):
+        return self.nome_exibicao.strip() or self.get_codigo_display()
+
+    def __str__(self):
+        return f'{self.empresa} | {self.codigo}'
 
 
 class RelacionamentoEmpresa(models.Model):
@@ -555,19 +753,11 @@ class Produto(models.Model):
         LEGADO = 'LEGADO', _('Valor legado')
         SEM_PRECO_VALIDADO = 'SEM_PRECO_VALIDADO', _('Sem preço validado')
 
-    CATEGORIAS = [
-        ('Sistema', _('Sistema')),
-        ('Coletores', _('Coletores')),
-        ('Notebooks', _('Notebooks')),
-        ('Impressoras', _('Impressoras')),
-        ('Routers', _('Routers')),
-    ]
-
-    codigo = models.CharField(max_length=50, unique=True)
+    codigo = models.CharField(max_length=50)
     descricao = models.CharField(max_length=255)
     fabricante = models.CharField(max_length=100)
     modelo = models.CharField(max_length=100)
-    categoria = models.CharField(max_length=50, db_index=True)
+    categoria = models.CharField(max_length=100, db_index=True)
     nome_resumido = models.CharField(max_length=120, blank=True)
     sku_fabricante = models.CharField(max_length=100, blank=True, db_index=True)
     subcategoria = models.CharField(max_length=100, blank=True)
@@ -621,17 +811,24 @@ class Produto(models.Model):
             ('importar_preco_produto', 'Pode importar preços de produtos em lote'),
             ('visualizar_historico_preco_produto', 'Pode visualizar histórico de preços de produtos'),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['empresa_catalogo_origem', 'codigo'],
+                condition=Q(empresa_catalogo_origem__isnull=False),
+                name='produto_codigo_empresa_origem_unico',
+            ),
+            models.UniqueConstraint(
+                fields=['codigo'],
+                condition=Q(empresa_catalogo_origem__isnull=True),
+                name='produto_codigo_global_legado_unico',
+            ),
+        ]
 
     def __str__(self):
         return self.descricao
 
     def get_categoria_display(self):
-        """Compatibilidade com o antigo campo choices e suporte a categorias livres."""
-        categoria = str(self.categoria or '')
-        for codigo, rotulo in self.CATEGORIAS:
-            if codigo.casefold() == categoria.casefold():
-                return rotulo
-        return categoria
+        return str(self.categoria or '')
 
 # ---------------- EQUIPAMENTO ----------------
 class Equipamento(models.Model):
@@ -874,15 +1071,8 @@ class SolicitacaoItem(models.Model):
     class Meta:
         db_table = 'estoque_itemsolicitacao'
 
-    CATEGORIAS = [
-        ('Coletores', _('Coletores')),
-        ('Impressoras', _('Impressoras')),
-        ('Notebooks', _('Notebooks')),
-        ('Routers', _('Routers')),
-    ]
-
     solicitacao = models.ForeignKey('Solicitacao', on_delete=models.CASCADE, related_name='itens')
-    categoria = models.CharField(max_length=50, choices=CATEGORIAS, db_index=True)
+    categoria = models.CharField(max_length=100, db_index=True)
     quantidade = models.PositiveIntegerField()
     atendido = models.PositiveIntegerField(default=0, db_column="quantidade_atendida", db_index=True)
 

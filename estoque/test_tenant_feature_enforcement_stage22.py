@@ -48,6 +48,14 @@ class TenantFeatureEnforcementStage22Tests(TestCase):
             email='superuser-features-22@example.test',
             password='senha-apenas-teste-22',
         )
+        for company in (self.company_a, self.company_b):
+            for code in Modulo.Codigo.values:
+                TenantFeatureService.configure(
+                    tenant=company,
+                    codigo=code,
+                    enabled=True,
+                    actor=self.superuser,
+                )
 
     def disable(self, company, code):
         return TenantFeatureService.configure(
@@ -79,6 +87,10 @@ class TenantFeatureEnforcementStage22Tests(TestCase):
             Modulo.Codigo.TRANSFERENCIAS,
             Modulo.Codigo.EMPRESTIMOS,
             Modulo.Codigo.SICK,
+            Modulo.Codigo.AUDITORIAS,
+            Modulo.Codigo.DOCUMENTACAO,
+            Modulo.Codigo.USUARIOS,
+            Modulo.Codigo.CADASTROS,
         ):
             self.disable(self.company_a, code)
         self.client.force_login(self.admin_a)
@@ -180,6 +192,73 @@ class TenantFeatureEnforcementStage22Tests(TestCase):
             self.client.get(reverse('integracao:planning_mappings')).status_code,
             403,
         )
+
+    def test_audits_are_independent_from_inventory(self):
+        self.disable(self.company_a, Modulo.Codigo.AUDITORIAS)
+        self.client.force_login(self.admin_a)
+
+        self.assertEqual(self.client.get(reverse('estoque:index')).status_code, 200)
+        self.assertEqual(
+            self.client.get(reverse('auditorias:campanha_lista')).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(reverse('auditorias:campanha_criar'), {}).status_code,
+            403,
+        )
+
+    def test_documentation_is_hidden_and_blocked_independently(self):
+        self.disable(self.company_a, Modulo.Codigo.DOCUMENTACAO)
+        self.client.force_login(self.admin_a)
+
+        response = self.client.get(reverse('estoque:caixa_comunicados'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="documentacaoDropdown"')
+        self.assertEqual(
+            self.client.get(reverse('estoque:documentacao')).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.get(reverse('estoque:documentacao_resolucao_arquivo', args=(999999,))).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(reverse('estoque:documentacao_video_desativar', args=(999999,)), {}).status_code,
+            403,
+        )
+
+    def test_users_are_hidden_and_blocked_independently(self):
+        self.disable(self.company_a, Modulo.Codigo.USUARIOS)
+        self.client.force_login(self.admin_a)
+
+        response = self.client.get(reverse('estoque:caixa_comunicados'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, reverse('estoque:cadastrar_usuario'))
+        self.assertEqual(
+            self.client.get(reverse('estoque:cadastrar_usuario')).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(reverse('estoque:cadastrar_usuario'), {}).status_code,
+            403,
+        )
+
+    def test_registrations_can_be_disabled_without_disabling_queries(self):
+        self.disable(self.company_a, Modulo.Codigo.CADASTROS)
+        self.client.force_login(self.admin_a)
+
+        response = self.client.get(reverse('estoque:estoque'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="cadastrosDropdown"')
+        for route in (
+            reverse('estoque:cadastrar_equipamento'),
+            reverse('estoque:editar_equipamento', args=(999999,)),
+            reverse('insumos:cadastrar_insumos'),
+            reverse('compras:criar_produto_catalogo'),
+        ):
+            with self.subTest(route=route):
+                self.assertEqual(self.client.get(route).status_code, 403)
+                self.assertEqual(self.client.post(route, {}).status_code, 403)
 
     def test_shared_declaration_route_uses_its_actual_operation_feature(self):
         group = GrupoRegional.objects.create(nome='Grupo Feature 22')

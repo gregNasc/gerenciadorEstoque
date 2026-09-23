@@ -1,6 +1,6 @@
 {% extends 'estoque/base.html' %}
 {% load i18n static %}
-{% block title %}{% trans "Dashboard | Estoque" %}{% endblock %}
+{% block title %}Dashboard | {{ tenant_dashboard_label }}{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/dashboard-ativos.css' %}?v=1">{% endblock %}
 
 {% block content %}
@@ -15,8 +15,8 @@
     <!-- Título -->
     <header class="app-page-header">
         <div class="app-page-header__content">
-            <h1>{% trans "Dashboard de Ativos" %}</h1>
-            <p class="app-page-header__description">{% trans "Visão geral dos equipamentos" %}</p>
+            <h1>Dashboard de {{ tenant_dashboard_label }}</h1>
+            <p class="app-page-header__description">Visão geral: {{ tenant_labels.equipamento.plural }}</p>
         </div>
     </header>
 
@@ -27,16 +27,15 @@
                 <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Categoria" %}</label>
                     <select name="categoria" class="form-select form-select-sm bg-white">
-                        <option value="">Todas</option>
-                        <option value="Coletores" {% if request.GET.categoria == "Coletores" %}selected{% endif %}>{% trans "Coletores" %}</option>
-                        <option value="Impressoras" {% if request.GET.categoria == "Impressoras" %}selected{% endif %}>{% trans "Impressoras" %}</option>
-                        <option value="Notebooks" {% if request.GET.categoria == "Notebooks" %}selected{% endif %}>{% trans "Notebooks" %}</option>
-                        <option value="Routers" {% if request.GET.categoria == "Routers" %}selected{% endif %}>{% trans "Routers" %}</option>
+                        <option value="">{% trans "Todas" %}</option>
+                        {% for categoria in categorias_catalogo %}
+                            <option value="{{ categoria }}" {% if categoria_selecionada == categoria %}selected{% endif %}>{{ categoria }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="col-12 col-md">
-                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Equipamento" %}</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">{{ tenant_labels.equipamento.singular }}</label>
                     <select name="produto" class="form-select form-select-sm bg-white">
                         <option value="">Todos</option>
                         {% for p in produtos_lista %}
@@ -50,7 +49,7 @@
 
                 <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">
-                        Inventory
+                        {{ rotulo_empresa_dashboard }}
                     </label>
 
                     <select name="inventory"
@@ -72,7 +71,7 @@
                 </div>
 
                 <div class="col-12 col-md">
-                    <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Regional" %}</label>
+                    <label class="form-label small text-secondary fw-semibold mb-1">{{ tenant_labels.regional.singular }}</label>
                     <select name="regional" class="form-select form-select-sm bg-white">
                         <option value="">{% trans "Todas" %}</option>
                         {% for r in regionais %}
@@ -118,7 +117,7 @@
             {% if categoria_selecionada %}filtro-produto{% else %}filtro-categoria{% endif %}"
             {% if categoria_selecionada %}data-produto-id="{{ item.id }}"{% else %}data-categoria="{{ item.nome }}"{% endif %}
             role="button" tabindex="0"
-            aria-label="{% blocktrans with nome=item.nome total=item.total %}Filtrar por {{ nome }}, {{ total }} equipamentos{% endblocktrans %}">
+            aria-label="Filtrar por {{ item.nome }}, {{ item.total }} {{ tenant_labels.equipamento.plural|lower }}">
             <div class="card-body p-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
@@ -143,7 +142,7 @@
                     <strong class="text-info">{{ item.administrativos }}</strong>
                 </div>
                 <div class="d-flex justify-content-between small">
-                    <span class="text-secondary">{% trans "Sick" %}</span>
+                    <span class="text-secondary">{{ tenant_module_labels.sick }}</span>
                     <strong class="text-danger">{{ item.sick }}</strong>
                 </div>
                 <!--div class="d-flex justify-content-between small">
@@ -156,7 +155,7 @@
     </div>
     {% empty %}
     <div class="col-12">
-        <div class="app-empty-state"><i class="bi bi-box-seam app-empty-state__icon" aria-hidden="true"></i>{% trans "Nenhum equipamento encontrado." %}</div>
+        <div class="app-empty-state"><i class="bi bi-box-seam app-empty-state__icon" aria-hidden="true"></i>Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} encontrado(a).</div>
     </div>
     {% endfor %}
 </div>
@@ -190,33 +189,18 @@
                         </div>
                         {% empty %}
                         <div class="text-secondary small text-center py-2">
-                            {% trans "Nenhum equipamento desta categoria na regional" %}
+                            Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} desta categoria em {{ tenant_labels.regional.singular|lower }}
                         </div>
                         {% endfor %}
                     {% else %}
-                        <!-- Exibe as quatro categorias -->
+                        <!-- Exibe as categorias configuradas para o tenant -->
                         {% for tipo, dados in r.produtos.items %}
                         <div class="d-flex justify-content-between align-items-center mb-2 small">
 
                             <span class="text-secondary">
 
-                                {% if tipo == "Coletores" %}
-                                    <i class="bi bi-upc-scan me-1"></i>
-                                    {% trans "Coletores" %}
-
-                                {% elif tipo == "Impressoras" %}
-                                    <i class="bi bi-printer me-1"></i>
-                                    {% trans "Impressoras" %}
-
-                                {% elif tipo == "Notebooks" %}
-                                    <i class="bi bi-laptop me-1"></i>
-                                    {% trans "Notebooks" %}
-
-                                {% else %}
-                                    <i class="bi bi-wifi me-1"></i>
-                                    {% trans "Routers" %}
-
-                                {% endif %}
+                                <i class="bi bi-box-seam me-1"></i>
+                                {{ tipo }}
 
                             </span>
                             <div>

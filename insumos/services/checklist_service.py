@@ -175,25 +175,26 @@ class ChecklistService:
     # EQUIPAMENTOS
     @staticmethod
     def saldo_equipamentos_categoria(base, categoria):
-        ativos = Equipamento.objects.filter(
+        from .checklist_catalog_service import ChecklistCatalogService
+        ativos = ChecklistCatalogService.equipment(Equipamento.objects.filter(
             regional=base,
-            produto__categoria=categoria,
+            produto__categoria__iexact=categoria,
             status='ATIVO',
             finalidade=Equipamento.Finalidade.OPERACIONAL,
-        ).count()
+        )).count()
         reservado_sem_identificacao = 0
         registros = (
             ChecklistEquipamentoQuantidade.objects
             .filter(
                 checklist__inventario__base=base,
                 checklist__status__in=['ABERTO', 'EM_EXECUCAO'],
-                categoria=categoria,
+                categoria__iexact=categoria,
             )
             .select_related('checklist')
         )
         for registro in registros:
             identificados_retornados = registro.checklist.equipamentos_utilizados.filter(
-                equipamento__produto__categoria=categoria,
+                equipamento__produto__categoria__iexact=categoria,
                 status_retorno='RETORNADO',
             ).count()
             retornados_sem_identificacao = (
@@ -215,9 +216,13 @@ class ChecklistService:
         quantidade = int(quantidade or 0)
         if quantidade <= 0:
             return None
-        categorias_validas = {codigo for codigo, _ in ChecklistEquipamentoQuantidade.CATEGORIAS}
-        if categoria not in categorias_validas or categoria == 'Sistema':
+        from .checklist_catalog_service import ChecklistCatalogService
+        config = ChecklistCatalogService.categories(checklist.inventario.base).filter(
+            nome__iexact=categoria,
+        ).first()
+        if config is None:
             raise ValueError('Categoria de equipamento inválida para o checklist.')
+        categoria = config.nome
 
         base_model = checklist.inventario.base.__class__
         base = base_model.objects.select_for_update().get(pk=checklist.inventario.base_id)
@@ -227,13 +232,13 @@ class ChecklistService:
             raise ValueError('A quantidade identificada não pode exceder a quantidade enviada.')
 
         selecionados = list(
-            Equipamento.objects.select_for_update().select_related('produto').filter(
+            ChecklistCatalogService.equipment(Equipamento.objects.select_for_update().select_related('produto').filter(
                 pk__in=ids,
                 regional=base,
-                produto__categoria=categoria,
+                produto__categoria__iexact=categoria,
                 status='ATIVO',
                 finalidade=Equipamento.Finalidade.OPERACIONAL,
-            )
+            ))
         )
         if len(selecionados) != len(ids):
             raise ValueError('Há equipamento identificado indisponível ou fora da categoria/base.')
@@ -244,12 +249,12 @@ class ChecklistService:
                 f'A quantidade de {categoria} excede o saldo disponível. '
                 f'Disponível: {saldo}. Solicitado: {quantidade}.'
             )
-        if categoria == 'Coletores' and checklist.inventario.pessoas is not None:
-            limite = min(checklist.inventario.pessoas + 5, saldo)
+        limite_configurado = ChecklistCatalogService.limit(config, checklist.inventario.pessoas)
+        if limite_configurado is not None:
+            limite = min(limite_configurado, saldo)
             if quantidade > limite:
                 raise ValueError(
-                    f'Este inventário permite no máximo {limite} coletores '
-                    f'({checklist.inventario.pessoas} pessoas + 5, limitado pelo saldo).'
+                    f'Este inventário permite no máximo {limite} itens de {categoria}.'
                 )
 
         registro = ChecklistEquipamentoQuantidade.objects.create(

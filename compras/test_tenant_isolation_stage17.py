@@ -15,6 +15,7 @@ from compras.policies import AquisicaoAccessPolicy
 from compras.services import AquisicaoService, ProdutoPrecoService
 from estoque.models import (
     Base,
+    CategoriaEquipamentoEmpresa,
     CapacidadeRelacionamentoEmpresa,
     Empresa,
     Equipamento,
@@ -44,6 +45,8 @@ class Stage17TenantIsolationTests(TestCase):
         cls.base_a = Base.objects.create(empresa=cls.company_a, nome='Base A Etapa 17')
         cls.base_b = Base.objects.create(empresa=cls.company_b, nome='Base B Secreta Etapa 17')
         cls.admin_a = cls._admin('admin.a.etapa17', cls.company_a)
+        CategoriaEquipamentoEmpresa.objects.create(empresa=cls.company_a, nome='Coletores')
+        CategoriaEquipamentoEmpresa.objects.create(empresa=cls.company_b, nome='Notebooks')
         cls.admin_b = cls._admin('admin.b.etapa17', cls.company_b)
         cls.product_a = Produto.objects.create(
             codigo='PROD-E17-A', descricao='Coletor permitido A', fabricante='Marca',

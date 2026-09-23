@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
     Base,
+    CategoriaEquipamentoEmpresa,
     DeclaracaoCorreios,
     DeclaracaoCorreiosItem,
     Empresa,
@@ -76,7 +77,7 @@ DeclaracaoCorreiosItemFormSet = forms.inlineformset_factory(
 class ProdutoForm(forms.ModelForm):
     categoria = forms.CharField(
         label=_('Categoria'),
-        max_length=50,
+        max_length=100,
         help_text=_(
             'Informe uma categoria adequada ao uso da empresa. '
             'Ela ficará disponível quando este item estiver habilitado no catálogo.'
@@ -84,7 +85,7 @@ class ProdutoForm(forms.ModelForm):
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'list': 'categorias-equipamento-sugeridas',
-            'placeholder': _('Ex.: Coletores, Notebooks ou uma categoria própria'),
+            'placeholder': _('Informe uma categoria da empresa'),
         }),
     )
     empresa_catalogo = forms.ModelChoiceField(
@@ -131,6 +132,19 @@ class ProdutoForm(forms.ModelForm):
             pk=perfil.empresa_id
         ).exists():
             self.fields['empresa_catalogo'].initial = perfil.empresa_id
+        empresa_id = self.data.get('empresa_catalogo') if self.is_bound else None
+        if not empresa_id:
+            empresa_id = self.fields['empresa_catalogo'].initial
+        empresa_sugerida = (
+            empresas_catalogo.filter(pk=empresa_id).first()
+            if empresa_id and str(empresa_id).isdigit()
+            else None
+        )
+        from estoque.services.tenant_catalog_service import TenantCatalogService
+        self.categorias_sugeridas = TenantCatalogService.category_names(
+            user,
+            company=empresa_sugerida,
+        )
         self.fields['preco_fornecedor'].queryset = FornecedorInsumo.objects.filter(
             ativo=True
         ).order_by('nome')
@@ -150,6 +164,9 @@ class ProdutoForm(forms.ModelForm):
 
     def clean(self):
         dados = super().clean()
+        empresa_catalogo = dados.get('empresa_catalogo')
+        if empresa_catalogo is not None:
+            self.instance.empresa_catalogo_origem = empresa_catalogo
         if 'preco_referencia_inicial' in self.fields and dados.get('preco_referencia_inicial') is not None:
             dados['preco_origem'] = (
                 dados.get('preco_origem') or Produto.OrigemPreco.INFORMADO_COMPRAS
@@ -172,27 +189,41 @@ class ProdutoForm(forms.ModelForm):
 
     def clean_codigo(self):
         codigo = self.cleaned_data['codigo'].strip().upper()
-        if Produto.objects.filter(codigo=codigo).exclude(pk=self.instance.pk).exists():
-            raise ValidationError("Já existe um produto com esse código.")
+        empresa = self.cleaned_data.get('empresa_catalogo')
+        if empresa is None:
+            empresa = self.instance.empresa_catalogo_origem
+        if (
+            empresa is not None
+            and Produto.objects.filter(
+                empresa_catalogo_origem=empresa,
+                codigo=codigo,
+            ).exclude(pk=self.instance.pk).exists()
+        ):
+            raise ValidationError(
+                "Já existe um produto com esse código nesta empresa."
+            )
         return codigo
 
     def clean_categoria(self):
         categoria = self.cleaned_data['categoria'].strip()
         if not categoria:
             raise ValidationError(_('Informe a categoria do equipamento.'))
+        empresa = self.cleaned_data.get('empresa_catalogo')
+        configuracao = CategoriaEquipamentoEmpresa.objects.filter(
+            empresa=empresa,
+            nome__iexact=categoria,
+        ).first() if empresa is not None else None
+        if configuracao is not None and not configuracao.ativo:
+            raise ValidationError(
+                _('A categoria está desativada para esta empresa.')
+            )
         return categoria
 
 # ================= EQUIPAMENTO =================
 class EquipamentoForm(forms.ModelForm):
 
     categoria = forms.ChoiceField(
-        choices=[
-            ('', _('Selecione')),
-            ('Coletores', _('Coletores')),
-            ('Impressoras', _('Impressoras')),
-            ('Notebooks', _('Notebooks')),
-            ('Routers', _('Routers')),
-        ],
+        choices=[('', _('Selecione'))],
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
@@ -241,10 +272,10 @@ class EquipamentoForm(forms.ModelForm):
             user,
             empresa=base_catalogo.empresa if base_catalogo else None,
         )
-        categorias = list(
-            produtos_permitidos.order_by('categoria').values_list(
-                'categoria', flat=True
-            ).distinct()
+        from estoque.services.tenant_catalog_service import TenantCatalogService
+        categorias = TenantCatalogService.category_names(
+            user,
+            company=base_catalogo.empresa if base_catalogo else None,
         )
         self.fields['categoria'].choices = [('', _('Selecione'))] + [
             (categoria, categoria) for categoria in categorias

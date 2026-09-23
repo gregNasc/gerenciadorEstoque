@@ -381,7 +381,7 @@
     <div class="card-body">
       <div class="row g-3 align-items-end">
         <div class="col-md-3">
-          <label class="form-label" for="dashboard-regional">{% trans "Regional" %}</label>
+          <label class="form-label" for="dashboard-regional">{{ tenant_labels.regional.singular }}</label>
           <select class="form-select" id="dashboard-regional" name="regional">
             <option value="">{% trans "Todas" %}</option>
             {% for regional in regionais %}<option value="{{ regional.pk }}" {% if regional_selecionada == regional.pk|stringformat:'s' %}selected{% endif %}>{{ regional.nome }}</option>{% endfor %}
@@ -731,7 +731,7 @@
           </div>
 
           <div class="dashboard-card__subtitle">
-            {% trans "Bases com maior volume de chamados no período." %}
+            {{ tenant_labels.base.plural }} com maior volume de chamados no período.
           </div>
         </div>
 

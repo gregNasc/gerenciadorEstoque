@@ -3,6 +3,7 @@ from django.utils import timezone
 from estoque.permissions import pode_gerenciar_sick, pode_realizar_manutencao_sick
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.services.comunicado_service import ComunicadoService
+from estoque.services.tenant_terminology_service import TenantTerminologyService
 from estoque.tenant_features import TenantFeatureService
 from .models import (
     Comunicado,
@@ -301,10 +302,12 @@ def permissoes_especiais(request):
 def tenant_features_context(request):
     user = getattr(request, 'user', None)
     tenant = getattr(request, 'tenant', None)
-    return {
+    context = {
         'tenant_features': TenantFeatureService.enabled_features_for_user(
             user,
             tenant=tenant,
         ),
         'tenant_home_url': TenantFeatureService.home_url(user, tenant=tenant),
     }
+    context.update(TenantTerminologyService.context_for_request(request))
+    return context

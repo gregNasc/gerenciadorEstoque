@@ -4,28 +4,460 @@
 {% block title %}{{ solicitacao.protocolo }}{% endblock %}
 
 {% block content %}
-<main class="container-fluid p-4">
-    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
-        <div><a class="text-decoration-none" href="{% url 'insumos:lista_solicitacoes_insumo' %}"><i class="bi bi-arrow-left"></i> {% trans "Solicitações" %}</a><h1 class="h3 mt-2 mb-1">{{ solicitacao.protocolo }}</h1><p class="text-secondary mb-0">{{ solicitacao.base.nome }} | {{ solicitacao.criado_em|date:'d/m/Y H:i' }}</p></div>
-        <span class="badge fs-6 {% if solicitacao.status == 'PENDENTE' %}text-bg-warning{% elif solicitacao.status == 'REPROVADA' %}text-bg-danger{% elif solicitacao.status == 'APROVADA' %}text-bg-success{% elif solicitacao.status == 'EM_COMPRA' %}text-bg-primary{% else %}text-bg-secondary{% endif %}">{{ solicitacao.get_status_display }}</span>
-    </header>
+<main class="container-fluid px-3 px-lg-4 py-4">
 
-    <section class="row g-3 mb-4">
-        <div class="col-md-3"><div class="small text-secondary">{% trans "Solicitante" %}</div><strong>{{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}</strong></div>
-        <div class="col-md-3"><div class="small text-secondary">{% trans "Prioridade" %}</div><strong>{{ solicitacao.get_prioridade_display }}</strong></div>
-        <div class="col-md-6"><div class="small text-secondary">{% trans "Justificativa" %}</div><div>{{ solicitacao.justificativa|default:'-'|linebreaksbr }}</div></div>
+    <!-- =========================================================
+         CABEÇALHO
+    ========================================================== -->
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+
+        <div>
+            <a
+                href="{% url 'insumos:lista_solicitacoes_insumo' %}"
+                class="text-decoration-none text-secondary d-inline-flex align-items-center gap-1 mb-2"
+            >
+                <i class="bi bi-arrow-left"></i>
+                <span>{% trans "Voltar para solicitações" %}</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div>
+                    <h1 class="h3 fw-bold mb-1">
+                        {{ solicitacao.protocolo }}
+                    </h1>
+
+                    <div class="text-secondary small d-flex align-items-center gap-3 flex-wrap">
+                        <span>
+                            <i class="bi bi-geo-alt me-1"></i>
+                            {{ solicitacao.base.nome }}
+                        </span>
+
+                        <span>
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ solicitacao.criado_em|date:'d/m/Y H:i' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUS -->
+        <div>
+            <span
+                class="badge rounded-pill px-3 py-2 fs-6
+                {% if solicitacao.status == 'PENDENTE' %}
+                    text-bg-warning
+                {% elif solicitacao.status == 'REPROVADA' %}
+                    text-bg-danger
+                {% elif solicitacao.status == 'APROVADA' %}
+                    text-bg-success
+                {% elif solicitacao.status == 'EM_COMPRA' %}
+                    text-bg-primary
+                {% else %}
+                    text-bg-secondary
+                {% endif %}"
+            >
+                {% if solicitacao.status == 'PENDENTE' %}
+                    <i class="bi bi-clock me-1"></i>
+                {% elif solicitacao.status == 'REPROVADA' %}
+                    <i class="bi bi-x-circle me-1"></i>
+                {% elif solicitacao.status == 'APROVADA' %}
+                    <i class="bi bi-check-circle me-1"></i>
+                {% elif solicitacao.status == 'EM_COMPRA' %}
+                    <i class="bi bi-cart3 me-1"></i>
+                {% else %}
+                    <i class="bi bi-info-circle me-1"></i>
+                {% endif %}
+
+                {{ solicitacao.get_status_display }}
+            </span>
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         INFORMAÇÕES DA SOLICITAÇÃO
+    ========================================================== -->
+    <section class="card border-0 shadow-sm mb-4">
+
+        <div class="card-header bg-body border-bottom py-3">
+            <h2 class="h6 fw-semibold mb-0">
+                <i class="bi bi-file-earmark-text me-2 text-secondary"></i>
+                {% trans "Informações da solicitação" %}
+            </h2>
+        </div>
+
+        <div class="card-body">
+            <div class="row g-4">
+
+                <!-- SOLICITANTE -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="text-secondary small mb-1">
+                        {% trans "Solicitante" %}
+                    </div>
+
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                        <i class="bi bi-person text-secondary"></i>
+
+                        <span>
+                            {{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}
+                        </span>
+                    </div>
+                </div>
+
+
+                <!-- PRIORIDADE -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="text-secondary small mb-1">
+                        {% trans "Prioridade" %}
+                    </div>
+
+                    <div class="fw-semibold">
+                        <i class="bi bi-flag me-1 text-secondary"></i>
+                        {{ solicitacao.get_prioridade_display }}
+                    </div>
+                </div>
+
+
+                <!-- BASE -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="text-secondary small mb-1">
+                        {% trans "Base" %}
+                    </div>
+
+                    <div class="fw-semibold">
+                        <i class="bi bi-building me-1 text-secondary"></i>
+                        {{ solicitacao.base.nome }}
+                    </div>
+                </div>
+
+
+                <!-- DATA -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="text-secondary small mb-1">
+                        {% trans "Criada em" %}
+                    </div>
+
+                    <div class="fw-semibold">
+                        <i class="bi bi-calendar-event me-1 text-secondary"></i>
+                        {{ solicitacao.criado_em|date:'d/m/Y H:i' }}
+                    </div>
+                </div>
+
+
+                <!-- JUSTIFICATIVA -->
+                <div class="col-12">
+                    <hr class="my-0 mb-3">
+
+                    <div class="text-secondary small mb-2">
+                        {% trans "Justificativa" %}
+                    </div>
+
+                    <div class="bg-body-tertiary border rounded-3 p-3">
+                        {{ solicitacao.justificativa|default:'-'|linebreaksbr }}
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </section>
 
-    <section class="mb-4"><h2 class="h5">{% trans "Itens solicitados" %}</h2><div class="table-responsive"><table class="table table-hover"><thead><tr><th>{% trans "Insumo" %}</th><th>{% trans "Categoria" %}</th><th>{% trans "Quantidade" %}</th><th>{% trans "Observação" %}</th></tr></thead><tbody>{% for item in solicitacao.itens.all %}<tr><td>{{ item.insumo.descricao }}</td><td>{{ item.insumo.categoria.nome }}</td><td>{{ item.quantidade|floatformat:2 }} {{ item.insumo.unidade_medida }}</td><td>{{ item.observacao|default:'-' }}</td></tr>{% endfor %}</tbody></table></div></section>
 
-    {% if pode_ver_detalhes_administrativos and solicitacao.observacao_aprovacao %}<section class="alert alert-secondary"><strong>{% trans "Observação da análise" %}:</strong> {{ solicitacao.observacao_aprovacao|linebreaksbr }}</section>{% endif %}
+    <!-- =========================================================
+         ITENS SOLICITADOS
+    ========================================================== -->
+    <section class="card border-0 shadow-sm mb-4">
+
+        <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center gap-3">
+            <h2 class="h6 fw-semibold mb-0">
+                <i class="bi bi-box-seam me-2 text-secondary"></i>
+                {% trans "Itens solicitados" %}
+            </h2>
+        </div>
+
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">
+                            {% trans "Insumo" %}
+                        </th>
+
+                        <th>
+                            {% trans "Categoria" %}
+                        </th>
+
+                        <th class="text-nowrap">
+                            {% trans "Quantidade" %}
+                        </th>
+
+                        <th>
+                            {% trans "Observação" %}
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in solicitacao.itens.all %}
+                        <tr>
+
+                            <td class="ps-4">
+                                <div class="fw-semibold">
+                                    {{ item.insumo.descricao }}
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge bg-body-secondary text-body border fw-normal">
+                                    {{ item.insumo.categoria.nome }}
+                                </span>
+                            </td>
+
+                            <td class="text-nowrap">
+                                <strong>
+                                    {{ item.quantidade|floatformat:"-2" }}
+                                </strong>
+
+                                <span class="text-secondary">
+                                    {{ item.insumo.unidade_medida }}
+                                </span>
+                            </td>
+
+                            <td class="text-secondary">
+                                {{ item.observacao|default:'-' }}
+                            </td>
+
+                        </tr>
+
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary py-5">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                {% trans "Nenhum item encontrado nesta solicitação." %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </section>
+
+
+    <!-- =========================================================
+         OBSERVAÇÃO DA ANÁLISE
+    ========================================================== -->
+    {% if pode_ver_detalhes_administrativos and solicitacao.observacao_aprovacao %}
+
+        <section class="card border-0 shadow-sm mb-4">
+
+            <div class="card-header bg-body border-bottom py-3">
+                <h2 class="h6 fw-semibold mb-0">
+                    <i class="bi bi-chat-left-text me-2 text-secondary"></i>
+                    {% trans "Observação da análise" %}
+                </h2>
+            </div>
+
+            <div class="card-body">
+                <div class="bg-body-tertiary border rounded-3 p-3">
+                    {{ solicitacao.observacao_aprovacao|linebreaksbr }}
+                </div>
+            </div>
+
+        </section>
+
+    {% endif %}
+
+
+    <!-- =========================================================
+         AÇÕES
+    ========================================================== -->
 
     {% if pode_decidir and solicitacao.status == 'PENDENTE' %}
-    <section class="border-top pt-3"><h2 class="h5">{% trans "Analisar solicitação" %}</h2><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<label class="form-label" for="observacao-decisao">{% trans "Observação ou motivo" %}</label><textarea class="form-control mb-3" id="observacao-decisao" name="observacao" rows="3"></textarea><div class="d-flex gap-2 flex-wrap"><button class="btn btn-success" name="acao" value="aprovar" type="submit"><i class="bi bi-check-lg"></i> {% trans "Aprovar" %}</button><button class="btn btn-danger" name="acao" value="reprovar" type="submit"><i class="bi bi-x-lg"></i> {% trans "Reprovar" %}</button></div></form></section>
+
+        <section class="card border-warning shadow-sm mb-4">
+
+            <div class="card-header bg-warning-subtle border-warning-subtle py-3">
+                <h2 class="h6 fw-semibold mb-0">
+                    <i class="bi bi-clipboard-check me-2"></i>
+                    {% trans "Analisar solicitação" %}
+                </h2>
+            </div>
+
+            <div class="card-body">
+
+                <p class="text-secondary small mb-3">
+                    {% trans "Analise os itens solicitados e informe uma observação, se necessário." %}
+                </p>
+
+                <form
+                    method="post"
+                    action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}"
+                >
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label
+                            class="form-label fw-semibold"
+                            for="observacao-decisao"
+                        >
+                            {% trans "Observação ou motivo" %}
+                        </label>
+
+                        <textarea
+                            class="form-control"
+                            id="observacao-decisao"
+                            name="observacao"
+                            rows="4"
+                            placeholder="{% trans 'Informe uma observação sobre a decisão...' %}"
+                        ></textarea>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+
+                        <button
+                            class="btn btn-success px-4"
+                            name="acao"
+                            value="aprovar"
+                            type="submit"
+                        >
+                            <i class="bi bi-check-lg me-1"></i>
+                            {% trans "Aprovar solicitação" %}
+                        </button>
+
+                        <button
+                            class="btn btn-outline-danger px-4"
+                            name="acao"
+                            value="reprovar"
+                            type="submit"
+                        >
+                            <i class="bi bi-x-lg me-1"></i>
+                            {% trans "Reprovar" %}
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </section>
+
+
     {% elif pode_decidir and solicitacao.status == 'APROVADA' %}
-    <section class="border-top pt-3"><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<input type="hidden" name="acao" value="comprar"><button class="btn btn-primary" type="submit"><i class="bi bi-cart-check"></i> {% trans "Encaminhar para compra" %}</button></form></section>
+
+        <section class="card border-primary shadow-sm mb-4">
+
+            <div class="card-body p-4">
+
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+
+                    <div>
+                        <h2 class="h6 fw-semibold mb-1">
+                            <i class="bi bi-cart-check me-2 text-primary"></i>
+                            {% trans "Solicitação aprovada" %}
+                        </h2>
+
+                        <p class="text-secondary small mb-0">
+                            {% trans "A solicitação foi aprovada e está pronta para ser encaminhada ao processo de compra." %}
+                        </p>
+                    </div>
+
+                    <form
+                        method="post"
+                        action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}"
+                    >
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="acao"
+                            value="comprar"
+                        >
+
+                        <button
+                            class="btn btn-primary px-4"
+                            type="submit"
+                        >
+                            <i class="bi bi-cart-check me-1"></i>
+                            {% trans "Encaminhar para compra" %}
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
     {% elif pode_decidir and solicitacao.status == 'EM_COMPRA' %}
-    <section class="border-top pt-3"><h2 class="h5">{% trans "Finalizar solicitação" %}</h2><form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<input type="hidden" name="acao" value="finalizar"><label class="form-label" for="observacao-finalizacao">{% trans "Observação da finalização" %}</label><textarea class="form-control mb-3" id="observacao-finalizacao" name="observacao" rows="3"></textarea><button class="btn btn-success" type="submit" onclick="return confirm('{% trans "Confirma a finalização desta solicitação?" %}')"><i class="bi bi-check-circle"></i> {% trans "Finalizar solicitação" %}</button></form></section>
+
+        <section class="card border-success shadow-sm mb-4">
+
+            <div class="card-header bg-success-subtle border-success-subtle py-3">
+                <h2 class="h6 fw-semibold mb-0">
+                    <i class="bi bi-check-circle me-2"></i>
+                    {% trans "Finalizar solicitação" %}
+                </h2>
+            </div>
+
+            <div class="card-body">
+
+                <p class="text-secondary small">
+                    {% trans "Finalize a solicitação quando o processo de compra estiver concluído." %}
+                </p>
+
+                <form
+                    method="post"
+                    action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}"
+                >
+                    {% csrf_token %}
+
+                    <input
+                        type="hidden"
+                        name="acao"
+                        value="finalizar"
+                    >
+
+                    <div class="mb-3">
+                        <label
+                            class="form-label fw-semibold"
+                            for="observacao-finalizacao"
+                        >
+                            {% trans "Observação da finalização" %}
+                        </label>
+
+                        <textarea
+                            class="form-control"
+                            id="observacao-finalizacao"
+                            name="observacao"
+                            rows="4"
+                            placeholder="{% trans 'Informe detalhes sobre a conclusão da solicitação...' %}"
+                        ></textarea>
+                    </div>
+
+                    <button
+                        class="btn btn-success px-4"
+                        type="submit"
+                        onclick="return confirm('{% trans "Confirma a finalização desta solicitação?" %}')"
+                    >
+                        <i class="bi bi-check-circle me-1"></i>
+                        {% trans "Finalizar solicitação" %}
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
     {% endif %}
+
 </main>
 {% endblock %}

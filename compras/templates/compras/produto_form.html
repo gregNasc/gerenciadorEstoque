@@ -120,11 +120,9 @@
 
                                     {% if field.name == 'categoria' %}
                                         <datalist id="categorias-equipamento-sugeridas">
-                                            <option value="Sistema"></option>
-                                            <option value="Coletores"></option>
-                                            <option value="Notebooks"></option>
-                                            <option value="Impressoras"></option>
-                                            <option value="Routers"></option>
+                                            {% for categoria in form.categorias_sugeridas %}
+                                                <option value="{{ categoria }}"></option>
+                                            {% endfor %}
                                         </datalist>
                                     {% endif %}
 

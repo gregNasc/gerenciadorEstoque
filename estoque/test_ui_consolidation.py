@@ -5,7 +5,9 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from compras.models import CatalogoProdutoEmpresa
 from estoque.models import Base, Empresa, Equipamento, Produto
+from estoque.models import CategoriaEquipamentoEmpresa
 from insumos.models import CategoriaInsumo, Insumo, MovimentacaoInsumo
 
 
@@ -18,6 +20,7 @@ class UIConsolidationTests(TestCase):
         )
         self.empresa = Empresa.objects.create(nome='Empresa UI')
         self.base = Base.objects.create(nome='Base UI', empresa=self.empresa)
+        CategoriaEquipamentoEmpresa.objects.create(empresa=self.empresa, nome='Notebooks')
         self.user.perfil.role = 'admin'
         self.user.perfil.empresa = self.empresa
         self.user.perfil.save()
@@ -137,6 +140,12 @@ class UIConsolidationTests(TestCase):
             codigo='EQP-CAD-RAPIDO',
             descricao='Equipamento para cadastro rápido',
             categoria='Notebooks',
+            empresa_catalogo_origem=self.empresa,
+        )
+        CatalogoProdutoEmpresa.objects.create(
+            empresa=self.empresa,
+            produto=produto,
+            configurado_por=self.user,
         )
         url = reverse('estoque:cadastrar_equipamento')
         resposta = self.client.post(url, {

@@ -30,17 +30,28 @@ class TenantFeatureStage21Tests(TestCase):
             set(Modulo.Codigo.values),
         )
 
-    def test_new_company_is_provisioned_without_changing_current_behavior(self):
-        self.assertEqual(
-            self.company_a.modulos_configurados.filter(habilitado=True).count(),
-            len(Modulo.Codigo.values),
+    def test_new_company_starts_with_every_module_disabled(self):
+        company = Empresa.objects.create(
+            nome='Empresa Features Inativa',
+            slug='empresa-features-inativa',
+            ativa=False,
         )
         self.assertEqual(
-            TenantFeatureService.enabled_features(self.company_a),
-            frozenset(Modulo.Codigo.values),
+            company.modulos_configurados.filter(habilitado=True).count(),
+            0,
+        )
+        self.assertEqual(
+            TenantFeatureService.enabled_features(company),
+            frozenset(),
         )
 
     def test_feature_can_be_disabled_for_only_one_tenant(self):
+        TenantFeatureService.configure(
+            tenant=self.company_b,
+            codigo=Modulo.Codigo.CHAMADOS,
+            enabled=True,
+            actor=self.superuser,
+        )
         configuration = TenantFeatureService.configure(
             tenant=self.company_a,
             codigo=Modulo.Codigo.CHAMADOS,
@@ -56,12 +67,12 @@ class TenantFeatureStage21Tests(TestCase):
         TenantFeatureService.configure(
             tenant=self.company_a,
             codigo=Modulo.Codigo.TORY,
-            enabled=False,
+            enabled=True,
             actor=self.superuser,
         )
 
         self.assertEqual(TenantFeatureService.provision_defaults(self.company_a), 0)
-        self.assertFalse(self.company_a.has_feature(Modulo.Codigo.TORY))
+        self.assertTrue(self.company_a.has_feature(Modulo.Codigo.TORY))
 
     def test_only_superuser_can_configure_features(self):
         with self.assertRaises(PermissionDenied):
