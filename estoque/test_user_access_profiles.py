@@ -116,6 +116,8 @@ class CadastroCapacidadesUsuarioTests(TestCase):
 class EscopoOperadorTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa Operador')
+        from estoque.test_documentacao import _habilitar_documentacao
+        _habilitar_documentacao(empresa, legado=False)
         base = Base.objects.create(empresa=empresa, nome='Base Operador')
         self.base = base
         self.operador = User.objects.create_user('operador.restrito', password='SenhaForte123!')

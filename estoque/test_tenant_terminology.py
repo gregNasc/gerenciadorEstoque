@@ -42,6 +42,21 @@ class TenantTerminologyTests(TestCase):
                 modulo__codigo=code,
             ).update(nome_exibicao=name)
 
+        TermoEmpresa.objects.create(
+            empresa=cls.company_b,
+            chave=TermoEmpresa.Chave.EQUIPAMENTO,
+            valor_singular='Ativo',
+            valor_plural='Ativos',
+        )
+        for code, name in {
+            Modulo.Codigo.EQUIPAMENTOS: 'Ativos',
+            Modulo.Codigo.SICK: 'Oficina',
+        }.items():
+            ModuloEmpresa.objects.filter(
+                empresa=cls.company_b,
+                modulo__codigo=code,
+            ).update(nome_exibicao=name)
+
     @staticmethod
     def _admin(username, company):
         user = User.objects.create_user(username, password='Teste123!')
@@ -91,9 +106,10 @@ class TenantTerminologyTests(TestCase):
         self.assertEqual(response_b.status_code, 200)
         self.assertEqual(
             response_b.context['tenant_labels']['equipamento']['plural'],
-            'Equipamentos',
+            'Ativos',
         )
-        self.assertEqual(response_b.context['tenant_module_labels']['sick'], 'SICK')
+        self.assertEqual(response_b.context['tenant_module_labels']['sick'], 'Oficina')
+        self.assertContains(response_b, 'Oficina')
         self.assertNotContains(response_b, 'Unidades')
         self.assertNotContains(response_b, 'Máquinas')
 

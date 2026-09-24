@@ -8,7 +8,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from estoque.models import Base, Empresa, ResolucaoDocumento, VideoDocumentacao
+from estoque.models import (
+    Base,
+    Empresa,
+    ResolucaoDocumento,
+    SecaoDocumentacaoEmpresa,
+    VideoDocumentacao,
+)
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.documentation_service import DocumentationService
 from insumos.models import (
@@ -31,6 +37,18 @@ def _docx_minimo(texto):
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as pacote:
         pacote.writestr('word/document.xml', documento_xml)
     return buffer.getvalue()
+
+
+def _habilitar_documentacao(empresa, *, legado=True):
+    SecaoDocumentacaoEmpresa.objects.bulk_create([
+        SecaoDocumentacaoEmpresa(
+            empresa=empresa,
+            codigo=codigo,
+            habilitado=True,
+            permite_conteudo_global_legado=legado,
+        )
+        for codigo, _label in SecaoDocumentacaoEmpresa.Codigo.choices
+    ])
 
 
 class DocumentationServiceTests(TestCase):
@@ -91,6 +109,7 @@ class DocumentationViewsTests(TestCase):
         )
         self.user = User.objects.create_user(username='operador-documentacao', password='segura-123')
         self.empresa = Empresa.objects.create(nome='Empresa documentação')
+        _habilitar_documentacao(self.empresa)
         self.base = Base.objects.create(nome='Base documentação', empresa=self.empresa)
         self.user.perfil.empresa = self.empresa
         self.user.perfil.role = 'operador'
@@ -542,6 +561,7 @@ class DocumentationViewsTests(TestCase):
 class ToryDocumentationTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa Tory Documentação')
+        _habilitar_documentacao(empresa)
         self.user = User.objects.create_user(username='usuario-tory-documentacao', password='segura-123')
         self.user.perfil.empresa = empresa
         self.user.perfil.save(update_fields=['empresa'])

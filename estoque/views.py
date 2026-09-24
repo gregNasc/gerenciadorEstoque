@@ -33,7 +33,7 @@ from django.db import transaction
 from .forms import EquipamentoForm
 from django.http import FileResponse, Http404, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
-from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento, Modulo, ModuloEmpresa, RelacionamentoEmpresa, CategoriaEquipamentoEmpresa, TermoEmpresa) #Regional
+from .models import (Produto, Equipamento, Transferencia, Sick, Historico, Base, Perfil, Empresa, Solicitacao, SolicitacaoItem, AlocacaoSolicitacaoItem, TransferenciaItem, StatusEquipamento, Modulo, ModuloEmpresa, RelacionamentoEmpresa, CategoriaEquipamentoEmpresa, SecaoDocumentacaoEmpresa, TermoEmpresa) #Regional
 from .models import (Comunicado, ComunicadoArquivo, ComunicadoLeitura, ComunicadoOculto, Mensagem, MensagemDestino, MensagemArquivo, Empresa, Notificacao, Emprestimo, ItemEmprestimo, GrupoRegional)
 from .models import (PendenciaTransferencia, DivergenciaTransferencia)
 from estoque.models import Base
@@ -856,11 +856,15 @@ def manuais_view(request):
         'categoria': request.GET.get('categoria', '').strip(),
         'idioma': request.GET.get('idioma', '').strip(),
     }
-    catalogo_completo = ManualService.listar()
-    manuais = ManualService.listar(
+    catalogo_completo = DocumentationService.listar(
+        tipo='MANUAL_OFICIAL', user=request.user
+    )
+    manuais = DocumentationService.listar(
         termo=filtros['q'],
+        tipo='MANUAL_OFICIAL',
         categoria=filtros['categoria'],
         idioma=filtros['idioma'],
+        user=request.user,
     )
     return render(
         request,
@@ -980,6 +984,7 @@ def drivers_impressoras_view(request):
     drivers = DocumentationAccessPolicy.queryset(
         DriverImpressora.objects.filter(ativo=True).select_related('criado_por'),
         request.user,
+        section=SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
     )
     if filtros['q']:
         drivers = drivers.filter(
@@ -995,7 +1000,8 @@ def drivers_impressoras_view(request):
         drivers = drivers.filter(sistema_operacional=filtros['sistema_operacional'])
 
     ativos = DocumentationAccessPolicy.queryset(
-        DriverImpressora.objects.filter(ativo=True), request.user
+        DriverImpressora.objects.filter(ativo=True), request.user,
+        section=SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
     )
     return render(request, 'estoque/drivers_impressoras.html', {
         'drivers': drivers,
@@ -1016,7 +1022,8 @@ def driver_impressora_arquivo_view(request, driver_id):
 
     driver = get_object_or_404(
         DocumentationAccessPolicy.queryset(
-            DriverImpressora.objects.all(), request.user
+            DriverImpressora.objects.all(), request.user,
+            section=SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
         ),
         pk=driver_id,
         ativo=True,
@@ -1050,6 +1057,7 @@ def driver_impressora_desativar_view(request, driver_id):
             request.user,
             action=DocumentationAccessPolicy.ADMIN,
             include_global=False,
+            section=SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
         ),
         pk=driver_id,
         ativo=True,
@@ -1101,6 +1109,7 @@ def documentacao_cliente_detalhe_view(request, cliente_id):
         request.user,
         action=DocumentationAccessPolicy.EDIT,
         include_global=False,
+        section=SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
     ).first()
     relatorios_cliente = DocumentationService._relatorios_do_cliente(cliente)
     documento_preview_tipo = ''
@@ -1213,6 +1222,7 @@ def documentacao_cliente_arquivo_view(request, cliente_id):
     documento = DocumentationAccessPolicy.queryset(
         ClienteChecklistDocumento.objects.filter(cliente=cliente),
         request.user,
+        section=SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
     ).order_by('empresa_id', '-atualizado_em').first()
     if documento is None:
         raise Http404('O checklist não está disponível no seu escopo.')
@@ -1241,7 +1251,8 @@ def documentacao_resolucao_arquivo_view(request, documento_id):
 
     documento = get_object_or_404(
         DocumentationAccessPolicy.queryset(
-            ResolucaoDocumento.objects.all(), request.user
+            ResolucaoDocumento.objects.all(), request.user,
+            section=SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES,
         ),
         pk=documento_id,
         ativo=True,
@@ -1258,6 +1269,32 @@ def documentacao_resolucao_arquivo_view(request, documento_id):
     return resposta
 
 @login_required
+@xframe_options_sameorigin
+def documentacao_legado_arquivo_view(request, documento_id):
+    """Entrega o acervo estático somente a tenants explicitamente autorizados."""
+    item = DocumentationService.legacy_item_for_user(documento_id, request.user)
+    if item is None:
+        raise Http404('O documento não está disponível no seu escopo.')
+    try:
+        raiz = DocumentationService.STATIC_ROOT.resolve()
+        caminho = (raiz / item.get('arquivo', '')).resolve()
+        caminho.relative_to(raiz)
+    except (OSError, ValueError):
+        raise Http404('Documento inválido.')
+    if not caminho.is_file() or caminho.suffix.lower() != '.pdf':
+        raise Http404('O arquivo não está disponível.')
+    resposta = FileResponse(
+        caminho.open('rb'),
+        as_attachment=request.GET.get('download') == '1',
+        filename=caminho.name,
+        content_type='application/pdf',
+    )
+    resposta['Cache-Control'] = 'private, no-store'
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    return resposta
+
+
+@login_required
 @require_POST
 def documentacao_resolucao_desativar_view(request, documento_id):
     from estoque.models import ResolucaoDocumento
@@ -1270,6 +1307,7 @@ def documentacao_resolucao_desativar_view(request, documento_id):
             request.user,
             action=DocumentationAccessPolicy.ADMIN,
             include_global=False,
+            section=SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES,
         ),
         pk=documento_id,
         ativo=True,
@@ -1320,6 +1358,7 @@ def documentacao_video_desativar_view(request, video_id):
             request.user,
             action=DocumentationAccessPolicy.ADMIN,
             include_global=False,
+            section=SecaoDocumentacaoEmpresa.Codigo.VIDEOS,
         ),
         pk=video_id,
     )

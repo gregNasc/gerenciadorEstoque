@@ -13,10 +13,10 @@
   </section>
 
   <div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i><span>Manuais</span><strong>{{ estatisticas.manuais }}</strong></a></div>
-    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i><span>Resolução</span><strong>{{ estatisticas.resolucoes }}</strong></a></div>
-    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i><span>Checklist de clientes</span><strong>{{ estatisticas.checklists }}</strong></a></div>
-    <div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i><span>Vídeos</span><strong>{{ estatisticas.videos }}</strong></a></div>
+    {% if tenant_documentation_sections.manuais.enabled %}<div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i><span>{{ tenant_documentation_sections.manuais.label }}</span><strong>{{ estatisticas.manuais }}</strong></a></div>{% endif %}
+    {% if tenant_documentation_sections.resolucoes.enabled %}<div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i><span>{{ tenant_documentation_sections.resolucoes.label }}</span><strong>{{ estatisticas.resolucoes }}</strong></a></div>{% endif %}
+    {% if tenant_documentation_sections.checklists.enabled %}<div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i><span>{{ tenant_documentation_sections.checklists.label }}</span><strong>{{ estatisticas.checklists }}</strong></a></div>{% endif %}
+    {% if tenant_documentation_sections.videos.enabled %}<div class="col-6 col-xl-3"><a class="documentation-area" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i><span>{{ tenant_documentation_sections.videos.label }}</span><strong>{{ estatisticas.videos }}</strong></a></div>{% endif %}
   </div>
 
   <form method="get" class="card border shadow-sm mb-4" role="search">

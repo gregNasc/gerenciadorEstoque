@@ -326,6 +326,13 @@ class SecaoDocumentacaoEmpresa(models.Model):
         choices=Codigo.choices,
     )
     habilitado = models.BooleanField(default=False, db_index=True)
+    permite_conteudo_global_legado = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            'Libera, de forma explícita, o acervo histórico sem empresa proprietária.'
+        ),
+    )
     nome_exibicao = models.CharField(
         max_length=100,
         blank=True,

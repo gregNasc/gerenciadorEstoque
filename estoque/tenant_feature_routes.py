@@ -1,4 +1,4 @@
-from estoque.models import DeclaracaoCorreios, Modulo
+from estoque.models import DeclaracaoCorreios, Modulo, SecaoDocumentacaoEmpresa
 
 
 class TenantFeatureRoutePolicy:
@@ -76,6 +76,7 @@ class TenantFeatureRoutePolicy:
         ('estoque', 'driver_impressora_arquivo'): Modulo.Codigo.DOCUMENTACAO,
         ('estoque', 'driver_impressora_desativar'): Modulo.Codigo.DOCUMENTACAO,
         ('estoque', 'documentacao'): Modulo.Codigo.DOCUMENTACAO,
+        ('estoque', 'documentacao_legado_arquivo'): Modulo.Codigo.DOCUMENTACAO,
         ('estoque', 'documentacao_resolucao'): Modulo.Codigo.DOCUMENTACAO,
         ('estoque', 'documentacao_resolucao_arquivo'): Modulo.Codigo.DOCUMENTACAO,
         ('estoque', 'documentacao_resolucao_desativar'): Modulo.Codigo.DOCUMENTACAO,
@@ -135,6 +136,30 @@ class TenantFeatureRoutePolicy:
         ('estoque', 'baixar_declaracao'),
         ('estoque', 'substituir_declaracao'),
     }
+
+    ROUTE_DOCUMENTATION_SECTIONS = {
+        ('estoque', 'documentacao'): SecaoDocumentacaoEmpresa.Codigo.BIBLIOTECA,
+        ('estoque', 'manuais'): SecaoDocumentacaoEmpresa.Codigo.MANUAIS,
+        ('estoque', 'drivers_impressoras'): SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
+        ('estoque', 'driver_impressora_arquivo'): SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
+        ('estoque', 'driver_impressora_desativar'): SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
+        ('estoque', 'documentacao_resolucao'): SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES,
+        ('estoque', 'documentacao_resolucao_arquivo'): SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES,
+        ('estoque', 'documentacao_resolucao_desativar'): SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES,
+        ('estoque', 'documentacao_clientes'): SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
+        ('estoque', 'documentacao_cliente_detalhe'): SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
+        ('estoque', 'documentacao_cliente_arquivo'): SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
+        ('estoque', 'documentacao_videos'): SecaoDocumentacaoEmpresa.Codigo.VIDEOS,
+        ('estoque', 'documentacao_video_desativar'): SecaoDocumentacaoEmpresa.Codigo.VIDEOS,
+    }
+
+    @classmethod
+    def required_documentation_section(cls, match):
+        if not match:
+            return None
+        return cls.ROUTE_DOCUMENTATION_SECTIONS.get(
+            (match.namespace or '', match.url_name or '')
+        )
 
     @classmethod
     def required_features(cls, match, view_kwargs=None):

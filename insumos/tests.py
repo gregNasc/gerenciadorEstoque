@@ -256,7 +256,8 @@ class EstoqueInsumosDesempenhoTests(TestCase):
         # Inclui os context processors globais de comunicados e chamados em
         # tempo real; permanece constante e sem N+1 por item.
         # Inclui também a resolução central do TenantScope da Etapa 15.
-        self.assertLess(len(consultas), 46)
+        # Uma consulta adicional resolve todas as seções de documentação do menu.
+        self.assertLess(len(consultas), 47)
         self.assertTrue(por_item['ITEM CRÍTICO']['critico'])
         self.assertFalse(por_item['ITEM NORMAL']['critico'])
         self.assertContains(resposta, 'id="formAjusteEstoque"', count=1)

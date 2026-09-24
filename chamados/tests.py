@@ -268,6 +268,8 @@ class ChamadosIntegracaoTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_detalhe_exibe_documentacao_vinculada_ao_produto_sem_inferir_solucao(self):
+        from estoque.test_documentacao import _habilitar_documentacao
+        _habilitar_documentacao(self.empresa)
         self.produto.codigo = 'IMP-BR-XR'
         self.produto.fabricante = 'Xerox'
         self.produto.modelo = 'Phaser 3020'

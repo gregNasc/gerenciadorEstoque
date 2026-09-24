@@ -34,6 +34,9 @@ class Stage18TenantIsolationTests(TestCase):
 
         self.empresa_a = Empresa.objects.create(nome='Empresa Stage18 A')
         self.empresa_b = Empresa.objects.create(nome='Empresa Stage18 B')
+        from estoque.test_documentacao import _habilitar_documentacao
+        _habilitar_documentacao(self.empresa_a, legado=False)
+        _habilitar_documentacao(self.empresa_b, legado=False)
         self.base_a = Base.objects.create(nome='Base Stage18 A', empresa=self.empresa_a)
         self.base_b = Base.objects.create(nome='Base Stage18 B', empresa=self.empresa_b)
         self.admin_a = self._admin('admin-stage18-a', self.empresa_a)

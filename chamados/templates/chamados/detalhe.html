@@ -1523,7 +1523,7 @@
 
             <div class="tab-pane fade" id="painel-documentos" role="tabpanel" aria-labelledby="tab-documentos" tabindex="0">
               <section class="chamado-sidebar-card">
-                <div class="sidebar-card-header"><div class="sidebar-card-title"><i class="bi bi-journal-bookmark"></i>{{ tenant_labels.documentacao.singular }}: {{ tenant_labels.equipamento.singular|lower }}</div></div>
+                <div class="sidebar-card-header"><div class="sidebar-card-title"><i class="bi bi-journal-bookmark"></i>{{ tenant_labels.documentacao.singular }} do {{ tenant_labels.equipamento.singular|lower }}</div></div>
                 <div class="sidebar-card-body">
                   <div class="doc-intro mb-3">Material relacionado ao(à) {{ tenant_labels.equipamento.singular|lower }} deste chamado. Confirme o diagnóstico antes de aplicar o procedimento.</div>
                   {% if documentacao_contextual %}<div class="d-grid gap-2">

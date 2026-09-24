@@ -300,6 +300,9 @@ def permissoes_especiais(request):
 
 
 def tenant_features_context(request):
+    from estoque.services.documentation_section_service import (
+        DocumentationSectionService,
+    )
     user = getattr(request, 'user', None)
     tenant = getattr(request, 'tenant', None)
     context = {
@@ -310,4 +313,5 @@ def tenant_features_context(request):
         'tenant_home_url': TenantFeatureService.home_url(user, tenant=tenant),
     }
     context.update(TenantTerminologyService.context_for_request(request))
+    context.update(DocumentationSectionService.context_for_request(request))
     return context

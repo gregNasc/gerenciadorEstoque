@@ -8,6 +8,7 @@ from estoque.policies.compras import GruposCorporativos
 from estoque.tenant_context import TenantRequestContext
 from estoque.tenant_feature_routes import TenantFeatureRoutePolicy
 from estoque.tenant_features import TenantFeatureService
+from estoque.services.documentation_section_service import DocumentationSectionService
 from estoque.tenant_scope import TenantScope
 
 class EmpresaMiddleware:
@@ -78,6 +79,15 @@ class TenantFeatureMiddleware:
                 raise PermissionDenied(
                     'Este módulo não está habilitado para sua empresa.'
                 )
+        section = TenantFeatureRoutePolicy.required_documentation_section(
+            request.resolver_match
+        )
+        if section and not DocumentationSectionService.is_enabled(
+            user, section, tenant=tenant
+        ):
+            raise PermissionDenied(
+                'Esta seção de documentação não está habilitada para sua empresa.'
+            )
         return None
 
 
@@ -135,6 +145,7 @@ class OperatorScopeMiddleware:
         'drivers_impressoras',
         'driver_impressora_arquivo',
         'documentacao',
+        'documentacao_legado_arquivo',
         'documentacao_resolucao',
         'documentacao_resolucao_arquivo',
         'documentacao_clientes',

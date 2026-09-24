@@ -10,6 +10,8 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from estoque.services.manual_service import ManualService
+from estoque.models import SecaoDocumentacaoEmpresa
+from estoque.services.documentation_section_service import DocumentationSectionService
 
 
 class DocumentationService:
@@ -24,6 +26,13 @@ class DocumentationService:
         'CHECKLIST_CLIENTE': 'Checklist de cliente',
         'VIDEO': 'Vídeo',
         'DRIVER_FIRMWARE': 'Driver e firmware',
+    }
+    TYPE_SECTIONS = {
+        'MANUAL_OFICIAL': SecaoDocumentacaoEmpresa.Codigo.MANUAIS,
+        'DRIVER_FIRMWARE': SecaoDocumentacaoEmpresa.Codigo.DRIVERS,
+        'RESOLUCAO': SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES,
+        'CHECKLIST_CLIENTE': SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
+        'VIDEO': SecaoDocumentacaoEmpresa.Codigo.VIDEOS,
     }
     MARCADORES_RESOLUCAO = (
         'resolucao', 'resolver', 'problema', 'defeito', 'falha', 'erro', 'offline',
@@ -121,7 +130,7 @@ class DocumentationService:
         cls._dados_catalogo.cache_clear()
 
     @classmethod
-    def _preparar_item(cls, item_original):
+    def _preparar_item(cls, item_original, user=None):
         item = dict(item_original)
         if item.get('tipo_documento') == 'MANUAL_OFICIAL':
             item = ManualService._localizar_item(item)
@@ -138,15 +147,50 @@ class DocumentationService:
             except (OSError, ValueError):
                 arquivo_relativo = ''
         item['arquivo_disponivel'] = bool(arquivo_relativo or arquivo_url_privado)
-        item['arquivo_url'] = (
-            arquivo_url_privado
-            or (static(arquivo_relativo) if arquivo_relativo else '')
-        )
+        if arquivo_url_privado:
+            item['arquivo_url'] = arquivo_url_privado
+        elif arquivo_relativo and user is not None:
+            item['arquivo_url'] = reverse(
+                'estoque:documentacao_legado_arquivo', args=[item.get('id', '')]
+            )
+        else:
+            item['arquivo_url'] = static(arquivo_relativo) if arquivo_relativo else ''
         item['tipo_label'] = _(cls.TIPOS.get(
             item.get('tipo_documento'), item.get('tipo_documento', '')
         ))
         item['revisao_interna'] = item.get('status') == 'pronto_revisao_interna'
         item['pendente'] = item.get('status') in {'identificacao_pendente', 'indisponivel'}
+        return item
+
+    @classmethod
+    def section_for_item(cls, item):
+        return cls.TYPE_SECTIONS.get(item.get('tipo_documento'))
+
+    @classmethod
+    def _legacy_catalog(cls, user=None):
+        if user is None or getattr(user, 'is_superuser', False):
+            return list(cls._dados_catalogo())
+        sections = DocumentationSectionService.configuration(user)
+        return [
+            item
+            for item in cls._dados_catalogo()
+            if (
+                cls.section_for_item(item)
+                and sections.get(cls.section_for_item(item), {}).get('allow_legacy', False)
+            )
+        ]
+
+    @classmethod
+    def legacy_item_for_user(cls, document_id, user):
+        item = next(
+            (item for item in cls._dados_catalogo() if item.get('id') == document_id),
+            None,
+        )
+        section = cls.section_for_item(item or {})
+        if not item or not section:
+            return None
+        if not DocumentationSectionService.allows_legacy_global(user, section):
+            return None
         return item
 
     @classmethod
@@ -163,6 +207,10 @@ class DocumentationService:
         from insumos.utils import secure_queryset_insumos
 
         if user is None or not getattr(user, 'is_authenticated', False):
+            return Cliente.objects.none()
+        if not DocumentationSectionService.is_enabled(
+            user, SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS
+        ):
             return Cliente.objects.none()
         if user.is_superuser:
             clientes = Cliente.objects.filter(ativo=True)
@@ -184,6 +232,7 @@ class DocumentationService:
         documentos = DocumentationAccessPolicy.queryset(
             ClienteChecklistDocumento.objects.select_related('empresa'),
             user,
+            section=SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS,
         ).order_by('empresa_id', '-atualizado_em')
         return clientes.prefetch_related(
             Prefetch(
@@ -213,6 +262,10 @@ class DocumentationService:
 
     @classmethod
     def _checklists_cliente(cls, user):
+        if not DocumentationSectionService.is_enabled(
+            user, SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS
+        ):
+            return []
         documentos = []
         for cliente in cls._clientes_autorizados(user):
             checklist = cls._checklist_do_cliente(cliente)
@@ -260,9 +313,15 @@ class DocumentationService:
         from estoque.models import VideoDocumentacao
         from estoque.policies.documentation import DocumentationAccessPolicy
 
+        if user is not None and not DocumentationSectionService.is_enabled(
+            user, SecaoDocumentacaoEmpresa.Codigo.VIDEOS
+        ):
+            return []
         queryset = VideoDocumentacao.objects.filter(ativo=True)
         queryset = (
-            DocumentationAccessPolicy.queryset(queryset, user)
+            DocumentationAccessPolicy.queryset(
+                queryset, user, section=SecaoDocumentacaoEmpresa.Codigo.VIDEOS
+            )
             if user is not None
             else queryset.filter(empresa__isnull=True)
         )
@@ -298,9 +357,15 @@ class DocumentationService:
         from estoque.models import ResolucaoDocumento
         from estoque.policies.documentation import DocumentationAccessPolicy
 
+        if user is not None and not DocumentationSectionService.is_enabled(
+            user, SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES
+        ):
+            return []
         queryset = ResolucaoDocumento.objects.filter(ativo=True)
         queryset = (
-            DocumentationAccessPolicy.queryset(queryset, user)
+            DocumentationAccessPolicy.queryset(
+                queryset, user, section=SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES
+            )
             if user is not None
             else queryset.filter(empresa__isnull=True)
         )
@@ -350,13 +415,13 @@ class DocumentationService:
         }
         termo_normalizado = ManualService.normalizar(termo)
         resultado = []
-        catalogo = list(cls._dados_catalogo())
+        catalogo = cls._legacy_catalog(user)
         catalogo.extend(cls._resolucoes_upload(user))
         catalogo.extend(cls._videos_catalogo(user))
         if user is not None:
             catalogo.extend(cls._checklists_cliente(user))
         for original in catalogo:
-            item = cls._preparar_item(original)
+            item = cls._preparar_item(original, user=user)
             busca = ManualService.normalizar(' '.join([
                 item.get('produto_codigo', ''), item.get('produto', ''),
                 item.get('fabricante', ''), item.get('modelo', ''),
@@ -421,12 +486,12 @@ class DocumentationService:
         if not codigo:
             return []
         catalogo = (
-            list(cls._dados_catalogo())
+            cls._legacy_catalog(user)
             + cls._resolucoes_upload(user)
             + cls._videos_catalogo(user)
         )
         documentos = [
-            cls._preparar_item(item)
+            cls._preparar_item(item, user=user)
             for item in catalogo
             if str(item.get('produto_codigo', '')).strip() == codigo
         ]
@@ -440,7 +505,7 @@ class DocumentationService:
     def _item_da_pergunta(cls, pergunta, tipo_preferido='', user=None):
         texto = ManualService.normalizar(pergunta)
         candidatos = []
-        for item in list(cls._dados_catalogo()) + cls._resolucoes_upload(user):
+        for item in cls._legacy_catalog(user) + cls._resolucoes_upload(user):
             if tipo_preferido and item.get('tipo_documento') != tipo_preferido:
                 continue
             melhor_alias = 0
@@ -569,7 +634,7 @@ class DocumentationService:
                 'contexto': {'intencao': intencao},
             }
 
-        item = cls._preparar_item(item)
+        item = cls._preparar_item(item, user=user)
         if pede_driver and item.get('driver_url'):
             return {
                 'resposta': f"Encontrei o acesso oficial de drivers e software para {item.get('produto') or item['modelo']}. Confirme o sistema operacional e a revisão do hardware antes de instalar.",

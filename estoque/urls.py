@@ -28,6 +28,7 @@ urlpatterns = [
     path('manuais/drivers/<int:driver_id>/arquivo/', views.driver_impressora_arquivo_view, name='driver_impressora_arquivo'),
     path('manuais/drivers/<int:driver_id>/desativar/', views.driver_impressora_desativar_view, name='driver_impressora_desativar'),
     path('documentacao/', views.documentacao_view, name='documentacao'),
+    path('documentacao/legado/<slug:documento_id>/arquivo/', views.documentacao_legado_arquivo_view, name='documentacao_legado_arquivo'),
     path('documentacao/resolucao/', views.documentacao_resolucao_view, name='documentacao_resolucao'),
     path('documentacao/resolucao/<int:documento_id>/arquivo/', views.documentacao_resolucao_arquivo_view, name='documentacao_resolucao_arquivo'),
     path('documentacao/resolucao/<int:documento_id>/desativar/', views.documentacao_resolucao_desativar_view, name='documentacao_resolucao_desativar'),

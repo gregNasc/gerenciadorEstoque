@@ -49,6 +49,8 @@ TECHNICAL_MODEL_FIELDS = {
     ('chamados.PendenciaVinculoLider', 'texto_normalizado'),
     ('chamados.ChamadoAnexo', 'nome_original'),
     ('estoque.Empresa', 'slug'),
+    ('estoque.ModuloEmpresa', 'nome_exibicao'),
+    ('estoque.SecaoDocumentacaoEmpresa', 'nome_exibicao'),
     ('estoque.TermoEmpresa', 'valor_singular'),
     ('estoque.TermoEmpresa', 'valor_plural'),
     ('estoque.Produto', 'categoria'),

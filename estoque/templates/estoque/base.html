@@ -679,7 +679,7 @@
                 {% endif %}
 
                 <!-- DOCUMENTAÇÃO -->
-                {% if 'documentacao' in tenant_features %}
+                {% if 'documentacao' in tenant_features and tenant_has_documentation_sections %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if url_name == 'documentacao' or url_name == 'manuais' or url_name == 'drivers_impressoras' or url_name == 'documentacao_resolucao' or url_name == 'documentacao_clientes' or url_name == 'documentacao_videos' %}active{% endif %}"
                        href="#" id="documentacaoDropdown" role="button"
@@ -689,12 +689,12 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="documentacaoDropdown">
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao' %}"><i class="bi bi-collection"></i> {% trans "Biblioteca" %}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> Manuais: {{ tenant_labels.equipamento.plural }}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:drivers_impressoras' %}"><i class="bi bi-printer"></i> {% trans "Drivers de impressoras" %}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i> {% trans "Resolução de problemas" %}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i> {% trans "Checklist de clientes" %}</a></li>
-                        <li><a class="dropdown-item" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i> {% trans "Vídeos" %}</a></li>
+                        {% if tenant_documentation_sections.biblioteca.enabled %}<li><a class="dropdown-item" href="{% url 'estoque:documentacao' %}"><i class="bi bi-collection"></i> {{ tenant_documentation_sections.biblioteca.label }}</a></li>{% endif %}
+                        {% if tenant_documentation_sections.manuais.enabled %}<li><a class="dropdown-item" href="{% url 'estoque:manuais' %}"><i class="bi bi-book"></i> {{ tenant_documentation_sections.manuais.label }}</a></li>{% endif %}
+                        {% if tenant_documentation_sections.drivers.enabled %}<li><a class="dropdown-item" href="{% url 'estoque:drivers_impressoras' %}"><i class="bi bi-printer"></i> {{ tenant_documentation_sections.drivers.label }}</a></li>{% endif %}
+                        {% if tenant_documentation_sections.resolucoes.enabled %}<li><a class="dropdown-item" href="{% url 'estoque:documentacao_resolucao' %}"><i class="bi bi-tools"></i> {{ tenant_documentation_sections.resolucoes.label }}</a></li>{% endif %}
+                        {% if tenant_documentation_sections.checklists.enabled %}<li><a class="dropdown-item" href="{% url 'estoque:documentacao_clientes' %}"><i class="bi bi-card-checklist"></i> {{ tenant_documentation_sections.checklists.label }}</a></li>{% endif %}
+                        {% if tenant_documentation_sections.videos.enabled %}<li><a class="dropdown-item" href="{% url 'estoque:documentacao_videos' %}"><i class="bi bi-play-btn"></i> {{ tenant_documentation_sections.videos.label }}</a></li>{% endif %}
                     </ul>
                 </li>
                 {% endif %}
@@ -715,6 +715,7 @@
                 {% endif %}
 
                 {% if request.user.is_superuser %}
+                <!--
                 <li class="nav-item">
                     <a class="nav-link"
                        href="{% url 'estoque:painel_superuser' %}">
@@ -722,6 +723,7 @@
                         {% trans "Painel Administrativo" %}
                     </a>
                 </li>
+                -->
                 <!--
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'admin:index' %}">

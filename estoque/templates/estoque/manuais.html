@@ -1,7 +1,7 @@
 {% extends 'estoque/base.html' %}
 {% load static i18n %}
 
-{% block title %}{% trans "Manuais de equipamentos" %}{% endblock %}
+{% block title %}{{ tenant_documentation_sections.manuais.label }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-3 px-lg-4 pb-5 manual-library">
@@ -9,7 +9,7 @@
     <div class="card-body p-4 p-lg-5 d-flex flex-wrap justify-content-between align-items-center gap-4">
       <div>
         <span class="manual-eyebrow"><i class="bi bi-journal-bookmark-fill me-2"></i>{% trans "Biblioteca interna" %}</span>
-        <h1 class="h3 fw-bold mb-2 mt-2">{% trans "Manuais de equipamentos" %}</h1>
+        <h1 class="h3 fw-bold mb-2 mt-2">{{ tenant_documentation_sections.manuais.label }}</h1>
         <p class="text-secondary mb-0">{% trans "Pesquise manuais, drivers e firmware por fabricante, modelo ou assunto. Documentos em português aparecem primeiro sempre que disponíveis." %}</p>
       </div>
       <a class="btn btn-outline-dark" href="{% url 'estoque:drivers_impressoras' %}">

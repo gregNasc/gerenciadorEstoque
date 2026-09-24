@@ -18,14 +18,25 @@ class DocumentationAccessPolicy:
         )
 
     @classmethod
-    def queryset(cls, queryset, user, *, action=VIEW, include_global=True):
+    def queryset(
+        cls, queryset, user, *, action=VIEW, include_global=True, section=None
+    ):
         if not user or not user.is_authenticated:
             return queryset.none()
         if user.is_superuser:
             return queryset
         empresas = cls.companies(user, action=action)
         filtro = Q(empresa__in=empresas)
-        if include_global and action == cls.VIEW:
+        if include_global and action == cls.VIEW and section:
+            from estoque.services.documentation_section_service import (
+                DocumentationSectionService,
+            )
+            allow_global = DocumentationSectionService.allows_legacy_global(
+                user, section
+            )
+        else:
+            allow_global = False
+        if allow_global:
             filtro |= Q(empresa__isnull=True)
         return queryset.filter(filtro).distinct()
 

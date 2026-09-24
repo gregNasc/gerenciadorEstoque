@@ -7,12 +7,14 @@ from estoque.forms_documentacao import DriverImpressoraForm
 from estoque.models import Base, DriverImpressora, Empresa, Equipamento, Produto
 from estoque.services.assistente_operacional_service import AssistenteOperacionalService
 from estoque.services.manual_service import ManualService
+from estoque.test_documentacao import _habilitar_documentacao
 
 
 class ManuaisViewTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='operador-manuais', password='segura-123')
         self.empresa = Empresa.objects.create(nome='Empresa teste')
+        _habilitar_documentacao(self.empresa)
         self.base = Base.objects.create(nome='Base teste', empresa=self.empresa)
         self.user.perfil.empresa = self.empresa
         self.user.perfil.save()
@@ -85,6 +87,7 @@ class ManuaisViewTests(TestCase):
 class DriversImpressorasTests(TestCase):
     def setUp(self):
         self.empresa = Empresa.objects.create(nome='Empresa drivers')
+        _habilitar_documentacao(self.empresa)
         self.admin = User.objects.create_user(
             username='admin-drivers', password='segura-123'
         )
@@ -210,6 +213,7 @@ class DriversImpressorasTests(TestCase):
 class ToryManuaisTests(TestCase):
     def setUp(self):
         empresa = Empresa.objects.create(nome='Empresa Tory Manuais')
+        _habilitar_documentacao(empresa)
         self.user = User.objects.create_user(username='usuario-tory-manual', password='segura-123')
         self.user.perfil.empresa = empresa
         self.user.perfil.save(update_fields=['empresa'])
@@ -221,7 +225,7 @@ class ToryManuaisTests(TestCase):
         )
         self.assertEqual(resposta['interpretacao']['intencao'], 'manuais')
         self.assertIn('TL-WR829N', resposta['resposta'])
-        self.assertTrue(any(acao.get('url', '').endswith('.pdf') for acao in resposta['acoes']))
+        self.assertTrue(any('/documentacao/legado/' in acao.get('url', '') for acao in resposta['acoes']))
 
     def test_tory_entende_configuracao_do_ranger_sem_pedir_base(self):
         resposta = AssistenteOperacionalService.responder(
@@ -244,7 +248,7 @@ class ToryManuaisTests(TestCase):
         )
         self.assertEqual(resposta['interpretacao']['intencao'], 'manuais')
         self.assertIn('HP Laser série 100', resposta['resposta'])
-        self.assertTrue(any(acao.get('url', '').endswith('.pdf') for acao in resposta['acoes']))
+        self.assertTrue(any('/documentacao/legado/' in acao.get('url', '') for acao in resposta['acoes']))
 
     def test_tory_localiza_manual_pantum_p2200_em_portugues(self):
         resposta = AssistenteOperacionalService.responder(
@@ -254,7 +258,7 @@ class ToryManuaisTests(TestCase):
         self.assertEqual(resposta['interpretacao']['intencao'], 'manuais')
         self.assertIn('Pantum P2200/P2500 Series V2.0', resposta['resposta'])
         self.assertIn('português', resposta['resposta'].lower())
-        self.assertTrue(any(acao.get('url', '').endswith('.pdf') for acao in resposta['acoes']))
+        self.assertTrue(any('/documentacao/legado/' in acao.get('url', '') for acao in resposta['acoes']))
 
     def test_tory_localiza_guia_mc65_em_portugues(self):
         resposta = AssistenteOperacionalService.responder(
@@ -264,7 +268,7 @@ class ToryManuaisTests(TestCase):
         self.assertEqual(resposta['interpretacao']['intencao'], 'manuais')
         self.assertIn('MC65', resposta['resposta'])
         self.assertIn('português', resposta['resposta'].lower())
-        self.assertTrue(any(acao.get('url', '').endswith('.pdf') for acao in resposta['acoes']))
+        self.assertTrue(any('/documentacao/legado/' in acao.get('url', '') for acao in resposta['acoes']))
 
     def test_tory_oferece_driver_oficial_da_pantum(self):
         resposta = AssistenteOperacionalService.responder(
