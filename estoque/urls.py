@@ -95,6 +95,7 @@ urlpatterns = [
     path('mensagens/<int:destino_id>/', views.visualizar_mensagem, name='visualizar_mensagem'),
     path('mensagens/arquivos/<int:arquivo_id>/baixar/', views.baixar_arquivo_mensagem, name='baixar_arquivo_mensagem'),
     path('comunicados/', views.caixa_comunicados, name='caixa_comunicados'),
+    path('comunicados/marcar-todos-lidos/', views.marcar_todos_comunicados_lidos, name='marcar_todos_comunicados_lidos'),
     path('comunicados/novo/', views.criar_comunicado, name='criar_comunicado'),
     path('comunicados/<int:comunicado_id>/', views.detalhe_comunicado, name='detalhe_comunicado'),
     path('comunicados/arquivos/<int:arquivo_id>/baixar/', comunicacao_views.baixar_arquivo_comunicado, name='baixar_arquivo_comunicado'),

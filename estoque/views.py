@@ -1,6 +1,5 @@
 import mimetypes
 from pathlib import Path
-
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -39,7 +38,7 @@ from .models import (PendenciaTransferencia, DivergenciaTransferencia)
 from estoque.models import Base
 from .utils import notificar_pendencia_transferencia
 from .utils import filtrar_por_empresa, qs_equipamentos, qs_historico, qs_bases
-from django.db.models import Count, Q, F, Prefetch
+from django.db.models import Count, Q, F, Prefetch, Exists, OuterRef
 from django.utils.dateparse import parse_date
 from estoque.models import Equipamento
 from insumos.models import ChecklistDiario
@@ -71,6 +70,7 @@ from django.urls import reverse
 import re
 import logging
 from uuid import uuid4
+
 logger = logging.getLogger(__name__)
 from collections import defaultdict
 from .services.estoque_service import get_estoque_por_produto
@@ -4185,6 +4185,11 @@ def criar_comunicado(request):
 @login_required
 def caixa_comunicados(request):
 
+    leituras_usuario = ComunicadoLeitura.objects.filter(
+        usuario=request.user,
+        comunicado=OuterRef('pk'),
+    )
+
     comunicados = (
         CommunicationAccessPolicy.comunicados(request.user)
         .filter(
@@ -4193,17 +4198,20 @@ def caixa_comunicados(request):
         .exclude(
             comunicadooculto__usuario=request.user
         )
+        .filter(
+            Q(expira_em__isnull=True) |
+            Q(expira_em__gt=timezone.now())
+        )
+        .filter(
+            Q(enviar_para_todos=True) |
+            Q(usuarios=request.user)
+        )
+        .annotate(
+            lido=Exists(leituras_usuario)
+        )
+        .distinct()
+        .order_by('-criado_em')
     )
-
-    comunicados = comunicados.filter(
-        Q(expira_em__isnull=True) |
-        Q(expira_em__gt=timezone.now())
-    )
-
-    comunicados = comunicados.filter(
-        Q(enviar_para_todos=True) |
-        Q(usuarios=request.user)
-    ).distinct().order_by('-criado_em')
 
     return render(
         request,
@@ -4211,6 +4219,80 @@ def caixa_comunicados(request):
         {
             'comunicados': comunicados
         }
+    )
+
+@login_required
+@require_POST
+@transaction.atomic
+def marcar_todos_comunicados_lidos(request):
+
+    comunicados = (
+        CommunicationAccessPolicy.comunicados(request.user)
+        .filter(
+            ativo=True
+        )
+        .exclude(
+            comunicadooculto__usuario=request.user
+        )
+        .filter(
+            Q(expira_em__isnull=True) |
+            Q(expira_em__gt=timezone.now())
+        )
+        .filter(
+            Q(enviar_para_todos=True) |
+            Q(usuarios=request.user)
+        )
+        .distinct()
+    )
+
+    comunicados_lidos_ids = (
+        ComunicadoLeitura.objects
+        .filter(
+            usuario=request.user,
+            comunicado__in=comunicados,
+        )
+        .values_list(
+            'comunicado_id',
+            flat=True,
+        )
+    )
+
+    comunicados_nao_lidos = list(
+        comunicados
+        .exclude(
+            id__in=comunicados_lidos_ids
+        )
+        .values_list(
+            'id',
+            flat=True,
+        )
+    )
+
+    if comunicados_nao_lidos:
+
+        ComunicadoLeitura.objects.bulk_create([
+            ComunicadoLeitura(
+                comunicado_id=comunicado_id,
+                usuario=request.user,
+            )
+            for comunicado_id in comunicados_nao_lidos
+        ])
+
+        messages.success(
+            request,
+            f'{len(comunicados_nao_lidos)} comunicado(s) '
+            f'marcado(s) como lido(s).'
+        )
+
+    else:
+
+        messages.info(
+            request,
+            'Não há comunicados não lidos.'
+        )
+
+    return redirect(
+        'estoque:caixa_comunicados'
     )
 
 @login_required

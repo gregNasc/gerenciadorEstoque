@@ -12,10 +12,6 @@
 
             <div class="d-flex align-items-center gap-2 mb-1">
 
-                <h3 class="fw-bold mb-0">
-                    {% trans "Comunicados" %}
-                </h3>
-
                 {% if comunicados_nao_lidos > 0 %}
                 <!--span class="badge rounded-pill bg-danger px-3 py-2">
 
@@ -27,9 +23,52 @@
 
             </div>
 
-            <p class="text-muted mb-0">
-                {% trans "Mensagens, arquivos e avisos operacionais do sistema." %}
-            </p>
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+
+                <div>
+
+                    <div class="d-flex align-items-center gap-2 mb-1">
+
+                        <h3 class="fw-bold mb-0">
+                            {% trans "Comunicados" %}
+                        </h3>
+
+                        {% if comunicados_nao_lidos > 0 %}
+                        <span class="badge rounded-pill bg-danger px-3 py-2">
+                            {{ comunicados_nao_lidos }}
+                            {% trans "novo(s)" %}
+                        </span>
+                        {% endif %}
+
+                    </div>
+
+                    <p class="text-muted mb-0">
+                        {% trans "Mensagens, arquivos e avisos operacionais do sistema." %}
+                    </p>
+
+                </div>
+
+
+                {% if comunicados_nao_lidos > 0 %}
+
+                <form method="post"
+                      action="{% url 'estoque:marcar_todos_comunicados_lidos' %}">
+
+                    {% csrf_token %}
+
+                    <button type="submit"
+                            class="btn btn-outline-secondary rounded-pill px-4">
+
+                        <i class="bi bi-check2-all me-2"></i>
+                        {% trans "Marcar todas como lidas" %}
+
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </div>
 
         </div>
 
