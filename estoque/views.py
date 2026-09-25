@@ -1641,19 +1641,6 @@ def cadastrar_usuario(request):
                 messages.success(request, f"Usuário '{username}' criado com sucesso!")
                 return redirect('estoque:cadastrar_usuario')
 
-                ComunicadoService.criar_acao(
-                    titulo=f'Solicitacao de equipamentos #{solicitacao.pk}',
-                    mensagem=(
-                        f'{request.user.get_username()} solicitou equipamentos para '
-                        f'{regional.nome}. Motivo: {motivo}'
-                    ),
-                    usuario=request.user,
-                    bases=[regional],
-                    empresa=regional.empresa,
-                    dados={'solicitacao_id': solicitacao.pk, 'acao': 'CRIADA'},
-                    url=reverse('estoque:caixa_solicitacoes'),
-                )
-
         except Exception as e:
             messages.error(request, f"Erro ao criar usuário: {str(e)}")
             return redirect('estoque:cadastrar_usuario')
@@ -4841,20 +4828,39 @@ def painel_alocacao(request, solicitacao_id):
     )
     solicitacao = get_object_or_404(
         Solicitacao.objects.filter(
-            regional_solicitante__in=bases_aprovacao
+            regional_solicitante__in=bases_aprovacao,
+            status='PENDENTE',
         ).prefetch_related('itens'),
         id=solicitacao_id
     )
-    bases_origem = TenantOperationPolicy.bases(
-        request.user, 'TRANSFERENCIAS', 'MOVIMENTAR'
-    )
-    bases_origem = Base.objects.filter(pk__in=[
-        base.pk
-        for base in bases_origem.select_related('empresa')
-        if TenantOperationPolicy.flow_allowed(
-            base, solicitacao.regional_solicitante, 'TRANSFERENCIAS'
+    bases_movimentacao = (
+        TenantOperationPolicy.bases(
+            request.user,
+            'TRANSFERENCIAS',
+            'MOVIMENTAR',
         )
-    ])
+        .select_related('empresa')
+    )
+
+    bases_origem_ids = [
+        base.pk
+        for base in bases_movimentacao
+        if (
+                base.pk != solicitacao.regional_solicitante_id
+                and TenantOperationPolicy.flow_allowed(
+            base,
+            solicitacao.regional_solicitante,
+            'TRANSFERENCIAS',
+        )
+        )
+    ]
+
+    bases_origem = (
+        Base.objects
+        .filter(pk__in=bases_origem_ids)
+        .select_related('empresa')
+        .order_by('nome')
+    )
 
     itens_solicitados = solicitacao.itens.all()
 
@@ -4927,8 +4933,9 @@ def painel_alocacao(request, solicitacao_id):
                         regional_origem=regional_origem,
                         regional_destino=solicitacao.regional_solicitante,
                         solicitado_por=request.user,
-                        status='PENDENTE',
-                        alocacao=alocacao
+                        status=Transferencia.Status.PENDENTE,
+                        origem_fluxo=Transferencia.Origem.SOLICITACAO,
+                        alocacao=alocacao,
                     )
 
                     transferencias_criadas += 1
@@ -4936,36 +4943,40 @@ def painel_alocacao(request, solicitacao_id):
             if transferencias_criadas > 0:
 
                 solicitacao.status = 'EM_TRANSFERENCIA'
+                solicitacao.aprovado_por = request.user
+                solicitacao.data_aprovacao = timezone.now()
 
                 solicitacao.save(
-                    update_fields=['status']
+                    update_fields=[
+                        'status',
+                        'aprovado_por',
+                        'data_aprovacao',
+                    ]
                 )
 
                 # COMUNICADO PARA O SOLICITANTE
-                comunicado = Comunicado.objects.create(
+                if solicitacao.criado_por_id:
+                    ComunicadoService.criar_acao(
+                        titulo=f'Solicitação #{solicitacao.id} aprovada',
+                        mensagem=(
+                            'Sua solicitação de equipamentos foi aprovada.\n\n'
+                            'As transferências necessárias foram encaminhadas '
+                            'para as bases responsáveis.'
+                        ),
+                        usuario=request.user,
+                        usuarios=[solicitacao.criado_por],
+                        empresa=solicitacao.regional_solicitante.empresa,
+                        incluir_admins=False,
+                        incluir_autor=False,
+                        dados={
+                            'solicitacao_id': solicitacao.pk,
+                            'acao': 'APROVADA',
+                        },
+                        url=reverse(
+                            'estoque:caixa_solicitacoes'
+                        ),
+                    )
 
-                    titulo=(
-                        f'Solicitação #{solicitacao.id} aprovada'
-                    ),
-
-                    mensagem=(
-
-                        f'Sua solicitação foi aprovada.\n\n'
-
-                        f'As transferências dos equipamentos '
-                        f'já foram iniciadas.'
-                    ),
-
-                    tipo='OPERACIONAL',
-
-                    criado_por=request.user,
-
-                    ativo=True
-                )
-
-                comunicado.usuarios.add(
-                    solicitacao.criado_por
-                )
 
                 messages.success(
                     request,
@@ -4990,7 +5001,7 @@ def painel_alocacao(request, solicitacao_id):
         regionais = (
             Equipamento.objects
             .filter(
-                produto__categoria=item.categoria,
+                produto__categoria__iexact=item.categoria,
                 regional__in=bases_origem,
             )
             .exclude(
@@ -5013,7 +5024,7 @@ def painel_alocacao(request, solicitacao_id):
                     'regional'
                 )
                 .filter(
-                    produto__categoria=item.categoria,
+                    produto__categoria__iexact=item.categoria,
                     regional_id=regional['regional__id']
                 )
             )
@@ -5417,6 +5428,42 @@ def criar_solicitacao(request):
                 if itens_validos == 0:
                     raise ValueError(
                         'Nenhum item válido informado.'
+                    )
+
+                admins_autorizados = [
+                    admin
+                    for admin in User.objects.filter(
+                        is_active=True,
+                        perfil__role='admin',
+                    ).select_related('perfil')
+                    if TenantOperationPolicy.can_access_base(
+                        admin,
+                        regional,
+                        'TRANSFERENCIAS',
+                        'APROVAR',
+                    )
+                ]
+
+                if admins_autorizados:
+                    ComunicadoService.criar_acao(
+                        titulo=f'Nova solicitação de equipamentos #{solicitacao.pk}',
+                        mensagem=(
+                            f'{request.user.get_username()} solicitou equipamentos '
+                            f'para {regional.nome}.\n\n'
+                            f'Motivo: {motivo}'
+                        ),
+                        usuario=request.user,
+                        usuarios=admins_autorizados,
+                        empresa=regional.empresa,
+                        incluir_admins=False,
+                        incluir_autor=False,
+                        dados={
+                            'solicitacao_id': solicitacao.pk,
+                            'acao': 'CRIADA',
+                        },
+                        url=reverse(
+                            'estoque:caixa_solicitacoes'
+                        ),
                     )
 
         except Exception as e:

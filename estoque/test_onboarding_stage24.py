@@ -56,7 +56,7 @@ class TenantOnboardingStage24Tests(TestCase):
         response = self.client.post(self.step_url('modulos', company), {
             'modulos': selected_modules,
         })
-        self.assertRedirects(response, self.step_url('admin', company))
+        self.assertRedirects(response, self.step_url('terminologia', company))
         self.assertEqual(
             set(ModuloEmpresa.objects.filter(
                 empresa=company,
@@ -64,6 +64,18 @@ class TenantOnboardingStage24Tests(TestCase):
             ).values_list('modulo__codigo', flat=True)),
             set(selected_modules),
         )
+
+        for current_step, next_step in (
+            ('terminologia', 'categorias'),
+            ('categorias', 'catalogo'),
+            ('catalogo', 'documentacao'),
+            ('documentacao', 'admin'),
+        ):
+            page = self.client.get(self.step_url(current_step, company))
+            self.assertEqual(page.status_code, 200)
+            self.assertEqual(len(page.context['etapas']), 10)
+            response = self.client.post(self.step_url(current_step, company))
+            self.assertRedirects(response, self.step_url(next_step, company))
 
         response = self.client.post(self.step_url('admin', company), {
             'username': 'primeiro.admin.etapa24',

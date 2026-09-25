@@ -14,6 +14,34 @@ from .notificacao_service import NotificacaoService
 class EmprestimoService:
 
     @staticmethod
+    def _normalizar_data_prevista(data_prevista):
+        """
+        Garante que a data recebida da view seja convertida para datetime.date.
+
+        request.POST entrega strings, enquanto integrações posteriores,
+        como a criação da O.S., esperam um objeto date real.
+        """
+        campo = Emprestimo._meta.get_field(
+            'data_prevista_devolucao'
+        )
+
+        try:
+            data_normalizada = campo.to_python(
+                data_prevista
+            )
+        except (ValidationError, TypeError, ValueError):
+            raise ValidationError(
+                'Informe uma data prevista de devolução válida.'
+            )
+
+        if data_normalizada is None:
+            raise ValidationError(
+                'Informe a data prevista de devolução.'
+            )
+
+        return data_normalizada
+
+    @staticmethod
     @transaction.atomic
     def criar(
         base_origem, base_destino, user, motivo, data_prevista, equipamentos,
@@ -37,6 +65,10 @@ class EmprestimoService:
             raise ValidationError('Selecione ao menos um equipamento válido.')
         if any(equipamento.regional_id != base_origem.pk for equipamento in equipamentos):
             raise ValidationError('Todos os equipamentos devem pertencer à base de origem.')
+
+        data_prevista = EmprestimoService._normalizar_data_prevista(
+            data_prevista
+        )
 
         emprestimo = Emprestimo.objects.create(
 

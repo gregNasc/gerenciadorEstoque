@@ -79,6 +79,16 @@
     <!-- ALOCAÇÃO -->
     {% for item in itens %}
 
+    <div class="alert alert-info border-0 shadow-sm mb-4">
+        <div class="fw-semibold mb-1">
+            {% trans "Selecione a base que atenderá a solicitação" %}
+        </div>
+
+        <div class="small">
+            {% trans "Informe abaixo a quantidade que cada base de origem deverá fornecer. É possível dividir o atendimento entre mais de uma base." %}
+        </div>
+    </div>
+
     <div class="card shadow-sm mb-4 grupo-alocacao">
 
         <!-- HEADER ITEM -->

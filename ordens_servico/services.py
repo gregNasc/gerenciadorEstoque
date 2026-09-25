@@ -122,6 +122,23 @@ class OrdemServicoService:
         ordem = OrdemServico.objects.filter(emprestimo=emprestimo).first()
         if not ordem:
             from datetime import datetime, time
+
+            try:
+                data_prevista = emprestimo._meta.get_field(
+                    'data_prevista_devolucao'
+                ).to_python(
+                    emprestimo.data_prevista_devolucao
+                )
+            except (ValidationError, TypeError, ValueError):
+                raise ValidationError(
+                    'O empréstimo possui uma data prevista de devolução inválida.'
+                )
+
+            if data_prevista is None:
+                raise ValidationError(
+                    'O empréstimo não possui data prevista de devolução.'
+                )
+
             ordem = cls.criar(
                 empresa=emprestimo.regional_origem.empresa,
                 tipo=OrdemServico.Tipo.EMPRESTIMO,
@@ -129,7 +146,7 @@ class OrdemServicoService:
                 motivo=emprestimo.motivo,
                 descricao=f'Empréstimo {emprestimo.protocolo}',
                 prazo_em=timezone.make_aware(
-                    datetime.combine(emprestimo.data_prevista_devolucao, time.max)
+                    datetime.combine(data_prevista, time.max)
                 ),
                 base_responsavel=emprestimo.regional_origem,
                 base_origem=emprestimo.regional_origem,

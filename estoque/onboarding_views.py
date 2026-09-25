@@ -8,6 +8,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
 
 from estoque.models import (
@@ -23,7 +24,38 @@ from estoque.tenant_features import TenantFeatureService
 
 
 SESSION_COMPANY_KEY = 'onboarding_empresa_id'
-STEPS = ('dados', 'modulos', 'admin', 'bases', 'relacionamentos', 'revisar')
+STEPS = (
+    'dados',
+    'modulos',
+    'terminologia',
+    'categorias',
+    'catalogo',
+    'documentacao',
+    'admin',
+    'bases',
+    'relacionamentos',
+    'revisar',
+)
+
+STEP_LABELS = {
+    'dados': _('Dados básicos'),
+    'modulos': _('Módulos'),
+    'terminologia': _('Terminologia'),
+    'categorias': _('Categorias'),
+    'catalogo': _('Catálogo'),
+    'documentacao': _('Documentação'),
+    'admin': _('Primeiro Admin'),
+    'bases': _('Bases'),
+    'relacionamentos': _('Relacionamentos'),
+    'revisar': _('Revisar e ativar'),
+}
+
+OPTIONAL_CONFIGURATION_NEXT = {
+    'terminologia': 'categorias',
+    'categorias': 'catalogo',
+    'catalogo': 'documentacao',
+    'documentacao': 'admin',
+}
 
 
 def _step_url(step, company=None):
@@ -137,8 +169,16 @@ def onboarding_empresa(request, etapa='dados'):
                             enabled=module.codigo in selected,
                             actor=request.user,
                         )
-                messages.success(request, 'Módulos configurados. Crie o primeiro Admin.')
-                return redirect(_step_url('admin', company))
+                messages.success(request, 'Módulos configurados. Revise a terminologia do tenant.')
+                return redirect(_step_url('terminologia', company))
+
+        elif etapa in OPTIONAL_CONFIGURATION_NEXT:
+            next_step = OPTIONAL_CONFIGURATION_NEXT[etapa]
+            messages.info(
+                request,
+                'Etapa mantida sem alterações. Nenhuma configuração foi herdada.',
+            )
+            return redirect(_step_url(next_step, company))
 
         elif etapa == 'admin':
             existing_admin = Perfil.objects.filter(
@@ -352,6 +392,8 @@ def onboarding_empresa(request, etapa='dados'):
         ]
 
     current_index = STEPS.index(etapa)
+    previous_step = STEPS[current_index - 1] if current_index else None
+    next_step = STEPS[current_index + 1] if current_index + 1 < len(STEPS) else None
     return render(request, 'estoque/onboarding_empresa.html', {
         'empresa_onboarding': company,
         'etapa': etapa,
@@ -359,12 +401,15 @@ def onboarding_empresa(request, etapa='dados'):
             {
                 'codigo': code,
                 'numero': index + 1,
+                'label': STEP_LABELS[code],
                 'atual': index == current_index,
                 'concluida': index < current_index,
                 'url': _step_url(code, company) if company or code == 'dados' else '',
             }
             for index, code in enumerate(STEPS)
         ],
+        'etapa_anterior_url': _step_url(previous_step, company) if previous_step else '',
+        'proxima_etapa_url': _step_url(next_step, company) if next_step else '',
         'modulos_onboarding': modules,
         'admins_onboarding': admins,
         'bases_onboarding': bases,
