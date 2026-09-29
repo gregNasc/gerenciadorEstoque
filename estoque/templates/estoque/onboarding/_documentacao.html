@@ -1,0 +1,45 @@
+{% load i18n %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="documentation_present" value="1">
+  <div class="tw-card-head">
+    <h2 class="h5 mb-1">{% trans "6. Documentação" %}</h2>
+    <p class="small text-secondary mb-0">
+      {% trans "Habilite somente as áreas necessárias e personalize os nomes apresentados aos usuários deste tenant." %}
+    </p>
+  </div>
+  <div class="tw-card-body">
+    <div class="alert alert-light border small">
+      <i class="bi bi-shield-check me-1"></i>
+      {% trans "Nenhuma seção ou conteúdo histórico é liberado automaticamente. Nome vazio mantém o rótulo padrão." %}
+    </div>
+    <div class="d-grid gap-2">
+      {% for secao in secoes_documentacao_onboarding %}
+      <div class="border rounded-3 p-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-lg-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     id="documentationSection{{ secao.codigo }}"
+                     name="secao_{{ secao.codigo }}_habilitada" value="1"
+                     {% if secao.habilitada %}checked{% endif %}>
+              <label class="form-check-label fw-semibold" for="documentationSection{{ secao.codigo }}">{{ secao.padrao }}</label>
+            </div>
+            <small class="text-secondary"><code>{{ secao.codigo }}</code></small>
+          </div>
+          <div class="col-12 col-lg-8">
+            <label class="form-label small fw-semibold" for="documentationName{{ secao.codigo }}">{% trans "Nome exibido" %}</label>
+            <input class="form-control" id="documentationName{{ secao.codigo }}"
+                   name="secao_{{ secao.codigo }}_nome" maxlength="100"
+                   value="{{ secao.nome_exibicao }}" placeholder="{{ secao.padrao }}">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="tw-footer">
+    <a class="btn btn-light" href="{{ etapa_anterior_url }}"><i class="bi bi-arrow-left me-1"></i>{% trans "Catálogo" %}</a>
+    <button class="btn btn-primary px-4">{% trans "Salvar e criar primeiro Admin" %}<i class="bi bi-arrow-right ms-1"></i></button>
+  </div>
+</form>

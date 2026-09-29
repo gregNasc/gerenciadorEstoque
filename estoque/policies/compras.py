@@ -182,7 +182,7 @@ class ComprasAccessPolicy:
         if not (cls._admin_ou_compras(user) or cls._possui_escopo_delegado(user)):
             return Empresa.objects.none()
         if user.is_superuser:
-            return Empresa.objects.all()
+            return Empresa.objects.filter(ativa=True)
         perfil = getattr(user, 'perfil', None)
         if not perfil:
             return Empresa.objects.none()
@@ -196,14 +196,14 @@ class ComprasAccessPolicy:
         ids = list(perfil.empresas_escopo_compras.values_list('pk', flat=True))
         if perfil.empresa_id:
             ids.append(perfil.empresa_id)
-        return Empresa.objects.filter(pk__in=set(ids))
+        return Empresa.objects.filter(pk__in=set(ids), ativa=True)
 
     @classmethod
     def bases(cls, user, *, action=VIEW, resource=COMPRAS):
         if not (cls._admin_ou_compras(user) or cls._possui_escopo_delegado(user)):
             return Base.objects.none()
         if user.is_superuser:
-            return Base.objects.all()
+            return Base.objects.filter(empresa__ativa=True)
         perfil = getattr(user, 'perfil', None)
         if not perfil:
             return Base.objects.none()

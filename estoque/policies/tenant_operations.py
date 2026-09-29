@@ -146,7 +146,10 @@ class TenantOperationPolicy:
         if user.groups.filter(name=GruposCorporativos.SICK_MANUTENCAO).exists():
             # A equipe de manutenção é funcionalmente multi-base, mas nunca
             # atravessa o tenant principal do próprio perfil.
-            bases = Base.objects.filter(empresa_id=perfil.empresa_id)
+            bases = Base.objects.filter(
+                empresa_id=perfil.empresa_id,
+                empresa__ativa=True,
+            )
         else:
             bases = cls.bases(
                 user,

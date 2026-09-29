@@ -151,3 +151,23 @@ class UserManagementTenantIsolationTests(TestCase):
         self.assertContains(panel, 'Central de administração')
         self.assertIn(self.antropic, panel.context['empresas'])
         self.assertContains(panel, 'companySearch')
+
+    def test_inactive_company_is_not_available_for_user_assignment(self):
+        self.latam.ativa = False
+        self.latam.save(update_fields=['ativa'])
+
+        response = self.client.get(self.url)
+
+        self.assertNotIn(self.latam, response.context['empresas_usuario'])
+        response = self.client.post(self.url, {
+            'username': 'usuario.empresa.inativa',
+            'password': 'SenhaTeste123!',
+            'first_name': 'Inativo',
+            'perfil_acesso': 'admin',
+            'empresa': str(self.latam.pk),
+            'is_active': 'on',
+        })
+        self.assertRedirects(response, self.url)
+        self.assertFalse(
+            User.objects.filter(username='usuario.empresa.inativa').exists()
+        )

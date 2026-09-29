@@ -164,16 +164,20 @@ class EstoqueService:
 
 def notificar_pendencia_transferencia(transferencia, evento, mensagem):
 
+    from estoque.services.comunicado_service import ComunicadoService
+
     usuarios_origem = User.objects.filter(
         perfil__regionais=transferencia.regional_origem
     )
 
-    admins = User.objects.filter(
-        perfil__role='admin'
-    )
+    admins = ComunicadoService.admins_para_empresas([
+        transferencia.regional_origem.empresa,
+        transferencia.regional_destino.empresa,
+    ])
 
-    usuarios = (
-        usuarios_origem | admins
+    usuarios = User.objects.filter(
+        Q(pk__in=usuarios_origem.values('pk'))
+        | Q(pk__in=admins.values('pk'))
     ).distinct()
 
     for usuario in usuarios:

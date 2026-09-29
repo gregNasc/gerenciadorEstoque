@@ -216,6 +216,36 @@ class TenantDashboardCategoryTests(TestCase):
         response = self.client.get(reverse('estoque:api_kpis_json'), {'inventory': self.company_b.pk})
         self.assertEqual(response.status_code, 404)
 
+    def test_inactive_company_is_absent_from_selector_and_rejected_as_filter(self):
+        relationship = RelacionamentoEmpresa.objects.create(
+            empresa_origem=self.company_a,
+            empresa_destino=self.company_b,
+        )
+        CapacidadeRelacionamentoEmpresa.objects.create(
+            relacionamento=relationship,
+            recurso=CapacidadeRelacionamentoEmpresa.Recurso.OPERACAO,
+            acao=CapacidadeRelacionamentoEmpresa.Acao.ADMINISTRAR,
+        )
+        self.admin_a.perfil.empresas_acesso_adicional.add(self.company_b)
+        self.company_b.ativa = False
+        self.company_b.save(update_fields=['ativa'])
+
+        response = self.client.get(reverse('estoque:index'))
+
+        self.assertEqual(list(response.context['empresas']), [self.company_a])
+        self.assertNotContains(response, self.company_b.nome)
+        self.assertEqual(
+            self.client.get(
+                reverse('estoque:index'),
+                {'inventory': self.company_b.pk},
+            ).status_code,
+            404,
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse('estoque:index'))
+        self.assertNotIn(self.company_b, response.context['empresas'])
+
     def test_disabled_category_is_removed_from_dashboard_and_kpis(self):
         self.category_a.ativo = False
         self.category_a.save(update_fields=['ativo'])

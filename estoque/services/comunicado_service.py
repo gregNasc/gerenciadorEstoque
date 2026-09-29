@@ -17,26 +17,74 @@ class ComunicadoService:
         return timezone.now() + timedelta(days=ComunicadoService.DIAS_EXPIRACAO_PADRAO)
 
     @staticmethod
+    def admins_para_empresas(empresas):
+        """Administradores explicitamente vinculados às empresas informadas.
+
+        Superusers continuam recebendo alertas de plataforma, mas um Admin de
+        tenant nunca é incluído apenas por possuir o papel ``admin``.
+        """
+        if empresas is None:
+            empresas_ids = set()
+        elif hasattr(empresas, 'values_list'):
+            empresas_ids = set(empresas.values_list('pk', flat=True))
+        else:
+            empresas_ids = {
+                getattr(empresa, 'pk', empresa)
+                for empresa in empresas
+                if empresa is not None
+            }
+
+        filtro = Q(is_superuser=True)
+        if empresas_ids:
+            filtro |= Q(
+                perfil__role='admin',
+                perfil__empresa_id__in=empresas_ids,
+            )
+            filtro |= Q(
+                perfil__role='admin',
+                perfil__empresas_acesso_adicional__id__in=empresas_ids,
+            )
+        return User.objects.filter(is_active=True).filter(filtro).distinct()
+
+    @staticmethod
+    def admins_para_empresa(empresa):
+        return ComunicadoService.admins_para_empresas([empresa])
+
+    @staticmethod
     def usuarios_por_bases(bases, incluir_admins=True, excluir_usuario=None):
         bases_ids = []
+        empresas_ids = set()
 
         if bases is None:
             bases_ids = []
         elif hasattr(bases, 'values_list'):
             bases_ids = list(bases.values_list('id', flat=True))
+            empresas_ids.update(bases.values_list('empresa_id', flat=True))
         else:
             for base in bases:
                 if isinstance(base, Base):
                     bases_ids.append(base.id)
+                    empresas_ids.add(base.empresa_id)
                 elif base:
                     bases_ids.append(base)
+
+        if bases_ids and not empresas_ids:
+            empresas_ids.update(
+                Base.objects.filter(pk__in=bases_ids).values_list(
+                    'empresa_id', flat=True,
+                )
+            )
 
         filtros = Q()
         if bases_ids:
             filtros |= Q(perfil__regionais__id__in=bases_ids)
 
         if incluir_admins:
-            filtros |= Q(perfil__role='admin')
+            filtros |= Q(
+                pk__in=ComunicadoService.admins_para_empresas(
+                    empresas_ids
+                ).values('pk')
+            )
 
         usuarios = User.objects.filter(is_active=True)
         if filtros:
@@ -88,7 +136,15 @@ class ComunicadoService:
         if enviar_para_todos:
             destinatarios = User.objects.filter(is_active=True)
             if empresa:
-                destinatarios = destinatarios.filter(perfil__empresa=empresa)
+                destinatarios = destinatarios.filter(
+                    Q(perfil__empresa=empresa)
+                    | Q(perfil__empresas_acesso_adicional=empresa)
+                    | Q(is_superuser=True)
+                )
+            else:
+                # Broadcast realmente global é reservado ao Superuser.
+                if not usuario.is_superuser:
+                    destinatarios = destinatarios.none()
             comunicado.usuarios.set(destinatarios.distinct())
         else:
             # Toda acao notifica autor, envolvidos e administradores. Essa
@@ -96,9 +152,8 @@ class ComunicadoService:
             destinatarios_ids = {usuario.pk} if incluir_autor else set()
             if incluir_admins:
                 destinatarios_ids.update(
-                    User.objects.filter(
-                        is_active=True,
-                        perfil__role='admin',
+                    ComunicadoService.admins_para_empresas(
+                        [empresa] if empresa is not None else []
                     ).values_list('pk', flat=True)
                 )
             if usuarios is not None:
@@ -145,9 +200,9 @@ class ComunicadoService:
 
     @staticmethod
     def auditoria_enviada(auditoria_base, usuario):
-        administradores = User.objects.filter(is_active=True).filter(
-            Q(is_superuser=True) | Q(perfil__role='admin')
-        ).distinct()
+        administradores = ComunicadoService.admins_para_empresa(
+            auditoria_base.campanha.empresa
+        )
         return ComunicadoService.criar_acao(
             titulo=f'Auditoria enviada — {auditoria_base.base.nome}',
             mensagem=(
@@ -250,16 +305,6 @@ class ComunicadoService:
     def notificar_manutencoes_previstas(data_referencia=None):
         data_referencia = data_referencia or timezone.localdate()
         data_previsao = data_referencia + timedelta(days=1)
-        destinatarios = User.objects.filter(is_active=True).filter(
-            Q(perfil__role='admin')
-            | Q(groups__name=GruposCorporativos.SICK_MANUTENCAO)
-        ).distinct()
-        if not destinatarios.exists():
-            return []
-
-        criador = destinatarios.filter(
-            groups__name=GruposCorporativos.SICK_MANUTENCAO,
-        ).first()
 
         comunicados = []
         manutencoes = (
@@ -273,6 +318,40 @@ class ComunicadoService:
             .select_related('equipamento__produto', 'equipamento__regional__empresa')
         )
         for sick in manutencoes:
+            from estoque.policies.tenant_operations import TenantOperationPolicy
+
+            empresa = sick.equipamento.regional.empresa
+            candidatos_manutencao = User.objects.filter(
+                is_active=True,
+                groups__name=GruposCorporativos.SICK_MANUTENCAO,
+            ).distinct()
+            manutencao_ids = [
+                candidato.pk
+                for candidato in candidatos_manutencao
+                if TenantOperationPolicy.sick(
+                    candidato,
+                    Sick.objects.filter(pk=sick.pk),
+                ).exists()
+            ]
+            destinatarios_ids = set(manutencao_ids)
+            destinatarios_ids.update(
+                ComunicadoService.admins_para_empresa(empresa).values_list(
+                    'pk', flat=True,
+                )
+            )
+            destinatarios = User.objects.filter(
+                pk__in=destinatarios_ids,
+                is_active=True,
+            )
+            if not destinatarios.exists():
+                continue
+            criador = (
+                destinatarios.filter(
+                    groups__name=GruposCorporativos.SICK_MANUTENCAO,
+                ).first()
+                or destinatarios.filter(is_superuser=True).first()
+                or destinatarios.first()
+            )
             titulo = (
                 f'Manutenção prevista para amanhã — SICK #{sick.id}'
             )
@@ -295,7 +374,8 @@ class ComunicadoService:
                 usuario=criador,
                 tipo='MANUTENCAO',
                 usuarios=destinatarios,
-                empresa=equipamento.regional.empresa,
+                empresa=empresa,
+                incluir_admins=False,
                 permitir_limpar=False,
                 expira_em=timezone.now() + timedelta(days=3),
             )
@@ -303,17 +383,30 @@ class ComunicadoService:
         return comunicados
 
     @staticmethod
-    def usuarios_ciclo_compras(solicitante=None):
+    def usuarios_ciclo_compras(empresa, solicitante=None):
         from insumos.constants import GruposInsumos
 
         filtros = (
-            Q(perfil__role='admin') |
             Q(groups__name=GruposInsumos.COMPRAS) |
             Q(groups__name=GruposInsumos.FINANCEIRO)
         )
         if solicitante:
             filtros |= Q(pk=solicitante.pk)
-        return User.objects.filter(is_active=True).filter(filtros).distinct()
+        usuarios_funcionais = User.objects.filter(
+            is_active=True,
+        ).filter(filtros).filter(
+            Q(perfil__empresa=empresa)
+            | Q(perfil__empresas_acesso_adicional=empresa)
+        )
+        usuarios_ids = set(
+            usuarios_funcionais.values_list('pk', flat=True)
+        )
+        usuarios_ids.update(
+            ComunicadoService.admins_para_empresa(empresa).values_list(
+                'pk', flat=True,
+            )
+        )
+        return User.objects.filter(pk__in=usuarios_ids, is_active=True)
 
     @staticmethod
     def solicitacao_insumo_criada(solicitacao, usuario):
@@ -333,8 +426,12 @@ class ComunicadoService:
             ),
             usuario=usuario,
             tipo='URGENTE' if solicitacao.prioridade == 'URGENTE' else 'OPERACIONAL',
-            usuarios=ComunicadoService.usuarios_ciclo_compras(solicitacao.solicitante),
+            usuarios=ComunicadoService.usuarios_ciclo_compras(
+                solicitacao.base.empresa,
+                solicitacao.solicitante,
+            ),
             empresa=solicitacao.base.empresa,
+            incluir_admins=False,
         )
 
     @staticmethod
@@ -351,8 +448,12 @@ class ComunicadoService:
             ),
             usuario=usuario,
             tipo='URGENTE' if solicitacao.status == 'REPROVADA' else 'OPERACIONAL',
-            usuarios=ComunicadoService.usuarios_ciclo_compras(solicitacao.solicitante),
+            usuarios=ComunicadoService.usuarios_ciclo_compras(
+                solicitacao.base.empresa,
+                solicitacao.solicitante,
+            ),
             empresa=solicitacao.base.empresa,
+            incluir_admins=False,
         )
 
     @staticmethod

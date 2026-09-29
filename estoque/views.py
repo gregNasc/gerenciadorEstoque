@@ -137,7 +137,7 @@ def painel_superuser(request):
             empresa_id = request.POST.get('empresa')
             nome = request.POST.get('nome', '').strip()
 
-            empresa = Empresa.objects.filter(pk=empresa_id).first()
+            empresa = Empresa.objects.filter(pk=empresa_id, ativa=True).first()
 
             if not empresa:
                 messages.error(request, "Selecione uma empresa válida.")
@@ -387,6 +387,7 @@ def painel_superuser(request):
 
     context = {
         'empresas': empresas,
+        'empresas_ativas_select': [empresa for empresa in empresas if empresa.ativa],
         'modulos_catalogo': modulos_catalogo,
         'relacionamentos': relacionamentos,
         'total_empresas': len(empresas),
@@ -1723,6 +1724,7 @@ def gerenciar_usuarios(request):
             perfil for perfil in perfis_acesso if not perfil['funcional']
         ]
         perfis_acesso_map = {perfil['value']: perfil for perfil in perfis_acesso}
+
     else:
         # Perfil administrativo legado sem tenant não recebe escopo implícito.
         empresas_gerenciaveis = Empresa.objects.none()
@@ -1732,6 +1734,12 @@ def gerenciar_usuarios(request):
             perfil for perfil in perfis_acesso if not perfil['funcional']
         ]
         perfis_acesso_map = {perfil['value']: perfil for perfil in perfis_acesso}
+
+    empresas_selecionaveis = empresas_gerenciaveis.filter(ativa=True)
+    relacionamentos_selecionaveis = relacionamentos_gerenciaveis.filter(
+        empresa_origem__ativa=True,
+        empresa_destino__ativa=True,
+    )
 
     if request.method == 'POST':
         try:
@@ -1834,7 +1842,7 @@ def gerenciar_usuarios(request):
                         messages.error(request, "Selecione a empresa do usuario.")
                         return redirect('estoque:cadastrar_usuario')
 
-                    empresa = get_object_or_404(empresas_gerenciaveis, id=empresa_id)
+                    empresa = get_object_or_404(empresas_selecionaveis, id=empresa_id)
 
                     if role == Perfil.Role.ADMIN and empresas_adicionais_ids:
                         empresas_adicionais = Empresa.objects.filter(
@@ -1843,7 +1851,8 @@ def gerenciar_usuarios(request):
                             relacionamentos_entrada__ativo=True,
                             relacionamentos_entrada__capacidades__ativo=True,
                         ).filter(
-                            pk__in=empresas_gerenciaveis.values('pk'),
+                            pk__in=empresas_selecionaveis.values('pk'),
+                            ativa=True,
                         ).distinct()
                         if empresas_adicionais.count() != len(empresas_adicionais_ids):
                             messages.error(
@@ -1996,13 +2005,13 @@ def gerenciar_usuarios(request):
             return redirect('estoque:cadastrar_usuario')
 
     context = {
-        'empresas': empresas_gerenciaveis.order_by('nome'),
-        'empresas_usuario': empresas_gerenciaveis.order_by('nome'),
+        'empresas': empresas_selecionaveis.order_by('nome'),
+        'empresas_usuario': empresas_selecionaveis.order_by('nome'),
         'regionais': Base.objects.select_related('empresa').filter(
-            empresa__in=empresas_gerenciaveis
+            empresa__in=empresas_selecionaveis
         ).order_by('empresa__nome', 'nome'),
         'relacionamentos_empresas': (
-            relacionamentos_gerenciaveis
+            relacionamentos_selecionaveis
             .select_related('empresa_origem', 'empresa_destino')
             .distinct()
             .order_by('empresa_origem__nome', 'empresa_destino__nome')
@@ -2816,13 +2825,15 @@ def sick_view(request):
                     id=request.user.id
                 )
 
-                admins = User.objects.filter(
-                    perfil__role='admin',
-                    is_active=True
+                admins = ComunicadoService.admins_para_empresa(
+                    equipamento.regional.empresa
                 )
 
                 comunicado.usuarios.set(
-                    (usuarios_destino | admins).distinct()
+                    User.objects.filter(
+                        Q(pk__in=usuarios_destino.values('pk'))
+                        | Q(pk__in=admins.values('pk'))
+                    ).distinct()
                 )
 
             elif novo_status == 'ATIVO':
@@ -2847,13 +2858,15 @@ def sick_view(request):
                     id=request.user.id
                 )
 
-                admins = User.objects.filter(
-                    perfil__role='admin',
-                    is_active=True
+                admins = ComunicadoService.admins_para_empresa(
+                    equipamento.regional.empresa
                 )
 
                 comunicado.usuarios.set(
-                    (usuarios_destino | admins).distinct()
+                    User.objects.filter(
+                        Q(pk__in=usuarios_destino.values('pk'))
+                        | Q(pk__in=admins.values('pk'))
+                    ).distinct()
                 )
 
 
@@ -2895,13 +2908,15 @@ def sick_view(request):
                     id=request.user.id
                 )
 
-                admins = User.objects.filter(
-                    perfil__role='admin',
-                    is_active=True
+                admins = ComunicadoService.admins_para_empresa(
+                    equipamento.regional.empresa
                 )
 
                 comunicado.usuarios.set(
-                    (usuarios_destino | admins).distinct()
+                    User.objects.filter(
+                        Q(pk__in=usuarios_destino.values('pk'))
+                        | Q(pk__in=admins.values('pk'))
+                    ).distinct()
                 )
 
             if novo_status == 'MANUTENCAO':
@@ -3214,19 +3229,19 @@ def sick_view(request):
             },
         ]
 
-    categorias = Produto.objects.values_list(
-        'categoria',
+    categorias = sicks_base_filtros.values_list(
+        'equipamento__produto__categoria',
         flat=True
-    ).distinct().order_by('categoria')
+    ).distinct().order_by('equipamento__produto__categoria')
 
     produtos_lista = Produto.objects.filter(
         equipamento__sicks__in=sicks_base_filtros
     ).distinct().order_by('descricao')
 
-    if pode_realizar_manutencao_sick(request.user):
-        regionais = Base.objects.all().order_by('nome')
-    else:
-        regionais = perfil.regionais.all().order_by('nome')
+    regionais = Base.objects.filter(
+        pk__in=sicks_base_filtros.values('equipamento__regional_id'),
+        empresa__ativa=True,
+    ).order_by('nome')
 
     filtros_abas = request.GET.copy()
     filtros_abas.pop('etapa', None)
@@ -3271,7 +3286,16 @@ def sick_view(request):
 @login_required
 @role_required('admin', 'gestor', 'operador')
 def marcar_sick(request, equipamento_id):
-    equipamento = get_object_or_404(Equipamento, id=equipamento_id)
+    equipamento = get_object_or_404(
+        Equipamento.objects.filter(
+            regional__in=TenantOperationPolicy.bases(
+                request.user,
+                'SICK',
+                'MOVIMENTAR',
+            )
+        ),
+        id=equipamento_id,
+    )
 
     if request.method == 'POST':
         form = SickForm(
@@ -3585,6 +3609,15 @@ def historico_detalhes_view(request, historico_id):
 def exportar_historico_excel(request):
 
     regional_id = request.GET.get('regional')
+    tenant = getattr(request, 'tenant', None)
+    rotulo_regional = TenantTerminologyService.label(
+        tenant,
+        TermoEmpresa.Chave.REGIONAL,
+    )
+    rotulo_equipamento = TenantTerminologyService.label(
+        tenant,
+        TermoEmpresa.Chave.EQUIPAMENTO,
+    )
 
     wb = Workbook()
     ws = wb.active
@@ -3592,8 +3625,8 @@ def exportar_historico_excel(request):
 
     headers = [
         'Data Cadastro',
-        'Regional',
-        'Equipamento',
+        rotulo_regional,
+        rotulo_equipamento,
         'Tipo',
         'Número de Série',
         'Patrimônio',
@@ -3725,6 +3758,15 @@ def exportar_historico_excel(request):
 def exportar_historico_pdf(request):
 
     regional_id = request.GET.get('regional')
+    tenant = getattr(request, 'tenant', None)
+    rotulo_regional = TenantTerminologyService.label(
+        tenant,
+        TermoEmpresa.Chave.REGIONAL,
+    )
+    rotulo_equipamento = TenantTerminologyService.label(
+        tenant,
+        TermoEmpresa.Chave.EQUIPAMENTO,
+    )
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="historico_equipamentos.pdf"'
@@ -3746,7 +3788,7 @@ def exportar_historico_pdf(request):
         historicos = historicos.filter(equipamento__regional_id=regional_id)
 
     data = [[
-        "Data", "Regional", "Equipamento", "Serial", "Patrimônio", "Ação", "Usuário"
+        "Data", rotulo_regional, rotulo_equipamento, "Serial", "Patrimônio", "Ação", "Usuário"
     ]]
 
     for h in historicos:
@@ -4131,9 +4173,9 @@ def criar_comunicado(request):
             if empresa:
                 usuarios = usuarios.filter(perfil__empresa=empresa)
 
-            usuarios = (
-                    usuarios |
-                    User.objects.filter(id=request.user.id)
+            usuarios = User.objects.filter(
+                Q(pk__in=usuarios.values('pk'))
+                | Q(pk=request.user.pk)
             ).distinct()
 
             comunicado.usuarios.set(usuarios)
@@ -4148,12 +4190,9 @@ def criar_comunicado(request):
             if empresa:
                 usuarios = usuarios.filter(perfil__empresa=empresa)
 
-            usuarios = (
-
-                    usuarios |
-
-                    User.objects.filter(id=request.user.id)
-
+            usuarios = User.objects.filter(
+                Q(pk__in=usuarios.values('pk'))
+                | Q(pk=request.user.pk)
             ).distinct()
 
             comunicado.usuarios.set(usuarios)
@@ -4322,21 +4361,9 @@ def detalhe_comunicado(request, comunicado_id):
     if request.user.is_superuser or comunicado.criado_por_id == request.user.pk:
 
         # DESTINATÁRIOS
-        if comunicado.enviar_para_todos:
-
-            destinatarios = User.objects.filter(
-                is_active=True
-            )
-
-            if comunicado.empresa:
-
-                destinatarios = destinatarios.filter(
-                    perfil__empresa=comunicado.empresa
-                )
-
-        else:
-
-            destinatarios = comunicado.usuarios.all()
+        # A relação persistida é a fonte da verdade e impede que a tela de
+        # analytics reconstrua um escopo mais amplo que o envio original.
+        destinatarios = comunicado.usuarios.filter(is_active=True)
 
         total_enviados = destinatarios.count()
 
@@ -5829,15 +5856,16 @@ def recusar_solicitacao(request, solicitacao_id):
 
         criado_por=request.user,
 
+        empresa=solicitacao.regional_solicitante.empresa,
+
         ativo=True
     )
 
     comunicado.usuarios.add(
         solicitacao.criado_por
     )
-    comunicado.usuarios.add(*User.objects.filter(
-        is_active=True,
-        perfil__role='admin',
+    comunicado.usuarios.add(*ComunicadoService.admins_para_empresa(
+        solicitacao.regional_solicitante.empresa
     ))
 
     messages.success(
@@ -6096,9 +6124,16 @@ def receber_transferencia(request, transferencia_id):
                 transferencia.data_recebimento = timezone.now()
                 transferencia.save(update_fields=['status', 'data_recebimento'])
 
-                usuarios = (
-                    User.objects.filter(perfil__regionais=transferencia.regional_origem)
-                    | User.objects.filter(perfil__role='admin')
+                usuarios_base = User.objects.filter(
+                    perfil__regionais=transferencia.regional_origem
+                )
+                admins_transferencia = ComunicadoService.admins_para_empresas([
+                    transferencia.regional_origem.empresa,
+                    transferencia.regional_destino.empresa,
+                ])
+                usuarios = User.objects.filter(
+                    Q(pk__in=usuarios_base.values('pk'))
+                    | Q(pk__in=admins_transferencia.values('pk'))
                 ).distinct()
 
         except Exception as e:

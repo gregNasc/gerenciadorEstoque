@@ -82,7 +82,9 @@ class PlanningService:
         )
         from estoque.models import Base
 
-        all_bases = list(Base.objects.all().only("pk", "nome"))
+        all_bases = list(
+            Base.objects.filter(empresa__ativa=True).only("pk", "nome")
+        )
 
         scope = Q(pk__in=[])
         for client_id, region_id in visible_combined:

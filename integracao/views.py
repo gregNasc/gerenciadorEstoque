@@ -136,7 +136,10 @@ def planning_mappings(request):
                     PlanningRegion,
                     pk=request.POST.get("planning_region"),
                 )
-                local_base = get_object_or_404(Base, pk=request.POST.get("local_base"))
+                local_base = get_object_or_404(
+                    Base.objects.filter(empresa__ativa=True),
+                    pk=request.POST.get("local_base"),
+                )
                 client_resolution = PlanningClientResolver.resolve(planning_client)
                 if not client_resolution.local_client:
                     messages.error(request, "Confirme o cliente antes da base operacional.")
@@ -380,7 +383,9 @@ def planning_mappings(request):
             "planning_region", "local_base", "confirmed_by"
         ).order_by("-is_active", "planning_region__name")[:100],
         "local_clients": Cliente.objects.filter(ativo=True).order_by("sigla", "nome"),
-        "local_bases": Base.objects.all().order_by("nome"),
+        "local_bases": Base.objects.filter(
+            empresa__ativa=True,
+        ).order_by("nome"),
         "planning_clients": PlanningClient.objects.filter(events__isnull=False).distinct().order_by("trade_name"),
         "planning_regions": PlanningRegion.objects.filter(events__isnull=False).distinct().order_by("name"),
         "pending_breakdown": pending_breakdown,

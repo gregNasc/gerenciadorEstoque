@@ -89,6 +89,7 @@ def secure_base_queryset(
     resource=CapacidadeRelacionamentoEmpresa.Recurso.EQUIPAMENTOS,
     action=CapacidadeRelacionamentoEmpresa.Acao.VISUALIZAR,
 ):
+    qs = qs.filter(empresa__ativa=True)
     perfil = getattr(user, 'perfil', None)
     if not perfil and not getattr(user, 'is_superuser', False):
         return qs.none()
@@ -116,6 +117,7 @@ def secure_company_queryset(
     resource=CapacidadeRelacionamentoEmpresa.Recurso.EQUIPAMENTOS,
     action=CapacidadeRelacionamentoEmpresa.Acao.VISUALIZAR,
 ):
+    qs = qs.filter(ativa=True)
     scope = TenantScope.for_user(user)
     if scope.is_platform_scope:
         return qs
@@ -132,6 +134,7 @@ def secure_tenant_group_company_queryset(qs, user):
     organizacionais. O escopo ampliado exige OPERACAO:ADMINISTRAR e o vínculo
     adicional explícito do Admin; Superuser mantém a visão da plataforma.
     """
+    qs = qs.filter(ativa=True)
     scope = TenantScope.for_user(user)
     if scope.is_platform_scope:
         return qs

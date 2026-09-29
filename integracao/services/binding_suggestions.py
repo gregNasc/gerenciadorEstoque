@@ -156,7 +156,11 @@ def suggest_operational_bases(
     queryset=None,
     limit=5,
 ):
-    queryset = queryset if queryset is not None else Base.objects.all()
+    queryset = (
+        queryset
+        if queryset is not None
+        else Base.objects.filter(empresa__ativa=True)
+    )
     region_name = normalize_name(planning_region.name)
     region_core = operational_comparison_name(planning_region.name)
     wants_oxxo = is_oxxo_client(local_client)

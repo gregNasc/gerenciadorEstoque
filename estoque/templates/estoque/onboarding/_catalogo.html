@@ -1,0 +1,63 @@
+{% load i18n %}
+<form method="post" id="catalogOnboardingForm">
+  {% csrf_token %}
+  <input type="hidden" name="catalog_present" value="1">
+  <div class="tw-card-head">
+    <h2 class="h5 mb-1">{% trans "5. Catálogo" %}</h2>
+    <p class="small text-secondary mb-0">
+      {% trans "Crie produtos próprios ou compartilhe produtos existentes de forma explícita. Nenhum item é herdado automaticamente." %}
+    </p>
+  </div>
+  <div class="tw-card-body">
+    {% if categorias_catalogo_onboarding %}
+    <h3 class="h6 fw-bold mb-2">{% trans "Criar produtos próprios" %}</h3>
+    <p class="small text-secondary">{% trans "Todos os campos são obrigatórios quando uma linha for preenchida. Você pode adicionar até 25 produtos por envio." %}</p>
+    <div id="catalogProductRows" class="d-grid gap-3 mb-3">
+      {% for row in novos_produtos_catalogo %}
+      <div class="border rounded-3 p-3 catalog-product-row">
+        <div class="row g-2">
+          <div class="col-12 col-md-3"><label class="form-label fw-semibold">{% trans "Código" %}</label><input class="form-control" name="produto_codigo" maxlength="50" value="{{ row.produto_codigo|default:'' }}"></div>
+          <div class="col-12 col-md-5"><label class="form-label fw-semibold">{% trans "Descrição" %}</label><input class="form-control" name="produto_descricao" maxlength="255" value="{{ row.produto_descricao|default:'' }}"></div>
+          <div class="col-12 col-md-4"><label class="form-label fw-semibold">{% trans "Categoria" %}</label><select class="form-select" name="produto_categoria"><option value="">{% trans "Selecione" %}</option>{% for categoria in categorias_catalogo_onboarding %}<option value="{{ categoria }}" {% if row.produto_categoria == categoria %}selected{% endif %}>{{ categoria }}</option>{% endfor %}</select></div>
+          <div class="col-12 col-md-6"><label class="form-label fw-semibold">{% trans "Fabricante" %}</label><input class="form-control" name="produto_fabricante" maxlength="100" value="{{ row.produto_fabricante|default:'' }}"></div>
+          <div class="col-12 col-md-6"><label class="form-label fw-semibold">{% trans "Modelo" %}</label><input class="form-control" name="produto_modelo" maxlength="100" value="{{ row.produto_modelo|default:'' }}"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button class="btn btn-sm btn-outline-primary mb-4" type="button" id="addCatalogProduct"><i class="bi bi-plus-lg me-1"></i>{% trans "Adicionar outra linha" %}</button>
+
+    <h3 class="h6 fw-bold mb-2">{% trans "Produtos disponíveis para compartilhamento" %}</h3>
+    <p class="small text-secondary">{% trans "Somente produtos ativos compatíveis com as categorias deste tenant são exibidos. Marque individualmente cada item autorizado." %}</p>
+    {% if produtos_catalogo_onboarding %}
+    <div class="d-grid gap-2">
+      {% for item in produtos_catalogo_onboarding %}
+      <label class="tw-option" for="catalogProduct{{ item.produto.id }}">
+        <input class="form-check-input" type="checkbox" id="catalogProduct{{ item.produto.id }}" name="produtos_catalogo" value="{{ item.produto.id }}" {% if item.selecionado %}checked{% endif %}>
+        <span class="flex-grow-1"><strong class="d-block">{{ item.produto.codigo }} · {{ item.produto.descricao }}</strong><small class="text-secondary">{{ item.produto.categoria }} · {{ item.produto.fabricante }} {{ item.produto.modelo }}</small></span>
+        <span class="badge {% if item.proprio %}text-bg-primary{% else %}text-bg-light border{% endif %}">{% if item.proprio %}{% trans "Próprio" %}{% elif item.produto.empresa_catalogo_origem %}{{ item.produto.empresa_catalogo_origem.nome }}{% else %}{% trans "Legado global" %}{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-light border mb-0">{% trans "Não há produtos compatíveis disponíveis. O tenant pode continuar com o catálogo vazio." %}</div>
+    {% endif %}
+    {% else %}
+    <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-1"></i>{% trans "Cadastre ao menos uma categoria ativa para criar ou compartilhar produtos. Também é válido continuar com o catálogo vazio." %}</div>
+    {% endif %}
+  </div>
+  <div class="tw-footer">
+    <a class="btn btn-light" href="{{ etapa_anterior_url }}"><i class="bi bi-arrow-left me-1"></i>{% trans "Categorias" %}</a>
+    <button class="btn btn-primary px-4">{% trans "Salvar e configurar documentação" %}<i class="bi bi-arrow-right ms-1"></i></button>
+  </div>
+</form>
+<script>
+document.getElementById('addCatalogProduct')?.addEventListener('click', () => {
+  const rows = document.getElementById('catalogProductRows');
+  if (!rows || rows.children.length >= 25) return;
+  const clone = rows.firstElementChild.cloneNode(true);
+  clone.querySelectorAll('input').forEach((input) => { input.value = ''; });
+  clone.querySelectorAll('select').forEach((select) => { select.selectedIndex = 0; });
+  rows.appendChild(clone);
+});
+</script>

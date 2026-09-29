@@ -26,6 +26,7 @@ from estoque.models import (
 )
 from estoque.security import secure_base_queryset, secure_queryset
 from estoque.services.documentation_service import DocumentationService
+from estoque.services.tenant_terminology_service import TenantTerminologyService
 from estoque.tenant_scope import TenantScope
 from estoque.tenant_features import TenantFeatureService
 
@@ -214,7 +215,7 @@ class AssistenteOperacionalService:
                 pergunta=pergunta,
                 intencao=intencao_documentacao,
             )
-            return resposta_documentacao
+            return cls._aplicar_terminologia_tenant(user, resposta_documentacao)
 
         interpretacao = cls.interpretar(
             user,
@@ -248,7 +249,7 @@ class AssistenteOperacionalService:
                 resposta['interpretacao'] = cls._resumo_interpretacao(interpretacao)
                 resposta['contexto'] = cls._contexto_interpretacao(interpretacao)
                 resposta['acoes'] = []
-                return resposta
+                return cls._aplicar_terminologia_tenant(user, resposta)
 
         roteadores = {
             'portal_tempo_real': cls._portal_tempo_real,
@@ -296,7 +297,7 @@ class AssistenteOperacionalService:
         resposta['interpretacao'] = cls._resumo_interpretacao(interpretacao)
         resposta['contexto'] = cls._contexto_interpretacao(interpretacao)
         resposta['acoes'] = acoes_contextuais or cls._acoes_interpretacao(interpretacao)
-        return resposta
+        return cls._aplicar_terminologia_tenant(user, resposta)
 
     @classmethod
     def interpretar(cls, user, pergunta, contexto=None, *, tenant_scope=None):
@@ -5532,6 +5533,77 @@ class AssistenteOperacionalService:
         if primeira_palavra and len(primeira_palavra.group(0)) > 1 and primeira_palavra.group(0).isupper():
             return texto
         return f'{texto[:1].lower()}{texto[1:]}'
+
+    @classmethod
+    def _aplicar_terminologia_tenant(cls, user, resposta):
+        """Aplica apenas rótulos de apresentação à saída da Tory.
+
+        Códigos, intenções e filtros internos permanecem estáveis. A troca é
+        limitada ao texto e às ações mostradas ao usuário autenticado.
+        """
+        scope = cls._declared_tenant_scope(user)
+        company = scope.primary_company
+        if company is None:
+            return resposta
+
+        labels = TenantTerminologyService.labels(company)
+        module_labels = TenantTerminologyService.module_labels(company)
+        replacements = []
+        for key, defaults in TenantTerminologyService.DEFAULTS.items():
+            configured = labels[key]
+            replacements.extend((
+                (defaults[1], configured['plural']),
+                (defaults[0], configured['singular']),
+            ))
+        for code, default in TenantTerminologyService.MODULE_DEFAULTS.items():
+            replacements.append((default, module_labels[code]))
+
+        unique_replacements = []
+        seen = set()
+        for source, target in sorted(
+            replacements,
+            key=lambda item: len(item[0]),
+            reverse=True,
+        ):
+            key = source.casefold()
+            if key in seen or source.casefold() == target.casefold():
+                continue
+            seen.add(key)
+            unique_replacements.append((source, target))
+
+        def matching_case(match, target):
+            original = match.group(0)
+            if original.isupper() or original[:1].isupper():
+                return target
+            if target.isupper():
+                return target
+            return target[:1].lower() + target[1:]
+
+        def personalize(value):
+            text = str(value or '')
+            for source, target in unique_replacements:
+                text = re.sub(
+                    rf'(?<!\w){re.escape(source)}(?!\w)',
+                    lambda match, replacement=target: matching_case(
+                        match, replacement,
+                    ),
+                    text,
+                    flags=re.IGNORECASE,
+                )
+            return text
+
+        personalized = dict(resposta or {})
+        personalized['resposta'] = personalize(personalized.get('resposta'))
+        personalized['acoes'] = [
+            {
+                **action,
+                'label': personalize(action.get('label')),
+                'pergunta': personalize(action.get('pergunta')),
+            }
+            for action in personalized.get('acoes', [])
+            if isinstance(action, dict)
+        ]
+        return personalized
 
     @staticmethod
     def _ocultar_terminologia_hierarquia(resposta):

@@ -58,7 +58,11 @@ class OperationalBaseResolver:
     def region_is_unambiguous(planning_region, *, bases=None):
         region_core = operational_comparison_name(planning_region.name)
         matching = []
-        bases = bases if bases is not None else Base.objects.all().only("pk", "nome")
+        bases = (
+            bases
+            if bases is not None
+            else Base.objects.filter(empresa__ativa=True).only("pk", "nome")
+        )
         for base in bases:
             base_core = operational_comparison_name(base.nome)
             if (

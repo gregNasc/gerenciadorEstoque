@@ -602,6 +602,7 @@
                 <!-- AUDITORIAS -->
                 {% if 'auditorias' in tenant_features %}
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                <!--
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.namespace == 'auditorias' %}active{% endif %}"
                        href="{% url 'auditorias:campanha_lista' %}">
@@ -609,6 +610,7 @@
                         {{ tenant_module_labels.auditorias }}
                     </a>
                 </li>
+                -->
                 {% endif %}
                 {% endif %}
 

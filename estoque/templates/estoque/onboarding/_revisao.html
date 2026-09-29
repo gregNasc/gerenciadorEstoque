@@ -1,0 +1,41 @@
+{% load i18n %}
+<form method="post">
+  {% csrf_token %}
+  <div class="tw-card-head">
+    <h2 class="h5 mb-1">{% if modo_manutencao %}{% trans "10. Revisar configuração" %}{% else %}{% trans "10. Revisar e ativar" %}{% endif %}</h2>
+    <p class="small text-secondary mb-0">{% if modo_manutencao %}{% trans "Confira as alterações. O tenant continuará ativo com os recursos escolhidos." %}{% else %}{% trans "Confira toda a configuração. A ativação libera o login e somente os recursos escolhidos." %}{% endif %}</p>
+  </div>
+  <div class="tw-card-body">
+    {% if pendencias_ativacao %}
+    <div class="alert alert-warning">
+      <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>{% trans "Pendências antes da ativação" %}</div>
+      <ul class="mb-0">{% for item in pendencias_ativacao %}<li>{{ item.message }}</li>{% endfor %}</ul>
+    </div>
+    {% else %}
+    <div class="alert alert-success"><i class="bi bi-shield-check me-1"></i>{% trans "Configuração mínima validada. O tenant está pronto para ativação." %}</div>
+    {% endif %}
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Empresa" %}</small><strong>{{ empresa_onboarding.nome }}</strong><div class="text-secondary small">{{ empresa_onboarding.slug }}</div></div></div>
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Primeiro Admin" %}</small>{% for admin in admins_onboarding %}<strong class="d-block">@{{ admin.username }}</strong><span class="small text-secondary">{{ admin.get_full_name|default:admin.email }}</span>{% empty %}<strong class="text-danger">{% trans "Pendente" %}</strong>{% endfor %}</div></div></div>
+
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Módulos habilitados" %}</small><div class="d-flex flex-wrap gap-1">{% for item in modulos_habilitados_revisao %}<span class="badge text-bg-success">{{ item.nome_apresentacao }}</span>{% empty %}<span class="text-danger">{% trans "Nenhum" %}</span>{% endfor %}</div></div></div>
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Módulos desabilitados" %}</small><div class="d-flex flex-wrap gap-1">{% for item in modulos_desabilitados_revisao %}<span class="badge text-bg-light border">{{ item.nome_apresentacao }}</span>{% empty %}<span class="text-secondary">{% trans "Nenhum" %}</span>{% endfor %}</div></div></div>
+
+      <div class="col-12"><div class="tw-summary"><small>{% trans "Terminologia" %}</small><div class="row g-2">{% for termo in terminologia_revisao %}<div class="col-12 col-md-6 col-xl-4"><div class="border rounded-2 p-2 h-100"><span class="small text-secondary d-block">{{ termo.nome }}</span><strong>{{ termo.singular }}</strong><span class="small text-secondary"> / {{ termo.plural }}</span>{% if termo.personalizado %}<span class="badge text-bg-primary ms-1">{% trans "Personalizado" %}</span>{% endif %}</div></div>{% empty %}<span class="text-secondary">{% trans "Somente os padrões da plataforma" %}</span>{% endfor %}</div></div></div>
+
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Categorias" %}</small><strong>{{ categorias_ativas_revisao|length }} {% trans "ativas" %}</strong>{% if total_categorias_inativas_revisao %}<span class="small text-secondary"> · {{ total_categorias_inativas_revisao }} {% trans "inativas" %}</span>{% endif %}<div class="d-flex flex-wrap gap-1 mt-2">{% for categoria in categorias_ativas_revisao %}<span class="badge text-bg-light border">{{ categoria.nome }}</span>{% empty %}<span class="text-secondary">{% trans "Catálogo sem categorias" %}</span>{% endfor %}</div></div></div>
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Produtos do catálogo" %}</small><strong>{{ produtos_revisao|length }}</strong><div class="mt-2 overflow-auto" style="max-height: 150px">{% for produto in produtos_revisao %}<div class="small py-1 border-bottom"><strong>{{ produto.codigo }}</strong> · {{ produto.descricao }} <span class="text-secondary">({{ produto.categoria }})</span></div>{% empty %}<span class="text-secondary">{% trans "Catálogo vazio" %}</span>{% endfor %}</div></div></div>
+
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Documentação" %}</small>{% if modulo_documentacao_habilitado %}<strong>{{ secoes_documentacao_revisao|length }} {% trans "seções habilitadas" %}</strong><div class="d-flex flex-wrap gap-1 mt-2">{% for secao in secoes_documentacao_revisao %}<span class="badge text-bg-light border">{{ secao.nome }}</span>{% empty %}<span class="text-danger">{% trans "Nenhuma seção habilitada" %}</span>{% endfor %}</div>{% else %}<strong class="text-secondary">{% trans "Módulo desabilitado" %}</strong>{% endif %}</div></div>
+      <div class="col-12 col-lg-6"><div class="tw-summary"><small>{% trans "Bases" %}</small><strong>{{ bases_onboarding|length }}</strong><div class="d-flex flex-wrap gap-1 mt-2">{% for base in bases_onboarding %}<span class="badge text-bg-light border">{{ base.nome }}</span>{% empty %}<span class="text-secondary">{% trans "Nenhuma base inicial" %}</span>{% endfor %}</div></div></div>
+
+      <div class="col-12"><div class="tw-summary"><small>{% trans "Relacionamentos opcionais" %}</small>{% for relationship in relacionamentos_revisao %}<span class="badge text-bg-light border me-1">{{ relationship.empresa_destino.nome }}{% if relationship.compartilha_suporte_chamados %} · {% trans "suporte" %}{% endif %}</span>{% empty %}<span class="text-secondary">{% trans "Nenhum relacionamento" %}</span>{% endfor %}</div></div>
+    </div>
+    <div class="alert alert-info small mt-3 mb-0"><i class="bi bi-lock me-1"></i>{% trans "O Admin continuará restrito às empresas explicitamente autorizadas. Categorias e catálogo vazios são permitidos." %}</div>
+  </div>
+  <div class="tw-footer">
+    <a class="btn btn-light" href="{{ etapas.8.url }}"><i class="bi bi-arrow-left me-1"></i>{% trans "Relacionamentos" %}</a>
+    <button class="btn btn-success px-4" {% if not pronto_para_ativar %}disabled{% endif %}><i class="bi bi-check-circle me-1"></i>{% if modo_manutencao %}{% trans "Concluir revisão" %}{% else %}{% trans "Ativar empresa" %}{% endif %}</button>
+  </div>
+</form>

@@ -25,9 +25,21 @@ class ComunicadoSickService:
             incluir_admins=True,
         )
         if not terceirizada:
+            candidatos_manutencao = User.objects.filter(
+                is_active=True,
+                groups__name=GruposCorporativos.SICK_MANUTENCAO,
+            ).distinct()
+            manutencao_ids = [
+                candidato.pk
+                for candidato in candidatos_manutencao
+                if TenantOperationPolicy.sick(
+                    candidato,
+                    Sick.objects.filter(pk=sick.pk),
+                ).exists()
+            ]
             destinatarios = User.objects.filter(is_active=True).filter(
                 Q(pk__in=destinatarios.values('pk'))
-                | Q(groups__name=GruposCorporativos.SICK_MANUTENCAO)
+                | Q(pk__in=manutencao_ids)
             ).distinct()
         nome_usuario = usuario.get_full_name() or usuario.get_username()
         dados = {

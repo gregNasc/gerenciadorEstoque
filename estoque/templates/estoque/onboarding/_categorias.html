@@ -1,0 +1,54 @@
+{% load i18n %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="categories_present" value="1">
+  <div class="tw-card-head">
+    <h2 class="h5 mb-1">{% trans "4. Categorias" %}</h2>
+    <p class="small text-secondary mb-0">
+      {% trans "Defina as categorias usadas pelo tenant. Nenhuma categoria de outra empresa é copiada." %}
+    </p>
+  </div>
+  <div class="tw-card-body">
+    {% if categorias_onboarding %}
+    <h3 class="h6 fw-bold mb-3">{% trans "Categorias cadastradas" %}</h3>
+    <div class="d-grid gap-2 mb-4">
+      {% for item in categorias_onboarding %}
+      <div class="border rounded-3 p-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-lg-7">
+            <label class="form-label fw-semibold" for="categoryName{{ item.id }}">{% trans "Nome" %}</label>
+            <input class="form-control" id="categoryName{{ item.id }}"
+                   name="categoria_nome_{{ item.id }}" maxlength="100"
+                   value="{{ item.nome }}" required>
+          </div>
+          <div class="col-6 col-lg-2">
+            <label class="form-label fw-semibold" for="categoryOrder{{ item.id }}">{% trans "Ordem" %}</label>
+            <input class="form-control" type="number" min="0" max="32767"
+                   id="categoryOrder{{ item.id }}" name="categoria_ordem_{{ item.id }}"
+                   value="{{ item.ordem }}" required>
+          </div>
+          <div class="col-6 col-lg-3 pb-2">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     id="categoryActive{{ item.id }}" name="categoria_ativa_{{ item.id }}"
+                     value="1" {% if item.ativa %}checked{% endif %}>
+              <label class="form-check-label" for="categoryActive{{ item.id }}">{% trans "Categoria ativa" %}</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <h3 class="h6 fw-bold mb-2">{% trans "Adicionar categorias" %}</h3>
+    <label class="form-label" for="newCategories">{% trans "Uma categoria por linha" %}</label>
+    <textarea class="form-control" id="newCategories" name="novas_categorias"
+              rows="6" placeholder="Máquinas de impressão&#10;Máquinas operacionais&#10;Suportes de impressão">{{ novas_categorias_onboarding }}</textarea>
+    <div class="form-text">{% trans "É válido continuar sem categorias. Registros desativados são preservados." %}</div>
+  </div>
+  <div class="tw-footer">
+    <a class="btn btn-light" href="{{ etapa_anterior_url }}"><i class="bi bi-arrow-left me-1"></i>{% trans "Terminologia" %}</a>
+    <button class="btn btn-primary px-4">{% trans "Salvar e configurar catálogo" %}<i class="bi bi-arrow-right ms-1"></i></button>
+  </div>
+</form>

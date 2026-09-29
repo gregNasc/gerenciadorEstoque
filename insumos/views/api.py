@@ -484,7 +484,7 @@ def encontrar_linha_cabecalho_calendario(sheet):
 
     return None
 
-def resolver_nome_base_importada(regional_nome, regional_map):
+def resolver_nome_base_importada(regional_nome, regional_map, empresa_oxxo=None):
     nome_base = regional_map.get(regional_nome)
     if nome_base is None:
         regional_normalizado = normalizar_nome_base(regional_nome)
@@ -505,11 +505,11 @@ def resolver_nome_base_importada(regional_nome, regional_map):
         base_existente = next(
             (
                 base
-                for base in Base.objects.filter(empresa__nome__iexact='OXXO')
+                for base in Base.objects.filter(empresa=empresa_oxxo)
                 if normalizar_nome_base(base.nome) == nome_oxxo_normalizado
             ),
             None
-        )
+        ) if empresa_oxxo is not None else None
         return base_existente.nome if base_existente else nome_oxxo
 
     if nome_normalizado in {'RJ', 'RIO DE JANEIRO'}:
@@ -526,12 +526,25 @@ def resolver_nome_base_importada(regional_nome, regional_map):
 
     return nome_base
 
-def obter_base_importada(regional_nome, regional_map, empresa_padrao):
-    nome_base = resolver_nome_base_importada(regional_nome, regional_map)
+def obter_base_importada(
+    regional_nome,
+    regional_map,
+    empresa_padrao,
+    empresa_oxxo=None,
+):
+    nome_base = resolver_nome_base_importada(
+        regional_nome,
+        regional_map,
+        empresa_oxxo,
+    )
     if nome_base is None:
         return None
 
-    empresa_base = empresa_para_base_importada(nome_base, empresa_padrao)
+    empresa_base = empresa_para_base_importada(
+        nome_base,
+        empresa_padrao,
+        empresa_oxxo,
+    )
     nome_normalizado = normalizar_nome_base(nome_base)
     return next(
         (
@@ -542,12 +555,16 @@ def obter_base_importada(regional_nome, regional_map, empresa_padrao):
         None,
     )
 
-def empresa_para_base_importada(nome_base, empresa_padrao):
+def empresa_para_base_importada(nome_base, empresa_padrao, empresa_oxxo=None):
     nome_normalizado = normalizar_nome_base(nome_base)
-    if nome_normalizado.startswith('OXXO ') or regional_termina_com_x(nome_base):
-        empresa_oxxo = Empresa.objects.filter(nome__iexact='OXXO').first()
-        if empresa_oxxo:
-            return empresa_oxxo
+    if (
+        empresa_oxxo is not None
+        and (
+            nome_normalizado.startswith('OXXO ')
+            or regional_termina_com_x(nome_base)
+        )
+    ):
+        return empresa_oxxo
 
     return empresa_padrao
 
@@ -594,7 +611,15 @@ def adicionar_aviso_importacao(resumo, mensagem, limite=50):
     if len(resumo['avisos']) < limite:
         resumo['avisos'].append(mensagem)
 
-def importar_alteracoes_calendario(wb, arquivo_nome, usuario, regional_map, empresa_padrao, resumo):
+def importar_alteracoes_calendario(
+    wb,
+    arquivo_nome,
+    usuario,
+    regional_map,
+    empresa_padrao,
+    empresa_oxxo,
+    resumo,
+):
     abas_alteracoes = [
         nome
         for nome in wb.sheetnames
@@ -635,6 +660,7 @@ def importar_alteracoes_calendario(wb, arquivo_nome, usuario, regional_map, empr
                         regional_nome,
                         regional_map,
                         empresa_padrao,
+                        empresa_oxxo,
                     )
                     if base is None and normalizar_nome_base(regional_nome) != 'TODAS':
                         adicionar_aviso_importacao(
@@ -677,7 +703,22 @@ def importar_excel(request):
     execution_scope = IntegrationExecutionScope.platform_global(
         'CALENDARIO_INVENTARIOS_XLSX'
     )
+    empresas_importacao = Empresa.objects.filter(ativa=True).order_by('nome')
     if request.method == 'POST' and request.FILES.get('arquivo'):
+        empresa_padrao = empresas_importacao.filter(
+            pk=request.POST.get('empresa_padrao'),
+        ).first()
+        if empresa_padrao is None:
+            messages.error(request, 'Selecione a empresa principal da importação.')
+            return redirect('insumos:importar_excel')
+        empresa_oxxo = None
+        empresa_oxxo_id = request.POST.get('empresa_oxxo')
+        if empresa_oxxo_id:
+            empresa_oxxo = empresas_importacao.filter(pk=empresa_oxxo_id).first()
+            if empresa_oxxo is None:
+                messages.error(request, 'A empresa alternativa informada não está ativa.')
+                return redirect('insumos:importar_excel')
+
         arquivo = request.FILES['arquivo']
         try:
             wb = openpyxl.load_workbook(arquivo, data_only=True)
@@ -744,17 +785,11 @@ def importar_excel(request):
             'CHAVE': 'chave',
         }
 
-        empresa_padrao = (
-            Empresa.objects.filter(nome__iexact='Inventory Brasil').first()
-            or Empresa.objects.first()
-        )
-        if not empresa_padrao:
-            messages.error(request, 'Nenhuma empresa cadastrada.')
-            return redirect('insumos:importar_excel')
-
         resumo_importacao = {
             'arquivo': arquivo.name,
             'escopo': execution_scope.kind,
+            'empresa_padrao': empresa_padrao.nome,
+            'empresa_oxxo': empresa_oxxo.nome if empresa_oxxo else '',
             'clientes': 0,
             'alteracoes': 0,
             'inventarios_criados': 0,
@@ -802,6 +837,7 @@ def importar_excel(request):
                 request.user,
                 REGIONAL_MAP,
                 empresa_padrao,
+                empresa_oxxo,
                 resumo_importacao,
             )
 
@@ -939,6 +975,7 @@ def importar_excel(request):
                         regional_nome,
                         REGIONAL_MAP,
                         empresa_padrao,
+                        empresa_oxxo,
                     )
                     if base is None:
                         adicionar_aviso_importacao(
@@ -1081,6 +1118,7 @@ def importar_excel(request):
     return render(request, 'insumos/importar_excel.html', {
         'resumo_importacao': resumo_importacao,
         'escopo_integracao': execution_scope.kind,
+        'empresas_importacao': empresas_importacao,
     })
 
 @login_required

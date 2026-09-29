@@ -6,10 +6,11 @@ from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from estoque.models import Equipamento
+from estoque.models import Equipamento, TermoEmpresa
 from estoque.security import secure_queryset
 from estoque.services.documentation_service import DocumentationService
 from estoque.services.tenant_catalog_service import TenantCatalogService
+from estoque.services.tenant_terminology_service import TenantTerminologyService
 from chamados.forms import (
     ChamadoAvaliacaoForm,
     ChamadoForm,
@@ -955,8 +956,12 @@ def exportar(request):
     workbook = Workbook()
     planilha = workbook.active
     planilha.title = 'CHAMADOS'
+    rotulo_regional = TenantTerminologyService.label(
+        getattr(request, 'tenant', None),
+        TermoEmpresa.Chave.REGIONAL,
+    ).upper()
     planilha.append([
-        'PROTOCOLO', 'TIPO', 'REGIONAL', 'SIGLA DA LOJA', 'NÚMERO DA LOJA', 'CATEGORIA',
+        'PROTOCOLO', 'TIPO', rotulo_regional, 'SIGLA DA LOJA', 'NÚMERO DA LOJA', 'CATEGORIA',
         'TÍTULO', 'PRIORIDADE', 'STATUS', 'ABERTO POR', 'ATENDENTE', 'ABERTURA',
         'RESOLUÇÃO',
     ])

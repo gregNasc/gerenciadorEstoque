@@ -1,0 +1,57 @@
+{% load i18n %}
+<form method="post">
+  {% csrf_token %}
+  <div class="tw-card-head">
+    <h2 class="h5 mb-1">{% trans "3. Terminologia" %}</h2>
+    <p class="small text-secondary mb-0">
+      {% trans "Personalize somente a apresentação. Códigos, URLs e permissões permanecem estáveis." %}
+    </p>
+  </div>
+  <div class="tw-card-body">
+    <h3 class="h6 fw-bold mb-3">{% trans "Nomes dos módulos habilitados" %}</h3>
+    {% if modulos_terminologia %}
+    <div class="row g-3 mb-4">
+      {% for item in modulos_terminologia %}
+      <div class="col-12 col-md-6">
+        <label class="form-label fw-semibold" for="moduleName{{ item.codigo }}">{{ item.padrao }}</label>
+        <input class="form-control" id="moduleName{{ item.codigo }}"
+               name="modulo_nome_{{ item.codigo }}" maxlength="100"
+               value="{{ item.valor }}" placeholder="{{ item.padrao }}">
+        <div class="form-text"><code>{{ item.codigo }}</code> · {% trans "vazio mantém o nome padrão" %}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning mb-4">{% trans "Nenhum módulo foi habilitado. Volte à etapa anterior para selecioná-los." %}</div>
+    {% endif %}
+
+    <h3 class="h6 fw-bold mb-3">{% trans "Termos gerais" %}</h3>
+    <div class="row g-3">
+      {% for item in termos_terminologia %}
+      <div class="col-12">
+        <div class="border rounded-3 p-3">
+          <div class="small fw-bold text-secondary text-uppercase mb-2">{{ item.nome }} · <code>{{ item.chave }}</code></div>
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="termSingular{{ item.chave }}">{% trans "Singular" %}</label>
+              <input class="form-control" id="termSingular{{ item.chave }}"
+                     name="termo_{{ item.chave }}_singular" maxlength="150"
+                     value="{{ item.valor_singular }}" placeholder="{{ item.padrao_singular }}">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="termPlural{{ item.chave }}">{% trans "Plural" %}</label>
+              <input class="form-control" id="termPlural{{ item.chave }}"
+                     name="termo_{{ item.chave }}_plural" maxlength="150"
+                     value="{{ item.valor_plural }}" placeholder="{{ item.padrao_plural }}">
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="tw-footer">
+    <a class="btn btn-light" href="{{ etapa_anterior_url }}"><i class="bi bi-arrow-left me-1"></i>{% trans "Módulos" %}</a>
+    <button class="btn btn-primary px-4">{% trans "Salvar e configurar categorias" %}<i class="bi bi-arrow-right ms-1"></i></button>
+  </div>
+</form>

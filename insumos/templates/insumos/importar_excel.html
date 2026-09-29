@@ -17,9 +17,12 @@
     </div>
 
     {% if messages %}
-        <div class="d-none">
-            {% for message in messages %}{% endfor %}
-        </div>
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+        {% endfor %}
     {% endif %}
 
     <div class="card border-0 shadow-sm mb-4">
@@ -30,6 +33,26 @@
             </div>
             <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
                 {% csrf_token %}
+                <div class="col-md-6">
+                    <label for="empresa_padrao" class="form-label fw-semibold">Empresa principal</label>
+                    <select id="empresa_padrao" name="empresa_padrao" class="form-select" required>
+                        <option value="">Selecione a empresa</option>
+                        {% for empresa in empresas_importacao %}
+                            <option value="{{ empresa.pk }}">{{ empresa.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Recebe todas as regionais comuns do arquivo.</div>
+                </div>
+                <div class="col-md-6">
+                    <label for="empresa_oxxo" class="form-label fw-semibold">Empresa para regionais terminadas em X</label>
+                    <select id="empresa_oxxo" name="empresa_oxxo" class="form-select">
+                        <option value="">Usar a empresa principal</option>
+                        {% for empresa in empresas_importacao %}
+                            <option value="{{ empresa.pk }}">{{ empresa.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Opcional. Nenhuma empresa é inferida pelo nome.</div>
+                </div>
                 <div class="col-md-8">
                     <label for="arquivo" class="form-label fw-semibold">Arquivo .xlsx</label>
                     <input id="arquivo" type="file" name="arquivo" accept=".xlsx" class="form-control" required>
