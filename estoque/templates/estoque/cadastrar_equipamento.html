@@ -4,21 +4,65 @@
 
 {% block content %}
 {% if request.user.is_authenticated %}
-<div class="container mt-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-dark text-white">
-            ➕ Novo(a) {{ tenant_labels.equipamento.singular }}
+<style>
+    .equipment-create-page { max-width: 1100px; }
+    .equipment-create-hero { background: linear-gradient(135deg, #172033, #263b63); }
+    .equipment-create-step { border-left: 3px solid var(--bs-primary); }
+    .mobile-asset-field { background: var(--bs-primary-bg-subtle); border: 1px solid var(--bs-primary-border-subtle); border-radius: 1rem; padding: 1rem; }
+</style>
+<div class="container mt-4 mb-5 equipment-create-page">
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-header equipment-create-hero text-white border-0 p-4">
+            <div class="d-flex align-items-center gap-3">
+                <span class="fs-2"><i class="bi bi-box-seam"></i></span>
+                <div>
+                    <h1 class="h4 fw-bold mb-1">Novo(a) {{ tenant_labels.equipamento.singular }}</h1>
+                    <p class="mb-0 text-white-50">
+                        {% if pode_acessar_linhas_moveis %}Cadastre o ativo e, quando aplicável, associe uma linha móvel disponível.{% else %}Cadastre o ativo conforme o catálogo e a Base selecionada.{% endif %}
+                    </p>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4 p-lg-5">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="border border-primary rounded-3 p-3 h-100 bg-primary-subtle">
+                        <span class="badge text-bg-primary mb-2">Cadastro atual</span>
+                        <h2 class="h6 fw-bold mb-1"><i class="bi bi-pc-display me-2"></i>Equipamento</h2>
+                        <p class="small text-secondary mb-0">Usa número de série, patrimônio, finalidade e foto.</p>
+                    </div>
+                </div>
+                {% if pode_acessar_linhas_moveis %}
+                <div class="col-md-6">
+                    <div class="border rounded-3 p-3 h-100">
+                        <h2 class="h6 fw-bold mb-1"><i class="bi bi-sim me-2"></i>Chip / linha móvel</h2>
+                        <p class="small text-secondary mb-3">Usa telefone, operadora, ICCID e Base — sem patrimônio ou número de série.</p>
+                        <a class="btn btn-outline-primary btn-sm" href="{% url 'estoque:criar_linha_movel' %}">Ir para cadastro de chip</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
             {% if base_selecionada %}
-            <div class="alert alert-info py-2">
+            <div class="alert alert-info border-0 rounded-3">
                 <strong>{{ tenant_labels.base.singular }} do contexto:</strong>
                 {{ base_selecionada.nome }} — {{ base_selecionada.empresa.nome }}
             </div>
             {% endif %}
             <form method="post" enctype="multipart/form-data" id="formEquipamento">
                 {% csrf_token %}
-                <div class="row">
+                <div class="equipment-create-step ps-3 mb-4">
+                    <span class="badge text-bg-primary mb-2">1</span>
+                    <h2 class="h6 fw-bold mb-1">Identificação do ativo</h2>
+                    <p class="small text-secondary mb-0">Selecione categoria e produto configurados para a empresa.</p>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12 mb-2">
+                        <label class="form-label fw-bold">{{ form.regional.label }}</label>
+                        {{ form.regional }}
+                        <div class="form-text">A Base define a empresa e quais itens podem ser cadastrados.</div>
+                        {% if form.regional.errors %}<div class="text-danger small">{{ form.regional.errors }}</div>{% endif %}
+                    </div>
                     <!-- CATEGORIA -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">{% trans "Categoria" %}</label>
@@ -37,9 +81,24 @@
                         {% endif %}
                     </div>
 
+                    {% if pode_acessar_linhas_moveis %}
+                    <div id="campoLinhaMovel" class="col-12 mb-3{% if not form.linha_movel_habilitada %} d-none{% endif %}">
+                        <div class="mobile-asset-field">
+                            <div class="d-flex gap-3 align-items-start mb-3">
+                                <i class="bi bi-sim fs-3 text-primary"></i>
+                                <div><h2 class="h6 fw-bold mb-1">Conectividade móvel opcional</h2><p class="small text-secondary mb-0">O chip continua sendo um ativo independente mesmo sem vínculo.</p></div>
+                            </div>
+                            <label class="form-label fw-bold">{{ form.linha_movel.label }}</label>
+                            {{ form.linha_movel }}
+                            <div class="form-text">Somente linhas disponíveis na mesma empresa e Base.</div>
+                            {% if form.linha_movel.errors %}<div class="text-danger small">{{ form.linha_movel.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- DEMAIS CAMPOS -->
                     {% for field in form %}
-                        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'foto' %}
+                        {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'regional' and field.name != 'linha_movel' and field.name != 'foto' %}
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">{{ field.label }}</label>
                                 {{ field }}
@@ -62,9 +121,9 @@
                 </div>
 
                 <!-- BOTÃO SALVAR -->
-                <div class="text-end mt-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4 pt-3 border-top">
                     <button type="button" class="btn btn-primary" id="btnSalvarEquipamento">
-                        {% trans "Salvar" %}
+                        <i class="bi bi-check-circle me-1"></i>{% trans "Revisar e salvar" %}
                     </button>
                 </div>
             </form>
@@ -88,6 +147,7 @@
                     <div class="col-md-6 mb-2"><strong>{{ tenant_labels.regional.singular }}:</strong> <span id="modalRegional"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Finalidade:" %}</strong> <span id="modalFinalidade"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Responsável:" %}</strong> <span id="modalResponsavel"></span></div>
+                    {% if pode_acessar_linhas_moveis %}<div class="col-md-6 mb-2" id="modalLinhaMovelGrupo"><strong>Linha móvel:</strong> <span id="modalLinhaMovel"></span></div>{% endif %}
                     <div class="col-12 mb-2">
                         <strong>Foto:</strong>
                         <div id="modalFotoPreview" class="mt-1"></div>
@@ -113,13 +173,61 @@
             const produtoSelect = document.querySelector('[name="produto"]');
             if (categoriaSelect && produtoSelect) {
                 const urlProdutos = "{% url 'estoque:produtos_por_categoria' %}";
+                const urlLinhasMoveis = "{% url 'estoque:linhas_moveis_disponiveis' %}";
                 const produtoSelecionado = produtoSelect.value;
                 const regionalSelect = document.querySelector('[name="regional"]');
+                const linhaMovelSelect = document.querySelector('[name="linha_movel"]');
+                const linhaMovelSelecionada = linhaMovelSelect?.value || '';
+                const campoLinhaMovel = document.getElementById('campoLinhaMovel');
 
-                async function carregarProdutos(categoria, selectedId = null) {
+                function ocultarLinhasMoveis() {
+                    campoLinhaMovel?.classList.add('d-none');
+                    if (linhaMovelSelect) {
+                        linhaMovelSelect.innerHTML = '<option value="">Sem linha móvel</option>';
+                    }
+                }
+
+                async function atualizarLinhasMoveis(selectedId = null) {
+                    const base = regionalSelect?.value || '';
+                    const produto = produtoSelect.value || '';
+                    if (!linhaMovelSelect || !base || !produto) {
+                        ocultarLinhasMoveis();
+                        return;
+                    }
+                    try {
+                        const resp = await fetch(
+                            `${urlLinhasMoveis}?base=${encodeURIComponent(base)}&produto=${encodeURIComponent(produto)}`
+                        );
+                        if (!resp.ok) throw new Error();
+                        const data = await resp.json();
+                        if (!data.habilitado) {
+                            ocultarLinhasMoveis();
+                            return;
+                        }
+                        linhaMovelSelect.innerHTML = '<option value="">Sem linha móvel</option>';
+                        data.linhas.forEach(linha => {
+                            const opt = document.createElement('option');
+                            opt.value = linha.id;
+                            opt.textContent = `${linha.numero} — ${linha.operadora}`;
+                            if (selectedId && selectedId == linha.id) opt.selected = true;
+                            linhaMovelSelect.appendChild(opt);
+                        });
+                        campoLinhaMovel?.classList.remove('d-none');
+                    } catch(e) {
+                        console.warn('Erro ao carregar linhas móveis:', e);
+                        ocultarLinhasMoveis();
+                    }
+                }
+
+                async function carregarProdutos(categoria, selectedId = null, selectedLineId = null) {
+                    const base = regionalSelect?.value || '';
+                    if (!base) {
+                        produtoSelect.innerHTML = '<option value="">Selecione a Base primeiro</option>';
+                        ocultarLinhasMoveis();
+                        return;
+                    }
                     produtoSelect.innerHTML = '<option>Carregando...</option>';
                     try {
-                        const base = regionalSelect?.value || '';
                         const resp = await fetch(
                             `${urlProdutos}?categoria=${encodeURIComponent(categoria)}&base=${encodeURIComponent(base)}`
                         );
@@ -133,6 +241,7 @@
                             if (selectedId && selectedId == p.id) opt.selected = true;
                             produtoSelect.appendChild(opt);
                         });
+                        await atualizarLinhasMoveis(selectedLineId);
                     } catch(e) {
                         console.warn("Erro ao carregar produtos:", e);
                         produtoSelect.innerHTML = '<option>Erro ao carregar</option>';
@@ -140,7 +249,13 @@
                 }
 
                 if (categoriaSelect.value) {
-                    carregarProdutos(categoriaSelect.value, produtoSelecionado);
+                    carregarProdutos(
+                        categoriaSelect.value,
+                        produtoSelecionado,
+                        linhaMovelSelecionada
+                    );
+                } else {
+                    ocultarLinhasMoveis();
                 }
 
                 categoriaSelect.addEventListener('change', function() {
@@ -153,6 +268,9 @@
                 });
                 regionalSelect?.addEventListener('change', function() {
                     if (categoriaSelect.value) carregarProdutos(categoriaSelect.value);
+                });
+                produtoSelect.addEventListener('change', function() {
+                    atualizarLinhasMoveis();
                 });
             }
 
@@ -237,6 +355,20 @@
                 // Responsável
                 const resp = document.querySelector('[name="responsavel"]');
                 document.getElementById('modalResponsavel').innerText = resp?.value.trim() || '(não informado)';
+
+                const linhaSelect = document.querySelector('[name="linha_movel"]');
+                const linhaText = linhaSelect?.options[linhaSelect.selectedIndex]?.text || '';
+                const linhaGrupo = document.getElementById('modalLinhaMovelGrupo');
+                if (linhaGrupo) {
+                    linhaGrupo.classList.toggle(
+                        'd-none',
+                        !linhaSelect || document.getElementById('campoLinhaMovel')?.classList.contains('d-none')
+                    );
+                }
+                const modalLinhaMovel = document.getElementById('modalLinhaMovel');
+                if (modalLinhaMovel) {
+                    modalLinhaMovel.innerText = linhaText || 'Sem linha móvel';
+                }
 
                 // Foto
                 const fotoFile = fotoInput?.files[0];

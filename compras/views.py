@@ -26,6 +26,7 @@ from compras.forms import (
 )
 from compras.models import (
     Aquisicao,
+    CapacidadeCatalogoProdutoEmpresa,
     CatalogoProdutoEmpresa,
     CodigoCatalogo,
     ItemRemessaCompra,
@@ -336,6 +337,12 @@ def valores_insumos(request):
 def configurar_catalogo_empresa(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied
+    from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+
+    pode_configurar_linhas_moveis = LinhasMoveisAccessPolicy.permite(
+        request.user,
+        LinhasMoveisAccessPolicy.MANAGE,
+    )
     empresas = ComprasAccessPolicy.empresas(
         request.user,
         action=ComprasAccessPolicy.ADMIN,
@@ -365,21 +372,80 @@ def configurar_catalogo_empresa(request):
                 empresa=empresa,
                 action=ComprasAccessPolicy.ADMIN,
             ),
+            'produtos_conectividade_movel': Produto.objects.filter(
+                catalogos_empresa__empresa=empresa,
+                catalogos_empresa__ativo=True,
+                catalogos_empresa__capacidades__codigo=(
+                    CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL
+                ),
+                catalogos_empresa__capacidades__ativa=True,
+            ),
+            'produtos_chip_independente': Produto.objects.filter(
+                catalogos_empresa__empresa=empresa,
+                catalogos_empresa__ativo=True,
+                catalogos_empresa__capacidades__codigo=(
+                    CapacidadeCatalogoProdutoEmpresa.ATIVO_LINHA_MOVEL
+                ),
+                catalogos_empresa__capacidades__ativa=True,
+            ),
         },
     )
     if request.method == 'POST' and form.is_valid():
         empresa = form.cleaned_data['empresa']
         produtos_ids = set(form.cleaned_data['produtos'].values_list('pk', flat=True))
+        conectividade_ids = set()
+        chips_ids = set()
+        if pode_configurar_linhas_moveis:
+            conectividade_ids = set(
+                form.cleaned_data['produtos_conectividade_movel'].values_list(
+                    'pk', flat=True,
+                )
+            )
+            chips_ids = set(
+                form.cleaned_data['produtos_chip_independente'].values_list(
+                    'pk', flat=True,
+                )
+            )
+        else:
+            produtos_ids.update(
+                CatalogoProdutoEmpresa.objects.filter(
+                    empresa=empresa,
+                    ativo=True,
+                    capacidades__codigo=(
+                        CapacidadeCatalogoProdutoEmpresa.ATIVO_LINHA_MOVEL
+                    ),
+                    capacidades__ativa=True,
+                ).values_list('produto_id', flat=True)
+            )
         with transaction.atomic():
             CatalogoProdutoEmpresa.objects.filter(empresa=empresa).exclude(
                 produto_id__in=produtos_ids
             ).update(ativo=False, configurado_por=request.user)
             for produto_id in produtos_ids:
-                CatalogoProdutoEmpresa.objects.update_or_create(
+                catalogo, catalogo_criado = CatalogoProdutoEmpresa.objects.update_or_create(
                     empresa=empresa,
                     produto_id=produto_id,
                     defaults={'ativo': True, 'configurado_por': request.user},
                 )
+                if pode_configurar_linhas_moveis:
+                    for codigo, selecionados in (
+                        (
+                            CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL,
+                            conectividade_ids,
+                        ),
+                        (
+                            CapacidadeCatalogoProdutoEmpresa.ATIVO_LINHA_MOVEL,
+                            chips_ids,
+                        ),
+                    ):
+                        CapacidadeCatalogoProdutoEmpresa.objects.update_or_create(
+                            catalogo=catalogo,
+                            codigo=codigo,
+                            defaults={
+                                'ativa': produto_id in selecionados,
+                                'configurado_por': request.user,
+                            },
+                        )
         messages.success(
             request,
             _('Catálogo de %(empresa)s atualizado: %(quantidade)s equipamento(s) disponível(is).') % {
@@ -393,6 +459,7 @@ def configurar_catalogo_empresa(request):
         'form': form,
         'empresas': empresas,
         'empresa_selecionada': empresa,
+        'pode_configurar_linhas_moveis': pode_configurar_linhas_moveis,
     })
 
 

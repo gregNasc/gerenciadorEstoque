@@ -333,7 +333,7 @@
 
                 <!-- ASSISTENTE -->
                 <!--
-                {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
+                {% if user.is_superuser or perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item">
                     <a class="nav-link {% if url_name == 'assistente_operacional' %}active{% endif %}"
                        href="{% url 'estoque:assistente_operacional' %}">
@@ -639,7 +639,7 @@
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item dropdown">
 
-                    <a class="nav-link dropdown-toggle {% if url_name == 'cadastrar_equipamento' or url_name == 'lista_insumos' or url_name == 'cadastrar_insumo' or url_name == 'editar_insumo' %}active{% endif %}"
+                    <a class="nav-link dropdown-toggle {% if url_name == 'cadastrar_equipamento' or url_name == 'lista_insumos' or url_name == 'cadastrar_insumo' or url_name == 'editar_insumo' or url_name == 'lista_linhas_moveis' or url_name == 'criar_linha_movel' or url_name == 'editar_linha_movel' or url_name == 'operadoras_moveis' or url_name == 'editar_operadora_movel' or url_name == 'credenciais_linha_movel' %}active{% endif %}"
                        href="#"
                        id="cadastrosDropdown"
                        role="button"
@@ -662,6 +662,15 @@
                                 {{ tenant_labels.equipamento.plural }}
                             </a>
                         </li>
+                        {% if pode_acessar_linhas_moveis %}
+                        <li>
+                            <a class="dropdown-item"
+                               href="{% url 'estoque:lista_linhas_moveis' %}">
+                                <i class="bi bi-sim"></i>
+                                Linhas móveis
+                            </a>
+                        </li>
+                        {% endif %}
                         {% endif %}
 
                         {% if 'cadastros' in tenant_features and 'insumos' in tenant_features %}

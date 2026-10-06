@@ -70,10 +70,32 @@ class CatalogoEmpresaForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         label='Equipamentos disponíveis',
     )
+    produtos_conectividade_movel = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label='Equipamentos que aceitam chip / linha móvel',
+    )
+    produtos_chip_independente = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label='Produtos que representam chip como ativo independente',
+    )
 
     def __init__(self, *args, user=None, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from compras.models import (
+            CapacidadeCatalogoProdutoEmpresa,
+            CatalogoProdutoEmpresa,
+        )
         from estoque.policies.compras import ComprasAccessPolicy
+        from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+
+        self.pode_configurar_linhas_moveis = LinhasMoveisAccessPolicy.permite(
+            user,
+            LinhasMoveisAccessPolicy.MANAGE,
+        )
 
         empresas = ComprasAccessPolicy.empresas(
             user,
@@ -90,9 +112,50 @@ class CatalogoEmpresaForm(forms.Form):
                     catalogos_empresa__ativo=True,
                 ),
             ).distinct()
-        self.fields['produtos'].queryset = produtos.order_by(
-            'categoria', 'descricao'
+        if empresa is not None and not self.pode_configurar_linhas_moveis:
+            produtos_chip = CatalogoProdutoEmpresa.objects.filter(
+                empresa=empresa,
+                ativo=True,
+                capacidades__codigo=(
+                    CapacidadeCatalogoProdutoEmpresa.ATIVO_LINHA_MOVEL
+                ),
+                capacidades__ativa=True,
+            ).values('produto_id')
+            produtos = produtos.exclude(pk__in=produtos_chip)
+        produtos = produtos.order_by('categoria', 'descricao')
+        self.fields['produtos'].queryset = produtos
+        if self.pode_configurar_linhas_moveis:
+            self.fields['produtos_conectividade_movel'].queryset = produtos
+            self.fields['produtos_chip_independente'].queryset = produtos
+        else:
+            self.fields.pop('produtos_conectividade_movel')
+            self.fields.pop('produtos_chip_independente')
+
+    def clean(self):
+        dados = super().clean()
+        produtos = set(
+            dados.get('produtos', Produto.objects.none()).values_list('pk', flat=True)
         )
+        conectividade = set(
+            dados.get('produtos_conectividade_movel', Produto.objects.none()).values_list(
+                'pk', flat=True,
+            )
+        )
+        chips = set(
+            dados.get('produtos_chip_independente', Produto.objects.none()).values_list(
+                'pk', flat=True,
+            )
+        )
+        if not conectividade <= produtos or not chips <= produtos:
+            raise forms.ValidationError(
+                'As capacidades móveis só podem ser aplicadas a itens ativos no catálogo.'
+            )
+        sobreposicao = conectividade & chips
+        if sobreposicao:
+            raise forms.ValidationError(
+                'Um produto não pode ser simultaneamente equipamento vinculável e chip independente.'
+            )
+        return dados
 
 
 class RemessaForm(forms.Form):

@@ -377,6 +377,14 @@ class TransferenciaService:
 
             equipamento = item.equipamento
 
+            from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+            LinhasMoveisService.preparar_transferencia_base(
+                usuario=usuario_recebimento,
+                equipamento=equipamento,
+                nova_base=transferencia.regional_destino,
+            )
+
             equipamento.status = 'DISPONIVEL'
 
             equipamento.regional = (

@@ -8,6 +8,7 @@ from .models import (
     DeclaracaoCorreiosItem,
     Empresa,
     Equipamento,
+    LinhaMovel,
     Produto,
     Sick,
     Transferencia,
@@ -227,6 +228,13 @@ class EquipamentoForm(forms.ModelForm):
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+    linha_movel = forms.ModelChoiceField(
+        label=_('Linha móvel (opcional)'),
+        required=False,
+        queryset=LinhaMovel.objects.none(),
+        empty_label=_('Sem linha móvel'),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
 
     class Meta:
         model = Equipamento
@@ -254,6 +262,7 @@ class EquipamentoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         self.base_selecionada = base_selecionada
+        self.linha_movel_habilitada = False
         from estoque.policies.compras import ComprasAccessPolicy
 
         base_catalogo = base_selecionada
@@ -272,11 +281,36 @@ class EquipamentoForm(forms.ModelForm):
             user,
             empresa=base_catalogo.empresa if base_catalogo else None,
         )
+        if base_catalogo is not None:
+            from compras.models import (
+                CapacidadeCatalogoProdutoEmpresa,
+                CatalogoProdutoEmpresa,
+            )
+
+            produtos_permitidos = produtos_permitidos.exclude(
+                catalogos_empresa__in=CatalogoProdutoEmpresa.objects.filter(
+                    empresa=base_catalogo.empresa,
+                    ativo=True,
+                    capacidades__codigo=(
+                        CapacidadeCatalogoProdutoEmpresa.ATIVO_LINHA_MOVEL
+                    ),
+                    capacidades__ativa=True,
+                ),
+            )
         from estoque.services.tenant_catalog_service import TenantCatalogService
         categorias = TenantCatalogService.category_names(
             user,
             company=base_catalogo.empresa if base_catalogo else None,
         )
+        if base_catalogo is not None:
+            categorias_com_equipamentos = {
+                str(nome).casefold()
+                for nome in produtos_permitidos.values_list('categoria', flat=True).distinct()
+            }
+            categorias = [
+                categoria for categoria in categorias
+                if categoria.casefold() in categorias_com_equipamentos
+            ]
         self.fields['categoria'].choices = [('', _('Selecione'))] + [
             (categoria, categoria) for categoria in categorias
         ]
@@ -288,6 +322,36 @@ class EquipamentoForm(forms.ModelForm):
             if categoria
             else Produto.objects.none()
         )
+
+        produto_id = self.data.get('produto') if self.is_bound else None
+        produto = (
+            self.fields['produto'].queryset.filter(pk=produto_id).first()
+            if produto_id and str(produto_id).isdigit()
+            else None
+        )
+        if base_catalogo is not None and produto is not None:
+            from compras.models import CapacidadeCatalogoProdutoEmpresa
+            from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+
+            self.linha_movel_habilitada = (
+                LinhasMoveisAccessPolicy.permite(user, LinhasMoveisAccessPolicy.LINK)
+                and CapacidadeCatalogoProdutoEmpresa.objects.filter(
+                    catalogo__empresa=base_catalogo.empresa,
+                    catalogo__produto=produto,
+                    catalogo__ativo=True,
+                    codigo=CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL,
+                    ativa=True,
+                ).exists()
+            )
+            if self.linha_movel_habilitada:
+                self.fields['linha_movel'].queryset = LinhasMoveisAccessPolicy.linhas(
+                    user,
+                    action=LinhasMoveisAccessPolicy.LINK,
+                ).filter(
+                    empresa=base_catalogo.empresa,
+                    base=base_catalogo,
+                    status=LinhaMovel.Status.DISPONIVEL,
+                ).select_related('operadora').order_by('numero_normalizado')
 
         if user and not user.is_superuser:
             perfil = getattr(user, 'perfil', None)
@@ -354,6 +418,7 @@ class EquipamentoForm(forms.ModelForm):
         regional = dados.get('regional')
         produto = dados.get('produto')
         categoria = dados.get('categoria')
+        linha_movel = dados.get('linha_movel')
         if produto and categoria and produto.categoria != categoria:
             self.add_error('produto', 'O equipamento não pertence à categoria selecionada.')
         if regional and produto:
@@ -367,6 +432,19 @@ class EquipamentoForm(forms.ModelForm):
                     'produto',
                     'Este equipamento não está habilitado no catálogo da empresa.',
                 )
+        if linha_movel and not self.linha_movel_habilitada:
+            self.add_error(
+                'linha_movel',
+                'O produto selecionado não permite vínculo com linha móvel.',
+            )
+        if linha_movel and regional and (
+            linha_movel.empresa_id != regional.empresa_id
+            or linha_movel.base_id != regional.pk
+        ):
+            self.add_error(
+                'linha_movel',
+                'A linha móvel deve estar disponível na mesma empresa e Base.',
+            )
         return dados
 
 # ================= TRANSFERÊNCIA =================

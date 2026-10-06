@@ -6,6 +6,7 @@ from .views import lista_transferencias
 from . import declaracao_views
 from . import comunicacao_views
 from . import onboarding_views
+from . import linhas_moveis_views
 
 app_name = 'estoque'
 
@@ -39,10 +40,21 @@ urlpatterns = [
     path('documentacao/videos/<int:video_id>/desativar/', views.documentacao_video_desativar_view, name='documentacao_video_desativar'),
     path('cadastrar-produto/', views.cadastrar_equipamento_view, name='cadastrar_equipamento'),
     path('produtos-por-categoria/', views.produtos_por_categoria, name='produtos_por_categoria'),
+    path('linhas-moveis-disponiveis/', views.linhas_moveis_disponiveis, name='linhas_moveis_disponiveis'),
     path('detalhes-produto/<int:produto_id>/', views.detalhes_produto, name='detalhes_produto'),
     path('equipamentos/<int:equipamento_id>/arquivos/<str:tipo>/', views.equipamento_arquivo_view, name='equipamento_arquivo'),
     path('equipamentos-por-regional/<int:produto_id>/<int:regional_id>/', views.equipamentos_por_regional, name='equipamentos_por_regional'),
 
+    # ---------------- LINHAS MÓVEIS ----------------
+    path('linhas-moveis/', linhas_moveis_views.lista_linhas_moveis, name='lista_linhas_moveis'),
+    path('linhas-moveis/nova/', linhas_moveis_views.criar_linha_movel, name='criar_linha_movel'),
+    path('linhas-moveis/<int:linha_id>/editar/', linhas_moveis_views.editar_linha_movel, name='editar_linha_movel'),
+    path('linhas-moveis/<int:linha_id>/inativar/', linhas_moveis_views.inativar_linha_movel, name='inativar_linha_movel'),
+    path('linhas-moveis/<int:linha_id>/reativar/', linhas_moveis_views.reativar_linha_movel, name='reativar_linha_movel'),
+    path('linhas-moveis/<int:linha_id>/credenciais/', linhas_moveis_views.credenciais_linha_movel, name='credenciais_linha_movel'),
+    path('linhas-moveis/operadoras/', linhas_moveis_views.operadoras_moveis, name='operadoras_moveis'),
+    path('linhas-moveis/operadoras/<int:operadora_id>/editar/', linhas_moveis_views.operadoras_moveis, name='editar_operadora_movel'),
+    path('linhas-moveis/operadoras/<int:operadora_id>/alternar/', linhas_moveis_views.alternar_operadora_movel, name='alternar_operadora_movel'),
 
     # ---------------- USUÁRIOS ----------------
     path('usuarios/cadastro/', views.gerenciar_usuarios, name='cadastrar_usuario'),
@@ -145,6 +157,7 @@ urlpatterns = [
 
     # ---------------- EDIÇÃO ----------------
     path('equipamento/<int:equipamento_id>/editar/', views.editar_equipamento, name='editar_equipamento'),
+    path('equipamento/<int:equipamento_id>/linha-movel/', views.atualizar_linha_movel_equipamento, name='atualizar_linha_movel_equipamento'),
     path('checklist/', views.checklist_view, name='checklist'),
     path('api/equipamentos-disponiveis/', views.get_equipamentos_disponiveis, name='api_equipamentos'),
     path('api/lotes-tags-disponiveis/', views.get_lotes_tags_disponiveis, name='api_lotes_tags'),

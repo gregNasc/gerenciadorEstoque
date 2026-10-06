@@ -1,0 +1,135 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Linhas móveis{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-sim me-2"></i>Linhas móveis</h2>
+            <p class="text-muted mb-0">Chips são ativos independentes; o vínculo com equipamento é opcional.</p>
+        </div>
+        {% if pode_gerenciar %}
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'estoque:operadoras_moveis' %}">
+                <i class="bi bi-broadcast me-1"></i>Operadoras
+            </a>
+            <a class="btn btn-primary" href="{% url 'estoque:criar_linha_movel' %}">
+                <i class="bi bi-plus-circle me-1"></i>Novo chip / linha
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="get" class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body row g-3 align-items-end">
+            <div class="col-lg-4">
+                <label class="form-label">Buscar</label>
+                <input class="form-control" name="q" value="{{ filtros.q }}" placeholder="Telefone, ICCID ou operadora">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Empresa</label>
+                <select class="form-select" name="empresa">
+                    <option value="">Todas</option>
+                    {% for empresa in empresas %}
+                    <option value="{{ empresa.pk }}" {% if filtros.empresa == empresa.pk|stringformat:'s' %}selected{% endif %}>{{ empresa.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Base</label>
+                <select class="form-select" name="base">
+                    <option value="">Todas</option>
+                    {% for base in bases %}
+                    <option value="{{ base.pk }}" {% if filtros.base == base.pk|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2 d-flex gap-2">
+                <button class="btn btn-dark flex-grow-1" type="submit">Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{% url 'estoque:lista_linhas_moveis' %}" aria-label="Limpar filtros"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Telefone</th><th>Empresa / Base</th><th>Responsável</th><th>Operadora</th>
+                        <th>ICCID</th><th>Status</th><th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in pagina %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ linha.numero_formatado }}</div>
+                            <small class="text-muted">Atualizada em {{ linha.atualizado_em|date:'d/m/Y H:i' }}</small>
+                        </td>
+                        <td>{{ linha.empresa.nome }}<br><small class="text-muted">{{ linha.base.nome }}</small></td>
+                        <td>
+                            {% if linha.usuario_responsavel %}
+                                {{ linha.usuario_responsavel.get_full_name|default:linha.usuario_responsavel.username }}
+                                <br><small class="text-muted">{{ linha.usuario_responsavel.username }}</small>
+                            {% elif linha.responsavel_nome %}
+                                {{ linha.responsavel_nome }}
+                                <br><small class="text-muted">Colaborador sem acesso</small>
+                            {% else %}<span class="text-muted">Não atribuído</span>{% endif %}
+                        </td>
+                        <td>{{ linha.operadora.nome }}</td>
+                        <td>{% if linha.iccid %}<span title="ICCID mascarado">••••{{ linha.iccid|slice:'-4:' }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td>
+                            {% if linha.status == 'DISPONIVEL' %}<span class="badge bg-success">Disponível</span>
+                            {% elif linha.status == 'EM_USO' %}<span class="badge bg-primary">Em uso</span>
+                            {% elif linha.status == 'SUSPENSA' %}<span class="badge bg-warning text-dark">Suspensa</span>
+                            {% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            {% if pode_gerenciar %}
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'estoque:editar_linha_movel' linha.pk %}" title="Editar"><i class="bi bi-pencil"></i></a>
+                            {% endif %}
+                            {% if pode_ver_credenciais and pode_gerenciar %}
+                            <a class="btn btn-sm btn-outline-dark" href="{% url 'estoque:credenciais_linha_movel' linha.pk %}" title="Credenciais protegidas"><i class="bi bi-shield-lock"></i></a>
+                            {% endif %}
+                            {% if pode_gerenciar and linha.status == 'INATIVA' %}
+                            <form method="post" action="{% url 'estoque:reativar_linha_movel' linha.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-success" title="Reativar"><i class="bi bi-arrow-counterclockwise"></i></button></form>
+                            {% elif pode_gerenciar %}
+                            <form method="post" action="{% url 'estoque:inativar_linha_movel' linha.pk %}" class="d-inline" onsubmit="return preencherMotivo(this);">{% csrf_token %}<input type="hidden" name="motivo"><button class="btn btn-sm btn-outline-danger" title="Inativar"><i class="bi bi-slash-circle"></i></button></form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-5 text-muted">Nenhuma linha móvel encontrada neste escopo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="mt-4" aria-label="Paginação"><ul class="pagination justify-content-center">
+        {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ pagina.previous_page_number }}&q={{ filtros.q|urlencode }}&empresa={{ filtros.empresa }}&base={{ filtros.base }}&status={{ filtros.status }}">Anterior</a></li>{% endif %}
+        <li class="page-item disabled"><span class="page-link">{{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li>
+        {% if pagina.has_next %}<li class="page-item"><a class="page-link" href="?page={{ pagina.next_page_number }}&q={{ filtros.q|urlencode }}&empresa={{ filtros.empresa }}&base={{ filtros.base }}&status={{ filtros.status }}">Próxima</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+</div>
+<script>
+function preencherMotivo(form) {
+    const motivo = window.prompt('Informe o motivo da inativação:');
+    if (!motivo || !motivo.trim()) return false;
+    form.querySelector('[name="motivo"]').value = motivo.trim();
+    return true;
+}
+</script>
+{% endblock %}

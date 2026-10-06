@@ -108,6 +108,52 @@ class CatalogoProdutoEmpresa(models.Model):
         return f'{self.empresa} — {self.produto}'
 
 
+class CapacidadeCatalogoProdutoEmpresa(models.Model):
+    """Capacidade funcional habilitada explicitamente no catálogo do tenant."""
+
+    CONECTIVIDADE_MOVEL = 'CONECTIVIDADE_MOVEL'
+    ATIVO_LINHA_MOVEL = 'ATIVO_LINHA_MOVEL'
+
+    catalogo = models.ForeignKey(
+        CatalogoProdutoEmpresa,
+        on_delete=models.CASCADE,
+        related_name='capacidades',
+    )
+    codigo = models.CharField(max_length=50)
+    ativa = models.BooleanField(default=True, db_index=True)
+    configurado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='capacidades_catalogo_configuradas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['catalogo__empresa__nome', 'catalogo__produto__descricao', 'codigo']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['catalogo', 'codigo'],
+                name='capacidade_catalogo_codigo_unico',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['codigo', 'ativa'],
+                name='cap_catalogo_codigo_ativo_idx',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.codigo = (self.codigo or '').strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.catalogo} — {self.codigo}'
+
+
 class Aquisicao(models.Model):
     class Status(models.TextChoices):
         RASCUNHO = 'RASCUNHO', 'Rascunho'

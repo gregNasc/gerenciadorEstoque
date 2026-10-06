@@ -354,6 +354,14 @@ def receber_transferencia(transferencia, user):
 
         equipamento = item.equipamento
 
+        from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+        LinhasMoveisService.preparar_transferencia_base(
+            usuario=user,
+            equipamento=equipamento,
+            nova_base=transferencia.regional_destino,
+        )
+
         equipamento.regional = transferencia.regional_destino
         equipamento.status = 'ATIVO'
 

@@ -2410,7 +2410,12 @@ class AssistenteOperacionalService:
                     f'{item["produto__descricao"] or "-"} | {item["total"]} | '
                     f'{cls._formatar_decimal(participacao)}%'
                 )
-        linhas.extend(cls._linhas_detalhes_equipamentos(user, qs, total=total))
+        linhas.extend(cls._linhas_detalhes_equipamentos(
+            user,
+            qs,
+            total=total,
+            incluir_conectividade=bool(interpretacao.equipamento_identificador),
+        ))
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
@@ -2875,7 +2880,12 @@ class AssistenteOperacionalService:
                     f'{item["produto__categoria"] or "-"} | {item["total"]} | '
                     f'{cls._formatar_decimal(participacao)}%'
                 )
-        linhas.extend(cls._linhas_detalhes_equipamentos(user, qs, total=total))
+        linhas.extend(cls._linhas_detalhes_equipamentos(
+            user,
+            qs,
+            total=total,
+            incluir_conectividade=bool(interpretacao.equipamento_identificador),
+        ))
         return cls._resposta('estoque', '\n'.join(linhas))
 
     @classmethod
@@ -3528,7 +3538,14 @@ class AssistenteOperacionalService:
         return qs
 
     @classmethod
-    def _linhas_detalhes_equipamentos(cls, user, qs, *, total):
+    def _linhas_detalhes_equipamentos(
+        cls,
+        user,
+        qs,
+        *,
+        total,
+        incluir_conectividade=False,
+    ):
         if not total:
             return []
 
@@ -3541,6 +3558,17 @@ class AssistenteOperacionalService:
         ))
         if not equipamentos:
             return []
+
+        conectividade_por_equipamento = {}
+        if incluir_conectividade:
+            from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+            conectividade_por_equipamento = (
+                LinhasMoveisService.projecao_publica_por_equipamento(
+                    usuario=user,
+                    equipamentos=equipamentos,
+                )
+            )
 
         transferencias = cls._transferencias_visiveis(user).exclude(
             status__in=['CONCLUIDA', 'CANCELADA'],
@@ -3610,6 +3638,7 @@ class AssistenteOperacionalService:
             (
                 'PATRIMÔNIO | SÉRIE | CÓDIGO | PRODUTO | CATEGORIA | BASE | STATUS | '
                 'FINALIDADE | SICK / ETAPA | TRANSFERÊNCIA | EMPRÉSTIMO | CHECKLIST'
+                + (' | LINHA MÓVEL | OPERADORA' if incluir_conectividade else '')
             ),
         ]
         for equipamento in equipamentos:
@@ -3617,8 +3646,7 @@ class AssistenteOperacionalService:
             transferencia_item = next(iter(equipamento.transferencias_ativas_tory), None)
             emprestimo_item = next(iter(equipamento.emprestimos_ativos_tory), None)
             checklist_item = next(iter(equipamento.checklists_tory), None)
-            linhas.append(
-                ' | '.join((
+            colunas = [
                     cls._valor_celula_equipamento(equipamento.patrimonio),
                     cls._valor_celula_equipamento(equipamento.numero_serie),
                     cls._valor_celula_equipamento(equipamento.codigo),
@@ -3639,8 +3667,14 @@ class AssistenteOperacionalService:
                         user, emprestimo_item, bases_visiveis_ids
                     ),
                     cls._resumo_checklist_equipamento(checklist_item),
+            ]
+            if incluir_conectividade:
+                conectividade = conectividade_por_equipamento.get(equipamento.pk) or {}
+                colunas.extend((
+                    cls._valor_celula_equipamento(conectividade.get('numero')),
+                    cls._valor_celula_equipamento(conectividade.get('operadora')),
                 ))
-            )
+            linhas.append(' | '.join(colunas))
         if total > len(equipamentos):
             linhas.extend([
                 '',

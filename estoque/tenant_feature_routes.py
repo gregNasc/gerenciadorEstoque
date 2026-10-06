@@ -26,6 +26,10 @@ class TenantFeatureRoutePolicy:
             Modulo.Codigo.EQUIPAMENTOS,
             Modulo.Codigo.CADASTROS,
         ),
+        ('estoque', 'linhas_moveis_disponiveis'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
         ('estoque', 'detalhes_produto'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'equipamento_arquivo'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'equipamentos_por_regional'): Modulo.Codigo.EQUIPAMENTOS,
@@ -38,8 +42,45 @@ class TenantFeatureRoutePolicy:
             Modulo.Codigo.EQUIPAMENTOS,
             Modulo.Codigo.CADASTROS,
         ),
+        ('estoque', 'atualizar_linha_movel_equipamento'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
         ('estoque', 'api_regionais_produto'): Modulo.Codigo.EQUIPAMENTOS,
         ('estoque', 'detalhes_regional_api'): Modulo.Codigo.EQUIPAMENTOS,
+        ('estoque', 'lista_linhas_moveis'): Modulo.Codigo.EQUIPAMENTOS,
+        ('estoque', 'criar_linha_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'editar_linha_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'inativar_linha_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'reativar_linha_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'credenciais_linha_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'operadoras_moveis'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'editar_operadora_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
+        ('estoque', 'alternar_operadora_movel'): (
+            Modulo.Codigo.EQUIPAMENTOS,
+            Modulo.Codigo.CADASTROS,
+        ),
 
         ('estoque', 'sick'): Modulo.Codigo.SICK,
         ('estoque', 'marcar_sick'): Modulo.Codigo.SICK,

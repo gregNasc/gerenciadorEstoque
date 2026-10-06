@@ -62,6 +62,8 @@ TECHNICAL_MODEL_FIELDS = {
     ('estoque.MensagemArquivo', 'nome_original'),
     ('estoque.DriverImpressora', 'nome_original'),
     ('estoque.ResolucaoDocumento', 'nome_original'),
+    ('estoque.CredencialLinhaMovel', 'conteudo_criptografado'),
+    ('estoque.CredencialLinhaMovel', 'chave_id'),
     ('insumos.AlteracaoCalendario', 'arquivo'),
     ('insumos.ClienteChecklistDocumento', 'nome_original'),
     ('insumos.ChecklistEquipamentoQuantidade', 'categoria'),

@@ -104,7 +104,7 @@ class TenantDashboardCategoryTests(TestCase):
             for item in response.context['produtos_na_categoria']
         }
         self.assertEqual(cards[self.category_a.nome], 1)
-        self.assertEqual(cards[self.empty_category_a.nome], 0)
+        self.assertNotIn(self.empty_category_a.nome, cards)
         self.assertNotContains(response, self.category_b.nome)
         self.assertNotContains(response, self.product_b.descricao)
         self.assertNotContains(response, self.company_b.nome)

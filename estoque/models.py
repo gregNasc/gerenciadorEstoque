@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.core.exceptions import ValidationError
@@ -11,7 +11,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 from django.core.files.storage import storages
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.utils.text import slugify
@@ -21,36 +21,29 @@ from insumos.constants import GruposInsumos
 def resolucao_documento_storage():
     return storages['private']
 
-
 def resolucao_documento_upload_to(instance, filename):
     extensao = Path(filename).suffix.lower()
     return f'documentacao/resolucao/{uuid.uuid4().hex}{extensao}'
 
-
 def driver_impressora_storage():
     return storages['private']
-
 
 def driver_impressora_upload_to(instance, filename):
     extensao = Path(filename).suffix.lower()
     return f'documentacao/drivers-impressoras/{uuid.uuid4().hex}{extensao}'
 
-
 DRIVER_IMPRESSORA_EXTENSOES = ['exe', 'msi', 'zip', 'rar', 'cab', 'inf']
 DRIVER_IMPRESSORA_TAMANHO_MAXIMO = 500 * 1024 * 1024
-
 
 def validar_tamanho_driver_impressora(arquivo):
     if arquivo.size > DRIVER_IMPRESSORA_TAMANHO_MAXIMO:
         raise ValidationError(_('O arquivo deve ter no máximo 500 MB.'))
-
 
 def _url_rastreamento_correios(codigo):
     codigo = (codigo or '').strip()
     if not codigo:
         return ''
     return f'https://rastreamento.correios.com.br/app/index.php?objetos={quote(codigo)}'
-
 
 # ---------------- BASE ----------------
 class Empresa(models.Model):
@@ -85,7 +78,6 @@ class Empresa(models.Model):
         from estoque.tenant_features import TenantFeatureService
 
         return TenantFeatureService.has_feature(self, codigo)
-
 
 class Modulo(models.Model):
     class Codigo(models.TextChoices):
@@ -124,7 +116,6 @@ class Modulo(models.Model):
 
     def __str__(self):
         return self.nome
-
 
 class ModuloEmpresa(models.Model):
     empresa = models.ForeignKey(
@@ -177,7 +168,6 @@ class ModuloEmpresa(models.Model):
     @property
     def nome_apresentacao(self):
         return self.nome_exibicao.strip() or self.modulo.nome
-
 
 class TermoEmpresa(models.Model):
     class Chave(models.TextChoices):
@@ -236,7 +226,6 @@ class TermoEmpresa(models.Model):
 
     def __str__(self):
         return f'{self.empresa} | {self.chave}'
-
 
 class CategoriaEquipamentoEmpresa(models.Model):
     aliases = models.JSONField(default=list, blank=True)
@@ -306,7 +295,6 @@ class CategoriaEquipamentoEmpresa(models.Model):
     def __str__(self):
         return f'{self.empresa} | {self.nome}'
 
-
 class SecaoDocumentacaoEmpresa(models.Model):
     class Codigo(models.TextChoices):
         BIBLIOTECA = 'biblioteca', 'Biblioteca'
@@ -370,7 +358,6 @@ class SecaoDocumentacaoEmpresa(models.Model):
     def __str__(self):
         return f'{self.empresa} | {self.codigo}'
 
-
 class RelacionamentoEmpresa(models.Model):
     empresa_origem = models.ForeignKey(
         Empresa,
@@ -428,7 +415,6 @@ class RelacionamentoEmpresa(models.Model):
 
     def __str__(self):
         return f'{self.empresa_origem} -> {self.empresa_destino}'
-
 
 class CapacidadeRelacionamentoEmpresa(models.Model):
     class Recurso(models.TextChoices):
@@ -707,7 +693,6 @@ class Perfil(models.Model):
     @property
     def pode_marcar_sick(self):
         return self.is_admin or self.is_gestor or self.is_operador
-
 
 class AuditoriaPermissaoUsuario(models.Model):
     usuario = models.ForeignKey(
@@ -1182,7 +1167,8 @@ class Transferencia(models.Model):
                 }
             )
 
-    def receber(self):
+    @transaction.atomic
+    def receber(self, usuario=None):
         if self.status != self.Status.EM_TRANSITO:
             raise ValueError("Só pode receber se estiver enviado")
 
@@ -1194,6 +1180,20 @@ class Transferencia(models.Model):
         equipamentos = []
         for item in itens:
             if item.equipamento_id:
+                if item.equipamento.vinculos_linha_movel.filter(
+                    fim_em__isnull=True,
+                ).exists():
+                    if usuario is None:
+                        raise ValidationError(
+                            'Informe o usuário responsável para receber equipamento com linha móvel.'
+                        )
+                    from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+                    LinhasMoveisService.preparar_transferencia_base(
+                        usuario=usuario,
+                        equipamento=item.equipamento,
+                        nova_base=self.regional_destino,
+                    )
                 item.equipamento.regional = self.regional_destino
                 item.equipamento.status = 'ATIVO'
                 equipamentos.append(item.equipamento)
@@ -1557,6 +1557,419 @@ class Sick(models.Model):
             ('corrigir_fluxo_sick', 'Pode corrigir etapas do fluxo SICK'),
         ]
 
+# ---------------- LINHAS MÓVEIS ----------------
+class OperadoraMovel(models.Model):
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='operadoras_moveis',
+    )
+    nome = models.CharField(max_length=100)
+    codigo = models.SlugField(max_length=40)
+    ativa = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Operadora móvel'
+        verbose_name_plural = 'Operadoras móveis'
+        ordering = ('empresa__nome', 'nome')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'codigo'),
+                name='operadora_movel_empresa_codigo_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('empresa', 'nome'),
+                name='operadora_movel_empresa_nome_unico',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.nome = (self.nome or '').strip()
+        self.codigo = slugify(self.codigo or self.nome)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.empresa} | {self.nome}'
+
+class LinhaMovel(models.Model):
+    class Status(models.TextChoices):
+        DISPONIVEL = 'DISPONIVEL', 'Disponível'
+        EM_USO = 'EM_USO', 'Em uso'
+        SUSPENSA = 'SUSPENSA', 'Suspensa'
+        INATIVA = 'INATIVA', 'Inativa'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT,
+        related_name='linhas_moveis',
+    )
+    base = models.ForeignKey(
+        Base,
+        on_delete=models.PROTECT,
+        related_name='linhas_moveis',
+    )
+    numero_normalizado = models.CharField(
+        max_length=20,
+        validators=[
+            RegexValidator(
+                regex=r'^\+[1-9]\d{7,14}$',
+                message='Informe o número no formato internacional E.164.',
+            ),
+        ],
+    )
+    operadora = models.ForeignKey(
+        OperadoraMovel,
+        on_delete=models.PROTECT,
+        related_name='linhas_moveis',
+    )
+    usuario_responsavel = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='linhas_moveis_sob_responsabilidade',
+        verbose_name='Usuário responsável',
+    )
+    responsavel_nome = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        verbose_name='Colaborador responsável sem acesso',
+    )
+    iccid = models.CharField(
+        max_length=22,
+        blank=True,
+        default='',
+        validators=[
+            RegexValidator(
+                regex=r'^\d{18,22}$',
+                message='O ICCID deve conter de 18 a 22 dígitos.',
+            ),
+        ],
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=Status.choices,
+        default=Status.DISPONIVEL,
+        db_index=True,
+    )
+    observacao = models.TextField(blank=True, default='')
+    ativada_em = models.DateTimeField(null=True, blank=True)
+    inativada_em = models.DateTimeField(null=True, blank=True)
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='linhas_moveis_criadas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Linha móvel'
+        verbose_name_plural = 'Linhas móveis'
+        ordering = ('empresa__nome', 'numero_normalizado')
+        permissions = [
+            ('visualizar_linhas_moveis', 'Pode visualizar linhas móveis'),
+            ('gerenciar_linhas_moveis', 'Pode gerenciar linhas móveis'),
+            ('vincular_linhas_moveis', 'Pode vincular linhas móveis'),
+            (
+                'visualizar_credenciais_linhas_moveis',
+                'Pode visualizar credenciais de linhas móveis',
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'numero_normalizado'),
+                name='linha_movel_empresa_numero_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('empresa', 'iccid'),
+                condition=~Q(iccid=''),
+                name='linha_movel_empresa_iccid_unico',
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=('DISPONIVEL', 'EM_USO', 'SUSPENSA', 'INATIVA')),
+                name='linha_movel_status_valido',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'base', 'status'),
+                name='linha_movel_escopo_status_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.base_id and self.empresa_id and self.base.empresa_id != self.empresa_id:
+            errors['base'] = 'A Base deve pertencer à mesma empresa da linha.'
+        if (
+            self.operadora_id
+            and self.empresa_id
+            and self.operadora.empresa_id != self.empresa_id
+        ):
+            errors['operadora'] = 'A operadora deve pertencer à mesma empresa da linha.'
+        if self.usuario_responsavel_id:
+            usuario = self.usuario_responsavel
+            if not usuario.is_active or usuario.is_superuser:
+                errors['usuario_responsavel'] = (
+                    'Selecione um usuário ativo do sistema.'
+                )
+        if self.usuario_responsavel_id and (self.responsavel_nome or '').strip():
+            errors['responsavel_nome'] = (
+                'Escolha um usuário do sistema ou informe um colaborador sem acesso, não ambos.'
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.numero_normalizado = (self.numero_normalizado or '').strip()
+        self.iccid = (self.iccid or '').strip()
+        self.responsavel_nome = (self.responsavel_nome or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.numero_normalizado
+
+    @property
+    def numero_formatado(self):
+        digitos = ''.join(caractere for caractere in self.numero_normalizado if caractere.isdigit())
+        if digitos.startswith('55'):
+            nacional = digitos[2:]
+            if len(nacional) == 11:
+                return f'({nacional[:2]}) {nacional[2:7]}-{nacional[7:]}'
+            if len(nacional) == 10:
+                return f'({nacional[:2]}) {nacional[2:6]}-{nacional[6:]}'
+        return self.numero_normalizado
+
+class CredencialLinhaMovel(models.Model):
+    linha = models.OneToOneField(
+        LinhaMovel,
+        on_delete=models.PROTECT,
+        related_name='credencial_protegida',
+    )
+    conteudo_criptografado = models.TextField()
+    chave_id = models.CharField(max_length=50)
+    campos_configurados = models.JSONField(default=list, blank=True)
+    atualizado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='credenciais_linhas_moveis_atualizadas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Credencial protegida de linha móvel'
+        verbose_name_plural = 'Credenciais protegidas de linhas móveis'
+
+    def clean(self):
+        super().clean()
+        permitidos = {'pin', 'pin2', 'puk', 'puk2'}
+        if (
+            not isinstance(self.campos_configurados, list)
+            or any(campo not in permitidos for campo in self.campos_configurados)
+            or len(self.campos_configurados) != len(set(self.campos_configurados))
+        ):
+            raise ValidationError({
+                'campos_configurados': 'A lista de credenciais configuradas é inválida.',
+            })
+        if not self.conteudo_criptografado or not self.chave_id:
+            raise ValidationError('A credencial deve possuir conteúdo criptografado e chave identificada.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Credencial protegida da linha {self.linha_id}'
+
+class VinculoLinhaEquipamento(models.Model):
+    linha = models.ForeignKey(
+        LinhaMovel,
+        on_delete=models.PROTECT,
+        related_name='vinculos_equipamento',
+    )
+    equipamento = models.ForeignKey(
+        Equipamento,
+        on_delete=models.PROTECT,
+        related_name='vinculos_linha_movel',
+    )
+    inicio_em = models.DateTimeField(default=timezone.now, db_index=True)
+    fim_em = models.DateTimeField(null=True, blank=True, db_index=True)
+    motivo_fim = models.TextField(blank=True, default='')
+    vinculado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='vinculos_linha_realizados',
+    )
+    desvinculado_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='desvinculos_linha_realizados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Vínculo entre linha e equipamento'
+        verbose_name_plural = 'Vínculos entre linhas e equipamentos'
+        ordering = ('-inicio_em', '-id')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('linha',),
+                condition=Q(fim_em__isnull=True),
+                name='vinculo_linha_ativo_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('equipamento',),
+                condition=Q(fim_em__isnull=True),
+                name='vinculo_equipamento_ativo_unico',
+            ),
+            models.CheckConstraint(
+                condition=Q(fim_em__isnull=True) | Q(fim_em__gte=models.F('inicio_em')),
+                name='vinculo_linha_periodo_valido',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.fim_em and self.inicio_em and self.fim_em < self.inicio_em:
+            errors['fim_em'] = 'O término não pode ser anterior ao início.'
+        if self.linha_id and self.equipamento_id:
+            empresa_equipamento_id = self.equipamento.regional.empresa_id
+            if self.linha.empresa_id != empresa_equipamento_id:
+                errors['equipamento'] = 'A linha e o equipamento devem pertencer à mesma empresa.'
+            elif self.linha.base_id != self.equipamento.regional_id:
+                errors['equipamento'] = 'A linha e o equipamento devem estar na mesma Base.'
+            elif self.equipamento.produto_id:
+                from compras.models import CapacidadeCatalogoProdutoEmpresa
+
+                elegivel = CapacidadeCatalogoProdutoEmpresa.objects.filter(
+                    catalogo__empresa_id=self.linha.empresa_id,
+                    catalogo__produto_id=self.equipamento.produto_id,
+                    catalogo__ativo=True,
+                    codigo=CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL,
+                    ativa=True,
+                ).exists()
+                if not elegivel:
+                    errors['equipamento'] = (
+                        'O produto não possui conectividade móvel ativa nesta empresa.'
+                    )
+            else:
+                errors['equipamento'] = 'O equipamento deve possuir um produto elegível.'
+            if self.fim_em is None and self.linha.status in (
+                LinhaMovel.Status.SUSPENSA,
+                LinhaMovel.Status.INATIVA,
+            ):
+                errors['linha'] = 'Uma linha suspensa ou inativa não pode iniciar vínculo.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def ativo(self):
+        return self.fim_em is None
+
+    def __str__(self):
+        return f'{self.linha} -> {self.equipamento}'
+
+class HistoricoLinhaMovel(models.Model):
+    class Evento(models.TextChoices):
+        CADASTRO = 'CADASTRO', 'Cadastro'
+        ALTERACAO = 'ALTERACAO', 'Alteração'
+        ATIVACAO = 'ATIVACAO', 'Ativação'
+        INATIVACAO = 'INATIVACAO', 'Inativação'
+        VINCULO = 'VINCULO', 'Vínculo'
+        DESVINCULO = 'DESVINCULO', 'Desvínculo'
+        TROCA = 'TROCA', 'Troca'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT,
+        related_name='historicos_linhas_moveis',
+    )
+    linha = models.ForeignKey(
+        LinhaMovel,
+        on_delete=models.PROTECT,
+        related_name='historico',
+    )
+    evento = models.CharField(max_length=15, choices=Evento.choices, db_index=True)
+    autor = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='historicos_linhas_moveis',
+    )
+    metadados = models.JSONField(default=dict, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Histórico de linha móvel'
+        verbose_name_plural = 'Históricos de linhas móveis'
+        ordering = ('-criado_em', '-id')
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(evento__in=(
+                    'CADASTRO',
+                    'ALTERACAO',
+                    'ATIVACAO',
+                    'INATIVACAO',
+                    'VINCULO',
+                    'DESVINCULO',
+                    'TROCA',
+                )),
+                name='historico_linha_evento_valido',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'linha', 'criado_em'),
+                name='hist_linha_escopo_data_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        def contem_credencial_sensivel(valor):
+            if isinstance(valor, dict):
+                for chave, item in valor.items():
+                    chave_normalizada = ''.join(
+                        caractere for caractere in str(chave).casefold()
+                        if caractere.isalnum()
+                    )
+                    if chave_normalizada in {'pin', 'pin2', 'puk', 'puk2'}:
+                        return True
+                    if contem_credencial_sensivel(item):
+                        return True
+            elif isinstance(valor, (list, tuple)):
+                return any(contem_credencial_sensivel(item) for item in valor)
+            return False
+
+        if self.linha_id and self.empresa_id and self.linha.empresa_id != self.empresa_id:
+            raise ValidationError({
+                'linha': 'O histórico deve pertencer à mesma empresa da linha.',
+            })
+        if contem_credencial_sensivel(self.metadados):
+            raise ValidationError({
+                'metadados': 'PIN e PUK não podem ser armazenados no histórico.',
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.linha} | {self.evento}'
+
 # ---------------- HISTORICO ----------------
 class Historico(models.Model):
     TIPO_ACOES = [
@@ -1644,7 +2057,6 @@ class Comunicado(models.Model):
     def __str__(self):
         return self.titulo
 
-
 class ComunicadoEntrega(models.Model):
     class Canal(models.TextChoices):
         SISTEMA = 'SISTEMA', _('Sistema')
@@ -1731,7 +2143,6 @@ class MensagemArquivo(models.Model):
     arquivo = models.FileField(upload_to='mensagens/')
     nome_original = models.CharField(max_length=255)
 
-
 class VideoDocumentacao(models.Model):
     class Origem(models.TextChoices):
         INTERNO = 'INTERNO', 'Interno'
@@ -1775,7 +2186,6 @@ class VideoDocumentacao(models.Model):
 
     def __str__(self):
         return self.titulo
-
 
 class ResolucaoDocumento(models.Model):
     class Idioma(models.TextChoices):
@@ -1829,7 +2239,6 @@ class ResolucaoDocumento(models.Model):
 
     def __str__(self):
         return f'{self.fabricante} {self.modelo} - {self.titulo}'
-
 
 class DriverImpressora(models.Model):
     titulo = models.CharField(max_length=200, verbose_name=_('Título'))
@@ -1888,7 +2297,6 @@ class DriverImpressora(models.Model):
 
     def __str__(self):
         return f'{self.fabricante} {self.modelo} - {self.sistema_operacional}'
-
 
 @receiver([post_save, post_delete], sender=Equipamento)
 def limpar_cache_estoque(sender, instance, **kwargs):

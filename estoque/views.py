@@ -16,6 +16,7 @@ from .services.manual_service import ManualService
 from .services.documentation_service import DocumentationService
 from .services.tenant_catalog_service import TenantCatalogService
 from .services.tenant_terminology_service import TenantTerminologyService
+from .services.linhas_moveis_service import LinhasMoveisService
 from .tenant_features import TenantFeatureService
 from .forms_documentacao import (
     ClienteChecklistUploadForm,
@@ -624,18 +625,13 @@ def index(request):
                 'id': nome,
                 'nome': nome,
                 'icone': 'bi-box-seam',
-                **metricas_por_categoria.get(nome.casefold(), {
-                    'total': 0,
-                    'ativos': 0,
-                    'administrativos': 0,
-                    'sick': 0,
-                    'inativos': 0,
-                    'transferencia': 0,
-                    'emprestados': 0,
-                    'manutencao': 0,
-                }),
+                **metricas_por_categoria[nome.casefold()],
             }
             for nome in categorias_catalogo
+            if (
+                    nome.casefold() in metricas_por_categoria
+                    and metricas_por_categoria[nome.casefold()].get('total', 0) > 0
+            )
         ]
 
 
@@ -715,13 +711,17 @@ def index(request):
 
             regional_data['produtos'] = {
                 categoria: {
-                    'total': produtos_dict.get(categoria.casefold(), {}).get('total', 0),
-                    'ativos': produtos_dict.get(categoria.casefold(), {}).get('ativos', 0),
-                    'administrativos': produtos_dict.get(categoria.casefold(), {}).get('administrativos', 0),
-                    'sick': produtos_dict.get(categoria.casefold(), {}).get('sick', 0),
-                    'transferencia': produtos_dict.get(categoria.casefold(), {}).get('transferencia', 0),
+                    'total': produtos_dict[categoria.casefold()].get('total', 0),
+                    'ativos': produtos_dict[categoria.casefold()].get('ativos', 0),
+                    'administrativos': produtos_dict[categoria.casefold()].get('administrativos', 0),
+                    'sick': produtos_dict[categoria.casefold()].get('sick', 0),
+                    'transferencia': produtos_dict[categoria.casefold()].get('transferencia', 0),
                 }
                 for categoria in categorias_catalogo
+                if (
+                        categoria.casefold() in produtos_dict
+                        and produtos_dict[categoria.casefold()].get('total', 0) > 0
+                )
             }
         kpis_regionais.append(regional_data)
 
@@ -2138,37 +2138,57 @@ def cadastrar_equipamento_view(request):
         )
 
         if form.is_valid():
-            equipamento = form.save(commit=False)
-            equipamento.save()
+            linha_movel = form.cleaned_data.get('linha_movel')
+            try:
+                with transaction.atomic():
+                    equipamento = form.save(commit=False)
+                    equipamento.save()
 
-            Historico.objects.create(
-                equipamento=equipamento,
-                tipo_acao='CRIACAO',
-                usuario=request.user,
-                detalhes={'mensagem': 'Equipamento cadastrado'}
-            )
+                    if linha_movel is not None:
+                        from estoque.services.linhas_moveis_service import LinhasMoveisService
 
-            ComunicadoService.criar_acao(
-                titulo=f'Equipamento {equipamento.codigo} cadastrado',
-                mensagem=(
-                    f'{request.user.get_username()} cadastrou o equipamento '
-                    f'{equipamento.patrimonio} na base {equipamento.regional.nome}.'
-                ),
-                usuario=request.user,
-                bases=[equipamento.regional],
-                empresa=equipamento.regional.empresa,
-                dados={
-                    'equipamento_id': equipamento.pk,
-                    'acao': 'CADASTRADO'
-                },
-                url=reverse('estoque:estoque'),
-            )
+                        LinhasMoveisService.vincular(
+                            usuario=request.user,
+                            linha_id=linha_movel.pk,
+                            equipamento_id=equipamento.pk,
+                        )
 
-            messages.success(
-                request,
-                "Equipamento cadastrado com sucesso."
-            )
-            return redirect('estoque:cadastrar_equipamento')
+                    detalhes_historico = {'mensagem': 'Equipamento cadastrado'}
+                    if linha_movel is not None:
+                        detalhes_historico['linha_movel_id'] = linha_movel.pk
+                    Historico.objects.create(
+                        equipamento=equipamento,
+                        tipo_acao='CRIACAO',
+                        usuario=request.user,
+                        detalhes=detalhes_historico,
+                    )
+
+                    ComunicadoService.criar_acao(
+                        titulo=f'Equipamento {equipamento.codigo} cadastrado',
+                        mensagem=(
+                            f'{request.user.get_username()} cadastrou o equipamento '
+                            f'{equipamento.patrimonio} na base {equipamento.regional.nome}.'
+                        ),
+                        usuario=request.user,
+                        bases=[equipamento.regional],
+                        empresa=equipamento.regional.empresa,
+                        dados={
+                            'equipamento_id': equipamento.pk,
+                            'acao': 'CADASTRADO'
+                        },
+                        url=reverse('estoque:estoque'),
+                    )
+            except ValidationError as exc:
+                form.add_error(
+                    'linha_movel',
+                    '; '.join(getattr(exc, 'messages', [str(exc)])),
+                )
+            else:
+                messages.success(
+                    request,
+                    "Equipamento cadastrado com sucesso."
+                )
+                return redirect('estoque:cadastrar_equipamento')
 
     else:
         form = EquipamentoForm(
@@ -2212,10 +2232,94 @@ def produtos_por_categoria(request):
     produtos = TenantCatalogService.products(
         request.user,
         company=base.empresa if base else None,
-    ).filter(categoria__iexact=categoria).order_by('descricao').values('id', 'descricao')
+    ).filter(categoria__iexact=categoria)
+    if base is not None:
+        from compras.models import (
+            CapacidadeCatalogoProdutoEmpresa,
+            CatalogoProdutoEmpresa,
+        )
+
+        produtos = produtos.exclude(
+            catalogos_empresa__in=CatalogoProdutoEmpresa.objects.filter(
+                empresa=base.empresa,
+                ativo=True,
+                capacidades__codigo=(
+                    CapacidadeCatalogoProdutoEmpresa.ATIVO_LINHA_MOVEL
+                ),
+                capacidades__ativa=True,
+            ),
+        )
+    produtos = produtos.order_by('descricao').values('id', 'descricao')
 
     return JsonResponse({
         'produtos': list(produtos)
+    })
+
+
+@login_required
+@permission_or_role_required('estoque.cadastrar_equipamentos', 'admin', 'gestor')
+def linhas_moveis_disponiveis(request):
+    """Lista apenas linhas elegíveis ao produto, tenant e Base informados."""
+    from compras.models import CapacidadeCatalogoProdutoEmpresa
+    from estoque.models import LinhaMovel
+    from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissão para cadastrar equipamentos.')
+    if not LinhasMoveisAccessPolicy.permite(
+        request.user,
+        LinhasMoveisAccessPolicy.LINK,
+    ):
+        return JsonResponse({'habilitado': False, 'linhas': []})
+
+    base_id = request.GET.get('base', '').strip()
+    produto_id = request.GET.get('produto', '').strip()
+    if not base_id.isdigit() or not produto_id.isdigit():
+        return JsonResponse({'habilitado': False, 'linhas': []})
+
+    base = secure_base_queryset(
+        Base.objects.select_related('empresa'),
+        request.user,
+        resource='EQUIPAMENTOS',
+        action='CRIAR',
+    ).filter(pk=base_id).first()
+    if base is None:
+        raise Http404
+    produto = TenantCatalogService.products(
+        request.user,
+        company=base.empresa,
+    ).filter(pk=produto_id).first()
+    if produto is None:
+        raise Http404
+
+    habilitado = CapacidadeCatalogoProdutoEmpresa.objects.filter(
+        catalogo__empresa=base.empresa,
+        catalogo__produto=produto,
+        catalogo__ativo=True,
+        codigo=CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL,
+        ativa=True,
+    ).exists()
+    if not habilitado:
+        return JsonResponse({'habilitado': False, 'linhas': []})
+
+    linhas = LinhasMoveisAccessPolicy.linhas(
+        request.user,
+        action=LinhasMoveisAccessPolicy.LINK,
+    ).filter(
+        empresa=base.empresa,
+        base=base,
+        status=LinhaMovel.Status.DISPONIVEL,
+    ).select_related('operadora').order_by('numero_normalizado')
+    return JsonResponse({
+        'habilitado': True,
+        'linhas': [
+            {
+                'id': linha.pk,
+                'numero': linha.numero_formatado,
+                'operadora': linha.operadora.nome,
+            }
+            for linha in linhas
+        ],
     })
 
 # ----------------- ESTOQUE -----------------
@@ -3599,9 +3703,12 @@ def historico_detalhes_view(request, historico_id):
         id=historico_id
     )
 
+    equipamento = historico.equipamento
     return render(request, 'estoque/historico_detalhes.html', {
         'historico': historico,
+        'equipamento': equipamento,
         'grupos_dados_banco': _grupos_dados_historico(historico),
+        **_contexto_linha_movel_equipamento(request.user, equipamento),
     })
 
 @login_required
@@ -3851,7 +3958,9 @@ def historico_equipamento_modal(request, equipamento_id):
         {
             'historico': historico,
             'equipamento': equipamento,
-            'is_admin': request.user.perfil.is_admin,
+            'is_admin': bool(
+                request.user.is_superuser or request.user.perfil.is_admin
+            ),
             'bases': secure_base_queryset(
                 Base.objects.all(), request.user, action='EDITAR'
             ).order_by('nome'),
@@ -3862,6 +3971,7 @@ def historico_equipamento_modal(request, equipamento_id):
             ).order_by('categoria', 'descricao'),
             'status_choices': Equipamento.STATUS_CHOICES,
             'finalidade_choices': Equipamento.Finalidade.choices,
+            **_contexto_linha_movel_equipamento(request.user, equipamento),
         }
     )
 
@@ -3875,7 +3985,9 @@ def historico_parcial(request, equipamento_id):
         Historico.objects.filter(equipamento=equipamento), request.user
     ).last()
     return render(request, 'estoque/partials/historico_detalhes.html', {
-        'historico': historico
+        'historico': historico,
+        'equipamento': equipamento,
+        **_contexto_linha_movel_equipamento(request.user, equipamento),
     })
 
 # ----------------- BUSCA -----------------
@@ -5974,6 +6086,14 @@ def receber_transferencia(request, transferencia_id):
 
                     if status_item == 'RECEBIDO':
 
+                        from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+                        LinhasMoveisService.preparar_transferencia_base(
+                            usuario=request.user,
+                            equipamento=equipamento,
+                            nova_base=transferencia.regional_destino,
+                        )
+
                         equipamento.regional = transferencia.regional_destino
                         equipamento.status = 'ATIVO'
                         equipamento.save(update_fields=['regional', 'status'])
@@ -6011,6 +6131,13 @@ def receber_transferencia(request, transferencia_id):
                             or observacao_recebimento
                         )
 
+                        from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+                        LinhasMoveisService.preparar_transferencia_base(
+                            usuario=request.user,
+                            equipamento=equipamento,
+                            nova_base=transferencia.regional_destino,
+                        )
                         equipamento.regional = transferencia.regional_destino
                         equipamento.status = 'ATIVO'
                         equipamento.save(update_fields=['regional', 'status'])
@@ -6341,6 +6468,11 @@ def equipamentos_por_regional(request, produto_id, regional_id):
         request.user,
     )
 
+    equipamentos = list(equipamentos)
+    conectividade_por_equipamento = LinhasMoveisService.projecao_publica_por_equipamento(
+        usuario=request.user,
+        equipamentos=equipamentos,
+    )
     data = {
         'equipamentos': [
             {
@@ -6358,6 +6490,7 @@ def equipamentos_por_regional(request, produto_id, regional_id):
                 'fabricante': e.produto.fabricante if e.produto else '',
                 'modelo': e.produto.modelo if e.produto else '',
                 'responsavel': e.responsavel,
+                'conectividade_movel': conectividade_por_equipamento.get(e.pk),
                 'sick': (
                     {
                         'etapa': e.sicks_ordenados[0].etapa,
@@ -6382,6 +6515,69 @@ def equipamentos_por_regional(request, produto_id, regional_id):
     }
     return JsonResponse(data)
 
+def _contexto_linha_movel_equipamento(user, equipamento):
+    from compras.models import CapacidadeCatalogoProdutoEmpresa
+    from estoque.models import LinhaMovel, VinculoLinhaEquipamento
+    from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+
+    linhas_visiveis = LinhasMoveisAccessPolicy.linhas(
+        user,
+        action=LinhasMoveisAccessPolicy.VIEW,
+    )
+    vinculos_visiveis = VinculoLinhaEquipamento.objects.filter(
+        equipamento=equipamento,
+        linha__in=linhas_visiveis,
+    )
+    vinculo_atual = vinculos_visiveis.filter(
+        fim_em__isnull=True,
+    ).select_related('linha__operadora').first()
+    produto_habilitado = bool(
+        equipamento.produto_id
+        and CapacidadeCatalogoProdutoEmpresa.objects.filter(
+            catalogo__empresa=equipamento.regional.empresa,
+            catalogo__produto_id=equipamento.produto_id,
+            catalogo__ativo=True,
+            codigo=CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL,
+            ativa=True,
+        ).exists()
+    )
+    pode_vincular = LinhasMoveisAccessPolicy.permite(
+        user,
+        LinhasMoveisAccessPolicy.LINK,
+    )
+    pode_gerenciar_linhas = LinhasMoveisAccessPolicy.permite(
+        user,
+        LinhasMoveisAccessPolicy.MANAGE,
+    )
+    pode_visualizar_linhas = LinhasMoveisAccessPolicy.permite(
+        user,
+        LinhasMoveisAccessPolicy.VIEW,
+    )
+    linhas_disponiveis = LinhaMovel.objects.none()
+    if produto_habilitado and pode_vincular:
+        linhas_disponiveis = LinhasMoveisAccessPolicy.linhas(
+            user,
+            action=LinhasMoveisAccessPolicy.LINK,
+        ).filter(
+            empresa=equipamento.regional.empresa,
+            base=equipamento.regional,
+            status=LinhaMovel.Status.DISPONIVEL,
+        ).select_related('operadora').order_by('numero_normalizado')
+    return {
+        'vinculo_linha_atual': vinculo_atual,
+        'historico_vinculos_linha': vinculos_visiveis.select_related(
+            'linha__operadora', 'vinculado_por', 'desvinculado_por',
+        ).order_by(
+            '-inicio_em', '-pk',
+        ),
+        'linhas_moveis_disponiveis': linhas_disponiveis,
+        'produto_conectividade_movel': produto_habilitado,
+        'pode_vincular_linha_movel': pode_vincular,
+        'pode_gerenciar_linhas_moveis': pode_gerenciar_linhas,
+        'pode_visualizar_linhas_moveis': pode_visualizar_linhas,
+    }
+
+
 @login_required
 @permission_or_role_required('estoque.editar_equipamentos', 'admin', 'gestor')
 def editar_equipamento(request, equipamento_id):
@@ -6397,7 +6593,7 @@ def editar_equipamento(request, equipamento_id):
 
     perfil = request.user.perfil
 
-    is_admin = perfil.is_admin
+    is_admin = bool(request.user.is_superuser or perfil.is_admin)
     is_gestor = perfil.is_gestor
 
     bases = (
@@ -6428,6 +6624,11 @@ def editar_equipamento(request, equipamento_id):
         .first()
     )
 
+    contexto_linha_movel = _contexto_linha_movel_equipamento(
+        request.user,
+        equipamento,
+    )
+
     if request.method == 'GET':
 
         return render(
@@ -6442,6 +6643,8 @@ def editar_equipamento(request, equipamento_id):
                 'finalidade_choices': Equipamento.Finalidade.choices,
                 'is_admin': is_admin,
                 'is_gestor': is_gestor,
+                'permitir_edicao': True,
+                **contexto_linha_movel,
             }
         )
 
@@ -6616,6 +6819,14 @@ def editar_equipamento(request, equipamento_id):
                         != nova_regional.id
                     ):
 
+                        from estoque.services.linhas_moveis_service import LinhasMoveisService
+
+                        LinhasMoveisService.preparar_transferencia_base(
+                            usuario=request.user,
+                            equipamento=equipamento,
+                            nova_base=nova_regional,
+                        )
+
                         alteracoes['regional'] = {
                             'antes': (
                                 equipamento.regional.nome
@@ -6661,6 +6872,23 @@ def editar_equipamento(request, equipamento_id):
             ).filter(pk=equipamento.produto_id).exists():
                 raise ValidationError(
                     'O produto não está habilitado no catálogo da empresa de destino.'
+                )
+
+            from compras.models import CapacidadeCatalogoProdutoEmpresa
+            from estoque.models import VinculoLinhaEquipamento
+
+            if VinculoLinhaEquipamento.objects.filter(
+                equipamento=equipamento,
+                fim_em__isnull=True,
+            ).exists() and not CapacidadeCatalogoProdutoEmpresa.objects.filter(
+                catalogo__empresa=equipamento.regional.empresa,
+                catalogo__produto_id=equipamento.produto_id,
+                catalogo__ativo=True,
+                codigo=CapacidadeCatalogoProdutoEmpresa.CONECTIVIDADE_MOVEL,
+                ativa=True,
+            ).exists():
+                raise ValidationError(
+                    'Desvincule a linha móvel antes de selecionar um produto sem conectividade móvel.'
                 )
 
             if not alteracoes:
@@ -6737,6 +6965,193 @@ def editar_equipamento(request, equipamento_id):
             'HTTP_REFERER',
             '/'
         )
+    )
+
+
+@login_required
+@require_POST
+@permission_or_role_required('estoque.editar_equipamentos', 'admin', 'gestor')
+def atualizar_linha_movel_equipamento(request, equipamento_id):
+    from estoque.models import VinculoLinhaEquipamento
+    from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+    from estoque.services.linhas_moveis_service import LinhasMoveisService
+    from estoque.models import Perfil
+
+    equipamento = get_object_or_404(
+        secure_queryset(
+            Equipamento.objects.select_related(
+                'produto',
+                'regional__empresa',
+            ),
+            request.user,
+            action='EDITAR',
+        ),
+        pk=equipamento_id,
+    )
+
+    LinhasMoveisAccessPolicy.exigir(
+        request.user,
+        LinhasMoveisAccessPolicy.LINK,
+    )
+
+    if not request.user.check_password(
+        request.POST.get('senha_confirmacao', '')
+    ):
+        messages.error(
+            request,
+            'Senha inválida.',
+        )
+        return redirect(
+            'estoque:editar_equipamento',
+            equipamento_id=equipamento.pk,
+        )
+
+    perfil = request.user.perfil
+
+    is_admin = bool(
+        request.user.is_superuser
+        or perfil.role == Perfil.Role.ADMIN
+    )
+
+    acao = request.POST.get(
+        'acao_linha_movel',
+        '',
+    ).strip().lower()
+
+    linha_id = request.POST.get(
+        'linha_movel',
+        '',
+    ).strip()
+
+    motivo = request.POST.get(
+        'motivo_linha_movel',
+        '',
+    ).strip()
+
+    try:
+        with transaction.atomic():
+
+            vinculo_atual = (
+                VinculoLinhaEquipamento.objects
+                .select_for_update()
+                .filter(
+                    equipamento=equipamento,
+                    fim_em__isnull=True,
+                )
+                .select_related('linha')
+                .first()
+            )
+
+            detalhes = {
+                'acao': acao,
+            }
+
+            if acao == 'vincular':
+
+                if vinculo_atual is not None:
+                    raise ValidationError(
+                        'O equipamento já possui uma linha ativa.'
+                    )
+
+                if not linha_id.isdigit():
+                    raise ValidationError(
+                        'Selecione uma linha disponível.'
+                    )
+
+                novo = LinhasMoveisService.vincular(
+                    usuario=request.user,
+                    linha_id=int(linha_id),
+                    equipamento_id=equipamento.pk,
+                )
+
+                detalhes.update({
+                    'linha_movel_id': novo.linha_id,
+                    'vinculo_id': novo.pk,
+                })
+
+                tipo_acao = 'LINHA_MOVEL_VINCULADA'
+
+            elif acao == 'trocar':
+
+                # Troca direta é exclusiva de Admin/Superuser.
+                if not is_admin:
+                    raise ValidationError(
+                        'A troca direta de linha móvel é restrita ao Administrador.'
+                    )
+
+                if vinculo_atual is None:
+                    raise ValidationError(
+                        'O equipamento não possui linha ativa para troca.'
+                    )
+
+                if not linha_id.isdigit():
+                    raise ValidationError(
+                        'Selecione a nova linha disponível.'
+                    )
+
+                anterior, novo = LinhasMoveisService.trocar(
+                    usuario=request.user,
+                    equipamento_id=equipamento.pk,
+                    nova_linha_id=int(linha_id),
+                    motivo=motivo,
+                )
+
+                detalhes.update({
+                    'linha_anterior_id': anterior.linha_id,
+                    'nova_linha_id': novo.linha_id,
+                    'motivo': motivo,
+                })
+
+                tipo_acao = 'LINHA_MOVEL_TROCADA'
+
+            elif acao == 'desvincular':
+
+                if vinculo_atual is None:
+                    raise ValidationError(
+                        'O equipamento não possui linha ativa.'
+                    )
+
+                encerrado = LinhasMoveisService.desvincular(
+                    usuario=request.user,
+                    linha_id=vinculo_atual.linha_id,
+                    motivo=motivo,
+                )
+
+                detalhes.update({
+                    'linha_movel_id': encerrado.linha_id,
+                    'vinculo_id': encerrado.pk,
+                    'motivo': motivo,
+                })
+
+                tipo_acao = 'LINHA_MOVEL_DESVINCULADA'
+
+            else:
+                raise ValidationError(
+                    'Selecione uma ação válida para a linha móvel.'
+                )
+
+            Historico.objects.create(
+                equipamento=equipamento,
+                usuario=request.user,
+                tipo_acao=tipo_acao,
+                detalhes=detalhes,
+            )
+
+    except ValidationError as exc:
+        messages.error(
+            request,
+            '; '.join(exc.messages),
+        )
+
+    else:
+        messages.success(
+            request,
+            'Conectividade móvel atualizada com sucesso.',
+        )
+
+    return redirect(
+        'estoque:editar_equipamento',
+        equipamento_id=equipamento.pk,
     )
 
 def detalhes_transferencia(transferencia, equipamento=None, usuario=None, evento=None, observacao=None, extras=None):

@@ -257,7 +257,8 @@ class EstoqueInsumosDesempenhoTests(TestCase):
         # tempo real; permanece constante e sem N+1 por item.
         # Inclui também a resolução central do TenantScope da Etapa 15.
         # Uma consulta adicional resolve todas as seções de documentação do menu.
-        self.assertLess(len(consultas), 47)
+        # Uma consulta fixa verifica a capacidade de linhas móveis no catálogo.
+        self.assertLess(len(consultas), 48)
         self.assertTrue(por_item['ITEM CRÍTICO']['critico'])
         self.assertFalse(por_item['ITEM NORMAL']['critico'])
         self.assertContains(resposta, 'id="formAjusteEstoque"', count=1)

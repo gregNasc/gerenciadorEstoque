@@ -42,6 +42,25 @@
                     {% trans "somente os itens marcados aparecerão no cadastro de equipamentos." %}
                 </div>
                 <div class="catalogo-opcoes">{{ form.produtos }}</div>
+                {% if pode_configurar_linhas_moveis %}
+                <hr class="my-4">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="border rounded-3 p-3 h-100">
+                            <h2 class="h6 fw-bold"><i class="bi bi-router me-2 text-primary"></i>{{ form.produtos_conectividade_movel.label }}</h2>
+                            <p class="small text-secondary">Use para coletores, tablets ou outros equipamentos que podem receber um chip. A opção de vínculo aparecerá no cadastro e na edição.</p>
+                            <div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_conectividade_movel }}</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                            <h2 class="h6 fw-bold"><i class="bi bi-sim me-2 text-success"></i>{{ form.produtos_chip_independente.label }}</h2>
+                            <p class="small text-secondary">Use para “Chip Claro”, “Chip Vivo” e equivalentes. Esses itens serão cadastrados como linhas móveis, sem número de série, patrimônio, finalidade ou foto.</p>
+                            <div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_chip_independente }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
             <div class="card-footer bg-white text-end py-3 px-4">
                 <button class="btn btn-primary" type="submit">
@@ -55,6 +74,7 @@
 <style>
 .catalogo-opcoes ul { list-style: none; padding-left: 0; columns: 2; column-gap: 2rem; }
 .catalogo-opcoes li { break-inside: avoid; padding: .4rem 0; }
+.catalogo-opcoes-uma-coluna ul { columns: 1; max-height: 280px; overflow: auto; }
 @media (max-width: 767px) { .catalogo-opcoes ul { columns: 1; } }
 </style>
 {% endblock %}

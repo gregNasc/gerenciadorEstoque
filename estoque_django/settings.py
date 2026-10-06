@@ -66,6 +66,11 @@ if not SECRET_KEY:
     else:
         raise ImproperlyConfigured('SECRET_KEY deve ser configurada fora do modo de desenvolvimento.')
 
+# Chaves Fernet versionadas para PIN/PUK. A primeira entrada cifra novos
+# valores; as demais permitem leitura durante uma rotação controlada.
+# Formato: identificador:chave,identificador-anterior:chave-anterior
+LINHAS_MOVEIS_CREDENTIAL_KEYS = env_list('LINHAS_MOVEIS_CREDENTIAL_KEYS')
+
 RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
 RENDER_EXTERNAL_URL = os.getenv('RENDER_EXTERNAL_URL', '').strip().rstrip('/')
 if not RENDER_EXTERNAL_URL and RENDER_EXTERNAL_HOSTNAME:

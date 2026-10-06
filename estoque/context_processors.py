@@ -213,6 +213,7 @@ def notificacoes_context(request):
 def permissoes_especiais(request):
     if request.user.is_authenticated:
         from chamados.policies import ChamadoAccessPolicy
+        from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
         compras_restrito = ComprasAccessPolicy.restrito(request.user)
         perfil = request.user.perfil
         username = request.user.get_username().strip().lower()
@@ -276,6 +277,16 @@ def permissoes_especiais(request):
                 and not perfil.is_funcional_global
                 and username not in {'rafael.ribeiro', 'jose.barboza'}
             ),
+            'pode_acessar_linhas_moveis': bool(
+                LinhasMoveisAccessPolicy.permite(
+                    request.user,
+                    LinhasMoveisAccessPolicy.VIEW,
+                )
+                and LinhasMoveisAccessPolicy.empresas(
+                    request.user,
+                    scope=getattr(request, 'tenant_scope', None),
+                ).exists()
+            ),
         }
 
     return {
@@ -296,6 +307,7 @@ def permissoes_especiais(request):
         'pode_visualizar_checklists': False,
         'pode_acessar_checklist': False,
         'operador_restrito': False,
+        'pode_acessar_linhas_moveis': False,
     }
 
 
