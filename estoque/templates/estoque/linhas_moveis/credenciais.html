@@ -8,7 +8,11 @@
         <a class="btn btn-outline-secondary" href="{% url 'estoque:lista_linhas_moveis' %}">Voltar</a>
     </div>
     {% if not chaves_configuradas %}
-
+    <div class="alert alert-danger" role="alert">
+        <strong>Operação bloqueada:</strong>
+        <code>LINHAS_MOVEIS_CREDENTIAL_KEYS</code> deve ser configurada no ambiente
+        para cadastrar ou alterar PIN/PUK.
+    </div>
     {% endif %}
     <div class="alert alert-warning"><strong>Atenção:</strong> valores existentes nunca são preenchidos no navegador. Ao salvar, informe novamente todas as credenciais que deseja manter.</div>
     {% if mascaradas %}<div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body"><h6 class="fw-bold">Configuradas atualmente</h6><div class="d-flex flex-wrap gap-2">{% for campo, valor in mascaradas.items %}<span class="badge bg-dark">{{ campo|upper }}: {{ valor }}</span>{% endfor %}</div></div></div>{% endif %}

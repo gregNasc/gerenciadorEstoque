@@ -27,6 +27,38 @@ def _form_errors(request, form):
             messages.error(request, error)
 
 
+def _opcoes_form_linha_movel(user):
+    empresas = LinhasMoveisAccessPolicy.empresas(
+        user,
+        action=LinhasMoveisAccessPolicy.MANAGE,
+    ).order_by('nome')
+    opcoes = {
+        str(empresa_id): {'bases': [], 'operadoras': []}
+        for empresa_id in empresas.values_list('pk', flat=True)
+    }
+    for base in LinhasMoveisAccessPolicy.bases(
+        user,
+        action=LinhasMoveisAccessPolicy.MANAGE,
+    ).values('pk', 'nome', 'empresa_id'):
+        chave = str(base['empresa_id'])
+        if chave in opcoes:
+            opcoes[chave]['bases'].append({
+                'id': base['pk'],
+                'nome': base['nome'],
+            })
+    for operadora in LinhasMoveisAccessPolicy.operadoras(
+        user,
+        action=LinhasMoveisAccessPolicy.MANAGE,
+    ).filter(ativa=True).values('pk', 'nome', 'empresa_id'):
+        chave = str(operadora['empresa_id'])
+        if chave in opcoes:
+            opcoes[chave]['operadoras'].append({
+                'id': operadora['pk'],
+                'nome': operadora['nome'],
+            })
+    return opcoes
+
+
 @login_required
 def lista_linhas_moveis(request):
     LinhasMoveisAccessPolicy.exigir(request.user, LinhasMoveisAccessPolicy.VIEW)
@@ -112,6 +144,7 @@ def criar_linha_movel(request):
         'form': form,
         'titulo': 'Nova linha móvel',
         'linha': None,
+        'opcoes_linha_movel': _opcoes_form_linha_movel(request.user),
     })
 
 
@@ -159,6 +192,7 @@ def editar_linha_movel(request, linha_id):
         'form': form,
         'titulo': 'Editar linha móvel',
         'linha': linha,
+        'opcoes_linha_movel': _opcoes_form_linha_movel(request.user),
     })
 
 

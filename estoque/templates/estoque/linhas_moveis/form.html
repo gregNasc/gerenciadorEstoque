@@ -34,4 +34,43 @@
         </div>
     </div>
 </div>
+{{ opcoes_linha_movel|json_script:"opcoes-linha-movel" }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const empresa = document.getElementById('id_empresa');
+    const base = document.getElementById('id_base');
+    const operadora = document.getElementById('id_operadora');
+    const dados = JSON.parse(
+        document.getElementById('opcoes-linha-movel')?.textContent || '{}'
+    );
+    if (!empresa || !base || !operadora) return;
+
+    const selecionados = {
+        base: base.value,
+        operadora: operadora.value,
+    };
+    const preencher = (select, itens, selecionado, rotulo) => {
+        select.replaceChildren(new Option('---------', ''));
+        itens.forEach((item) => {
+            const option = new Option(item.nome, String(item.id));
+            option.selected = String(item.id) === String(selecionado || '');
+            select.add(option);
+        });
+        select.disabled = itens.length === 0;
+        select.setAttribute('aria-label', rotulo);
+    };
+    const atualizar = (preservar = false) => {
+        const opcoes = dados[String(empresa.value)] || {bases: [], operadoras: []};
+        preencher(base, opcoes.bases, preservar ? selecionados.base : '', 'Base');
+        preencher(
+            operadora,
+            opcoes.operadoras,
+            preservar ? selecionados.operadora : '',
+            'Operadora'
+        );
+    };
+    atualizar(true);
+    empresa.addEventListener('change', () => atualizar(false));
+});
+</script>
 {% endblock %}

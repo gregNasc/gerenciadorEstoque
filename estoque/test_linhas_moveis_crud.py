@@ -175,6 +175,18 @@ class LinhasMoveisCrudTests(TestCase):
         self.assertContains(lista, 'Linhas móveis')
         self.assertEqual(cadastro.status_code, 200)
         self.assertEqual(edicao.status_code, 200)
+        self.assertFalse(cadastro.context['form'].fields['base'].queryset.exists())
+        self.assertFalse(cadastro.context['form'].fields['operadora'].queryset.exists())
+        opcoes = cadastro.context['opcoes_linha_movel']
+        self.assertEqual(
+            [item['nome'] for item in opcoes[str(self.empresa_a.pk)]['operadoras']],
+            [self.operadora_a.nome],
+        )
+        self.assertEqual(
+            [item['nome'] for item in opcoes[str(self.empresa_b.pk)]['operadoras']],
+            [self.operadora_b.nome],
+        )
+        self.assertContains(cadastro, 'opcoes-linha-movel')
 
     def test_empresa_sem_capacidade_nao_lista_nem_cadastra_linhas(self):
         self.login(self.admin_sem_capacidade)

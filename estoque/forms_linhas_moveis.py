@@ -138,19 +138,22 @@ class LinhaMovelForm(forms.ModelForm):
                 base_id = int(raw_base)
         elif self.instance.pk:
             base_id = self.instance.base_id
-        self.fields['base'].queryset = LinhasMoveisAccessPolicy.bases(
+        bases = LinhasMoveisAccessPolicy.bases(
             user,
             action=LinhasMoveisAccessPolicy.MANAGE,
             empresa=empresa,
         )
+        if empresa is None:
+            bases = bases.none()
+        self.fields['base'].queryset = bases
         base = self.fields['base'].queryset.filter(pk=base_id).first() if base_id else None
         self.fields['usuario_responsavel'].queryset = (
             LinhasMoveisAccessPolicy.usuarios_responsaveis(
                 user,
-                empresa=empresa,
+                empresa=empresa or empresas.first(),
                 base=base,
             )
-            if empresa is not None
+            if empresas.exists()
             else User.objects.none()
         )
         operadoras = LinhasMoveisAccessPolicy.operadoras(
@@ -159,6 +162,8 @@ class LinhaMovelForm(forms.ModelForm):
         ).filter(ativa=True)
         if empresa is not None:
             operadoras = operadoras.filter(empresa=empresa)
+        else:
+            operadoras = operadoras.none()
         self.fields['operadora'].queryset = operadoras.order_by('empresa__nome', 'nome')
         if self.instance.pk:
             self.fields['empresa'].disabled = True

@@ -62,15 +62,8 @@ class LinhasMoveisAccessPolicy:
         ):
             return True
 
-        # Gestor pode apenas visualizar o necessário
-        # e administrar o vínculo linha <-> equipamento.
-        if perfil and perfil.role == Perfil.Role.GESTOR:
-            return action in {
-                cls.VIEW,
-                cls.LINK,
-            }
-
-        # Operador permanece sem acesso.
+        # Gestor e Operador não podem consultar nem administrar informações
+        # de linhas móveis, ainda que recebam permissões Django diretamente.
         return False
 
     @classmethod
