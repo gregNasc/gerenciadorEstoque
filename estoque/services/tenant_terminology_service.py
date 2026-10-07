@@ -69,18 +69,16 @@ class TenantTerminologyService:
     def module_labels(cls, company):
         """Retorna o nome de apresentação dos módulos sem expor seus códigos."""
         labels = dict(cls.MODULE_DEFAULTS)
-        if company is None:
-            return labels
-
-        configurations = ModuloEmpresa.objects.filter(
-            empresa=company,
-        ).select_related('modulo').only(
-            'nome_exibicao', 'modulo__codigo', 'modulo__nome',
-        )
-        for configuration in configurations:
-            custom_name = configuration.nome_exibicao.strip()
-            if custom_name:
-                labels[configuration.modulo.codigo] = custom_name
+        if company is not None:
+            configurations = ModuloEmpresa.objects.filter(
+                empresa=company,
+            ).select_related('modulo').only(
+                'nome_exibicao', 'modulo__codigo', 'modulo__nome',
+            )
+            for configuration in configurations:
+                custom_name = configuration.nome_exibicao.strip()
+                if custom_name:
+                    labels[configuration.modulo.codigo] = custom_name
         return {
             code: gettext(label)
             for code, label in labels.items()

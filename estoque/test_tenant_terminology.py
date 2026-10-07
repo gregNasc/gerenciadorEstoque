@@ -128,6 +128,23 @@ class TenantTerminologyTests(TestCase):
         self.assertEqual(labels['documentacao']['singular'], 'Documentação')
         self.assertEqual(labels['documentacao']['plural'], 'Documentações')
 
+    def test_platform_defaults_are_translated_without_tenant(self):
+        request = RequestFactory().get('/')
+        request.tenant = None
+
+        with translation.override('es'):
+            context = TenantTerminologyService.context_for_request(request)
+
+        self.assertEqual(
+            context['tenant_module_labels'][Modulo.Codigo.ESTOQUE],
+            'Inventario',
+        )
+        self.assertEqual(
+            context['tenant_module_labels'][Modulo.Codigo.CHAMADOS],
+            'Tickets',
+        )
+        self.assertEqual(context['tenant_dashboard_label'], 'Activos')
+
     def test_navbar_dashboard_e_documentacao_traduzem_terminologia_configurada(self):
         self.admin_b.perfil.idioma = Perfil.Idioma.ES
         self.admin_b.perfil.save(update_fields=('idioma',))
