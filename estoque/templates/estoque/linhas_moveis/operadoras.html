@@ -1,15 +1,16 @@
 {% extends 'estoque/base.html' %}
-{% block title %}Operadoras móveis{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Operadoras móveis" %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-4 py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div><h2 class="fw-bold mb-1">Operadoras móveis</h2><p class="text-muted mb-0">Configuração independente para cada empresa.</p></div>
-        <a class="btn btn-outline-secondary" href="{% url 'estoque:lista_linhas_moveis' %}">Voltar às linhas</a>
+        <div><h2 class="fw-bold mb-1">{% trans "Operadoras móveis" %}</h2><p class="text-muted mb-0">{% trans "Configuração independente para cada empresa." %}</p></div>
+        <a class="btn btn-outline-secondary" href="{% url 'estoque:lista_linhas_moveis' %}">{% trans "Voltar às linhas" %}</a>
     </div>
     <div class="row g-4">
         <div class="col-lg-4"><div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4">
-            <h5 class="fw-bold mb-3">{% if operadora_editada %}Editar operadora{% else %}Nova operadora{% endif %}</h5>
+            <h5 class="fw-bold mb-3">{% if operadora_editada %}{% trans "Editar operadora" %}{% else %}{% trans "Nova operadora" %}{% endif %}</h5>
             <form method="post" novalidate>{% csrf_token %}
                 {% for field in form %}
                 <div class="mb-3 {% if field.name == 'ativa' %}form-check{% endif %}">
@@ -18,20 +19,20 @@
                     {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 {% endfor %}
-                <button class="btn btn-primary w-100" type="submit">Salvar operadora</button>
-                {% if operadora_editada %}<a class="btn btn-link w-100 mt-2" href="{% url 'estoque:operadoras_moveis' %}">Cancelar edição</a>{% endif %}
+                <button class="btn btn-primary w-100" type="submit">{% trans "Salvar operadora" %}</button>
+                {% if operadora_editada %}<a class="btn btn-link w-100 mt-2" href="{% url 'estoque:operadoras_moveis' %}">{% trans "Cancelar edição" %}</a>{% endif %}
             </form>
         </div></div></div>
         <div class="col-lg-8"><div class="card border-0 shadow-sm rounded-4 overflow-hidden"><div class="table-responsive">
-            <table class="table align-middle mb-0"><thead class="table-light"><tr><th>Empresa</th><th>Nome</th><th>Código</th><th>Status</th><th></th></tr></thead><tbody>
+            <table class="table align-middle mb-0"><thead class="table-light"><tr><th>{% trans "Empresa" %}</th><th>{% trans "Nome" %}</th><th>{% trans "Código" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead><tbody>
                 {% for operadora in operadoras %}<tr>
                     <td>{{ operadora.empresa.nome }}</td><td class="fw-semibold">{{ operadora.nome }}</td><td>{{ operadora.codigo }}</td>
-                    <td>{% if operadora.ativa %}<span class="badge bg-success">Ativa</span>{% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}</td>
+                    <td>{% if operadora.ativa %}<span class="badge bg-success">{% trans "Ativa" %}</span>{% else %}<span class="badge bg-secondary">{% trans "Inativa" %}</span>{% endif %}</td>
                     <td class="text-end text-nowrap">
                         <a class="btn btn-sm btn-outline-primary" href="{% url 'estoque:editar_operadora_movel' operadora.pk %}"><i class="bi bi-pencil"></i></a>
-                        <form method="post" action="{% url 'estoque:alternar_operadora_movel' operadora.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm {% if operadora.ativa %}btn-outline-danger{% else %}btn-outline-success{% endif %}" title="Alterar status"><i class="bi bi-power"></i></button></form>
+                        <form method="post" action="{% url 'estoque:alternar_operadora_movel' operadora.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm {% if operadora.ativa %}btn-outline-danger{% else %}btn-outline-success{% endif %}" title="{% trans 'Alterar status' %}"><i class="bi bi-power"></i></button></form>
                     </td>
-                </tr>{% empty %}<tr><td colspan="5" class="text-center py-5 text-muted">Nenhuma operadora configurada.</td></tr>{% endfor %}
+                </tr>{% empty %}<tr><td colspan="5" class="text-center py-5 text-muted">{% trans "Nenhuma operadora configurada." %}</td></tr>{% endfor %}
             </tbody></table>
         </div></div></div>
     </div>

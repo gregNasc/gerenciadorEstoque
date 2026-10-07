@@ -3602,6 +3602,130 @@ def _grupos_dados_historico(historico):
         if objeto is not None
     ]
 
+
+_CHAVES_SENSIVEIS_AUDITORIA = {
+    'password', 'senha', 'is_superuser', 'superuser', 'is_staff',
+    'groups', 'grupos', 'user_permissions', 'permissoes de usuario',
+    'permissões de usuário', 'status de superusuario',
+    'status de superusuário', 'status de equipe',
+}
+
+_ROTULOS_AUDITORIA = {
+    'acao': 'Ação',
+    'alteracoes': 'Alterações',
+    'antes': 'Antes',
+    'depois': 'Depois',
+    'campo': 'Campo',
+    'evento': 'Evento',
+    'mensagem': 'Descrição',
+    'motivo': 'Motivo',
+    'observacao': 'Observação',
+    'protocolo': 'Protocolo',
+    'status': 'Status',
+    'status_anterior': 'Status anterior',
+    'status_final': 'Status final',
+    'base_anterior': 'Base anterior',
+    'base_nova': 'Nova base',
+    'base_origem': 'Base de origem',
+    'base_destino': 'Base de destino',
+    'data_envio': 'Data de envio',
+    'data_recebimento': 'Data de recebimento',
+    'solicitado_por': 'Solicitado por',
+    'transmitido_por': 'Realizado por',
+    'previsao_retorno': 'Previsão de retorno',
+}
+
+
+def _rotulo_auditoria(chave):
+    chave_texto = str(chave)
+    return _ROTULOS_AUDITORIA.get(
+        chave_texto.lower(),
+        chave_texto.replace('_', ' ').strip().capitalize(),
+    )
+
+
+def _chave_sensivel_auditoria(chave):
+    chave_normalizada = str(chave).strip().lower()
+    return (
+        chave_normalizada in _CHAVES_SENSIVEIS_AUDITORIA
+        or 'password' in chave_normalizada
+        or 'senha' in chave_normalizada
+    )
+
+
+def _valor_auditoria(valor):
+    if valor is None or valor == '':
+        return 'Não informado'
+    if isinstance(valor, bool):
+        return 'Sim' if valor else 'Não'
+    if isinstance(valor, (list, tuple)):
+        return ', '.join(_valor_auditoria(item) for item in valor) or 'Nenhum'
+    if isinstance(valor, dict):
+        partes = []
+        for chave, item in valor.items():
+            if _chave_sensivel_auditoria(chave):
+                continue
+            partes.append(f'{_rotulo_auditoria(chave)}: {_valor_auditoria(item)}')
+        return ' · '.join(partes) or 'Sem detalhes'
+    return str(valor)
+
+
+def _detalhes_timeline_auditoria(detalhes):
+    """Converte o JSON técnico do histórico em blocos legíveis para a interface."""
+    if not isinstance(detalhes, dict):
+        return [], []
+
+    alteracoes = []
+    itens = []
+    for chave, valor in detalhes.items():
+        chave_normalizada = str(chave).lower()
+        if _chave_sensivel_auditoria(chave_normalizada):
+            continue
+
+        if chave_normalizada == 'alteracoes' and isinstance(valor, dict):
+            for campo, mudanca in valor.items():
+                if _chave_sensivel_auditoria(campo):
+                    continue
+                if isinstance(mudanca, dict) and (
+                    'antes' in mudanca or 'depois' in mudanca
+                ):
+                    alteracoes.append({
+                        'campo': _rotulo_auditoria(campo),
+                        'antes': _valor_auditoria(mudanca.get('antes')),
+                        'depois': _valor_auditoria(mudanca.get('depois')),
+                    })
+                else:
+                    itens.append({
+                        'rotulo': _rotulo_auditoria(campo),
+                        'valor': _valor_auditoria(mudanca),
+                    })
+            continue
+
+        itens.append({
+            'rotulo': _rotulo_auditoria(chave),
+            'valor': _valor_auditoria(valor),
+        })
+    return alteracoes, itens
+
+
+def _timeline_auditoria(historicos):
+    timeline = []
+    for registro in historicos:
+        alteracoes, itens = _detalhes_timeline_auditoria(registro.detalhes)
+        timeline.append({
+            'id': registro.pk,
+            'data': registro.data,
+            'acao': registro.get_tipo_acao_display(),
+            'usuario': (
+                registro.usuario.get_full_name()
+                or registro.usuario.username
+                if registro.usuario_id else 'Sistema'
+            ),
+            'alteracoes': alteracoes,
+            'itens': itens,
+        })
+    return timeline
+
 @login_required
 @permission_or_role_required('estoque.visualizar_historico_equipamentos', 'admin', 'gestor')
 def historico_view(request):
@@ -3932,7 +4056,7 @@ def historico_equipamento_modal(request, equipamento_id):
         pk=equipamento_id,
     )
 
-    historico = (
+    historicos_qs = (
         secure_history_queryset(Historico.objects, request.user)
         .select_related(
             'equipamento',
@@ -3942,8 +4066,13 @@ def historico_equipamento_modal(request, equipamento_id):
         )
         .filter(equipamento=equipamento)
         .order_by('-data')
-        .first()
     )
+    historicos_qs = SickService.filtrar_historicos_visiveis(
+        request.user,
+        historicos_qs,
+    )
+    historicos = list(historicos_qs[:30])
+    historico = historicos[0] if historicos else None
 
     if not historico:
         return HttpResponse("""
@@ -3971,6 +4100,7 @@ def historico_equipamento_modal(request, equipamento_id):
             ).order_by('categoria', 'descricao'),
             'status_choices': Equipamento.STATUS_CHOICES,
             'finalidade_choices': Equipamento.Finalidade.choices,
+            'auditoria_timeline': _timeline_auditoria(historicos),
             **_contexto_linha_movel_equipamento(request.user, equipamento),
         }
     )
@@ -3981,12 +4111,20 @@ def historico_parcial(request, equipamento_id):
         secure_queryset(Equipamento.objects.all(), request.user),
         pk=equipamento_id,
     )
-    historico = secure_history_queryset(
-        Historico.objects.filter(equipamento=equipamento), request.user
-    ).last()
+    historicos_qs = secure_history_queryset(
+        Historico.objects.select_related('usuario').filter(equipamento=equipamento),
+        request.user,
+    ).order_by('-data')
+    historicos_qs = SickService.filtrar_historicos_visiveis(
+        request.user,
+        historicos_qs,
+    )
+    historicos = list(historicos_qs[:30])
+    historico = historicos[0] if historicos else None
     return render(request, 'estoque/partials/historico_detalhes.html', {
         'historico': historico,
         'equipamento': equipamento,
+        'auditoria_timeline': _timeline_auditoria(historicos),
         **_contexto_linha_movel_equipamento(request.user, equipamento),
     })
 

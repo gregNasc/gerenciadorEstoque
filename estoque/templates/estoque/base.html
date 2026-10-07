@@ -77,7 +77,7 @@
                     <a class="nav-link {% if url_name == 'index' %}active{% endif %}"
                        href="{% url 'estoque:index' %}">
                         <i class="bi bi-speedometer2"></i>
-                        Dashboard de {{ tenant_dashboard_label }}
+                        {% blocktrans with label=tenant_dashboard_label %}Dashboard de {{ label }}{% endblocktrans %}
                     </a>
                 </li>
                 {% endif %}
@@ -171,27 +171,27 @@
                         </li>
                         {% endif %}
                         {% if pode_visualizar_saude_estoque %}
-                        <li><h6 class="dropdown-header"><i class="bi bi-heart-pulse me-1"></i> Saúde do Estoque</h6></li>
+                        <li><h6 class="dropdown-header"><i class="bi bi-heart-pulse me-1"></i> {% trans "Saúde do Estoque" %}</h6></li>
                         {% if 'insumos' in tenant_features %}
-                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_insumos' %}"><i class="bi bi-box me-2"></i>Insumos</a></li>
+                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_insumos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_insumos' %}"><i class="bi bi-box me-2"></i>{% trans "Insumos" %}</a></li>
                         {% endif %}
                         {% if 'equipamentos' in tenant_features %}
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_equipamentos' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_equipamentos' %}"><i class="bi bi-pc-display me-2"></i>{{ tenant_labels.equipamento.plural }}</a></li>
                         {% endif %}
                         {% if 'insumos' in tenant_features and 'equipamentos' in tenant_features %}
-                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_geral' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_geral' %}"><i class="bi bi-speedometer2 me-2"></i>Geral</a></li>
+                        <li><a class="dropdown-item {% if url_name == 'dashboard_saude_geral' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_geral' %}"><i class="bi bi-speedometer2 me-2"></i>{% trans "Geral" %}</a></li>
                         {% endif %}
                         {% endif %}
                         {% if pode_visualizar_valores %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header"><i class="bi bi-cart-check me-1"></i> Compras</h6></li>
+                        <li><h6 class="dropdown-header"><i class="bi bi-cart-check me-1"></i> {% trans "Compras" %}</h6></li>
                         <!--li><a class="dropdown-item" href="{% url 'compras:aquisicao_lista' %}"><i class="bi bi-receipt me-2"></i>Aquisições</a></li-->
                         <!--li><a class="dropdown-item" href="{% url 'compras:remessa_lista' %}"><i class="bi bi-truck me-2"></i>Remessas</a></li-->
                         {% if 'insumos' in tenant_features %}
-                        <li><a class="dropdown-item" href="{% url 'compras:valores_insumos' %}"><i class="bi bi-boxes me-2"></i>Valor de insumos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'compras:valores_insumos' %}"><i class="bi bi-boxes me-2"></i>{% trans "Valor de insumos" %}</a></li>
                         {% endif %}
                         {% if 'equipamentos' in tenant_features %}
-                        <li><a class="dropdown-item" href="{% url 'compras:valores_equipamentos' %}"><i class="bi bi-pc-display-horizontal me-2"></i>Valor: {{ tenant_labels.equipamento.plural }}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'compras:valores_equipamentos' %}"><i class="bi bi-pc-display-horizontal me-2"></i>{% blocktrans with equipamentos=tenant_labels.equipamento.plural %}Valor: {{ equipamentos }}{% endblocktrans %}</a></li>
                         {% endif %}
                         {% if 'insumos' in tenant_features %}
                         <li>
@@ -364,9 +364,9 @@
                         <span id="chamados-badge" class="badge rounded-pill text-bg-danger ms-1 {% if chamados_pendentes <= 0 %}d-none{% endif %}">{{ chamados_pendentes|default:0 }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="chamadosDropdown">
-                        <li><a class="dropdown-item" href="{% url 'chamados:lista' %}"><i class="bi bi-list-task me-2"></i>{% if pode_atender_chamados %}Fila de chamados{% else %}Meus chamados{% endif %}</a></li>
-                        {% if pode_criar_chamado %}<li><a class="dropdown-item" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-circle me-2"></i>Novo chamado</a></li>{% endif %}
-                        {% if pode_dashboard_chamados %}<li><a class="dropdown-item" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart me-2"></i>Dashboard</a></li>{% endif %}
+                        <li><a class="dropdown-item" href="{% url 'chamados:lista' %}"><i class="bi bi-list-task me-2"></i>{% if pode_atender_chamados %}{% trans "Fila de chamados" %}{% else %}{% trans "Meus chamados" %}{% endif %}</a></li>
+                        {% if pode_criar_chamado %}<li><a class="dropdown-item" href="{% url 'chamados:criar' %}"><i class="bi bi-plus-circle me-2"></i>{% trans "Novo chamado" %}</a></li>{% endif %}
+                        {% if pode_dashboard_chamados %}<li><a class="dropdown-item" href="{% url 'chamados:dashboard' %}"><i class="bi bi-bar-chart me-2"></i>{% trans "Dashboard" %}</a></li>{% endif %}
                         {% if pode_atender_chamados %}
                         <li><hr class="dropdown-divider"></li>
                         <li>
@@ -667,7 +667,7 @@
                             <a class="dropdown-item"
                                href="{% url 'estoque:lista_linhas_moveis' %}">
                                 <i class="bi bi-sim"></i>
-                                Linhas móveis
+                                {% trans "Linhas móveis" %}
                             </a>
                         </li>
                         {% endif %}
@@ -678,7 +678,7 @@
                             <a class="dropdown-item"
                                href="{% url 'insumos:cadastrar_insumos' %}">
                                 <i class="bi bi-box-seam"></i>
-                                Insumos
+                                {% trans "Insumos" %}
                             </a>
                         </li>
                         {% endif %}
@@ -1239,10 +1239,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const fechar = document.createElement('button');
         fechar.type = 'button';
         fechar.className = 'btn-close';
-        fechar.setAttribute('aria-label', 'Fechar');
+        fechar.setAttribute('aria-label', '{% trans "Fechar" %}');
         const corpo = document.createElement('div');
         corpo.className = 'toast-body text-body';
-        corpo.textContent = evento.descricao || 'NOVA ATUALIZAÇÃO NO CHAMADO.';
+        corpo.textContent = evento.descricao || '{% trans "NOVA ATUALIZAÇÃO NO CHAMADO." %}';
         cabecalho.append(icone, protocolo, fechar);
         item.append(cabecalho, corpo);
         fechar.addEventListener('click', function (e) {

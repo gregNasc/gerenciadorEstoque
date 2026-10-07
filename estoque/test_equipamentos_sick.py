@@ -189,6 +189,45 @@ class FinalidadeEquipamentoTests(EquipamentosSickBaseTests):
         self.assertContains(response, 'value="OPERACIONAL"')
         self.assertContains(response, 'value="ADMINISTRATIVO"')
 
+    def test_modal_exibe_auditoria_como_linha_do_tempo_legivel(self):
+        Historico.objects.create(
+            equipamento=self.equipamento,
+            usuario=self.admin,
+            tipo_acao='CRIACAO',
+            detalhes={'mensagem': 'Equipamento cadastrado'},
+        )
+        Historico.objects.create(
+            equipamento=self.equipamento,
+            usuario=self.gestor,
+            tipo_acao='EDICAO',
+            detalhes={
+                'alteracoes': {
+                    'finalidade': {
+                        'antes': 'OPERACIONAL',
+                        'depois': 'ADMINISTRATIVO',
+                    },
+                },
+                'motivo': 'Mudança de utilização',
+                'password': 'segredo-que-nao-pode-aparecer',
+            },
+        )
+        self.client.force_login(self.gestor)
+
+        response = self.client.get(
+            reverse('estoque:historico_modal', args=[self.equipamento.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Linha do tempo da auditoria')
+        self.assertContains(response, 'Mais recente')
+        self.assertContains(response, 'Equipamento cadastrado')
+        self.assertContains(response, 'Mudança de utilização')
+        self.assertContains(response, 'Antes')
+        self.assertContains(response, 'Depois')
+        self.assertContains(response, 'ADMINISTRATIVO')
+        self.assertNotContains(response, 'segredo-que-nao-pode-aparecer')
+        self.assertNotContains(response, '<pre')
+
     def test_kpi_da_tela_separa_ativo_operacional_de_administrativo(self):
         self.equipamento.finalidade = Equipamento.Finalidade.ADMINISTRATIVO
         self.equipamento.save(update_fields=['finalidade'])

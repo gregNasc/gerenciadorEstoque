@@ -1,8 +1,10 @@
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from django.utils import translation
 
-from estoque.models import Empresa, Modulo, ModuloEmpresa, Perfil, TermoEmpresa
+from estoque.models import Empresa, Modulo, ModuloEmpresa, Perfil, SecaoDocumentacaoEmpresa, TermoEmpresa
+from estoque.services.documentation_section_service import DocumentationSectionService
 from estoque.services.tenant_terminology_service import TenantTerminologyService
 
 
@@ -125,3 +127,45 @@ class TenantTerminologyTests(TestCase):
 
         self.assertEqual(labels['documentacao']['singular'], 'Documentação')
         self.assertEqual(labels['documentacao']['plural'], 'Documentações')
+
+    def test_navbar_dashboard_e_documentacao_traduzem_terminologia_configurada(self):
+        self.admin_b.perfil.idioma = Perfil.Idioma.ES
+        self.admin_b.perfil.save(update_fields=('idioma',))
+        for codigo, nome in {
+            SecaoDocumentacaoEmpresa.Codigo.MANUAIS: 'Manuais de equipamentos',
+            SecaoDocumentacaoEmpresa.Codigo.DRIVERS: 'Drivers',
+            SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS: 'Checklist de clientes',
+        }.items():
+            SecaoDocumentacaoEmpresa.objects.update_or_create(
+                empresa=self.company_b,
+                codigo=codigo,
+                defaults={'habilitado': True, 'nome_exibicao': nome},
+            )
+
+        self.client.force_login(self.admin_b)
+        response = self.client.get(reverse('estoque:index'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['tenant_dashboard_label'], 'Activos')
+        self.assertEqual(
+            response.context['tenant_module_labels'][Modulo.Codigo.CADASTROS],
+            'Registros',
+        )
+        self.assertContains(response, 'Panel de Activos')
+        self.assertContains(response, 'Vista general: Activos')
+        self.assertContains(response, 'Transferencias')
+        self.assertContains(response, 'Registros')
+        self.assertContains(response, 'Documentación')
+        self.assertNotContains(response, 'Dashboard de Ativos')
+
+        with translation.override('es'):
+            sections = DocumentationSectionService.configuration(
+                self.admin_b,
+                tenant=self.company_b,
+            )
+        self.assertEqual(sections['manuais']['label'], 'Manuales de equipos')
+        self.assertEqual(sections['drivers']['label'], 'Controladores')
+        self.assertEqual(
+            sections['checklists']['label'],
+            'Lista de verificación de clientes',
+        )

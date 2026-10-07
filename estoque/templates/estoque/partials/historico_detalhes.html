@@ -1,5 +1,88 @@
 {% load i18n %}
 
+<style>
+    .audit-timeline {
+        position: relative;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .audit-timeline::before {
+        position: absolute;
+        top: .65rem;
+        bottom: .65rem;
+        left: .45rem;
+        width: 2px;
+        content: "";
+        background: var(--bs-border-color);
+    }
+    .audit-timeline__event {
+        position: relative;
+        padding: 0 0 1.5rem 2rem;
+    }
+    .audit-timeline__event:last-child { padding-bottom: 0; }
+    .audit-timeline__marker {
+        position: absolute;
+        top: .35rem;
+        left: 0;
+        z-index: 1;
+        width: .95rem;
+        height: .95rem;
+        border: 3px solid var(--bs-body-bg);
+        border-radius: 50%;
+        background: var(--bs-primary);
+        box-shadow: 0 0 0 1px var(--bs-primary);
+    }
+    .audit-timeline__event:not(:first-child) .audit-timeline__marker {
+        background: var(--bs-secondary-color);
+        box-shadow: 0 0 0 1px var(--bs-secondary-color);
+    }
+    .audit-timeline__card {
+        overflow: hidden;
+        border: 1px solid var(--bs-border-color);
+        border-radius: .75rem;
+        background: var(--bs-body-bg);
+    }
+    .audit-timeline__header { padding: .75rem .85rem; background: var(--bs-tertiary-bg); }
+    .audit-timeline__date { color: var(--bs-secondary-color); font-size: .75rem; }
+    .audit-timeline__body { padding: .8rem .85rem; }
+    .audit-detail {
+        display: grid;
+        grid-template-columns: minmax(7rem, 38%) 1fr;
+        gap: .25rem .65rem;
+        padding: .4rem 0;
+        border-bottom: 1px dashed var(--bs-border-color);
+        font-size: .82rem;
+    }
+    .audit-detail:last-child { border-bottom: 0; }
+    .audit-detail__label { color: var(--bs-secondary-color); font-weight: 600; }
+    .audit-detail__value { overflow-wrap: anywhere; }
+    .audit-change { padding: .65rem; border: 1px solid var(--bs-border-color); border-radius: .6rem; }
+    .audit-change + .audit-change { margin-top: .6rem; }
+    .audit-change__values {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: .45rem;
+        align-items: center;
+        margin-top: .45rem;
+    }
+    .audit-change__value {
+        min-width: 0;
+        padding: .45rem;
+        border-radius: .4rem;
+        background: var(--bs-tertiary-bg);
+        overflow-wrap: anywhere;
+    }
+    .audit-change__after {
+        color: var(--bs-success-text-emphasis);
+        background: var(--bs-success-bg-subtle);
+    }
+    .audit-change__arrow { transform: rotate(90deg); text-align: center; }
+    @media (max-width: 575.98px) {
+        .audit-detail { grid-template-columns: 1fr; }
+    }
+</style>
+
 <div class="container-fluid px-0">
 
     <div class="row g-4">
@@ -381,16 +464,74 @@
                         <i class="bi bi-card-text text-primary me-2"></i>
                         {% trans "Detalhes da Auditoria" %}
                     </h5>
+                    <div class="small text-muted mt-1">
+                        {% trans "Eventos mais recentes primeiro" %}
+                    </div>
                 </div>
 
                 <div class="card-body">
-
-                    <div class="bg-dark text-light rounded p-3 small"
-                         style="max-height:500px; overflow:auto;">
-
-<pre class="mb-0 text-light">{{ historico.detalhes|pprint }}</pre>
-
+                    {% if auditoria_timeline %}
+                    <ol class="audit-timeline" aria-label="{% trans 'Linha do tempo da auditoria' %}">
+                        {% for evento in auditoria_timeline %}
+                        <li class="audit-timeline__event">
+                            <span class="audit-timeline__marker" aria-hidden="true"></span>
+                            <article class="audit-timeline__card">
+                                <header class="audit-timeline__header">
+                                    <div class="d-flex flex-wrap justify-content-between gap-2">
+                                        <strong>{{ evento.acao }}</strong>
+                                        {% if forloop.first %}
+                                        <span class="badge text-bg-primary">{% trans "Mais recente" %}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="audit-timeline__date mt-1">
+                                        <i class="bi bi-calendar3 me-1"></i>{{ evento.data|date:"d/m/Y" }}
+                                        <span class="mx-1">•</span>
+                                        <i class="bi bi-clock me-1"></i>{{ evento.data|date:"H:i:s" }}
+                                    </div>
+                                    <div class="audit-timeline__date mt-1">
+                                        <i class="bi bi-person me-1"></i>{{ evento.usuario }}
+                                    </div>
+                                </header>
+                                {% if evento.alteracoes or evento.itens %}
+                                <div class="audit-timeline__body">
+                                    {% for alteracao in evento.alteracoes %}
+                                    <div class="audit-change">
+                                        <strong class="small">{{ alteracao.campo }}</strong>
+                                        <div class="audit-change__values">
+                                            <div class="audit-change__value">
+                                                <span class="d-block text-muted small">{% trans "Antes" %}</span>
+                                                {{ alteracao.antes }}
+                                            </div>
+                                            <i class="bi bi-arrow-right audit-change__arrow text-muted" aria-hidden="true"></i>
+                                            <div class="audit-change__value audit-change__after">
+                                                <span class="d-block small">{% trans "Depois" %}</span>
+                                                {{ alteracao.depois }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% for item in evento.itens %}
+                                    <div class="audit-detail">
+                                        <span class="audit-detail__label">{{ item.rotulo }}</span>
+                                        <span class="audit-detail__value">{{ item.valor }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="audit-timeline__body text-muted small">
+                                    {% trans "Nenhuma informação complementar foi registrada." %}
+                                </div>
+                                {% endif %}
+                            </article>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-clock-history d-block fs-3 mb-2"></i>
+                        {% trans "Nenhum evento de auditoria encontrado." %}
                     </div>
+                    {% endif %}
 
                 </div>
 

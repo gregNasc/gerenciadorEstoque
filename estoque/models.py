@@ -493,6 +493,213 @@ class Base(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"
 
+
+class Colaborador(models.Model):
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='colaboradores',
+    )
+    base = models.ForeignKey(
+        Base,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='colaboradores',
+    )
+    usuario = models.OneToOneField(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='colaborador_custodia',
+    )
+    nome = models.CharField(max_length=200)
+    email = models.EmailField(blank=True)
+    telefone = models.CharField(max_length=20, blank=True)
+    matricula = models.CharField('Matrícula', max_length=50, blank=True)
+    cargo_funcao = models.CharField('Cargo/função', max_length=120, blank=True)
+    setor = models.CharField(max_length=120, blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Colaborador'
+        verbose_name_plural = 'Colaboradores'
+        ordering = ('nome', 'id')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'matricula'),
+                condition=~Q(matricula=''),
+                name='colaborador_empresa_matricula_unica',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'ativo', 'base'),
+                name='colaborador_escopo_ativo_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.base_id and self.empresa_id and self.base.empresa_id != self.empresa_id:
+            errors['base'] = 'A Base deve pertencer à mesma empresa do colaborador.'
+        if self.usuario_id:
+            if not self.usuario.is_active:
+                errors['usuario'] = 'O usuário vinculado deve estar ativo.'
+            elif not self.usuario.is_superuser:
+                empresa_usuario_id = Perfil.objects.filter(
+                    user_id=self.usuario_id,
+                ).values_list('empresa_id', flat=True).first()
+                if empresa_usuario_id != self.empresa_id:
+                    errors['usuario'] = (
+                        'O usuário deve pertencer à mesma empresa do colaborador.'
+                    )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.nome = (self.nome or '').strip()
+        self.email = (self.email or '').strip().lower()
+        self.telefone = (self.telefone or '').strip()
+        self.matricula = (self.matricula or '').strip()
+        self.cargo_funcao = (self.cargo_funcao or '').strip()
+        self.setor = (self.setor or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.nome
+
+
+class LocalFisico(models.Model):
+    class Tipo(models.TextChoices):
+        ESCRITORIO = 'ESCRITORIO', 'Escritório'
+        BASE_LOGISTICA = 'BASE_LOGISTICA', 'Base Logística'
+        DEPOSITO = 'DEPOSITO', 'Depósito'
+        OUTRO = 'OUTRO', 'Outro'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='locais_fisicos',
+    )
+    bases = models.ManyToManyField(
+        Base,
+        through='VinculoBaseLocalFisico',
+        related_name='locais_fisicos',
+    )
+    nome = models.CharField(max_length=150)
+    tipo = models.CharField(max_length=20, choices=Tipo.choices)
+    logradouro = models.CharField(max_length=180)
+    numero = models.CharField(max_length=30)
+    complemento = models.CharField(max_length=100, blank=True)
+    bairro = models.CharField(max_length=100)
+    cidade = models.CharField(max_length=100)
+    uf = models.CharField(max_length=2)
+    cep = models.CharField(max_length=9)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Local físico'
+        verbose_name_plural = 'Locais físicos'
+        ordering = ('nome', 'id')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('empresa', 'nome'),
+                name='local_fisico_empresa_nome_unico',
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    tipo__in=('ESCRITORIO', 'BASE_LOGISTICA', 'DEPOSITO', 'OUTRO'),
+                ),
+                name='local_fisico_tipo_valido',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'ativo', 'tipo'),
+                name='local_fisico_escopo_idx',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.nome = (self.nome or '').strip()
+        self.logradouro = (self.logradouro or '').strip()
+        self.numero = (self.numero or '').strip()
+        self.complemento = (self.complemento or '').strip()
+        self.bairro = (self.bairro or '').strip()
+        self.cidade = (self.cidade or '').strip()
+        self.uf = (self.uf or '').strip().upper()
+        self.cep = (self.cep or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.nome} - {self.cidade}/{self.uf}'
+
+
+class VinculoBaseLocalFisico(models.Model):
+    local_fisico = models.ForeignKey(
+        LocalFisico,
+        on_delete=models.CASCADE,
+        related_name='vinculos_base',
+    )
+    base = models.OneToOneField(
+        Base,
+        on_delete=models.CASCADE,
+        related_name='vinculo_local_fisico',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Vínculo de Base com local físico'
+        verbose_name_plural = 'Vínculos de Bases com locais físicos'
+        ordering = ('local_fisico', 'base')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('local_fisico', 'base'),
+                name='local_fisico_base_unica',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if not self.local_fisico_id or not self.base_id:
+            return
+        empresa_origem_id = self.local_fisico.empresa_id
+        empresa_destino_id = self.base.empresa_id
+        if empresa_origem_id == empresa_destino_id:
+            return
+        autorizado = RelacionamentoEmpresa.objects.filter(
+            empresa_origem_id=empresa_origem_id,
+            empresa_destino_id=empresa_destino_id,
+            ativo=True,
+            capacidades__recurso=CapacidadeRelacionamentoEmpresa.Recurso.OPERACAO,
+            capacidades__acao=CapacidadeRelacionamentoEmpresa.Acao.ADMINISTRAR,
+            capacidades__ativo=True,
+        ).exists()
+        if not autorizado:
+            raise ValidationError({
+                'base': (
+                    'O compartilhamento com uma Base de outra empresa exige '
+                    'relacionamento operacional explícito.'
+                ),
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.base} → {self.local_fisico}'
+
+
 class EnderecoPostalBase(models.Model):
     base = models.OneToOneField(
         Base,

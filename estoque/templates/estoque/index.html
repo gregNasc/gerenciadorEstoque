@@ -1,6 +1,6 @@
 {% extends 'estoque/base.html' %}
 {% load i18n static %}
-{% block title %}Dashboard | {{ tenant_dashboard_label }}{% endblock %}
+{% block title %}{% trans "Dashboard" %} | {{ tenant_dashboard_label }}{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/dashboard-ativos.css' %}?v=1">{% endblock %}
 
 {% block content %}
@@ -15,8 +15,8 @@
     <!-- Título -->
     <header class="app-page-header">
         <div class="app-page-header__content">
-            <h1>Dashboard de {{ tenant_dashboard_label }}</h1>
-            <p class="app-page-header__description">Visão geral: {{ tenant_labels.equipamento.plural }}</p>
+            <h1>{% blocktrans with label=tenant_dashboard_label %}Dashboard de {{ label }}{% endblocktrans %}</h1>
+            <p class="app-page-header__description">{% blocktrans with equipamentos=tenant_labels.equipamento.plural %}Visão geral: {{ equipamentos }}{% endblocktrans %}</p>
         </div>
     </header>
 
@@ -37,7 +37,7 @@
                 <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">{{ tenant_labels.equipamento.singular }}</label>
                     <select name="produto" class="form-select form-select-sm bg-white">
-                        <option value="">Todos</option>
+                        <option value="">{% trans "Todos" %}</option>
                         {% for p in produtos_lista %}
                             <option value="{{ p.id }}"
                                 {% if request.GET.produto == p.id|stringformat:"s" %}selected{% endif %}>
@@ -55,7 +55,7 @@
                     <select name="inventory"
                             class="form-select form-select-sm bg-white">
 
-                        <option value="">Todos</option>
+                        <option value="">{% trans "Todos" %}</option>
 
                         {% for empresa in empresas %}
                             <option value="{{ empresa.id }}"
@@ -112,7 +112,7 @@
       <!-- Cards KPI Superiores -->
     <header class="app-page-header">
         <div class="app-page-header__content">
-           <p class="app-page-header__description">EQUIPAMENTOS</p>
+           <p class="app-page-header__description">{{ tenant_labels.equipamento.plural|upper }}</p>
         </div>
     </header>
 
@@ -161,7 +161,7 @@
     </div>
     {% empty %}
     <div class="col-12">
-        <div class="app-empty-state"><i class="bi bi-box-seam app-empty-state__icon" aria-hidden="true"></i>Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} encontrado(a).</div>
+        <div class="app-empty-state"><i class="bi bi-box-seam app-empty-state__icon" aria-hidden="true"></i>{% blocktrans with equipamento=tenant_labels.equipamento.singular|lower %}Nenhum(a) {{ equipamento }} encontrado(a).{% endblocktrans %}</div>
     </div>
     {% endfor %}
 </div>
@@ -169,7 +169,7 @@
     <!-- Cards por Regional -->
     <header class="app-page-header">
         <div class="app-page-header__content">
-           <p class="app-page-header__description">REGIONAIS</p>
+           <p class="app-page-header__description">{{ tenant_labels.regional.plural|upper }}</p>
         </div>
     </header>
     <div class="row g-3">
@@ -200,7 +200,7 @@
                         </div>
                         {% empty %}
                         <div class="text-secondary small text-center py-2">
-                            Nenhum(a) {{ tenant_labels.equipamento.singular|lower }} desta categoria em {{ tenant_labels.regional.singular|lower }}
+                            {% blocktrans with equipamento=tenant_labels.equipamento.singular|lower regional=tenant_labels.regional.singular|lower %}Nenhum(a) {{ equipamento }} desta categoria em {{ regional }}{% endblocktrans %}
                         </div>
                         {% endfor %}
                     {% else %}

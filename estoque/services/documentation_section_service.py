@@ -1,11 +1,18 @@
 from estoque.models import SecaoDocumentacaoEmpresa
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, gettext_noop
 
 
 class DocumentationSectionService:
     """Configuração fail-closed das áreas de documentação de cada tenant."""
 
-    DEFAULT_LABELS = dict(SecaoDocumentacaoEmpresa.Codigo.choices)
+    DEFAULT_LABELS = {
+        SecaoDocumentacaoEmpresa.Codigo.BIBLIOTECA: gettext_noop('Biblioteca'),
+        SecaoDocumentacaoEmpresa.Codigo.MANUAIS: gettext_noop('Manuais de equipamentos'),
+        SecaoDocumentacaoEmpresa.Codigo.DRIVERS: gettext_noop('Drivers'),
+        SecaoDocumentacaoEmpresa.Codigo.RESOLUCOES: gettext_noop('Resolução de problemas'),
+        SecaoDocumentacaoEmpresa.Codigo.CHECKLISTS: gettext_noop('Checklist de clientes'),
+        SecaoDocumentacaoEmpresa.Codigo.VIDEOS: gettext_noop('Vídeos'),
+    }
 
     @classmethod
     def _company(cls, user=None, tenant=None):
@@ -40,9 +47,11 @@ class DocumentationSectionService:
                     code in configured and configured[code].habilitado
                 ),
                 'label': (
-                    configured[code].nome_exibicao.strip()
-                    if code in configured and configured[code].nome_exibicao.strip()
-                    else _(label)
+                    _(
+                        configured[code].nome_exibicao.strip()
+                        if code in configured and configured[code].nome_exibicao.strip()
+                        else label
+                    )
                 ),
                 'allow_legacy': bool(
                     code in configured

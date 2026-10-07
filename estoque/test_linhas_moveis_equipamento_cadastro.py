@@ -168,6 +168,34 @@ class LinhaMovelCadastroEquipamentoTests(TestCase):
         self.assertNotContains(response, self.linha.iccid)
         self.assertNotContains(response, self.linha_externa.numero_normalizado)
 
+    def test_telas_de_linhas_moveis_renderizam_em_espanhol(self):
+        self.admin.perfil.idioma = Perfil.Idioma.ES
+        self.admin.perfil.save(update_fields=['idioma'])
+        self.admin.user_permissions.add(Permission.objects.get(
+            codename='visualizar_credenciais_linhas_moveis',
+        ))
+
+        lista = self.client.get(
+            reverse('estoque:lista_linhas_moveis'),
+        )
+        cadastro = self.client.get(
+            reverse('estoque:criar_linha_movel'),
+        )
+        operadoras = self.client.get(
+            reverse('estoque:operadoras_moveis'),
+        )
+        credenciais = self.client.get(
+            reverse('estoque:credenciais_linha_movel', args=[self.linha.pk]),
+        )
+
+        for response in (lista, cadastro, operadoras, credenciais):
+            self.assertEqual(response.status_code, 200)
+        self.assertContains(lista, 'Líneas móviles')
+        self.assertContains(lista, 'Nuevo chip / línea')
+        self.assertContains(cadastro, 'Activo móvil independiente')
+        self.assertContains(operadoras, 'Operadoras móviles')
+        self.assertContains(credenciais, 'Credenciales protegidas')
+
     def test_produto_sem_capacidade_nao_expoe_linhas(self):
         response = self.client.get(reverse('estoque:linhas_moveis_disponiveis'), {
             'base': self.base.pk,

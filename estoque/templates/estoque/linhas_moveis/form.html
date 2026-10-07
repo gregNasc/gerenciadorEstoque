@@ -1,18 +1,19 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 {% block title %}{{ titulo }}{% endblock %}
 
 {% block content %}
 <div class="container py-4" style="max-width: 920px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div><h2 class="fw-bold mb-1">{{ titulo }}</h2><p class="text-muted mb-0">Este chip será controlado como ativo independente; você pode atribuir um usuário responsável e vinculá-lo a um equipamento compatível.</p></div>
-        <a class="btn btn-outline-secondary" href="{% url 'estoque:lista_linhas_moveis' %}">Voltar</a>
+        <div><h2 class="fw-bold mb-1">{{ titulo }}</h2><p class="text-muted mb-0">{% trans "Este chip será controlado como ativo independente; você pode atribuir um usuário responsável e vinculá-lo a um equipamento compatível." %}</p></div>
+        <a class="btn btn-outline-secondary" href="{% url 'estoque:lista_linhas_moveis' %}">{% trans "Voltar" %}</a>
     </div>
     <div class="alert alert-primary border-0 rounded-4 d-flex gap-3 align-items-start">
         <i class="bi bi-sim fs-3"></i>
-        <div><strong>Ativo móvel independente</strong><div class="small">O cadastro não exige equipamento. A linha ficará disponível para vínculo futuro na edição de um equipamento da mesma Base. Somente Administradores gerenciam este cadastro.</div></div>
+        <div><strong>{% trans "Ativo móvel independente" %}</strong><div class="small">{% trans "O cadastro não exige equipamento. A linha ficará disponível para vínculo futuro na edição de um equipamento da mesma Base. Somente Administradores gerenciam este cadastro." %}</div></div>
     </div>
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-header bg-white p-4 border-bottom"><h2 class="h6 fw-bold mb-1">Identificação e localização</h2><p class="small text-secondary mb-0">Informe os dados contratuais e a Base responsável pela guarda do chip.</p></div>
+        <div class="card-header bg-white p-4 border-bottom"><h2 class="h6 fw-bold mb-1">{% trans "Identificação e localização" %}</h2><p class="small text-secondary mb-0">{% trans "Informe os dados contratuais e a Base responsável pela guarda do chip." %}</p></div>
         <div class="card-body p-4">
         <form method="post" novalidate>{% csrf_token %}
             {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
@@ -27,8 +28,8 @@
                 {% endfor %}
             </div>
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a class="btn btn-light border" href="{% url 'estoque:lista_linhas_moveis' %}">Cancelar</a>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-check-circle me-1"></i>Salvar</button>
+                <a class="btn btn-light border" href="{% url 'estoque:lista_linhas_moveis' %}">{% trans "Cancelar" %}</a>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check-circle me-1"></i>{% trans "Salvar" %}</button>
             </div>
         </form>
         </div>
@@ -37,6 +38,8 @@
 {{ opcoes_linha_movel|json_script:"opcoes-linha-movel" }}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const rotuloBase = '{% trans "Base" %}';
+    const rotuloOperadora = '{% trans "Operadora" %}';
     const empresa = document.getElementById('id_empresa');
     const base = document.getElementById('id_base');
     const operadora = document.getElementById('id_operadora');
@@ -61,12 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const atualizar = (preservar = false) => {
         const opcoes = dados[String(empresa.value)] || {bases: [], operadoras: []};
-        preencher(base, opcoes.bases, preservar ? selecionados.base : '', 'Base');
+        preencher(base, opcoes.bases, preservar ? selecionados.base : '', rotuloBase);
         preencher(
             operadora,
             opcoes.operadoras,
             preservar ? selecionados.operadora : '',
-            'Operadora'
+            rotuloOperadora
         );
     };
     atualizar(true);
