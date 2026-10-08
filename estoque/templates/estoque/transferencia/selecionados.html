@@ -1,4 +1,5 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
@@ -62,13 +63,13 @@
                     <thead class="table-light">
 
                         <tr>
-                            <th class="ps-4">Produto</th>
-                            <th>Série</th>
-                            <th>Patrimônio</th>
-                            <th>Status da conferência</th>
-                            <th>Ocorrência / tratativa</th>
-                            <th>Regional Origem</th>
-                            <th>Regional Atual</th>
+                            <th class="ps-4">{% trans "Produto" %}</th>
+                            <th>{% trans "Série" %}</th>
+                            <th>{% trans "Patrimônio" %}</th>
+                            <th>{% trans "Status da conferência" %}</th>
+                            <th>{% trans "Ocorrência / tratativa" %}</th>
+                            <th>{% trans "Regional de origem" %}</th>
+                            <th>{% trans "Regional atual" %}</th>
                         </tr>
 
                     </thead>
@@ -93,13 +94,13 @@
 
                             <td>
                                 {% if item.status == 'RECEBIDO' %}
-                                    <span class="badge bg-success">Recebido</span>
+                                    <span class="badge bg-success">{% trans "Recebido" %}</span>
                                 {% elif item.status == 'DIVERGENTE' %}
-                                    <span class="badge bg-warning text-dark">Divergente</span>
+                                    <span class="badge bg-warning text-dark">{% trans "Divergente" %}</span>
                                 {% elif item.status == 'NAO_RECEBIDO' %}
-                                    <span class="badge bg-danger">Não recebido</span>
+                                    <span class="badge bg-danger">{% trans "Não recebido" %}</span>
                                 {% elif item.status == 'ENVIADO' %}
-                                    <span class="badge bg-info text-dark">Enviado</span>
+                                    <span class="badge bg-info text-dark">{% trans "Enviado" %}</span>
                                 {% else %}
                                     <span class="badge bg-secondary">{{ item.status }}</span>
                                 {% endif %}
@@ -117,7 +118,7 @@
                                         {% endif %}
                                     </div>
                                 {% empty %}
-                                    <span class="text-muted">Sem pendência</span>
+                                    <span class="text-muted">{% trans "Sem pendência" %}</span>
                                 {% endfor %}
                             </td>
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Gerenciador de Estoque 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-07 15:14-0300\n"
+"POT-Creation-Date: 2026-10-08 10:37-0300\n"
 "PO-Revision-Date: 2026-10-07 12:15-0300\n"
 "Last-Translator: Inventory T.I\n"
 "Language-Team: Spanish <es@li.org>\n"
@@ -164,16 +164,25 @@ msgstr "La instantánea de auditoría es inmutable."
 #: .\estoque\templates\estoque\declaracoes\formulario.html:36
 #: .\estoque\templates\estoque\detalhes_produto.html:31
 #: .\estoque\templates\estoque\editar_equipamento.html:13
+#: .\estoque\templates\estoque\emprestimos\adicionar_itens.html:58
+#: .\estoque\templates\estoque\emprestimos\criar.html:241
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:304
+#: .\estoque\templates\estoque\emprestimos\devolver.html:42
+#: .\estoque\templates\estoque\emprestimos\receber.html:91
+#: .\estoque\templates\estoque\emprestimos\receber_devolucao.html:35
 #: .\estoque\templates\estoque\estoque.html:1503
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:195
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:332
 #: .\estoque\templates\estoque\sick.html:368
+#: .\estoque\templates\estoque\transferencia\detalhe.html:138
+#: .\estoque\templates\estoque\transferencia\selecionados.html:68
 msgid "Patrimônio"
 msgstr "Patrimonio"
 
 #: .\auditorias\models.py:156 .\auditorias\templates\auditorias\coleta.html:127
 #: .\estoque\templates\estoque\declaracoes\formulario.html:36
 #: .\estoque\templates\estoque\editar_equipamento.html:12
+#: .\estoque\templates\estoque\transferencia\detalhe.html:137
 msgid "Número de série"
 msgstr "Número de serie"
 
@@ -340,6 +349,8 @@ msgstr[1] "de %(total)s bases finalizadas"
 #: .\estoque\templates\estoque\checklist.html:1193
 #: .\estoque\templates\estoque\detalhes_produto.html:35
 #: .\estoque\templates\estoque\editar_equipamento.html:46
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:306
+#: .\estoque\templates\estoque\emprestimos\lista.html:37
 #: .\estoque\templates\estoque\estoque.html:1506
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:49
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:70
@@ -614,6 +625,7 @@ msgstr "equipos"
 #: .\compras\templates\compras\valores_equipamentos.html:252
 #: .\compras\templates\compras\valores_equipamentos.html:370
 #: .\estoque\services\tenant_terminology_service.py:10
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:31
 #: .\estoque\templates\estoque\historico.html:538
 #: .\estoque\templates\estoque\historico.html:813
 #: .\estoque\templates\estoque\historico.html:863
@@ -835,6 +847,9 @@ msgstr "Ninguna divergencia encontrada."
 #: .\estoque\forms_documentacao.py:53 .\estoque\forms_documentacao.py:102
 #: .\estoque\templates\estoque\alocacao\painel.html:39
 #: .\estoque\templates\estoque\cadastrar_equipamento.html:68
+#: .\estoque\templates\estoque\documentacao\index.html:29
+#: .\estoque\templates\estoque\emprestimos\adicionar_itens.html:54
+#: .\estoque\templates\estoque\emprestimos\criar.html:237
 #: .\estoque\templates\estoque\index.html:28
 #: .\estoque\templates\estoque\manuais.html:33
 #: .\estoque\templates\estoque\onboarding\_catalogo.html:21
@@ -940,6 +955,7 @@ msgid "Aguardando avaliação"
 msgstr "Esperando evaluación"
 
 #: .\chamados\models.py:170
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:110
 msgid "Encerrado"
 msgstr "Cerrado"
 
@@ -991,6 +1007,7 @@ msgstr "Filtros del panel"
 #: .\chamados\templates\chamados\lista.html:65
 #: .\chamados\templates\chamados\lista.html:67
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:345
+#: .\estoque\templates\estoque\documentacao\index.html:29
 #: .\estoque\templates\estoque\estoque.html:83
 #: .\estoque\templates\estoque\historico.html:593
 #: .\estoque\templates\estoque\index.html:30
@@ -1009,6 +1026,8 @@ msgstr "Todas"
 #: .\chamados\templates\chamados\lista.html:64
 #: .\chamados\templates\chamados\lista.html:66
 #: .\chamados\templates\chamados\lista.html:73
+#: .\estoque\templates\estoque\documentacao\index.html:28
+#: .\estoque\templates\estoque\documentacao\index.html:30
 #: .\estoque\templates\estoque\documentacao\resolucao.html:32
 #: .\estoque\templates\estoque\documentacao\resolucao.html:41
 #: .\estoque\templates\estoque\drivers_impressoras.html:34
@@ -1375,6 +1394,7 @@ msgstr "Foto del modelo"
 #: .\chamados\templates\chamados\detalhe.html:1363
 #: .\chamados\templates\chamados\lista.html:66
 #: .\estoque\templates\estoque\comunicados\criar.html:58
+#: .\estoque\templates\estoque\documentacao\index.html:28
 #: .\estoque\templates\estoque\manuais.html:86
 #: .\insumos\templates\insumos\custos\dashboard_custos.html:225
 #: .\insumos\templates\insumos\custos\dashboard_custos.html:272
@@ -1416,6 +1436,7 @@ msgid "Prazo vencido"
 msgstr "Plazo vencido"
 
 #: .\chamados\templates\chamados\detalhe.html:1509
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:101
 msgid "Linha do tempo"
 msgstr "Línea de tiempo"
 
@@ -1921,6 +1942,7 @@ msgstr "No se encontraron tickets para los filtros seleccionados."
 #: .\chamados\templates\chamados\lista.html:99
 #: .\compras\templates\compras\valores_equipamentos.html:233
 #: .\compras\templates\compras\valores_insumos.html:31
+#: .\estoque\templates\estoque\documentacao\index.html:38
 #: .\estoque\templates\estoque\documentacao\resolucao.html:67
 #: .\estoque\templates\estoque\drivers_impressoras.html:103
 #: .\estoque\templates\estoque\historico.html:517
@@ -2079,6 +2101,7 @@ msgstr "Filtros del análisis"
 #: .\compras\templates\compras\valores_equipamentos.html:238
 #: .\compras\templates\compras\valores_equipamentos.html:370
 #: .\estoque\services\tenant_terminology_service.py:12
+#: .\estoque\templates\estoque\index.html:293
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:204
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:282
 #: .\estoque\templates\estoque\selecionados.html:11
@@ -2261,9 +2284,17 @@ msgstr "Información completa"
 
 #: .\compras\templates\compras\valores_equipamentos.html:387
 #: .\estoque\templates\estoque\editar_equipamento.html:44
+#: .\estoque\templates\estoque\emprestimos\adicionar_itens.html:52
+#: .\estoque\templates\estoque\emprestimos\criar.html:235
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:300
+#: .\estoque\templates\estoque\emprestimos\devolver.html:40
+#: .\estoque\templates\estoque\emprestimos\receber.html:87
+#: .\estoque\templates\estoque\emprestimos\receber_devolucao.html:33
 #: .\estoque\templates\estoque\estoque.html:1876
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:179
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:265
+#: .\estoque\templates\estoque\transferencia\detalhe.html:136
+#: .\estoque\templates\estoque\transferencia\selecionados.html:66
 #: .\insumos\templates\insumos\custos\pesquisa_precos.html:74
 msgid "Produto"
 msgstr "Producto"
@@ -2317,6 +2348,7 @@ msgstr "Precio de referencia"
 #: .\estoque\templates\estoque\caixa_separacao.html:29
 #: .\estoque\templates\estoque\caixa_transferencias.html:33
 #: .\estoque\templates\estoque\detalhes_produto.html:34
+#: .\estoque\templates\estoque\emprestimos\lista.html:34
 #: .\estoque\templates\estoque\lista_transferencias.html:33
 #: .\estoque\templates\estoque\painel_superuser.html:268
 #: .\estoque\templates\estoque\transferencia\listar.html:200
@@ -2684,6 +2716,7 @@ msgstr "CPF/CNPJ/Documento extranjero"
 #: .\estoque\forms.py:53
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:315
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:69
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:19
 #: .\insumos\forms.py:100
 msgid "Telefone"
 msgstr "Teléfono"
@@ -2744,8 +2777,10 @@ msgid "A categoria está desativada para esta empresa."
 msgstr "La categoría está desactivada para esta empresa."
 
 #: .\estoque\forms.py:227 .\estoque\forms.py:314
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:172
 #: .\estoque\templates\estoque\estoque.html:496
 #: .\estoque\templates\estoque\onboarding\_catalogo.html:21
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:52
 #: .\insumos\templates\insumos\custos\pesquisa_precos.html:24
 #: .\insumos\templates\insumos\custos\pesquisa_precos.html:25
 msgid "Selecione"
@@ -2756,6 +2791,7 @@ msgid "Linha móvel (opcional)"
 msgstr "Línea móvil (opcional)"
 
 #: .\estoque\forms.py:235
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:169
 msgid "Sem linha móvel"
 msgstr "Sin línea móvil"
 
@@ -2764,6 +2800,7 @@ msgid "Título do relatório"
 msgstr "Título del informe"
 
 #: .\estoque\forms_documentacao.py:51 .\estoque\models.py:2452
+#: .\estoque\templates\estoque\documentacao\index.html:30
 #: .\estoque\templates\estoque\documentacao\resolucao.html:30
 #: .\estoque\templates\estoque\drivers_impressoras.html:32
 #: .\estoque\templates\estoque\onboarding\_catalogo.html:22
@@ -2905,6 +2942,7 @@ msgstr "Mantenimiento"
 #: .\estoque\models.py:1069 .\estoque\templates\estoque\estoque.html:164
 #: .\estoque\templates\estoque\estoque.html:287
 #: .\estoque\templates\estoque\index.html:235
+#: .\estoque\templates\estoque\index.html:297
 msgid "Sick"
 msgstr "SICK"
 
@@ -2939,10 +2977,12 @@ msgid "Reservado"
 msgstr "Reservado"
 
 #: .\estoque\models.py:1224
+#: .\estoque\templates\estoque\transferencia\selecionados.html:103
 msgid "Enviado"
 msgstr "Enviado"
 
 #: .\estoque\models.py:1225
+#: .\estoque\templates\estoque\transferencia\selecionados.html:97
 msgid "Recebido"
 msgstr "Recibida"
 
@@ -3824,6 +3864,7 @@ msgid "Estoque"
 msgstr "Inventario"
 
 #: .\estoque\services\tenant_terminology_service.py:23
+#: .\estoque\templates\estoque\emprestimos\lista.html:12
 msgid "Empréstimos"
 msgstr "Préstamos"
 
@@ -3854,6 +3895,7 @@ msgstr "Registros"
 #: .\estoque\templates\estoque\estoque.html:1920
 #: .\estoque\templates\estoque\index.html:143
 #: .\estoque\templates\estoque\index.html:231
+#: .\estoque\templates\estoque\index.html:296
 #: .\insumos\templates\insumos\custos\fornecedores_insumos.html:37
 #: .\insumos\templates\insumos\custos\precos_insumos.html:37
 msgid "Ativos"
@@ -4105,6 +4147,30 @@ msgstr "Opções de base"
 msgid "Exemplos"
 msgstr "Ejemplos"
 
+#: .\estoque\templates\estoque\assistente_operacional.html:81
+msgid "Quantos equipamentos estão ativos?"
+msgstr "¿Cuántos equipos están activos?"
+
+#: .\estoque\templates\estoque\assistente_operacional.html:82
+msgid "Qual é o status da transferência?"
+msgstr "¿Cuál es el estado de la transferencia?"
+
+#: .\estoque\templates\estoque\assistente_operacional.html:83
+msgid "Resumo de insumos."
+msgstr "Resumen de insumos."
+
+#: .\estoque\templates\estoque\assistente_operacional.html:84
+msgid "Histórico do protocolo."
+msgstr "Historial del protocolo."
+
+#: .\estoque\templates\estoque\assistente_operacional.html:85
+msgid "Checklists abertos e inventários."
+msgstr "Listas de verificación abiertas e inventarios."
+
+#: .\estoque\templates\estoque\assistente_operacional.html:86
+msgid "Indicadores gerais."
+msgstr "Indicadores generales."
+
 #: .\estoque\templates\estoque\base.html:14
 #: .\estoque\templates\estoque\base.html:52
 #: .\estoque\templates\registration\login.html:209
@@ -4289,11 +4355,13 @@ msgstr "Ver ahora"
 
 #: .\estoque\templates\estoque\base.html:823
 #: .\estoque\templates\estoque\base.html:1242
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:139
 #: .\estoque\templates\estoque\checklist.html:1265
 #: .\estoque\templates\estoque\checklist.html:1273
 #: .\estoque\templates\estoque\estoque.html:433
 #: .\estoque\templates\estoque\estoque.html:466
 #: .\estoque\templates\estoque\index.html:278
+#: .\estoque\templates\estoque\index.html:291
 #: .\estoque\templates\estoque\painel_superuser.html:275
 #: .\estoque\templates\estoque\painel_superuser.html:278
 #: .\insumos\templates\insumos\estoque_insumos.html:34
@@ -4334,6 +4402,78 @@ msgstr "Ahora no"
 msgid "Seu atendimento foi concluído e está aguardando sua avaliação."
 msgstr "Su atención ha finalizado y está pendiente de su evaluación."
 
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:3
+#, python-format
+msgid "Cadastrar %(equipamento)s"
+msgstr "Registrar %(equipamento)s"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:19
+#, python-format
+msgid "Novo(a) %(equipamento)s"
+msgstr "Nuevo(a) %(equipamento)s"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:21
+msgid "Cadastre o ativo e, quando aplicável, associe uma linha móvel disponível."
+msgstr "Registre el activo y, cuando corresponda, asocie una línea móvil disponible."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:21
+msgid "Cadastre o ativo conforme o catálogo e a Base selecionada."
+msgstr "Registre el activo según el catálogo y la Base seleccionada."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:30
+msgid "Cadastro atual"
+msgstr "Registro actual"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:32
+msgid "Usa número de série, patrimônio, finalidade e foto."
+msgstr "Utiliza número de serie, patrimonio, finalidad y foto."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:38
+msgid "Chip / linha móvel"
+msgstr "Chip / línea móvil"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:39
+msgid "Usa telefone, operadora, ICCID e Base — sem patrimônio ou número de série."
+msgstr "Utiliza teléfono, operadora, ICCID y Base, sin patrimonio ni número de serie."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:40
+msgid "Ir para cadastro de chip"
+msgstr "Ir al registro de chips"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:48
+#, python-format
+msgid "%(base)s do contexto:"
+msgstr "%(base)s del contexto:"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:56
+msgid "Identificação do ativo"
+msgstr "Identificación del activo"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:57
+msgid "Selecione categoria e produto configurados para a empresa."
+msgstr "Seleccione una categoría y un producto configurados para la empresa."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:63
+msgid "A Base define a empresa e quais itens podem ser cadastrados."
+msgstr "La Base define la empresa y los elementos que pueden registrarse."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:89
+msgid "Conectividade móvel opcional"
+msgstr "Conectividad móvil opcional"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:89
+msgid "O chip continua sendo um ativo independente mesmo sem vínculo."
+msgstr "El chip sigue siendo un activo independiente aunque no esté vinculado."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:93
+msgid "Somente linhas disponíveis na mesma empresa e Base."
+msgstr "Solo se muestran líneas disponibles de la misma empresa y Base."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:114
+#: .\estoque\templates\estoque\detalhes_produto.html:36
+msgid "Foto"
+msgstr "Foto"
+
 #: .\estoque\templates\estoque\cadastrar_equipamento.html:126
 msgid "Revisar e salvar"
 msgstr "Revisar y guardar"
@@ -4362,6 +4502,14 @@ msgstr "Finalidade:"
 msgid "Responsável:"
 msgstr "Responsable:"
 
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:150
+msgid "Linha móvel:"
+msgstr "Línea móvil:"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:152
+msgid "Foto:"
+msgstr "Foto:"
+
 #: .\estoque\templates\estoque\cadastrar_equipamento.html:159
 msgid "✏️ Corrigir"
 msgstr "✏️ Corregir"
@@ -4370,7 +4518,39 @@ msgstr "✏️ Corregir"
 msgid "✅ Confirmar e Salvar"
 msgstr "✅ Confirmar y Guardar"
 
-#: .\estoque\templates\estoque\cadastrar_equipamento.html:392
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:170
+msgid "Selecione a Base primeiro"
+msgstr "Seleccione primero la Base"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:171
+#: .\estoque\templates\estoque\estoque.html:440
+#: .\estoque\templates\estoque\estoque.html:846
+#: .\estoque\templates\estoque\estoque.html:1029
+#: .\estoque\templates\estoque\index.html:289
+msgid "Carregando..."
+msgstr "Cargando..."
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:173
+msgid "Erro ao carregar"
+msgstr "Error al cargar"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:174
+msgid "Selecione a categoria"
+msgstr "Seleccione la categoría"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:175
+msgid "(não selecionada)"
+msgstr "(no seleccionada)"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:176
+msgid "(não selecionado)"
+msgstr "(no seleccionado)"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:177
+msgid "(não informado)"
+msgstr "(no informado)"
+
+#: .\estoque\templates\estoque\cadastrar_equipamento.html:403
 msgid "Nenhuma foto selecionada"
 msgstr "Ninguna foto seleccionada"
 
@@ -4569,6 +4749,7 @@ msgstr "Transferencias pendientes de separación de equipos"
 
 #: .\estoque\templates\estoque\caixa_separacao.html:30
 #: .\estoque\templates\estoque\caixa_transferencias.html:34
+#: .\estoque\templates\estoque\emprestimos\lista.html:35
 #: .\estoque\templates\estoque\lista_transferencias.html:45
 #: .\estoque\templates\estoque\painel_superuser.html:268
 #: .\estoque\templates\estoque\partials\sick_history_stage_tabs.html:29
@@ -5198,6 +5379,7 @@ msgid "Destinatário"
 msgstr "Destinatário"
 
 #: .\estoque\templates\estoque\declaracoes\formulario.html:32
+#: .\estoque\templates\estoque\emprestimos\lista.html:36
 #: .\estoque\templates\estoque\transferencia\listar.html:202
 #: .\insumos\templates\insumos\custos\dashboard_custos.html:294
 #: .\insumos\templates\insumos\solicitacoes\lista.html:35
@@ -5235,10 +5417,6 @@ msgstr "📄 Detalles de"
 #: .\estoque\templates\estoque\detalhes_produto.html:33
 msgid "Qtd"
 msgstr "Cant"
-
-#: .\estoque\templates\estoque\detalhes_produto.html:36
-msgid "Foto"
-msgstr "Foto"
 
 #: .\estoque\templates\estoque\detalhes_produto.html:64
 msgid "Sem Foto"
@@ -5476,6 +5654,7 @@ msgid "Sigla ou nome do cliente"
 msgstr "Sigla o nombre del cliente"
 
 #: .\estoque\templates\estoque\documentacao\clientes.html:40
+#: .\estoque\templates\estoque\documentacao\index.html:31
 #: .\estoque\templates\estoque\documentacao\resolucao.html:47
 #: .\estoque\templates\estoque\documentacao\videos.html:10
 #: .\estoque\templates\estoque\drivers_impressoras.html:46
@@ -5512,6 +5691,50 @@ msgstr "Ningún cliente disponible"
 #: .\estoque\templates\estoque\documentacao\clientes.html:133
 msgid "Não há clientes no seu escopo ou a pesquisa não encontrou resultados."
 msgstr "No hay clientes en su ámbito o la búsqueda no ha encontrado resultados."
+
+#: .\estoque\templates\estoque\documentacao\index.html:4
+#: .\estoque\templates\estoque\documentacao\index.html:11
+msgid "Central de Documentação"
+msgstr "Centro de Documentación"
+
+#: .\estoque\templates\estoque\documentacao\index.html:10
+msgid "Conhecimento operacional"
+msgstr "Conocimiento operativo"
+
+#: .\estoque\templates\estoque\documentacao\index.html:12
+msgid "Manuais oficiais, procedimentos internos, checklists de clientes e vídeos em uma única pesquisa."
+msgstr "Manuales oficiales, procedimientos internos, listas de verificación de clientes y videos en una sola búsqueda."
+
+#: .\estoque\templates\estoque\documentacao\index.html:24
+msgid "Pesquisar em toda a central"
+msgstr "Buscar en todo el centro"
+
+#: .\estoque\templates\estoque\documentacao\index.html:27
+msgid "Modelo, sintoma ou assunto"
+msgstr "Modelo, síntoma o tema"
+
+#: .\estoque\templates\estoque\documentacao\index.html:27
+msgid "Ex.: M2020, código 43, toner, driver"
+msgstr "Ej.: M2020, código 43, tóner, controlador"
+
+#: .\estoque\templates\estoque\documentacao\index.html:36
+msgid "Documentos encontrados"
+msgstr "Documentos encontrados"
+
+#: .\estoque\templates\estoque\documentacao\index.html:36
+#, python-format
+msgid "%(total)s resultado"
+msgid_plural "%(total)s resultados"
+msgstr[0] "%(total)s resultado"
+msgstr[1] "%(total)s resultados"
+
+#: .\estoque\templates\estoque\documentacao\index.html:38
+msgid "Nenhum documento encontrado"
+msgstr "No se encontró ningún documento"
+
+#: .\estoque\templates\estoque\documentacao\index.html:38
+msgid "Tente pesquisar apenas pelo modelo ou remova um filtro."
+msgstr "Intente buscar solo por el modelo o quite un filtro."
 
 #: .\estoque\templates\estoque\documentacao\resolucao.html:11
 msgid "Procedimentos internos"
@@ -5661,12 +5884,69 @@ msgstr "Justificación de la edição"
 
 #: .\estoque\templates\estoque\editar_equipamento.html:51
 #: .\estoque\templates\estoque\estoque.html:515
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:66
 msgid "Confirme sua senha"
 msgstr "Confirme sua contraseña"
 
 #: .\estoque\templates\estoque\editar_equipamento.html:53
 msgid "Salvar alterações"
 msgstr "Guardar cambios"
+
+#: .\estoque\templates\estoque\emprestimos\adicionar_itens.html:56
+#: .\estoque\templates\estoque\emprestimos\criar.html:239
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:302
+#: .\estoque\templates\estoque\emprestimos\devolver.html:41
+#: .\estoque\templates\estoque\emprestimos\receber.html:89
+#: .\estoque\templates\estoque\emprestimos\receber_devolucao.html:34
+#: .\estoque\templates\estoque\estoque.html:1502
+#: .\estoque\templates\estoque\sick.html:367
+#: .\estoque\templates\estoque\transferencia\selecionados.html:67
+msgid "Série"
+msgstr "Serie"
+
+#: .\estoque\templates\estoque\emprestimos\criar.html:11
+msgid "Novo Empréstimo"
+msgstr "Nuevo Préstamo"
+
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:53
+#: .\estoque\templates\estoque\sick.html:376
+msgid "Rastreio do envio"
+msgstr "Rastreio del envío"
+
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:61
+msgid "Rastreio da devolução"
+msgstr "Seguimiento de la devolución"
+
+#: .\estoque\templates\estoque\emprestimos\detalhe.html:308
+#: .\estoque\templates\estoque\estoque.html:504
+#: .\estoque\templates\estoque\sick.html:432
+#: .\estoque\templates\estoque\sick.html:456 .\insumos\forms.py:102
+#: .\insumos\forms.py:142
+#: .\insumos\templates\insumos\solicitacoes\criar.html:722
+#: .\insumos\templates\insumos\solicitacoes\criar.html:780
+#: .\insumos\templates\insumos\solicitacoes\detalhe.html:198
+msgid "Observação"
+msgstr "Observación"
+
+#: .\estoque\templates\estoque\emprestimos\devolver.html:95
+#: .\estoque\templates\estoque\sick.html:483
+msgid "Código de rastreio do retorno"
+msgstr "Código de seguimiento del retorno"
+
+#: .\estoque\templates\estoque\emprestimos\lista.html:33
+#: .\estoque\templates\estoque\historico.html:565
+#: .\estoque\templates\estoque\lista_transferencias.html:79
+#: .\insumos\templates\insumos\solicitacoes\lista.html:35
+msgid "Protocolo"
+msgstr "Protocolo"
+
+#: .\estoque\templates\estoque\emprestimos\lista.html:38
+msgid "Devolução"
+msgstr "Devolución"
+
+#: .\estoque\templates\estoque\emprestimos\lista.html:110
+msgid "Atrasado"
+msgstr "Atrasado"
 
 #: .\estoque\templates\estoque\estoque.html:16
 msgid "Estoque Geral"
@@ -5693,6 +5973,7 @@ msgstr "Exportar Excel"
 #: .\estoque\templates\estoque\estoque.html:1297
 #: .\estoque\templates\estoque\estoque.html:1453
 #: .\estoque\templates\estoque\index.html:227
+#: .\estoque\templates\estoque\index.html:294
 #: .\insumos\templates\insumos\lista_checklists.html:130
 msgid "Total"
 msgstr "Total"
@@ -5740,6 +6021,7 @@ msgid "Modelo, patrimônio ou número de série..."
 msgstr "Modelo, activo o número de serie..."
 
 #: .\estoque\templates\estoque\estoque.html:291
+#: .\estoque\templates\estoque\index.html:295
 msgid "Disponibilidade"
 msgstr "Disponibilidad"
 
@@ -5753,12 +6035,6 @@ msgstr "Acción"
 #: .\estoque\templates\estoque\estoque.html:375
 msgid "Detalhar"
 msgstr "Ver detalles"
-
-#: .\estoque\templates\estoque\estoque.html:440
-#: .\estoque\templates\estoque\estoque.html:846
-#: .\estoque\templates\estoque\estoque.html:1029
-msgid "Carregando..."
-msgstr "Cargando..."
 
 #: .\estoque\templates\estoque\estoque.html:472
 msgid "Informe o motivo para registrar a ocorrência do equipamento."
@@ -5777,16 +6053,6 @@ msgstr "Daño"
 #: .\estoque\templates\estoque\estoque.html:500
 msgid "Outro"
 msgstr "Otro"
-
-#: .\estoque\templates\estoque\estoque.html:504
-#: .\estoque\templates\estoque\sick.html:432
-#: .\estoque\templates\estoque\sick.html:456 .\insumos\forms.py:102
-#: .\insumos\forms.py:142
-#: .\insumos\templates\insumos\solicitacoes\criar.html:722
-#: .\insumos\templates\insumos\solicitacoes\criar.html:780
-#: .\insumos\templates\insumos\solicitacoes\detalhe.html:198
-msgid "Observação"
-msgstr "Observación"
 
 #: .\estoque\templates\estoque\estoque.html:528
 msgid "Digite a senha do seu usuário para confirmar esta alteração."
@@ -5814,11 +6080,6 @@ msgstr "Ninguna regional encontrada para este producto."
 #: .\estoque\templates\estoque\estoque.html:1338
 msgid "Erro ao carregar regionais:"
 msgstr "Error al cargar regionales:"
-
-#: .\estoque\templates\estoque\estoque.html:1502
-#: .\estoque\templates\estoque\sick.html:367
-msgid "Série"
-msgstr "Serie"
 
 #: .\estoque\templates\estoque\estoque.html:1504
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:69
@@ -5903,12 +6164,6 @@ msgstr "Busque por equipo, protocolo, tipo de acción o período."
 #: .\estoque\templates\estoque\historico.html:552
 msgid "Número de série ou patrimônio"
 msgstr "Número de serie o activo"
-
-#: .\estoque\templates\estoque\historico.html:565
-#: .\estoque\templates\estoque\lista_transferencias.html:79
-#: .\insumos\templates\insumos\solicitacoes\lista.html:35
-msgid "Protocolo"
-msgstr "Protocolo"
 
 #: .\estoque\templates\estoque\historico.html:573
 msgid "Número do protocolo"
@@ -6067,6 +6322,14 @@ msgstr "Ver detalles"
 msgid "Detalhes da Regional"
 msgstr "Detalles de la Regional"
 
+#: .\estoque\templates\estoque\index.html:290
+msgid "Erro ao carregar dados."
+msgstr "Error al cargar los datos."
+
+#: .\estoque\templates\estoque\index.html:292
+msgid "Nenhum equipamento encontrado nesta regional."
+msgstr "No se encontró ningún equipo en esta regional."
+
 #: .\estoque\templates\estoque\linhas_moveis\credenciais.html:3
 #: .\estoque\templates\estoque\linhas_moveis\credenciais.html:8
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:103
@@ -6124,6 +6387,7 @@ msgstr "Guardar"
 
 #: .\estoque\templates\estoque\linhas_moveis\form.html:42
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:69
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:25
 msgid "Operadora"
 msgstr "Operadora"
 
@@ -6165,6 +6429,7 @@ msgid "ICCID mascarado"
 msgstr "ICCID enmascarado"
 
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:94
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:9
 msgid "Em uso"
 msgstr "En uso"
 
@@ -6380,6 +6645,10 @@ msgstr "Equipo:"
 #: .\estoque\templates\estoque\movimentar_estoque.html:11
 msgid "Regional Atual:"
 msgstr "Regional Actual:"
+
+#: .\estoque\templates\estoque\movimentar_estoque.html:31
+msgid "Solicitar"
+msgstr "Solicitar"
 
 #: .\estoque\templates\estoque\onboarding\_catalogo.html:6
 msgid "5. Catálogo"
@@ -7043,6 +7312,99 @@ msgstr "Ej.: São Paulo - Centro"
 msgid "Use um nome curto que identifique claramente a unidade."
 msgstr "Use un nombre corto que identifique claramente la unidad."
 
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:6
+msgid "Conectividade móvel"
+msgstr "Conectividad móvil"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:11
+msgid "Sem vínculo"
+msgstr "Sin vínculo"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:31
+msgid "Vinculada desde"
+msgstr "Vinculada desde"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:38
+msgid "Nenhum chip está vinculado."
+msgstr "No hay ningún chip vinculado."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:39
+msgid "O vínculo é feito abaixo, escolhendo uma linha disponível da mesma Base e confirmando sua senha."
+msgstr "El vínculo se realiza a continuación, seleccionando una línea disponible de la misma Base y confirmando su contraseña."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:40
+msgid "Chips permanecem cadastrados como ativos independentes enquanto não forem vinculados."
+msgstr "Los chips permanecen registrados como activos independientes mientras no estén vinculados."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:50
+msgid "Nova linha disponível"
+msgstr "Nueva línea disponible"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:50
+msgid "Linha disponível"
+msgstr "Línea disponible"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:61
+msgid "Motivo da troca ou desvinculação"
+msgstr "Motivo del cambio o desvinculación"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:71
+msgid "Trocar linha"
+msgstr "Cambiar línea"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:72
+msgid "Desvincular"
+msgstr "Desvincular"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:74
+msgid "Vincular linha"
+msgstr "Vincular línea"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:80
+msgid "Não há chips disponíveis nesta Base."
+msgstr "No hay chips disponibles en esta Base."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:81
+msgid "Cadastre uma linha na mesma empresa e Base; depois retorne a esta tela para vinculá-la."
+msgstr "Registre una línea en la misma empresa y Base; después vuelva a esta pantalla para vincularla."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:84
+msgid "Cadastrar chip / linha"
+msgstr "Registrar chip / línea"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:91
+msgid "Este produto não está habilitado para conectividade móvel no catálogo da empresa."
+msgstr "Este producto no está habilitado para conectividad móvil en el catálogo de la empresa."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:92
+msgid "Um Administrador deve ativar a capacidade de conectividade antes de vincular um chip."
+msgstr "Un Administrador debe activar la capacidad de conectividad antes de vincular un chip."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:95
+msgid "Você pode consultar a linha, mas não possui permissão para alterar o vínculo."
+msgstr "Puede consultar la línea, pero no tiene permiso para modificar el vínculo."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:97
+msgid "Você não possui permissão para vincular ou desvincular linhas móveis."
+msgstr "No tiene permiso para vincular o desvincular líneas móviles."
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:110
+#: .\estoque\templates\estoque\sick.html:422
+msgid "Atual"
+msgstr "Actual"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:113
+msgid "Início:"
+msgstr "Inicio:"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:114
+msgid "Fim:"
+msgstr "Fin:"
+
+#: .\estoque\templates\estoque\partials\conectividade_equipamento.html:115
+msgid "Motivo:"
+msgstr "Motivo:"
+
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:99
 msgid "Informações do Registro"
 msgstr "Información del Registro"
@@ -7371,10 +7733,6 @@ msgstr "registro(s)"
 msgid "Tipo de destino"
 msgstr "Tipo de destino"
 
-#: .\estoque\templates\estoque\sick.html:376
-msgid "Rastreio do envio"
-msgstr "Rastreio del envío"
-
 #: .\estoque\templates\estoque\sick.html:384
 msgid "Rastreio do retorno"
 msgstr "Rastreio del retorno"
@@ -7398,10 +7756,6 @@ msgstr "Problema"
 msgid "Resultado"
 msgstr "Resultado"
 
-#: .\estoque\templates\estoque\sick.html:422
-msgid "Atual"
-msgstr "Actual"
-
 #: .\estoque\templates\estoque\sick.html:432
 msgid "Editar informações"
 msgstr "Editar información"
@@ -7419,6 +7773,7 @@ msgid "Protocolo do envio"
 msgstr "Protocolo del envío"
 
 #: .\estoque\templates\estoque\sick.html:454
+#: .\estoque\templates\estoque\transferencia\detalhe.html:266
 msgid "Código de rastreio dos Correios"
 msgstr "Código de seguimiento de Correos"
 
@@ -7469,10 +7824,6 @@ msgstr "Justificación técnica"
 #: .\estoque\templates\estoque\sick.html:474
 msgid "Descreva por que o equipamento não pode ser reparado"
 msgstr "Describa por qué no se puede reparar el equipo"
-
-#: .\estoque\templates\estoque\sick.html:483
-msgid "Código de rastreio do retorno"
-msgstr "Código de seguimiento del retorno"
 
 #: .\estoque\templates\estoque\solicitacoes\caixa.html:14
 msgid "Pedidos Pendentes"
@@ -7559,6 +7910,10 @@ msgstr "Router"
 msgid "Nova Transferência"
 msgstr "Nueva Transferencia"
 
+#: .\estoque\templates\estoque\transferencia\criar.html:27
+msgid "Itens selecionados"
+msgstr "Elementos seleccionados"
+
 #: .\estoque\templates\estoque\transferencia\criar.html:34
 msgid "Origem:"
 msgstr "Origen:"
@@ -7621,6 +7976,34 @@ msgstr "Ningún resultado para el filtro actual"
 #: .\estoque\templates\estoque\transferencia\listar.html:439
 msgid "Revise o texto pesquisado ou selecione outro status."
 msgstr "Revise el texto buscado o seleccione otro estado."
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:69
+msgid "Status da conferência"
+msgstr "Estado de la verificación"
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:70
+msgid "Ocorrência / tratativa"
+msgstr "Incidencia / tratamiento"
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:71
+msgid "Regional de origem"
+msgstr "Regional de origen"
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:72
+msgid "Regional atual"
+msgstr "Regional actual"
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:99
+msgid "Divergente"
+msgstr "Divergente"
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:101
+msgid "Não recebido"
+msgstr "No recibido"
+
+#: .\estoque\templates\estoque\transferencia\selecionados.html:121
+msgid "Sem pendência"
+msgstr "Sin pendientes"
 
 #: .\estoque\templates\registration\login.html:9
 msgid "Login - Gerenciador de Estoque"
@@ -8776,12 +9159,6 @@ msgstr "Acción no válida."
 #~ msgid "Dashboard de Ativos"
 #~ msgstr "Panel de Activos"
 
-#~ msgid "Cadastrar Equipamento"
-#~ msgstr "Registrar Equipo"
-
-#~ msgid "Base do contexto:"
-#~ msgstr "Base del contexto:"
-
 #~ msgid "Regional:"
 #~ msgstr "Regional:"
 
@@ -8873,9 +9250,6 @@ msgstr "Acción no válida."
 #~ msgid "equipamento(s)"
 #~ msgstr "equipo(s)"
 
-#~ msgid "Pesquisar equipamento"
-#~ msgstr "Buscar equipo"
-
 #~ msgid "Data Início"
 #~ msgstr "Fecha Inicio"
 
@@ -8934,9 +9308,6 @@ msgstr "Acción no válida."
 #~ msgid "Equipamento, série, patrimônio ou regional..."
 #~ msgstr "Equipo, serie, patrimonio o regional..."
 
-#~ msgid "Equipamentos encontrados"
-#~ msgstr "Equipos encontrados"
-
 #~ msgid "envio(s) à manutenção"
 #~ msgstr "envío(s) a la mantenimiento"
 
@@ -8985,9 +9356,6 @@ msgstr "Acción no válida."
 #~ msgid "Regional Solicitante"
 #~ msgstr "Regional solicitante"
 
-#~ msgid "Selecione a regional"
-#~ msgstr "Seleccione la regional"
-
 #~ msgid "Tipo de Equipamento"
 #~ msgstr "Equipo"
 
@@ -8999,12 +9367,6 @@ msgstr "Acción no válida."
 
 #~ msgid "Protocolo, regional, usuário ou equipamento..."
 #~ msgstr "Protocolo, regional, usuario o equipo..."
-
-#~ msgid "Custo atual"
-#~ msgstr "Costo actual"
-
-#~ msgid "Referência"
-#~ msgstr "Referencia"
 
 #~ msgid "Aprovar"
 #~ msgstr "Aprobado"
@@ -9033,10 +9395,6 @@ msgstr "Acción no válida."
 
 #~ msgid "SLA"
 #~ msgstr "SLA"
-
-#~| msgid "Solução"
-#~ msgid "Resolução"
-#~ msgstr "Solução"
 
 #~ msgid "Registre um problema relacionado ao inventario em andamento."
 #~ msgstr "Registre un problema relacionado con el inventario en curso."

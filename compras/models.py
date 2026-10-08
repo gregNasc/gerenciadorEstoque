@@ -113,6 +113,7 @@ class CapacidadeCatalogoProdutoEmpresa(models.Model):
 
     CONECTIVIDADE_MOVEL = 'CONECTIVIDADE_MOVEL'
     ATIVO_LINHA_MOVEL = 'ATIVO_LINHA_MOVEL'
+    CUSTODIA_PESSOAL = 'CUSTODIA_PESSOAL'
 
     catalogo = models.ForeignKey(
         CatalogoProdutoEmpresa,

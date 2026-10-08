@@ -1,4 +1,5 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
 
@@ -132,9 +133,9 @@
 
                             <tr>
                                 <th width="60" class="ps-4"></th>
-                                <th>Produto</th>
-                                <th>Número Série</th>
-                                <th>Patrimônio</th>
+                                <th>{% trans "Produto" %}</th>
+                                <th>{% trans "Número de série" %}</th>
+                                <th>{% trans "Patrimônio" %}</th>
                             </tr>
 
                         </thead>
@@ -262,7 +263,7 @@
                 <!-- AÇÕES -->
                 <div class="row justify-content-end mt-4">
                     <div class="col-lg-5">
-                        <label class="form-label fw-semibold">Código de rastreio dos Correios</label>
+                        <label class="form-label fw-semibold">{% trans "Código de rastreio dos Correios" %}</label>
                         <input type="text" name="codigo_rastreio" class="form-control" placeholder="AA123456789BR">
                     </div>
                 </div>

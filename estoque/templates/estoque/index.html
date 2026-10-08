@@ -285,6 +285,17 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const textos = {
+        carregando: "{% trans 'Carregando...'|escapejs %}",
+        erroCarregar: "{% trans 'Erro ao carregar dados.'|escapejs %}",
+        fechar: "{% trans 'Fechar'|escapejs %}",
+        nenhumEquipamentoRegional: "{% trans 'Nenhum equipamento encontrado nesta regional.'|escapejs %}",
+        regional: "{% trans 'Regional'|escapejs %}",
+        total: "{% trans 'Total'|escapejs %}",
+        disponibilidade: "{% trans 'Disponibilidade'|escapejs %}",
+        ativos: "{% trans 'Ativos'|escapejs %}",
+        sick: "{% trans 'Sick'|escapejs %}"
+    };
     const DOM = {
         modal: document.getElementById('modal'),
         modalBody: document.getElementById('modal-body'),
@@ -307,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="text-center py-5">
                 <div class="app-loading" role="status">
                     <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                    <span>Carregando...</span>
+                    <span>${textos.carregando}</span>
                 </div>
             </div>
         `;
@@ -315,8 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showError = () => {
         DOM.modalBody.innerHTML = `
-            <div class="alert alert-secondary">Erro ao carregar dados.</div>
-            <button class="btn btn-secondary btn-sm mt-2" id="btnFecharModal">Fechar</button>
+            <div class="alert alert-secondary">${textos.erroCarregar}</div>
+            <button class="btn btn-secondary btn-sm mt-2" id="btnFecharModal">${textos.fechar}</button>
         `;
         document.getElementById('btnFecharModal')?.addEventListener('click', closeModal);
     };
@@ -324,8 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderDetalhes = (data) => {
         if (!data.categorias?.length) {
             DOM.modalBody.innerHTML = `
-                <div class="app-empty-state">Nenhum equipamento encontrado nesta regional.</div>
-                <button class="btn btn-secondary btn-sm mt-2" id="btnFecharModal">Fechar</button>
+                <div class="app-empty-state">${textos.nenhumEquipamentoRegional}</div>
+                <button class="btn btn-secondary btn-sm mt-2" id="btnFecharModal">${textos.fechar}</button>
             `;
             document.getElementById('btnFecharModal')?.addEventListener('click', closeModal);
             return;
@@ -334,9 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = `
             <div class="mb-4 p-3 bg-light rounded">
                 <div class="row small g-2">
-                    <div class="col-md-4"><span class="text-secondary">Regional:</span> <strong>${currentRegionalNome}</strong></div>
-                    <div class="col-md-4"><span class="text-secondary">Total:</span> <strong>${data.total_regional}</strong></div>
-                    <div class="col-md-4"><span class="text-secondary">Disponibilidade:</span> <strong>${data.disponibilidade_regional}%</strong></div>
+                    <div class="col-md-4"><span class="text-secondary">${textos.regional}:</span> <strong>${currentRegionalNome}</strong></div>
+                    <div class="col-md-4"><span class="text-secondary">${textos.total}:</span> <strong>${data.total_regional}</strong></div>
+                    <div class="col-md-4"><span class="text-secondary">${textos.disponibilidade}:</span> <strong>${data.disponibilidade_regional}%</strong></div>
                 </div>
             </div>
             <div class="produtos-grid">
@@ -359,20 +370,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="produto-stats">
                             <div class="stat">
-                                <span class="stat-label">Total</span>
+                                <span class="stat-label">${textos.total}</span>
                                 <span class="stat-value">${produto.total}</span>
                             </div>
                             <div class="stat">
-                                <span class="stat-label text-success">Ativos</span>
+                                <span class="stat-label text-success">${textos.ativos}</span>
                                 <span class="stat-value text-success">${produto.ativos}</span>
                             </div>
                             <div class="stat">
-                                <span class="stat-label text-danger">Sick</span>
+                                <span class="stat-label text-danger">${textos.sick}</span>
                                 <span class="stat-value text-danger">${produto.sick}</span>
                             </div>
                         </div>
                         <div class="produto-progress">
-                            <div class="progress-label">Disponibilidade: ${percentAtivo}%</div>
+                            <div class="progress-label">${textos.disponibilidade}: ${percentAtivo}%</div>
                             <div class="progress-bar-bg">
                                 <div class="progress-fill ${progressClass}" style="width: ${percentAtivo}%;"></div>
                             </div>
@@ -382,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        html += `</div><button class="btn btn-secondary btn-sm mt-4" id="btnFecharModal">Fechar</button>`;
+        html += `</div><button class="btn btn-secondary btn-sm mt-4" id="btnFecharModal">${textos.fechar}</button>`;
 
         DOM.modalBody.innerHTML = html;
         document.getElementById('btnFecharModal')?.addEventListener('click', closeModal);

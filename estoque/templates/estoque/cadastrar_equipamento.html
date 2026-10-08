@@ -1,6 +1,6 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
-{% block title %}Cadastrar {{ tenant_labels.equipamento.singular }}{% endblock %}
+{% block title %}{% blocktrans with equipamento=tenant_labels.equipamento.singular %}Cadastrar {{ equipamento }}{% endblocktrans %}{% endblock %}
 
 {% block content %}
 {% if request.user.is_authenticated %}
@@ -16,9 +16,9 @@
             <div class="d-flex align-items-center gap-3">
                 <span class="fs-2"><i class="bi bi-box-seam"></i></span>
                 <div>
-                    <h1 class="h4 fw-bold mb-1">Novo(a) {{ tenant_labels.equipamento.singular }}</h1>
+                    <h1 class="h4 fw-bold mb-1">{% blocktrans with equipamento=tenant_labels.equipamento.singular %}Novo(a) {{ equipamento }}{% endblocktrans %}</h1>
                     <p class="mb-0 text-white-50">
-                        {% if pode_acessar_linhas_moveis %}Cadastre o ativo e, quando aplicável, associe uma linha móvel disponível.{% else %}Cadastre o ativo conforme o catálogo e a Base selecionada.{% endif %}
+                        {% if pode_acessar_linhas_moveis %}{% trans "Cadastre o ativo e, quando aplicável, associe uma linha móvel disponível." %}{% else %}{% trans "Cadastre o ativo conforme o catálogo e a Base selecionada." %}{% endif %}
                     </p>
                 </div>
             </div>
@@ -27,17 +27,17 @@
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="border border-primary rounded-3 p-3 h-100 bg-primary-subtle">
-                        <span class="badge text-bg-primary mb-2">Cadastro atual</span>
-                        <h2 class="h6 fw-bold mb-1"><i class="bi bi-pc-display me-2"></i>Equipamento</h2>
-                        <p class="small text-secondary mb-0">Usa número de série, patrimônio, finalidade e foto.</p>
+                        <span class="badge text-bg-primary mb-2">{% trans "Cadastro atual" %}</span>
+                        <h2 class="h6 fw-bold mb-1"><i class="bi bi-pc-display me-2"></i>{% trans "Equipamento" %}</h2>
+                        <p class="small text-secondary mb-0">{% trans "Usa número de série, patrimônio, finalidade e foto." %}</p>
                     </div>
                 </div>
                 {% if pode_acessar_linhas_moveis %}
                 <div class="col-md-6">
                     <div class="border rounded-3 p-3 h-100">
-                        <h2 class="h6 fw-bold mb-1"><i class="bi bi-sim me-2"></i>Chip / linha móvel</h2>
-                        <p class="small text-secondary mb-3">Usa telefone, operadora, ICCID e Base — sem patrimônio ou número de série.</p>
-                        <a class="btn btn-outline-primary btn-sm" href="{% url 'estoque:criar_linha_movel' %}">Ir para cadastro de chip</a>
+                        <h2 class="h6 fw-bold mb-1"><i class="bi bi-sim me-2"></i>{% trans "Chip / linha móvel" %}</h2>
+                        <p class="small text-secondary mb-3">{% trans "Usa telefone, operadora, ICCID e Base — sem patrimônio ou número de série." %}</p>
+                        <a class="btn btn-outline-primary btn-sm" href="{% url 'estoque:criar_linha_movel' %}">{% trans "Ir para cadastro de chip" %}</a>
                     </div>
                 </div>
                 {% endif %}
@@ -45,7 +45,7 @@
             {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
             {% if base_selecionada %}
             <div class="alert alert-info border-0 rounded-3">
-                <strong>{{ tenant_labels.base.singular }} do contexto:</strong>
+                <strong>{% blocktrans with base=tenant_labels.base.singular %}{{ base }} do contexto:{% endblocktrans %}</strong>
                 {{ base_selecionada.nome }} — {{ base_selecionada.empresa.nome }}
             </div>
             {% endif %}
@@ -53,14 +53,14 @@
                 {% csrf_token %}
                 <div class="equipment-create-step ps-3 mb-4">
                     <span class="badge text-bg-primary mb-2">1</span>
-                    <h2 class="h6 fw-bold mb-1">Identificação do ativo</h2>
-                    <p class="small text-secondary mb-0">Selecione categoria e produto configurados para a empresa.</p>
+                    <h2 class="h6 fw-bold mb-1">{% trans "Identificação do ativo" %}</h2>
+                    <p class="small text-secondary mb-0">{% trans "Selecione categoria e produto configurados para a empresa." %}</p>
                 </div>
                 <div class="row g-3">
                     <div class="col-12 mb-2">
                         <label class="form-label fw-bold">{{ form.regional.label }}</label>
                         {{ form.regional }}
-                        <div class="form-text">A Base define a empresa e quais itens podem ser cadastrados.</div>
+                        <div class="form-text">{% trans "A Base define a empresa e quais itens podem ser cadastrados." %}</div>
                         {% if form.regional.errors %}<div class="text-danger small">{{ form.regional.errors }}</div>{% endif %}
                     </div>
                     <!-- CATEGORIA -->
@@ -86,11 +86,11 @@
                         <div class="mobile-asset-field">
                             <div class="d-flex gap-3 align-items-start mb-3">
                                 <i class="bi bi-sim fs-3 text-primary"></i>
-                                <div><h2 class="h6 fw-bold mb-1">Conectividade móvel opcional</h2><p class="small text-secondary mb-0">O chip continua sendo um ativo independente mesmo sem vínculo.</p></div>
+                                <div><h2 class="h6 fw-bold mb-1">{% trans "Conectividade móvel opcional" %}</h2><p class="small text-secondary mb-0">{% trans "O chip continua sendo um ativo independente mesmo sem vínculo." %}</p></div>
                             </div>
                             <label class="form-label fw-bold">{{ form.linha_movel.label }}</label>
                             {{ form.linha_movel }}
-                            <div class="form-text">Somente linhas disponíveis na mesma empresa e Base.</div>
+                            <div class="form-text">{% trans "Somente linhas disponíveis na mesma empresa e Base." %}</div>
                             {% if form.linha_movel.errors %}<div class="text-danger small">{{ form.linha_movel.errors }}</div>{% endif %}
                         </div>
                     </div>
@@ -111,7 +111,7 @@
 
                     <!-- FOTO + PREVIEW -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Foto</label>
+                        <label class="form-label fw-bold">{% trans "Foto" %}</label>
                         <input type="file" name="foto" id="id_foto" accept="image/*" capture="environment" class="form-control">
                         <img id="previewImagem" src="#" alt="Preview" class="img-fluid mt-2 d-none" style="max-height: 200px; border-radius: 8px;">
                         {% if form.foto.errors %}
@@ -136,7 +136,7 @@
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title">{% trans "🔍 Confirme os dados" %}</h5>
-                <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="Fechar"></button>
+                <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="{% trans 'Fechar' %}"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
@@ -147,9 +147,9 @@
                     <div class="col-md-6 mb-2"><strong>{{ tenant_labels.regional.singular }}:</strong> <span id="modalRegional"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Finalidade:" %}</strong> <span id="modalFinalidade"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Responsável:" %}</strong> <span id="modalResponsavel"></span></div>
-                    {% if pode_acessar_linhas_moveis %}<div class="col-md-6 mb-2" id="modalLinhaMovelGrupo"><strong>Linha móvel:</strong> <span id="modalLinhaMovel"></span></div>{% endif %}
+                    {% if pode_acessar_linhas_moveis %}<div class="col-md-6 mb-2" id="modalLinhaMovelGrupo"><strong>{% trans "Linha móvel:" %}</strong> <span id="modalLinhaMovel"></span></div>{% endif %}
                     <div class="col-12 mb-2">
-                        <strong>Foto:</strong>
+                        <strong>{% trans "Foto:" %}</strong>
                         <div id="modalFotoPreview" class="mt-1"></div>
                         <span id="modalFotoNome" class="text-muted small"></span>
                     </div>
@@ -165,6 +165,17 @@
 
 <script>
 (function() {
+    const textos = {
+        semLinhaMovel: "{% trans 'Sem linha móvel' %}",
+        selecioneBase: "{% trans 'Selecione a Base primeiro' %}",
+        carregando: "{% trans 'Carregando...' %}",
+        selecione: "{% trans 'Selecione' %}",
+        erroCarregar: "{% trans 'Erro ao carregar' %}",
+        selecioneCategoria: "{% trans 'Selecione a categoria' %}",
+        naoSelecionada: "{% trans '(não selecionada)' %}",
+        naoSelecionado: "{% trans '(não selecionado)' %}",
+        naoInformado: "{% trans '(não informado)' %}"
+    };
     try {
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM carregado - iniciando scripts');
@@ -183,7 +194,7 @@
                 function ocultarLinhasMoveis() {
                     campoLinhaMovel?.classList.add('d-none');
                     if (linhaMovelSelect) {
-                        linhaMovelSelect.innerHTML = '<option value="">Sem linha móvel</option>';
+                        linhaMovelSelect.innerHTML = `<option value="">${textos.semLinhaMovel}</option>`;
                     }
                 }
 
@@ -204,7 +215,7 @@
                             ocultarLinhasMoveis();
                             return;
                         }
-                        linhaMovelSelect.innerHTML = '<option value="">Sem linha móvel</option>';
+                        linhaMovelSelect.innerHTML = `<option value="">${textos.semLinhaMovel}</option>`;
                         data.linhas.forEach(linha => {
                             const opt = document.createElement('option');
                             opt.value = linha.id;
@@ -222,18 +233,18 @@
                 async function carregarProdutos(categoria, selectedId = null, selectedLineId = null) {
                     const base = regionalSelect?.value || '';
                     if (!base) {
-                        produtoSelect.innerHTML = '<option value="">Selecione a Base primeiro</option>';
+                        produtoSelect.innerHTML = `<option value="">${textos.selecioneBase}</option>`;
                         ocultarLinhasMoveis();
                         return;
                     }
-                    produtoSelect.innerHTML = '<option>Carregando...</option>';
+                    produtoSelect.innerHTML = `<option>${textos.carregando}</option>`;
                     try {
                         const resp = await fetch(
                             `${urlProdutos}?categoria=${encodeURIComponent(categoria)}&base=${encodeURIComponent(base)}`
                         );
                         if (!resp.ok) throw new Error();
                         const data = await resp.json();
-                        produtoSelect.innerHTML = '<option value="">Selecione</option>';
+                        produtoSelect.innerHTML = `<option value="">${textos.selecione}</option>`;
                         data.produtos.forEach(p => {
                             const opt = document.createElement('option');
                             opt.value = p.id;
@@ -244,7 +255,7 @@
                         await atualizarLinhasMoveis(selectedLineId);
                     } catch(e) {
                         console.warn("Erro ao carregar produtos:", e);
-                        produtoSelect.innerHTML = '<option>Erro ao carregar</option>';
+                        produtoSelect.innerHTML = `<option>${textos.erroCarregar}</option>`;
                     }
                 }
 
@@ -263,7 +274,7 @@
                     if (cat) {
                         carregarProdutos(cat);
                     } else {
-                        produtoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
+                        produtoSelect.innerHTML = `<option value="">${textos.selecioneCategoria}</option>`;
                     }
                 });
                 regionalSelect?.addEventListener('change', function() {
@@ -328,33 +339,33 @@
                 // Categoria
                 const catSelect = document.querySelector('[name="categoria"]');
                 const catText = catSelect?.options[catSelect.selectedIndex]?.text || '';
-                document.getElementById('modalCategoria').innerText = catText || '(não selecionada)';
+                document.getElementById('modalCategoria').innerText = catText || textos.naoSelecionada;
 
                 // Produto
                 const prodSelect = document.querySelector('[name="produto"]');
                 const prodText = prodSelect?.options[prodSelect.selectedIndex]?.text || '';
-                document.getElementById('modalProduto').innerText = prodText || '(não selecionado)';
+                document.getElementById('modalProduto').innerText = prodText || textos.naoSelecionado;
 
                 // Nº Série
                 const serie = document.querySelector('[name="numero_serie"]');
-                document.getElementById('modalNumeroSerie').innerText = serie?.value.trim() || '(não informado)';
+                document.getElementById('modalNumeroSerie').innerText = serie?.value.trim() || textos.naoInformado;
 
                 // Patrimônio
                 const patrimonio = document.querySelector('[name="patrimonio"]');
-                document.getElementById('modalPatrimonio').innerText = patrimonio?.value.trim() || '(não informado)';
+                document.getElementById('modalPatrimonio').innerText = patrimonio?.value.trim() || textos.naoInformado;
 
                 // Regional
                 const regSelect = document.querySelector('[name="regional"]');
                 const regText = regSelect?.options[regSelect.selectedIndex]?.text || '';
-                document.getElementById('modalRegional').innerText = regText || '(não selecionada)';
+                document.getElementById('modalRegional').innerText = regText || textos.naoSelecionada;
 
                 const finalidadeSelect = document.querySelector('[name="finalidade"]');
                 const finalidadeText = finalidadeSelect?.options[finalidadeSelect.selectedIndex]?.text || '';
-                document.getElementById('modalFinalidade').innerText = finalidadeText || '(não selecionada)';
+                document.getElementById('modalFinalidade').innerText = finalidadeText || textos.naoSelecionada;
 
                 // Responsável
                 const resp = document.querySelector('[name="responsavel"]');
-                document.getElementById('modalResponsavel').innerText = resp?.value.trim() || '(não informado)';
+                document.getElementById('modalResponsavel').innerText = resp?.value.trim() || textos.naoInformado;
 
                 const linhaSelect = document.querySelector('[name="linha_movel"]');
                 const linhaText = linhaSelect?.options[linhaSelect.selectedIndex]?.text || '';
@@ -367,7 +378,7 @@
                 }
                 const modalLinhaMovel = document.getElementById('modalLinhaMovel');
                 if (modalLinhaMovel) {
-                    modalLinhaMovel.innerText = linhaText || 'Sem linha móvel';
+                    modalLinhaMovel.innerText = linhaText || textos.semLinhaMovel;
                 }
 
                 // Foto

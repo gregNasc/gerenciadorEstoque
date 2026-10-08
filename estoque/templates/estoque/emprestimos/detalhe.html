@@ -50,7 +50,7 @@
         <div class="card-body d-flex flex-wrap gap-4">
             {% if emprestimo.codigo_rastreio_envio %}
             <div>
-                <small class="text-muted d-block">Rastreio do envio</small>
+                <small class="text-muted d-block">{% trans "Rastreio do envio" %}</small>
                 <a href="{{ emprestimo.url_rastreio_envio }}" target="_blank" rel="noopener noreferrer" class="fw-semibold">
                     {{ emprestimo.codigo_rastreio_envio }} <i class="bi bi-box-arrow-up-right"></i>
                 </a>
@@ -58,7 +58,7 @@
             {% endif %}
             {% if emprestimo.codigo_rastreio_devolucao %}
             <div>
-                <small class="text-muted d-block">Rastreio da devolução</small>
+                <small class="text-muted d-block">{% trans "Rastreio da devolução" %}</small>
                 <a href="{{ emprestimo.url_rastreio_devolucao }}" target="_blank" rel="noopener noreferrer" class="fw-semibold">
                     {{ emprestimo.codigo_rastreio_devolucao }} <i class="bi bi-box-arrow-up-right"></i>
                 </a>
@@ -297,15 +297,15 @@
 
                     <tr>
 
-                        <th>Produto</th>
+                        <th>{% trans "Produto" %}</th>
 
-                        <th>Série</th>
+                        <th>{% trans "Série" %}</th>
 
-                        <th>Patrimônio</th>
+                        <th>{% trans "Patrimônio" %}</th>
 
-                        <th>Status</th>
+                        <th>{% trans "Status" %}</th>
 
-                        <th>Observação</th>
+                        <th>{% trans "Observação" %}</th>
 
                     </tr>
 

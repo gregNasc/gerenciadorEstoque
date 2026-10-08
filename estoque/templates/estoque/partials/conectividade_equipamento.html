@@ -1,13 +1,14 @@
+{% load i18n %}
 {% if pode_visualizar_linhas_moveis and permitir_edicao or pode_visualizar_linhas_moveis and vinculo_linha_atual or pode_visualizar_linhas_moveis and produto_conectividade_movel or pode_visualizar_linhas_moveis and historico_vinculos_linha %}
 <section class="card border-0 shadow-sm mb-4" aria-labelledby="titulo-conectividade-{{ equipamento.pk }}">
   <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center gap-3">
     <h2 id="titulo-conectividade-{{ equipamento.pk }}" class="h6 fw-bold mb-0">
-      <i class="bi bi-sim text-primary me-2"></i>Conectividade móvel
+      <i class="bi bi-sim text-primary me-2"></i>{% trans "Conectividade móvel" %}
     </h2>
     {% if vinculo_linha_atual %}
-      <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Em uso</span>
+      <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">{% trans "Em uso" %}</span>
     {% else %}
-      <span class="badge bg-light text-secondary border">Sem vínculo</span>
+      <span class="badge bg-light text-secondary border">{% trans "Sem vínculo" %}</span>
     {% endif %}
   </div>
   <div class="card-body">
@@ -15,28 +16,28 @@
       <div class="row g-3 mb-4">
         <div class="col-md-4">
           <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
-            <div class="small text-secondary">Telefone</div>
+            <div class="small text-secondary">{% trans "Telefone" %}</div>
             <div class="fw-bold">{{ vinculo_linha_atual.linha.numero_formatado }}</div>
           </div>
         </div>
         <div class="col-md-4">
           <div class="border rounded-3 p-3 h-100">
-            <div class="small text-secondary">Operadora</div>
+            <div class="small text-secondary">{% trans "Operadora" %}</div>
             <div class="fw-semibold">{{ vinculo_linha_atual.linha.operadora.nome }}</div>
           </div>
         </div>
         <div class="col-md-4">
           <div class="border rounded-3 p-3 h-100">
-            <div class="small text-secondary">Vinculada desde</div>
+            <div class="small text-secondary">{% trans "Vinculada desde" %}</div>
             <div class="fw-semibold">{{ vinculo_linha_atual.inicio_em|date:"d/m/Y H:i" }}</div>
           </div>
         </div>
       </div>
     {% else %}
       <div class="alert alert-light border mb-4">
-        <strong>Nenhum chip está vinculado.</strong>
-        O vínculo é feito abaixo, escolhendo uma linha disponível da mesma Base e confirmando sua senha.
-        Chips permanecem cadastrados como ativos independentes enquanto não forem vinculados.
+        <strong>{% trans "Nenhum chip está vinculado." %}</strong>
+        {% trans "O vínculo é feito abaixo, escolhendo uma linha disponível da mesma Base e confirmando sua senha." %}
+        {% trans "Chips permanecem cadastrados como ativos independentes enquanto não forem vinculados." %}
       </div>
     {% endif %}
 
@@ -46,9 +47,9 @@
         {% csrf_token %}
         {% if produto_conectividade_movel %}
         <div class="col-md-6">
-          <label class="form-label fw-semibold">{% if vinculo_linha_atual %}Nova linha disponível{% else %}Linha disponível{% endif %}</label>
+          <label class="form-label fw-semibold">{% if vinculo_linha_atual %}{% trans "Nova linha disponível" %}{% else %}{% trans "Linha disponível" %}{% endif %}</label>
           <select name="linha_movel" class="form-select">
-            <option value="">Selecione</option>
+            <option value="">{% trans "Selecione" %}</option>
             {% for linha in linhas_moveis_disponiveis %}
               <option value="{{ linha.pk }}">{{ linha.numero_formatado }} — {{ linha.operadora.nome }}</option>
             {% endfor %}
@@ -57,47 +58,47 @@
         {% endif %}
         {% if vinculo_linha_atual %}
         <div class="col-md-6">
-          <label class="form-label fw-semibold">Motivo da troca ou desvinculação</label>
+          <label class="form-label fw-semibold">{% trans "Motivo da troca ou desvinculação" %}</label>
           <input name="motivo_linha_movel" class="form-control" maxlength="255">
         </div>
         {% endif %}
         <div class="col-md-6">
-          <label class="form-label fw-semibold">Confirme sua senha</label>
+          <label class="form-label fw-semibold">{% trans "Confirme sua senha" %}</label>
           <input type="password" name="senha_confirmacao" required class="form-control" autocomplete="current-password">
         </div>
         <div class="col-12 d-flex justify-content-end gap-2">
           {% if vinculo_linha_atual %}
-            {% if produto_conectividade_movel %}<button name="acao_linha_movel" value="trocar" class="btn btn-primary">Trocar linha</button>{% endif %}
-            <button name="acao_linha_movel" value="desvincular" class="btn btn-outline-danger">Desvincular</button>
+            {% if produto_conectividade_movel %}<button name="acao_linha_movel" value="trocar" class="btn btn-primary">{% trans "Trocar linha" %}</button>{% endif %}
+            <button name="acao_linha_movel" value="desvincular" class="btn btn-outline-danger">{% trans "Desvincular" %}</button>
           {% else %}
-            <button name="acao_linha_movel" value="vincular" class="btn btn-primary">Vincular linha</button>
+            <button name="acao_linha_movel" value="vincular" class="btn btn-primary">{% trans "Vincular linha" %}</button>
           {% endif %}
         </div>
       </form>
       {% else %}
         <div class="alert alert-warning border-warning-subtle mb-4">
-          <div class="fw-semibold mb-1">Não há chips disponíveis nesta Base.</div>
-          <div class="small mb-3">Cadastre uma linha na mesma empresa e Base; depois retorne a esta tela para vinculá-la.</div>
+          <div class="fw-semibold mb-1">{% trans "Não há chips disponíveis nesta Base." %}</div>
+          <div class="small mb-3">{% trans "Cadastre uma linha na mesma empresa e Base; depois retorne a esta tela para vinculá-la." %}</div>
           {% if pode_gerenciar_linhas_moveis %}
             <a class="btn btn-sm btn-primary" href="{% url 'estoque:criar_linha_movel' %}">
-              <i class="bi bi-plus-circle me-1"></i>Cadastrar chip / linha
+              <i class="bi bi-plus-circle me-1"></i>{% trans "Cadastrar chip / linha" %}
             </a>
           {% endif %}
         </div>
       {% endif %}
     {% elif permitir_edicao and not produto_conectividade_movel %}
       <div class="alert alert-warning border-warning-subtle mb-4">
-        Este produto não está habilitado para conectividade móvel no catálogo da empresa.
-        Um Administrador deve ativar a capacidade de conectividade antes de vincular um chip.
+        {% trans "Este produto não está habilitado para conectividade móvel no catálogo da empresa." %}
+        {% trans "Um Administrador deve ativar a capacidade de conectividade antes de vincular um chip." %}
       </div>
     {% elif permitir_edicao and vinculo_linha_atual %}
-      <p class="text-muted small">Você pode consultar a linha, mas não possui permissão para alterar o vínculo.</p>
+      <p class="text-muted small">{% trans "Você pode consultar a linha, mas não possui permissão para alterar o vínculo." %}</p>
     {% elif permitir_edicao %}
-      <p class="text-muted small">Você não possui permissão para vincular ou desvincular linhas móveis.</p>
+      <p class="text-muted small">{% trans "Você não possui permissão para vincular ou desvincular linhas móveis." %}</p>
     {% endif %}
 
     {% if historico_vinculos_linha %}
-      <h3 class="h6 fw-bold mt-2">Linha do tempo</h3>
+      <h3 class="h6 fw-bold mt-2">{% trans "Linha do tempo" %}</h3>
       <div class="list-group list-group-flush border rounded-3">
         {% for vinculo in historico_vinculos_linha %}
         <div class="list-group-item py-3">
@@ -106,12 +107,12 @@
               <strong>{{ vinculo.linha.numero_formatado }}</strong>
               <span class="text-secondary">— {{ vinculo.linha.operadora.nome }}</span>
             </div>
-            {% if vinculo.fim_em %}<span class="badge bg-secondary-subtle text-secondary-emphasis">Encerrado</span>{% else %}<span class="badge bg-success-subtle text-success-emphasis">Atual</span>{% endif %}
+            {% if vinculo.fim_em %}<span class="badge bg-secondary-subtle text-secondary-emphasis">{% trans "Encerrado" %}</span>{% else %}<span class="badge bg-success-subtle text-success-emphasis">{% trans "Atual" %}</span>{% endif %}
           </div>
           <div class="small text-secondary mt-1">
-            Início: {{ vinculo.inicio_em|date:"d/m/Y H:i" }}
-            {% if vinculo.fim_em %} · Fim: {{ vinculo.fim_em|date:"d/m/Y H:i" }}{% endif %}
-            {% if vinculo.motivo_fim %} · Motivo: {{ vinculo.motivo_fim }}{% endif %}
+            {% trans "Início:" %} {{ vinculo.inicio_em|date:"d/m/Y H:i" }}
+            {% if vinculo.fim_em %} · {% trans "Fim:" %} {{ vinculo.fim_em|date:"d/m/Y H:i" }}{% endif %}
+            {% if vinculo.motivo_fim %} · {% trans "Motivo:" %} {{ vinculo.motivo_fim }}{% endif %}
           </div>
         </div>
         {% endfor %}
