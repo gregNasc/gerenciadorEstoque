@@ -115,7 +115,7 @@ class SickService:
         )
         if not ids_ocultos:
             return queryset
-        return queryset.exclude(detalhes__sick_id__in=ids_ocultos)
+        return queryset.exclude(Q(detalhes__has_key="sick_id") & Q(detalhes__sick_id__in=ids_ocultos))
 
     @classmethod
     def _validar_acesso_base(cls, usuario, equipamento):

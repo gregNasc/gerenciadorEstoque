@@ -700,6 +700,134 @@ class VinculoBaseLocalFisico(models.Model):
         return f'{self.base} → {self.local_fisico}'
 
 
+class Custodia(models.Model):
+    class Status(models.TextChoices):
+        RASCUNHO = 'RASCUNHO', 'Rascunho'
+        ATIVA = 'ATIVA', 'Ativa'
+        EM_DEVOLUCAO = 'EM_DEVOLUCAO', 'Em devolução'
+        FINALIZADA = 'FINALIZADA', 'Finalizada'
+        CANCELADA = 'CANCELADA', 'Cancelada'
+
+    class CondicaoGeral(models.TextChoices):
+        NAO_INFORMADA = 'NAO_INFORMADA', 'Não informada'
+        NOVO = 'NOVO', 'Novo'
+        BOM = 'BOM', 'Bom'
+        REGULAR = 'REGULAR', 'Regular'
+        AVARIADO = 'AVARIADO', 'Avariado'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT,
+        related_name='custodias',
+    )
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.PROTECT,
+        related_name='custodias',
+    )
+    base = models.ForeignKey(
+        Base,
+        on_delete=models.PROTECT,
+        related_name='custodias',
+    )
+    local_fisico = models.ForeignKey(
+        LocalFisico,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='custodias',
+    )
+    data_entrega = models.DateField(default=timezone.localdate, db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.RASCUNHO,
+        db_index=True,
+    )
+    condicao_geral = models.CharField(
+        'Condição geral na entrega',
+        max_length=20,
+        choices=CondicaoGeral.choices,
+        default=CondicaoGeral.NAO_INFORMADA,
+    )
+    observacao = models.TextField(blank=True)
+    registrado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='custodias_registradas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Custódia'
+        verbose_name_plural = 'Custódias'
+        ordering = ('-data_entrega', '-id')
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(
+                    status__in=(
+                        'RASCUNHO', 'ATIVA', 'EM_DEVOLUCAO', 'FINALIZADA',
+                        'CANCELADA',
+                    ),
+                ),
+                name='custodia_status_valido',
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    condicao_geral__in=(
+                        'NAO_INFORMADA', 'NOVO', 'BOM', 'REGULAR', 'AVARIADO',
+                    ),
+                ),
+                name='custodia_condicao_geral_valida',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'status', 'data_entrega'),
+                name='custodia_empresa_status_idx',
+            ),
+            models.Index(
+                fields=('colaborador', 'status'),
+                name='custodia_colab_status_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.colaborador_id and self.empresa_id:
+            if self.colaborador.empresa_id != self.empresa_id:
+                errors['colaborador'] = (
+                    'O colaborador deve pertencer à mesma empresa da Custódia.'
+                )
+            elif not self.colaborador.ativo:
+                errors['colaborador'] = 'O colaborador deve estar ativo.'
+        if self.base_id and self.empresa_id and self.base.empresa_id != self.empresa_id:
+            errors['base'] = 'A Base deve pertencer à mesma empresa da Custódia.'
+        if self.local_fisico_id and self.base_id:
+            vinculado = VinculoBaseLocalFisico.objects.filter(
+                local_fisico_id=self.local_fisico_id,
+                base_id=self.base_id,
+            ).exists()
+            if not vinculado:
+                errors['local_fisico'] = (
+                    'O Local Físico deve estar explicitamente vinculado à Base.'
+                )
+        if self.registrado_por_id and not self.registrado_por.is_active:
+            errors['registrado_por'] = 'O responsável pelo registro deve estar ativo.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.observacao = (self.observacao or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Custódia #{self.pk or "nova"} — {self.colaborador}'
+
+
 class EnderecoPostalBase(models.Model):
     base = models.OneToOneField(
         Base,
