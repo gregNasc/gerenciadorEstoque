@@ -109,6 +109,48 @@ class UIConsolidationTests(TestCase):
         self.assertContains(resposta, 'modal-dialog modal-xl')
         self.assertNotContains(resposta, 'form-select form-select-sm bg-white auto-submit')
 
+    def test_estoque_exibe_modelo_legado_com_categoria_em_caixa_diferente(self):
+        categoria = CategoriaEquipamentoEmpresa.objects.create(
+            empresa=self.empresa,
+            nome='Monitores',
+        )
+        produto = Produto.objects.create(
+            codigo='MONITOR-LEGADO',
+            descricao='Monitor legado',
+            fabricante='Fabricante',
+            modelo='Modelo',
+            categoria=categoria.nome,
+            empresa_catalogo_origem=self.empresa,
+        )
+        Produto.objects.filter(pk=produto.pk).update(categoria='Monitores')
+        CatalogoProdutoEmpresa.objects.create(
+            empresa=self.empresa,
+            produto=produto,
+            configurado_por=self.user,
+        )
+        Equipamento.objects.create(
+            produto=produto,
+            numero_serie='MONITOR-SERIE-1',
+            patrimonio='MONITOR-PAT-1',
+            regional=self.base,
+            codigo='MONITOR-EQP-1',
+        )
+
+        resposta = self.client.get(reverse('estoque:estoque'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'data-categoria-tab="monitores"')
+        self.assertContains(resposta, 'data-categoria="monitores"')
+        self.assertContains(resposta, 'MONITOR LEGADO')
+        self.assertEqual(
+            next(
+                item['total_modelos']
+                for item in resposta.context['categorias_estoque']
+                if item['nome'].casefold() == 'monitores'
+            ),
+            1,
+        )
+
     def test_lista_chamados_tem_labels_status_e_linha_acessivel(self):
         resposta = self.client.get(reverse('chamados:lista'), {'q': 'sem-resultado'})
         self.assertContains(resposta, 'for="chamados-q"')

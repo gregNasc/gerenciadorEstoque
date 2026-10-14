@@ -259,7 +259,7 @@
                         class="nav-link {% if forloop.first %}active{% endif %}"
                         type="button"
                         role="tab"
-                        data-categoria-tab="{{ categoria.nome }}"
+                        data-categoria-tab="{{ categoria.nome|lower }}"
                         aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
                     >
                         {% trans categoria.nome %}
@@ -300,7 +300,7 @@
                             data-id="{{ item.produto__id }}"
                             data-nome="{{ item.produto__descricao|lower }}"
                             data-titulo="{{ item.produto__descricao }}"
-                            data-categoria="{{ item.produto__categoria|default:'' }}"
+                            data-categoria="{{ item.produto__categoria|default:''|lower }}"
                             data-total="{{ item.total|default:0 }}"
                             data-ativos="{{ item.ativos|default:0 }}"
                             data-administrativos="{{ item.administrativos|default:0 }}"
