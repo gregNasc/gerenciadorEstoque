@@ -263,7 +263,7 @@ class Command(BaseCommand):
             for item in itens:
 
                 insumo = Insumo.objects.filter(
-                    descricao__iexact=item['descricao'], categoria=categoria,
+                    descricao=item['descricao'].upper(), categoria=categoria,
                 ).first()
                 created = insumo is None
                 if created:

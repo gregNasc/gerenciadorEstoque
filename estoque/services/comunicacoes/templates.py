@@ -47,6 +47,12 @@ REGISTRO_TEMPLATES = MappingProxyType({
         'emprestimo_recebido',
         'comunicado_urgente',
         'chamado_acao',
+        'custodia_criada',
+        'custodia_termo_gerado',
+        'custodia_termo_enviado',
+        'custodia_termo_assinado',
+        'custodia_termo_concluido',
+        'custodia_devolucao_registrada',
     )
 })
 

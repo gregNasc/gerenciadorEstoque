@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Gerenciador de Estoque 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-08 10:37-0300\n"
+"POT-Creation-Date: 2026-10-08 15:51-0300\n"
 "PO-Revision-Date: 2026-10-07 12:15-0300\n"
 "Last-Translator: Inventory T.I\n"
 "Language-Team: Spanish <es@li.org>\n"
@@ -78,7 +78,7 @@ msgstr "Orientaciones para la base"
 msgid "Justificativa ou providência adotada"
 msgstr "Justificación o providência adotada"
 
-#: .\auditorias\models.py:14 .\estoque\models.py:1431
+#: .\auditorias\models.py:14 .\estoque\models.py:1781
 msgid "Rascunho"
 msgstr "Borrador"
 
@@ -95,7 +95,7 @@ msgid "Encerrada"
 msgstr "Cerrada"
 
 #: .\auditorias\models.py:18 .\auditorias\models.py:219
-#: .\estoque\models.py:1303 .\estoque\models.py:1434 .\estoque\models.py:2280
+#: .\estoque\models.py:1653 .\estoque\models.py:1784 .\estoque\models.py:2630
 #: .\estoque\templates\estoque\transferencia\listar.html:146
 #: .\estoque\templates\estoque\transferencia\listar.html:349
 msgid "Cancelada"
@@ -226,11 +226,11 @@ msgstr "Identificador duplicado"
 msgid "Leitura duplicada"
 msgstr "Lectura duplicada"
 
-#: .\auditorias\models.py:171 .\estoque\models.py:1537
+#: .\auditorias\models.py:171 .\estoque\models.py:1887
 msgid "Em transferência"
 msgstr "En transferencia"
 
-#: .\auditorias\models.py:172 .\estoque\models.py:1071 .\estoque\models.py:1167
+#: .\auditorias\models.py:172 .\estoque\models.py:1421 .\estoque\models.py:1517
 msgid "Emprestado"
 msgstr "Emprestado"
 
@@ -866,7 +866,7 @@ msgstr "Categoría"
 msgid "Tipo de chamado"
 msgstr "Tipo de ticket"
 
-#: .\chamados\forms.py:171 .\estoque\models.py:2269
+#: .\chamados\forms.py:171 .\estoque\models.py:2619
 #: .\estoque\templates\estoque\historico.html:1009
 msgid "Sistema"
 msgstr "Sistema"
@@ -887,7 +887,7 @@ msgstr "Motivo"
 
 #: .\chamados\models.py:149
 #: .\compras\templates\compras\valores_equipamentos.html:308
-#: .\estoque\models.py:1046
+#: .\estoque\models.py:1396
 #: .\estoque\templates\estoque\comunicados\detalhe.html:52
 msgid "Operacional"
 msgstr "Operacional"
@@ -905,7 +905,7 @@ msgid "Inventario em andamento"
 msgstr "Inventario en curso"
 
 #: .\chamados\models.py:157 .\chamados\templates\chamados\form.html:1028
-#: .\estoque\models.py:1072
+#: .\estoque\models.py:1422
 msgid "Baixa"
 msgstr "Baja"
 
@@ -963,7 +963,7 @@ msgstr "Cerrado"
 msgid "Reaberto"
 msgstr "Reabierto"
 
-#: .\chamados\models.py:172 .\estoque\models.py:1173
+#: .\chamados\models.py:172 .\estoque\models.py:1523
 msgid "Cancelado"
 msgstr "Cancelado"
 
@@ -1756,7 +1756,7 @@ msgid "Operação impedida ou inventário em risco."
 msgstr "Operación bloqueada o inventario en riesgo."
 
 #: .\chamados\templates\chamados\form.html:1082
-#: .\estoque\forms_documentacao.py:97 .\estoque\models.py:2451
+#: .\estoque\forms_documentacao.py:97 .\estoque\models.py:2801
 #: .\estoque\templates\estoque\comunicados\criar.html:31
 msgid "Título"
 msgstr "Título"
@@ -1766,7 +1766,7 @@ msgid "Use uma frase curta que permita identificar rapidamente o problema."
 msgstr "Use una frase corta que permita identificar rápidamente el problema."
 
 #: .\chamados\templates\chamados\form.html:1109
-#: .\estoque\forms_documentacao.py:98 .\estoque\models.py:2465
+#: .\estoque\forms_documentacao.py:98 .\estoque\models.py:2815
 #: .\estoque\templates\estoque\declaracoes\formulario.html:36
 #: .\estoque\templates\estoque\detalhes_produto.html:32
 #: .\estoque\templates\estoque\estoque.html:283
@@ -1786,7 +1786,7 @@ msgstr "La información se registrará en el historial del ticket."
 #: .\chamados\templates\chamados\form.html:1149
 #: .\compras\templates\compras\produto_form.html:166
 #: .\estoque\templates\estoque\detalhes_produto.html:146
-#: .\estoque\templates\estoque\editar_equipamento.html:53
+#: .\estoque\templates\estoque\editar_equipamento.html:61
 #: .\estoque\templates\estoque\estoque.html:547
 #: .\estoque\templates\estoque\linhas_moveis\form.html:31
 #: .\estoque\templates\estoque\onboarding_empresa.html:52
@@ -2178,7 +2178,7 @@ msgid "Distribuicao do valor por finalidade e status"
 msgstr "Distribución del valor por finalidad y estado"
 
 #: .\compras\templates\compras\valores_equipamentos.html:309
-#: .\estoque\models.py:1047
+#: .\estoque\models.py:1397
 msgid "Administrativo"
 msgstr "Administrativo"
 
@@ -2268,8 +2268,8 @@ msgid "Custo da unidade"
 msgstr "Costo de la unidad"
 
 #: .\compras\templates\compras\valores_equipamentos.html:379
-#: .\compras\templates\compras\valores_insumos.html:64 .\estoque\models.py:1248
-#: .\estoque\models.py:1300 .\estoque\models.py:2274
+#: .\compras\templates\compras\valores_insumos.html:64 .\estoque\models.py:1598
+#: .\estoque\models.py:1650 .\estoque\models.py:2624
 #: .\estoque\templates\estoque\onboarding\_revisao.html:20
 #: .\estoque\templates\estoque\painel_superuser.html:240
 #: .\estoque\templates\estoque\solicitacoes\caixa.html:236
@@ -2721,7 +2721,7 @@ msgstr "CPF/CNPJ/Documento extranjero"
 msgid "Telefone"
 msgstr "Teléfono"
 
-#: .\estoque\forms.py:54 .\estoque\templates\estoque\editar_equipamento.html:47
+#: .\estoque\forms.py:54 .\estoque\templates\estoque\editar_equipamento.html:48
 #: .\estoque\templates\estoque\historico.html:815
 #: .\estoque\templates\estoque\linhas_moveis\lista.html:69
 #: .\estoque\templates\estoque\partials\historico_detalhes.html:224
@@ -2799,7 +2799,7 @@ msgstr "Sin línea móvil"
 msgid "Título do relatório"
 msgstr "Título del informe"
 
-#: .\estoque\forms_documentacao.py:51 .\estoque\models.py:2452
+#: .\estoque\forms_documentacao.py:51 .\estoque\models.py:2802
 #: .\estoque\templates\estoque\documentacao\index.html:30
 #: .\estoque\templates\estoque\documentacao\resolucao.html:30
 #: .\estoque\templates\estoque\drivers_impressoras.html:32
@@ -2807,7 +2807,7 @@ msgstr "Título del informe"
 msgid "Fabricante"
 msgstr "Fabricante"
 
-#: .\estoque\forms_documentacao.py:52 .\estoque\models.py:2453
+#: .\estoque\forms_documentacao.py:52 .\estoque\models.py:2803
 #: .\estoque\templates\estoque\onboarding\_catalogo.html:23
 msgid "Modelo"
 msgstr "Modelo"
@@ -2824,7 +2824,7 @@ msgstr "Resumen"
 msgid "Palavras-chave"
 msgstr "Palabras clave"
 
-#: .\estoque\forms_documentacao.py:57 .\estoque\models.py:2412
+#: .\estoque\forms_documentacao.py:57 .\estoque\models.py:2762
 msgid "Idioma do documento"
 msgstr "Idioma del documento"
 
@@ -2868,7 +2868,7 @@ msgstr "Fecha de publicación"
 msgid "Selecione um arquivo de driver para enviar."
 msgstr "Seleccione un archivo de driver para enviar."
 
-#: .\estoque\forms_documentacao.py:146 .\estoque\models.py:2475
+#: .\estoque\forms_documentacao.py:146 .\estoque\models.py:2825
 msgid "Envie um driver nos formatos EXE, MSI, ZIP, RAR, CAB ou INF."
 msgstr "Envíe un driver en formato EXE, MSI, ZIP, RAR, CAB o INF."
 
@@ -2876,50 +2876,50 @@ msgstr "Envíe un driver en formato EXE, MSI, ZIP, RAR, CAB o INF."
 msgid "O arquivo deve ter no máximo 500 MB."
 msgstr "El archivo debe tener un tamaño máximo de 500 MB."
 
-#: .\estoque\models.py:949 .\estoque\models.py:1035
+#: .\estoque\models.py:1299 .\estoque\models.py:1385
 msgid "Documento de compra"
 msgstr "Documento de compra"
 
-#: .\estoque\models.py:950 .\estoque\models.py:1036
+#: .\estoque\models.py:1300 .\estoque\models.py:1386
 msgid "Informado por Compras"
 msgstr "Informado por Compras"
 
-#: .\estoque\models.py:951 .\estoque\models.py:1037
+#: .\estoque\models.py:1301 .\estoque\models.py:1387
 msgid "Estimativa de mercado"
 msgstr "Estimativa de mercado"
 
-#: .\estoque\models.py:952
+#: .\estoque\models.py:1302
 msgid "Valor legado"
 msgstr "Valor heredado"
 
-#: .\estoque\models.py:953 .\estoque\models.py:1039
+#: .\estoque\models.py:1303 .\estoque\models.py:1389
 msgid "Sem preço validado"
 msgstr "Sin precio validado"
 
-#: .\estoque\models.py:1001
+#: .\estoque\models.py:1351
 msgid "Empresa que originou o item; vazio identifica um item técnico global."
 msgstr "Empresa que originó el elemento; vacío identifica un elemento técnico global."
 
-#: .\estoque\models.py:1038
+#: .\estoque\models.py:1388
 msgid "Legado sem documento"
 msgstr "Legado sin documento"
 
-#: .\estoque\models.py:1042
+#: .\estoque\models.py:1392
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:31
 #: .\estoque\templates\estoque\checklist.html:1293
 #: .\estoque\templates\estoque\comunicados\caixa.html:146
 msgid "Novo"
 msgstr "Nuevo"
 
-#: .\estoque\models.py:1043
+#: .\estoque\models.py:1393
 msgid "Usado"
 msgstr "Usado"
 
-#: .\estoque\models.py:1044
+#: .\estoque\models.py:1394
 msgid "Recondicionado"
 msgstr "Recondicionado"
 
-#: .\estoque\models.py:1065 .\estoque\models.py:1656
+#: .\estoque\models.py:1415 .\estoque\models.py:2006
 #: .\estoque\templates\estoque\painel_superuser.html:268 .\insumos\forms.py:103
 #: .\insumos\forms.py:141
 #: .\insumos\templates\insumos\custos\fornecedores_insumos.html:73
@@ -2927,30 +2927,30 @@ msgstr "Recondicionado"
 msgid "Ativo"
 msgstr "Activo"
 
-#: .\estoque\models.py:1066
+#: .\estoque\models.py:1416
 msgid "Reservado para Transferencia"
 msgstr "Reservado para transferencia"
 
-#: .\estoque\models.py:1067
+#: .\estoque\models.py:1417
 msgid "Em Transito"
 msgstr "En tránsito"
 
-#: .\estoque\models.py:1068
+#: .\estoque\models.py:1418
 msgid "Manutencao"
 msgstr "Mantenimiento"
 
-#: .\estoque\models.py:1069 .\estoque\templates\estoque\estoque.html:164
+#: .\estoque\models.py:1419 .\estoque\templates\estoque\estoque.html:164
 #: .\estoque\templates\estoque\estoque.html:287
 #: .\estoque\templates\estoque\index.html:235
 #: .\estoque\templates\estoque\index.html:297
 msgid "Sick"
 msgstr "SICK"
 
-#: .\estoque\models.py:1070
+#: .\estoque\models.py:1420
 msgid "Em Uso"
 msgstr "En uso"
 
-#: .\estoque\models.py:1073 .\estoque\models.py:1660
+#: .\estoque\models.py:1423 .\estoque\models.py:2010
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:370
 #: .\estoque\templates\estoque\painel_superuser.html:268
 #: .\insumos\templates\insumos\custos\fornecedores_insumos.html:73
@@ -2958,55 +2958,55 @@ msgstr "En uso"
 msgid "Inativo"
 msgstr "Inactivo"
 
-#: .\estoque\models.py:1166
+#: .\estoque\models.py:1516
 msgid "Aguardando recebimento"
 msgstr "Aguardando recepción"
 
-#: .\estoque\models.py:1170
+#: .\estoque\models.py:1520
 msgid "Aguardando confirmação da devolução"
 msgstr "Aguardando confirmação de la devolução"
 
-#: .\estoque\models.py:1172 .\estoque\models.py:1252 .\estoque\models.py:1674
+#: .\estoque\models.py:1522 .\estoque\models.py:1602 .\estoque\models.py:2024
 #: .\insumos\templates\insumos\lista_checklists.html:243
 #: .\insumos\templates\insumos\lista_checklists.html:422
 msgid "Finalizado"
 msgstr "Finalizado"
 
-#: .\estoque\models.py:1223
+#: .\estoque\models.py:1573
 msgid "Reservado"
 msgstr "Reservado"
 
-#: .\estoque\models.py:1224
+#: .\estoque\models.py:1574
 #: .\estoque\templates\estoque\transferencia\selecionados.html:103
 msgid "Enviado"
 msgstr "Enviado"
 
-#: .\estoque\models.py:1225
+#: .\estoque\models.py:1575
 #: .\estoque\templates\estoque\transferencia\selecionados.html:97
 msgid "Recebido"
 msgstr "Recibida"
 
-#: .\estoque\models.py:1226
+#: .\estoque\models.py:1576
 msgid "Devolvido"
 msgstr "Resuelto"
 
-#: .\estoque\models.py:1227
+#: .\estoque\models.py:1577
 msgid "Divergência"
 msgstr "Divergencia"
 
-#: .\estoque\models.py:1249
+#: .\estoque\models.py:1599
 msgid "Aprovado"
 msgstr "Aprobado"
 
-#: .\estoque\models.py:1250
+#: .\estoque\models.py:1600
 msgid "Rejeitado"
 msgstr "Rechazado"
 
-#: .\estoque\models.py:1251
+#: .\estoque\models.py:1601
 msgid "Em Transferência"
 msgstr "En Transferencia"
 
-#: .\estoque\models.py:1301 .\estoque\templates\estoque\estoque.html:177
+#: .\estoque\models.py:1651 .\estoque\templates\estoque\estoque.html:177
 #: .\estoque\templates\estoque\estoque.html:288
 #: .\estoque\templates\estoque\estoque.html:1923
 #: .\estoque\templates\estoque\transferencia\listar.html:132
@@ -3014,278 +3014,278 @@ msgstr "En Transferencia"
 msgid "Em trânsito"
 msgstr "En tránsito"
 
-#: .\estoque\models.py:1302
+#: .\estoque\models.py:1652
 #: .\estoque\templates\estoque\transferencia\listar.html:139
 #: .\estoque\templates\estoque\transferencia\listar.html:340
 msgid "Concluída"
 msgstr "Concluida"
 
-#: .\estoque\models.py:1306
+#: .\estoque\models.py:1656
 msgid "Transferência comum"
 msgstr "Transferencia comum"
 
-#: .\estoque\models.py:1307 .\estoque\models.py:1529
+#: .\estoque\models.py:1657 .\estoque\models.py:1879
 msgid "Solicitação"
 msgstr "Solicitud"
 
-#: .\estoque\models.py:1308
+#: .\estoque\models.py:1658
 msgid "Auditoria e divergência"
 msgstr "Auditoría y divergencia"
 
-#: .\estoque\models.py:1309
+#: .\estoque\models.py:1659
 msgid "Devolução de empréstimo"
 msgstr "Devolução de préstamo"
 
-#: .\estoque\models.py:1413
+#: .\estoque\models.py:1763
 msgid "Transferência concluída não pode ser cancelada."
 msgstr "Una transferencia completada no se puede cancelar."
 
-#: .\estoque\models.py:1415
+#: .\estoque\models.py:1765
 msgid "Somente transferências pendentes podem ser canceladas."
 msgstr "Solo se pueden cancelar las transferencias pendientes."
 
-#: .\estoque\models.py:1427 .\estoque\models.py:1530 .\estoque\models.py:2184
+#: .\estoque\models.py:1777 .\estoque\models.py:1880 .\estoque\models.py:2534
 #: .\estoque\templates\estoque\estoque.html:1473
 #: .\estoque\templates\estoque\transferencia\listar.html:199
 msgid "Transferência"
 msgstr "Transferencia"
 
-#: .\estoque\models.py:1428
+#: .\estoque\models.py:1778
 msgid "Empréstimo"
 msgstr "Préstamos"
 
-#: .\estoque\models.py:1432
+#: .\estoque\models.py:1782
 msgid "Emitida"
 msgstr "Emitida"
 
-#: .\estoque\models.py:1433
+#: .\estoque\models.py:1783
 msgid "Substituída"
 msgstr "Sustituida"
 
-#: .\estoque\models.py:1500
+#: .\estoque\models.py:1850
 msgid "Informe exatamente uma operação."
 msgstr "Informe exactamente una operación."
 
-#: .\estoque\models.py:1507
+#: .\estoque\models.py:1857
 msgid "Tipo incompatível com a operação informada."
 msgstr "Tipo incompatible con la operación informada."
 
-#: .\estoque\models.py:1534
+#: .\estoque\models.py:1884
 msgid "Criada"
 msgstr "Creada"
 
-#: .\estoque\models.py:1535
+#: .\estoque\models.py:1885
 msgid "Aprovada"
 msgstr "Aprobada"
 
-#: .\estoque\models.py:1536
+#: .\estoque\models.py:1886
 msgid "Rejeitada"
 msgstr "Rechazada"
 
-#: .\estoque\models.py:1538
+#: .\estoque\models.py:1888
 msgid "Recebida"
 msgstr "Recibida"
 
-#: .\estoque\models.py:1657 .\estoque\models.py:2185
+#: .\estoque\models.py:2007 .\estoque\models.py:2535
 #: .\estoque\services\tenant_terminology_service.py:21
 msgid "SICK"
 msgstr "SICK"
 
-#: .\estoque\models.py:1658 .\estoque\services\tenant_terminology_service.py:13
+#: .\estoque\models.py:2008 .\estoque\services\tenant_terminology_service.py:13
 #: .\estoque\templates\estoque\comunicados\detalhe.html:45
 msgid "Manutenção"
 msgstr "Mantenimiento"
 
-#: .\estoque\models.py:1659
+#: .\estoque\models.py:2009
 msgid "Sucata"
 msgstr "Chatarra"
 
-#: .\estoque\models.py:1664
+#: .\estoque\models.py:2014
 msgid "Matriz"
 msgstr "Matriz"
 
-#: .\estoque\models.py:1665
+#: .\estoque\models.py:2015
 msgid "Manutenção terceirizada"
 msgstr "Mantenimiento tercerizado"
 
-#: .\estoque\models.py:1668
+#: .\estoque\models.py:2018
 msgid "Identificado na base"
 msgstr "Identificado na base"
 
-#: .\estoque\models.py:1669
+#: .\estoque\models.py:2019
 msgid "Em trânsito para manutenção"
 msgstr "En tránsito hacia mantenimiento"
 
-#: .\estoque\models.py:1670 .\estoque\models.py:2190
+#: .\estoque\models.py:2020 .\estoque\models.py:2540
 msgid "Recebido pela manutenção"
 msgstr "Recibido por la mantenimiento"
 
-#: .\estoque\models.py:1671
+#: .\estoque\models.py:2021
 msgid "Em avaliação técnica"
 msgstr "En evaluación técnica"
 
-#: .\estoque\models.py:1672
+#: .\estoque\models.py:2022
 msgid "Em manutenção"
 msgstr "En mantenimiento"
 
-#: .\estoque\models.py:1673
+#: .\estoque\models.py:2023
 msgid "Aguardando retorno para a base"
 msgstr "Esperando el retorno a la base"
 
-#: .\estoque\models.py:2183
+#: .\estoque\models.py:2533
 msgid "Criação"
 msgstr "Creación"
 
-#: .\estoque\models.py:2186
+#: .\estoque\models.py:2536
 msgid "Edição"
 msgstr "Edición"
 
-#: .\estoque\models.py:2187
+#: .\estoque\models.py:2537
 msgid "Marcado como SICK"
 msgstr "Marcado como SICK"
 
-#: .\estoque\models.py:2188
+#: .\estoque\models.py:2538
 msgid "SICK atualizado"
 msgstr "SICK atualizado"
 
-#: .\estoque\models.py:2189
+#: .\estoque\models.py:2539
 msgid "Enviado para manutenção"
 msgstr "Enviado a mantenimiento"
 
-#: .\estoque\models.py:2191
+#: .\estoque\models.py:2541
 msgid "Avaliação técnica iniciada"
 msgstr "Evaluación técnica iniciada"
 
-#: .\estoque\models.py:2192
+#: .\estoque\models.py:2542
 msgid "Manutenção iniciada"
 msgstr "Mantenimiento iniciada"
 
-#: .\estoque\models.py:2193
+#: .\estoque\models.py:2543
 msgid "Manutenção atualizada"
 msgstr "Mantenimiento atualizada"
 
-#: .\estoque\models.py:2194
+#: .\estoque\models.py:2544
 msgid "Manutenção concluída"
 msgstr "Mantenimiento concluída"
 
-#: .\estoque\models.py:2195
+#: .\estoque\models.py:2545
 msgid "Aguardando retorno"
 msgstr "Esperando retorno"
 
-#: .\estoque\models.py:2196
+#: .\estoque\models.py:2546
 msgid "Retorno confirmado"
 msgstr "Retorno confirmado"
 
-#: .\estoque\models.py:2197
+#: .\estoque\models.py:2547
 msgid "SICK finalizado"
 msgstr "SICK finalizado"
 
-#: .\estoque\models.py:2198
+#: .\estoque\models.py:2548
 msgid "SICK reaberto"
 msgstr "SICK reabierto"
 
-#: .\estoque\models.py:2199
+#: .\estoque\models.py:2549
 msgid "Localizado em auditoria"
 msgstr "Localizado en auditoría"
 
-#: .\estoque\models.py:2200
+#: .\estoque\models.py:2550
 msgid "Divergência de auditoria"
 msgstr "Divergencia de auditoría"
 
-#: .\estoque\models.py:2201
+#: .\estoque\models.py:2551
 msgid "Base atualizada por auditoria"
 msgstr "Base atualizada por auditoría"
 
-#: .\estoque\models.py:2202
+#: .\estoque\models.py:2552
 msgid "Transferência criada por auditoria"
 msgstr "Transferencia criada por auditoría"
 
-#: .\estoque\models.py:2203
+#: .\estoque\models.py:2553
 msgid "Regularizado por auditoria"
 msgstr "Regularizado mediante auditoría"
 
-#: .\estoque\models.py:2270
+#: .\estoque\models.py:2620
 #: .\estoque\templates\estoque\cadastrar_usuarios.html:140
 #: .\insumos\forms.py:99
 msgid "E-mail"
 msgstr "Correo electrónico"
 
-#: .\estoque\models.py:2271
+#: .\estoque\models.py:2621
 msgid "WhatsApp"
 msgstr "WhatsApp"
 
-#: .\estoque\models.py:2275
+#: .\estoque\models.py:2625
 msgid "Processando"
 msgstr "Procesando"
 
-#: .\estoque\models.py:2276
+#: .\estoque\models.py:2626
 msgid "Enviada"
 msgstr "Enviada"
 
-#: .\estoque\models.py:2277
+#: .\estoque\models.py:2627
 msgid "Entregue"
 msgstr "Entregada"
 
-#: .\estoque\models.py:2278
+#: .\estoque\models.py:2628
 msgid "Lida"
 msgstr "Leída"
 
-#: .\estoque\models.py:2279
+#: .\estoque\models.py:2629
 msgid "Falha"
 msgstr "Falha"
 
-#: .\estoque\models.py:2281
+#: .\estoque\models.py:2631
 msgid "Ignorada"
 msgstr "Ignorada"
 
-#: .\estoque\models.py:2399 .\estoque\services\documentation_service.py:344
+#: .\estoque\models.py:2749 .\estoque\services\documentation_service.py:344
 #: .\estoque\services\manual_service.py:80
 #: .\estoque\templates\estoque\documentacao\resolucao.html:42
 msgid "Português (Brasil)"
 msgstr "Portugués (Brasil)"
 
-#: .\estoque\models.py:2400
+#: .\estoque\models.py:2750
 #: .\estoque\templates\estoque\documentacao\resolucao.html:43
 #: .\estoque\templates\estoque\manuais.html:45
 msgid "Espanhol"
 msgstr "Español"
 
-#: .\estoque\models.py:2456
+#: .\estoque\models.py:2806
 #: .\estoque\templates\estoque\drivers_impressoras.html:39
 #: .\estoque\templates\estoque\drivers_impressoras.html:69
 msgid "Sistema operacional"
 msgstr "Sistema operativo"
 
-#: .\estoque\models.py:2461
+#: .\estoque\models.py:2811
 #: .\estoque\templates\estoque\drivers_impressoras.html:70
 msgid "Arquitetura"
 msgstr "Arquitectura"
 
-#: .\estoque\models.py:2462
+#: .\estoque\models.py:2812
 msgid "Ex.: 64 bits, 32 bits ou universal."
 msgstr "Ej.: 64 bits, 32 bits o universal."
 
-#: .\estoque\models.py:2464
+#: .\estoque\models.py:2814
 #: .\estoque\templates\estoque\declaracoes\formulario.html:9
 #: .\estoque\templates\estoque\documentacao\_documento_card.html:34
 #: .\estoque\templates\estoque\drivers_impressoras.html:71
 msgid "Versão"
 msgstr "Versión"
 
-#: .\estoque\models.py:2468
+#: .\estoque\models.py:2818
 #: .\estoque\templates\estoque\drivers_impressoras.html:77
 msgid "Instruções de instalação"
 msgstr "Instrucciones de instalación"
 
-#: .\estoque\models.py:2477
+#: .\estoque\models.py:2827
 msgid "Arquivo do driver"
 msgstr "Archivo del driver"
 
-#: .\estoque\models.py:2502
+#: .\estoque\models.py:2852
 msgid "driver de impressora"
 msgstr "driver de impresora"
 
-#: .\estoque\models.py:2503
+#: .\estoque\models.py:2853
 msgid "drivers de impressoras"
 msgstr "drivers de impresoras"
 
@@ -5874,21 +5874,25 @@ msgstr "Utilizado directamente en las operaciones y contabilizado en la disponib
 msgid "Destinado a atividades administrativas e separado dos equipamentos operacionais."
 msgstr "Destinado a actividades administrativas y separado de los equipos operativos."
 
-#: .\estoque\templates\estoque\editar_equipamento.html:49
+#: .\estoque\templates\estoque\editar_equipamento.html:52
+msgid "Definido pela Custódia ativa. Finalize ou cancele a Custódia para liberar este campo."
+msgstr "Definido por la Custodia activa. Finalice o cancele la Custodia para liberar este campo."
+
+#: .\estoque\templates\estoque\editar_equipamento.html:57
 msgid "Nova foto"
 msgstr "Nueva foto"
 
-#: .\estoque\templates\estoque\editar_equipamento.html:50
+#: .\estoque\templates\estoque\editar_equipamento.html:58
 msgid "Justificativa da edição"
 msgstr "Justificación de la edição"
 
-#: .\estoque\templates\estoque\editar_equipamento.html:51
+#: .\estoque\templates\estoque\editar_equipamento.html:59
 #: .\estoque\templates\estoque\estoque.html:515
 #: .\estoque\templates\estoque\partials\conectividade_equipamento.html:66
 msgid "Confirme sua senha"
 msgstr "Confirme sua contraseña"
 
-#: .\estoque\templates\estoque\editar_equipamento.html:53
+#: .\estoque\templates\estoque\editar_equipamento.html:61
 msgid "Salvar alterações"
 msgstr "Guardar cambios"
 

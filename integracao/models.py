@@ -1,8 +1,33 @@
+from pathlib import Path
+import uuid
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.files.storage import storages
 from django.db import models
 from django.db.models import Q
 
 from integracao.constants import DATA_SOURCE_INVENTORY_PLANNING
+
+
+def docusign_signed_document_storage():
+    return storages['private']
+
+
+def docusign_signed_document_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower() or '.pdf'
+    return (
+        f'custodias/{instance.empresa_id}/docusign/assinados/'
+        f'{uuid.uuid4().hex}{extension}'
+    )
+
+
+def docusign_certificate_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower() or '.pdf'
+    return (
+        f'custodias/{instance.empresa_id}/docusign/certificados/'
+        f'{uuid.uuid4().hex}{extension}'
+    )
 
 
 class SyncState(models.TextChoices):
@@ -404,3 +429,246 @@ class InventoryPlanningSyncRun(models.Model):
 
     def __str__(self):
         return f"{self.endpoint} - {self.status} - {self.started_at:%Y-%m-%d %H:%M}"
+
+
+class DocusignTenantConfig(models.Model):
+    empresa = models.OneToOneField(
+        'estoque.Empresa',
+        on_delete=models.CASCADE,
+        related_name='configuracao_docusign',
+    )
+    habilitada = models.BooleanField(default=False, db_index=True)
+    conta_id = models.CharField(
+        'ID da conta DocuSign',
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='Opcional; quando vazio, usa DOCUSIGN_ACCOUNT_ID do ambiente.',
+    )
+    nome_testemunha_rh = models.CharField(
+        max_length=200,
+        default='SETOR DE RH',
+    )
+    email_testemunha_rh = models.EmailField(blank=True, default='')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração DocuSign por empresa'
+        verbose_name_plural = 'Configurações DocuSign por empresa'
+        ordering = ('empresa__nome',)
+
+    def clean(self):
+        super().clean()
+        if self.habilitada and not self.email_testemunha_rh:
+            raise ValidationError({
+                'email_testemunha_rh': (
+                    'Informe o e-mail do RH antes de habilitar o DocuSign.'
+                ),
+            })
+
+    def save(self, *args, **kwargs):
+        self.conta_id = (self.conta_id or '').strip()
+        self.nome_testemunha_rh = (
+            self.nome_testemunha_rh or 'SETOR DE RH'
+        ).strip()
+        self.email_testemunha_rh = (
+            self.email_testemunha_rh or ''
+        ).strip().lower()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'DocuSign — {self.empresa}'
+
+
+class DocusignEnvelope(models.Model):
+    class TipoDocumento(models.TextChoices):
+        ENTREGA = 'ENTREGA', 'Termo de Entrega'
+        DEVOLUCAO = 'DEVOLUCAO', 'Termo de Devolução'
+
+    class Status(models.TextChoices):
+        PREPARANDO = 'PREPARANDO', 'Preparando'
+        ENVIADO = 'ENVIADO', 'Enviado'
+        ENTREGUE = 'ENTREGUE', 'Entregue aos destinatários'
+        ASSINADO = 'ASSINADO', 'Assinado parcialmente'
+        CONCLUIDO = 'CONCLUIDO', 'Concluído'
+        RECUSADO = 'RECUSADO', 'Recusado'
+        ANULADO = 'ANULADO', 'Anulado'
+        ERRO = 'ERRO', 'Erro'
+
+    provider = models.CharField(max_length=30, default='DOCUSIGN', editable=False)
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        on_delete=models.PROTECT,
+        related_name='envelopes_docusign',
+    )
+    custodia = models.ForeignKey(
+        'estoque.Custodia',
+        on_delete=models.PROTECT,
+        related_name='envelopes_docusign',
+    )
+    termo_entrega = models.ForeignKey(
+        'estoque.TermoEntregaCustodia',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='envelopes_docusign',
+    )
+    termo_devolucao = models.ForeignKey(
+        'estoque.TermoDevolucaoCustodia',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='envelopes_docusign',
+    )
+    tipo_documento = models.CharField(max_length=12, choices=TipoDocumento.choices)
+    idempotency_key = models.CharField(max_length=120, unique=True, editable=False)
+    envelope_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PREPARANDO,
+        db_index=True,
+    )
+    participantes = models.JSONField(default=list, editable=False)
+    provider_metadata = models.JSONField(default=dict, blank=True, editable=False)
+    pdf_assinado = models.FileField(
+        storage=docusign_signed_document_storage,
+        upload_to=docusign_signed_document_upload_to,
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    pdf_assinado_sha256 = models.CharField(
+        max_length=64, blank=True, default='', editable=False,
+    )
+    certificado = models.FileField(
+        storage=docusign_signed_document_storage,
+        upload_to=docusign_certificate_upload_to,
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    certificado_sha256 = models.CharField(
+        max_length=64, blank=True, default='', editable=False,
+    )
+    enviado_em = models.DateTimeField(null=True, blank=True)
+    assinado_em = models.DateTimeField(null=True, blank=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+    ultima_falha = models.CharField(max_length=500, blank=True, default='')
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='envelopes_docusign_criados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Envelope DocuSign'
+        verbose_name_plural = 'Envelopes DocuSign'
+        ordering = ('-criado_em', '-id')
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(termo_entrega__isnull=False, termo_devolucao__isnull=True)
+                    | Q(termo_entrega__isnull=True, termo_devolucao__isnull=False)
+                ),
+                name='docusign_envelope_um_termo',
+            ),
+            models.UniqueConstraint(
+                fields=('provider', 'envelope_id'),
+                condition=~Q(envelope_id=''),
+                name='docusign_provider_envelope_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('termo_entrega',),
+                condition=Q(termo_entrega__isnull=False),
+                name='docusign_termo_entrega_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('termo_devolucao',),
+                condition=Q(termo_devolucao__isnull=False),
+                name='docusign_termo_devolucao_unico',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('empresa', 'status', 'criado_em'),
+                name='docusign_empresa_status_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if bool(self.termo_entrega_id) == bool(self.termo_devolucao_id):
+            errors['tipo_documento'] = 'Informe exatamente um termo.'
+        term_empresa_id = None
+        term_custodia_id = None
+        expected_type = None
+        if self.termo_entrega_id:
+            term_empresa_id = self.termo_entrega.custodia.empresa_id
+            term_custodia_id = self.termo_entrega.custodia_id
+            expected_type = self.TipoDocumento.ENTREGA
+        elif self.termo_devolucao_id:
+            term_empresa_id = self.termo_devolucao.devolucao.custodia.empresa_id
+            term_custodia_id = self.termo_devolucao.devolucao.custodia_id
+            expected_type = self.TipoDocumento.DEVOLUCAO
+        if term_empresa_id and self.empresa_id != term_empresa_id:
+            errors['empresa'] = 'A empresa deve ser a mesma do termo.'
+        if term_custodia_id and self.custodia_id != term_custodia_id:
+            errors['custodia'] = 'A Custódia deve ser a mesma do termo.'
+        if expected_type and self.tipo_documento != expected_type:
+            errors['tipo_documento'] = 'O tipo não corresponde ao termo informado.'
+        if self.criado_por_id and not self.criado_por.is_active:
+            errors['criado_por'] = 'O usuário responsável deve estar ativo.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.envelope_id = (self.envelope_id or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def termo(self):
+        return self.termo_entrega or self.termo_devolucao
+
+    def __str__(self):
+        return f'DocuSign {self.envelope_id or self.idempotency_key} — {self.status}'
+
+
+class DocusignEvent(models.Model):
+    envelope = models.ForeignKey(
+        DocusignEnvelope,
+        on_delete=models.CASCADE,
+        related_name='eventos',
+    )
+    event_key = models.CharField(max_length=64, unique=True, editable=False)
+    event_type = models.CharField(max_length=120)
+    status = models.CharField(max_length=60, blank=True, default='')
+    ocorrido_em = models.DateTimeField(null=True, blank=True)
+    recebido_em = models.DateTimeField(auto_now_add=True)
+    payload_sha256 = models.CharField(max_length=64, editable=False)
+    payload = models.JSONField(default=dict, editable=False)
+
+    class Meta:
+        verbose_name = 'Evento DocuSign'
+        verbose_name_plural = 'Eventos DocuSign'
+        ordering = ('recebido_em', 'id')
+        indexes = [
+            models.Index(
+                fields=('envelope', 'recebido_em'),
+                name='docusign_event_envelope_idx',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError('Eventos DocuSign são imutáveis.')
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.event_type} — {self.envelope}'

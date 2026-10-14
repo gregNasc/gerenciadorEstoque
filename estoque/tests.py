@@ -774,7 +774,7 @@ class TransferenciaServiceTests(TestCase):
         )
         self.assertTrue(
             Comunicado.objects.filter(
-                titulo__iexact=f'Transferência {transferencia.protocolo} recebida'
+                titulo=f'Transferência {transferencia.protocolo} recebida'.upper()
             ).exists()
         )
 
@@ -965,7 +965,7 @@ class ComunicadoManutencaoTests(TestCase):
         segunda = ComunicadoService.notificar_manutencoes_previstas()
 
         comunicado = Comunicado.objects.get(
-            titulo__iexact=f'Manutenção prevista para amanhã — SICK #{self.sick.id}'
+            titulo=f'Manutenção prevista para amanhã — SICK #{self.sick.id}'.upper()
         )
         self.assertEqual(len(primeira), 1)
         self.assertEqual(len(segunda), 0)

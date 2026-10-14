@@ -355,7 +355,8 @@ class ComunicadoService:
             titulo = (
                 f'Manutenção prevista para amanhã — SICK #{sick.id}'
             )
-            if Comunicado.objects.filter(titulo__iexact=titulo).exists():
+            titulo_normalizado = titulo.upper()
+            if Comunicado.objects.filter(titulo=titulo_normalizado).exists():
                 continue
 
             equipamento = sick.equipamento

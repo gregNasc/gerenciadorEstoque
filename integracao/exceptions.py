@@ -30,3 +30,27 @@ class InventoryPortalResponseError(InventoryPortalError):
 
 class InventoryPortalTransportError(InventoryPortalError):
     pass
+
+
+class DocusignError(Exception):
+    """Erro base seguro para a integração DocuSign."""
+
+
+class DocusignConfigurationError(DocusignError):
+    pass
+
+
+class DocusignAuthenticationError(DocusignError):
+    pass
+
+
+class DocusignResponseError(DocusignError):
+    pass
+
+
+class DocusignTransportError(DocusignError):
+    pass
+
+
+class DocusignWebhookError(DocusignError):
+    pass

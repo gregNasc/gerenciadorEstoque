@@ -1,7 +1,7 @@
 from io import BytesIO
 from datetime import timedelta
 from tempfile import gettempdir
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock, patch
 
 from asgiref.sync import async_to_sync
 from channels.routing import URLRouter
@@ -308,10 +308,11 @@ class ChamadosIntegracaoTests(TestCase):
     def test_evento_websocket_identifica_solicitante_para_destaque_da_avaliacao(self):
         chamado = self.abrir()
         camada = type('CamadaTeste', (), {})()
-        camada.group_send = AsyncMock()
+        camada.group_send = Mock()
 
         with (
             patch('chamados.services.get_channel_layer', return_value=camada),
+            patch('chamados.services.async_to_sync', side_effect=lambda func: func),
             self.captureOnCommitCallbacks(execute=True),
         ):
             ChamadoService._evento(
@@ -321,7 +322,7 @@ class ChamadosIntegracaoTests(TestCase):
                 self.atendente,
             )
 
-        payloads = [chamada.args[1]['payload'] for chamada in camada.group_send.await_args_list]
+        payloads = [chamada.args[1]['payload'] for chamada in camada.group_send.call_args_list]
         self.assertTrue(payloads)
         self.assertTrue(all(item['solicitante_id'] == self.solicitante.pk for item in payloads))
 

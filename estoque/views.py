@@ -6720,6 +6720,10 @@ def _contexto_linha_movel_equipamento(user, equipamento):
 @permission_or_role_required('estoque.editar_equipamentos', 'admin', 'gestor')
 def editar_equipamento(request, equipamento_id):
 
+    from estoque.services.custodia_responsavel_legado_service import (
+        CustodiaResponsavelLegadoService,
+    )
+
     equipamento = get_object_or_404(
         secure_queryset(
             Equipamento.objects.select_related('produto', 'regional__empresa'),
@@ -6766,6 +6770,9 @@ def editar_equipamento(request, equipamento_id):
         request.user,
         equipamento,
     )
+    item_custodia_vigente = CustodiaResponsavelLegadoService.item_vigente(
+        equipamento,
+    )
 
     if request.method == 'GET':
 
@@ -6782,6 +6789,7 @@ def editar_equipamento(request, equipamento_id):
                 'is_admin': is_admin,
                 'is_gestor': is_gestor,
                 'permitir_edicao': True,
+                'item_custodia_vigente': item_custodia_vigente,
                 **contexto_linha_movel,
             }
         )
@@ -6835,6 +6843,11 @@ def editar_equipamento(request, equipamento_id):
         'responsavel',
         ''
     ).strip()
+    item_custodia_vigente = CustodiaResponsavelLegadoService.item_vigente(
+        equipamento,
+    )
+    if item_custodia_vigente is not None:
+        responsavel = item_custodia_vigente.custodia.colaborador.nome
 
     status = request.POST.get(
         'status',

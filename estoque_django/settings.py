@@ -429,6 +429,27 @@ INVENTORY_PORTAL_TIMEOUT = float(os.getenv('INVENTORY_PORTAL_TIMEOUT', '20'))
 INVENTORY_PORTAL_MAX_RANGE_DAYS = int(os.getenv('INVENTORY_PORTAL_MAX_RANGE_DAYS', '31'))
 INVENTORY_PORTAL_MAX_DETAIL_RECORDS = int(os.getenv('INVENTORY_PORTAL_MAX_DETAIL_RECORDS', '20'))
 
+# DocuSign eSignature. A integração permanece desabilitada até que todos os
+# secrets sejam configurados no ambiente. Nenhuma chave privada é persistida
+# no banco ou no repositório.
+DOCUSIGN_ENABLED = env_bool('DOCUSIGN_ENABLED', False)
+DOCUSIGN_AUTH_SERVER = os.getenv(
+    'DOCUSIGN_AUTH_SERVER', 'https://account-d.docusign.com'
+).strip().rstrip('/')
+DOCUSIGN_ESIGN_BASE_URL = os.getenv(
+    'DOCUSIGN_ESIGN_BASE_URL', 'https://demo.docusign.net/restapi'
+).strip().rstrip('/')
+DOCUSIGN_INTEGRATION_KEY = os.getenv('DOCUSIGN_INTEGRATION_KEY', '').strip()
+DOCUSIGN_USER_ID = os.getenv('DOCUSIGN_USER_ID', '').strip()
+DOCUSIGN_PRIVATE_KEY = os.getenv('DOCUSIGN_PRIVATE_KEY', '').replace('\\n', '\n').strip()
+DOCUSIGN_ACCOUNT_ID = os.getenv('DOCUSIGN_ACCOUNT_ID', '').strip()
+DOCUSIGN_WEBHOOK_HMAC_SECRET = os.getenv(
+    'DOCUSIGN_WEBHOOK_HMAC_SECRET', ''
+).strip()
+DOCUSIGN_TIMEOUT = float(os.getenv('DOCUSIGN_TIMEOUT', '20'))
+DOCUSIGN_MAX_RETRIES = int(os.getenv('DOCUSIGN_MAX_RETRIES', '3'))
+DOCUSIGN_BACKOFF_BASE = float(os.getenv('DOCUSIGN_BACKOFF_BASE', '1'))
+
 # Interpretação opcional de linguagem natural. O LLM não acessa ferramentas nem
 # dados do Portal; ele retorna apenas filtros estruturados validados pelo Django.
 TORY_LLM_ENABLED = os.getenv('TORY_LLM_ENABLED', 'False').lower() == 'true'
@@ -544,4 +565,17 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv(
     'DEFAULT_FROM_EMAIL',
     EMAIL_HOST_USER or 'nao-responda@inventory.local',
+)
+
+# Canais auxiliares dos eventos de Custódia. O estado oficial permanece no
+# banco do Gerenciador; a entrega externa é processada por outbox.
+CUSTODIA_EMAIL_ENABLED = env_bool('CUSTODIA_EMAIL_ENABLED', False)
+CUSTODIA_NOTIFICATION_MAX_RETRIES = int(
+    os.getenv('CUSTODIA_NOTIFICATION_MAX_RETRIES', '5')
+)
+CUSTODIA_NOTIFICATION_RETRY_BASE_SECONDS = int(
+    os.getenv('CUSTODIA_NOTIFICATION_RETRY_BASE_SECONDS', '60')
+)
+CUSTODIA_NOTIFICATION_PROCESSING_TIMEOUT_SECONDS = int(
+    os.getenv('CUSTODIA_NOTIFICATION_PROCESSING_TIMEOUT_SECONDS', '900')
 )

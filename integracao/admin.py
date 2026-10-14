@@ -1,6 +1,9 @@
 from django.contrib import admin
 
 from integracao.models import (
+    DocusignEnvelope,
+    DocusignEvent,
+    DocusignTenantConfig,
     InventoryPlanningEventBinding,
     InventoryPlanningSyncRun,
     PlanningClient,
@@ -12,6 +15,44 @@ from integracao.models import (
     PlanningRegionBinding,
     PlanningStore,
 )
+
+
+@admin.register(DocusignTenantConfig)
+class DocusignTenantConfigAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'habilitada', 'email_testemunha_rh', 'atualizado_em')
+    list_filter = ('habilitada',)
+    search_fields = ('empresa__nome', 'email_testemunha_rh')
+
+
+@admin.register(DocusignEnvelope)
+class DocusignEnvelopeAdmin(admin.ModelAdmin):
+    list_display = (
+        'envelope_id', 'empresa', 'tipo_documento', 'status', 'enviado_em',
+        'concluido_em',
+    )
+    list_filter = ('status', 'tipo_documento', 'empresa')
+    search_fields = ('envelope_id', 'idempotency_key', 'empresa__nome')
+    readonly_fields = [field.name for field in DocusignEnvelope._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DocusignEvent)
+class DocusignEventAdmin(admin.ModelAdmin):
+    list_display = ('event_type', 'status', 'envelope', 'ocorrido_em', 'recebido_em')
+    list_filter = ('event_type', 'status')
+    search_fields = ('envelope__envelope_id', 'event_key')
+    readonly_fields = [field.name for field in DocusignEvent._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(PlanningRegion, PlanningClient, PlanningStore, PlanningInventoryType)

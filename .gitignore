@@ -21,6 +21,7 @@ backups/
 dumps/
 exports/
 outputs/
+/output/
 .codex_tmp/
 test_databases/
 uploads/

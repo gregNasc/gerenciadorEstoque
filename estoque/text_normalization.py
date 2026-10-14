@@ -62,6 +62,13 @@ TECHNICAL_MODEL_FIELDS = {
     ('estoque.MensagemArquivo', 'nome_original'),
     ('estoque.DriverImpressora', 'nome_original'),
     ('estoque.ResolucaoDocumento', 'nome_original'),
+    ('estoque.TermoEntregaCustodia', 'sha256'),
+    ('estoque.TermoDevolucaoCustodia', 'sha256'),
+    ('estoque.EventoNotificacaoCustodia', 'event_key'),
+    ('estoque.EntregaNotificacaoCustodia', 'destino'),
+    ('estoque.EntregaNotificacaoCustodia', 'provedor'),
+    ('estoque.EntregaNotificacaoCustodia', 'template_codigo'),
+    ('estoque.EntregaNotificacaoCustodia', 'ultimo_erro'),
     ('estoque.CredencialLinhaMovel', 'conteudo_criptografado'),
     ('estoque.CredencialLinhaMovel', 'chave_id'),
     ('insumos.AlteracaoCalendario', 'arquivo'),
@@ -77,6 +84,12 @@ TECHNICAL_MODEL_FIELDS = {
     ('integracao.PlanningInventoryType', 'data_source'),
     ('integracao.PlanningRegion', 'data_source'),
     ('integracao.PlanningStore', 'data_source'),
+    ('integracao.DocusignTenantConfig', 'conta_id'),
+    ('integracao.DocusignEnvelope', 'envelope_id'),
+    ('integracao.DocusignEnvelope', 'ultima_falha'),
+    ('integracao.DocusignEvent', 'event_key'),
+    ('integracao.DocusignEvent', 'event_type'),
+    ('integracao.DocusignEvent', 'payload_sha256'),
 }
 
 

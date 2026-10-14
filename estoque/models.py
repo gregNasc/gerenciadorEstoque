@@ -32,6 +32,27 @@ def driver_impressora_upload_to(instance, filename):
     extensao = Path(filename).suffix.lower()
     return f'documentacao/drivers-impressoras/{uuid.uuid4().hex}{extensao}'
 
+
+def termo_entrega_custodia_storage():
+    return storages['private']
+
+
+def termo_entrega_custodia_upload_to(instance, filename):
+    empresa_id = instance.custodia.empresa_id if instance.custodia_id else 'sem-empresa'
+    return f'custodias/{empresa_id}/termos-entrega/{uuid.uuid4().hex}.pdf'
+
+
+def termo_devolucao_custodia_storage():
+    return storages['private']
+
+
+def termo_devolucao_custodia_upload_to(instance, filename):
+    empresa_id = (
+        instance.devolucao.custodia.empresa_id
+        if instance.devolucao_id else 'sem-empresa'
+    )
+    return f'custodias/{empresa_id}/termos-devolucao/{uuid.uuid4().hex}.pdf'
+
 DRIVER_IMPRESSORA_EXTENSOES = ['exe', 'msi', 'zip', 'rar', 'cab', 'inf']
 DRIVER_IMPRESSORA_TAMANHO_MAXIMO = 500 * 1024 * 1024
 
@@ -715,6 +736,8 @@ class Custodia(models.Model):
         REGULAR = 'REGULAR', 'Regular'
         AVARIADO = 'AVARIADO', 'Avariado'
 
+    STATUS_VIGENTES = (Status.ATIVA, Status.EM_DEVOLUCAO)
+
     empresa = models.ForeignKey(
         Empresa,
         on_delete=models.PROTECT,
@@ -816,6 +839,466 @@ class Custodia(models.Model):
                 )
         if self.registrado_por_id and not self.registrado_por.is_active:
             errors['registrado_por'] = 'O responsável pelo registro deve estar ativo.'
+        if self.pk and self.status in self.STATUS_VIGENTES:
+            itens = ItemCustodia.objects.filter(custodia_id=self.pk)
+            equipamentos = itens.exclude(equipamento_id=None).values('equipamento_id')
+            linhas = itens.exclude(linha_movel_id=None).values('linha_movel_id')
+            conflitos = ItemCustodia.objects.filter(vigente=True).exclude(
+                custodia_id=self.pk,
+            ).filter(
+                Q(equipamento_id__in=equipamentos)
+                | Q(linha_movel_id__in=linhas)
+            )
+            if conflitos.exists():
+                errors['status'] = (
+                    'Um ou mais ativos já possuem outra Custódia vigente.'
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def vigente(self):
+        return self.status in self.STATUS_VIGENTES
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            responsavel_anterior = None
+            status_anterior = None
+            if self.pk:
+                anterior = Custodia.objects.filter(pk=self.pk).values(
+                    'colaborador__nome', 'status',
+                ).first()
+                if anterior:
+                    responsavel_anterior = anterior['colaborador__nome']
+                    status_anterior = anterior['status']
+            self.observacao = (self.observacao or '').strip()
+            self.full_clean()
+            super().save(*args, **kwargs)
+            itens = ItemCustodia.objects.filter(custodia_id=self.pk)
+            itens.filter(devolvido_em__isnull=False).update(vigente=False)
+            itens.filter(devolvido_em__isnull=True).update(vigente=self.vigente)
+            from estoque.services.custodia_responsavel_legado_service import (
+                CustodiaResponsavelLegadoService,
+            )
+
+            CustodiaResponsavelLegadoService.sincronizar_custodia(
+                self,
+                responsaveis_liberaveis=(
+                    responsavel_anterior,
+                    self.colaborador.nome if self.colaborador_id else None,
+                ),
+            )
+            if (
+                self.status == self.Status.ATIVA
+                and status_anterior != self.Status.ATIVA
+            ):
+                from estoque.services.custodia_notificacao_service import (
+                    CustodiaNotificacaoService,
+                )
+
+                CustodiaNotificacaoService.publicar(
+                    evento=EventoNotificacaoCustodia.Evento.CUSTODIA_CRIADA,
+                    custodia=self,
+                    criado_por=self.registrado_por,
+                )
+
+    def __str__(self):
+        return f'Custódia #{self.pk or "nova"} — {self.colaborador}'
+
+
+class ItemCustodia(models.Model):
+    custodia = models.ForeignKey(
+        Custodia,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+    equipamento = models.ForeignKey(
+        'Equipamento',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='itens_custodia',
+    )
+    linha_movel = models.ForeignKey(
+        'LinhaMovel',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='itens_custodia',
+    )
+    condicao_entrega = models.CharField(
+        'Condição na entrega',
+        max_length=20,
+        choices=Custodia.CondicaoGeral.choices,
+        default=Custodia.CondicaoGeral.NAO_INFORMADA,
+    )
+    observacao = models.TextField(blank=True)
+    descricao_snapshot = models.CharField(max_length=255, editable=False)
+    categoria_snapshot = models.CharField(max_length=100, blank=True, editable=False)
+    modelo_snapshot = models.CharField(max_length=120, blank=True, editable=False)
+    patrimonio_snapshot = models.CharField(max_length=100, blank=True, editable=False)
+    numero_serie_snapshot = models.CharField(max_length=100, blank=True, editable=False)
+    imei_snapshot = models.CharField(max_length=30, blank=True, editable=False)
+    telefone_snapshot = models.CharField(max_length=20, blank=True, editable=False)
+    iccid_snapshot = models.CharField(max_length=22, blank=True, editable=False)
+    operadora_snapshot = models.CharField(max_length=100, blank=True, editable=False)
+    vigente = models.BooleanField(default=False, editable=False, db_index=True)
+    devolvido_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        db_index=True,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Item de Custódia'
+        verbose_name_plural = 'Itens de Custódia'
+        ordering = ('id',)
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(equipamento__isnull=False, linha_movel__isnull=True)
+                    | Q(equipamento__isnull=True, linha_movel__isnull=False)
+                ),
+                name='item_custodia_um_ativo',
+            ),
+            models.UniqueConstraint(
+                fields=('custodia', 'equipamento'),
+                condition=Q(equipamento__isnull=False),
+                name='item_custodia_equipamento_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('custodia', 'linha_movel'),
+                condition=Q(linha_movel__isnull=False),
+                name='item_custodia_linha_unica',
+            ),
+            models.UniqueConstraint(
+                fields=('equipamento',),
+                condition=Q(vigente=True, equipamento__isnull=False),
+                name='custodia_equipamento_vigente_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('linha_movel',),
+                condition=Q(vigente=True, linha_movel__isnull=False),
+                name='custodia_linha_vigente_unica',
+            ),
+            models.CheckConstraint(
+                condition=Q(devolvido_em__isnull=True) | Q(vigente=False),
+                name='item_cust_dev_nao_vigente',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('custodia', 'equipamento'),
+                name='item_custodia_equip_idx',
+            ),
+            models.Index(
+                fields=('custodia', 'linha_movel'),
+                name='item_custodia_linha_idx',
+            ),
+        ]
+
+    def _preencher_snapshot(self):
+        if self.equipamento_id:
+            equipamento = self.equipamento
+            self.descricao_snapshot = (
+                equipamento.produto.descricao
+                if equipamento.produto_id
+                else equipamento.codigo
+            )
+            self.modelo_snapshot = (
+                equipamento.produto.modelo if equipamento.produto_id else ''
+            )
+            self.categoria_snapshot = (
+                equipamento.produto.categoria if equipamento.produto_id else ''
+            )
+            self.patrimonio_snapshot = equipamento.patrimonio or ''
+            self.numero_serie_snapshot = equipamento.numero_serie or ''
+            self.imei_snapshot = str(getattr(equipamento, 'imei', '') or '')
+            self.telefone_snapshot = ''
+            self.iccid_snapshot = ''
+            self.operadora_snapshot = ''
+        elif self.linha_movel_id:
+            linha = self.linha_movel
+            self.descricao_snapshot = 'Linha móvel'
+            self.categoria_snapshot = 'Chip / linha móvel'
+            self.modelo_snapshot = ''
+            self.patrimonio_snapshot = ''
+            self.numero_serie_snapshot = ''
+            self.imei_snapshot = ''
+            self.telefone_snapshot = linha.numero_normalizado or ''
+            self.iccid_snapshot = linha.iccid or ''
+            self.operadora_snapshot = linha.operadora.nome if linha.operadora_id else ''
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if bool(self.equipamento_id) == bool(self.linha_movel_id):
+            errors['equipamento'] = (
+                'Informe exatamente um Equipamento ou uma Linha Móvel.'
+            )
+        if self.pk:
+            original = ItemCustodia.objects.filter(pk=self.pk).values(
+                'equipamento_id', 'linha_movel_id', 'custodia_id',
+                'devolvido_em',
+            ).first()
+            if original and (
+                original['equipamento_id'] != self.equipamento_id
+                or original['linha_movel_id'] != self.linha_movel_id
+                or original['custodia_id'] != self.custodia_id
+            ):
+                errors['equipamento'] = (
+                    'O ativo e a Custódia do item histórico não podem ser alterados.'
+                )
+            if original and original['devolvido_em'] != self.devolvido_em:
+                errors['devolvido_em'] = (
+                    'A devolução do item deve ser registrada pelo fluxo de Custódia.'
+                )
+        if self.custodia_id and self.equipamento_id:
+            if self.equipamento.regional.empresa_id != self.custodia.empresa_id:
+                errors['equipamento'] = (
+                    'O Equipamento deve pertencer à empresa da Custódia.'
+                )
+            elif self.equipamento.regional_id != self.custodia.base_id:
+                errors['equipamento'] = (
+                    'O Equipamento deve pertencer à Base da Custódia.'
+                )
+        if self.custodia_id and self.linha_movel_id:
+            if self.linha_movel.empresa_id != self.custodia.empresa_id:
+                errors['linha_movel'] = (
+                    'A Linha Móvel deve pertencer à empresa da Custódia.'
+                )
+            elif self.linha_movel.base_id != self.custodia.base_id:
+                errors['linha_movel'] = (
+                    'A Linha Móvel deve pertencer à Base da Custódia.'
+                )
+        if self.custodia_id and (self.equipamento_id or self.linha_movel_id):
+            from estoque.services.custodia_elegibilidade_service import (
+                CustodiaElegibilidadeService,
+            )
+
+            ativo = self.equipamento if self.equipamento_id else self.linha_movel
+            if not CustodiaElegibilidadeService.permite(
+                empresa=self.custodia.empresa,
+                ativo=ativo,
+            ):
+                campo = 'equipamento' if self.equipamento_id else 'linha_movel'
+                errors[campo] = 'O ativo não é elegível para Custódia pessoal.'
+        if self.custodia_id:
+            self.vigente = self.custodia.vigente and self.devolvido_em is None
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self._preencher_snapshot()
+        if self.custodia_id:
+            self.vigente = self.custodia.vigente and self.devolvido_em is None
+        self.observacao = (self.observacao or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+        from estoque.services.custodia_responsavel_legado_service import (
+            CustodiaResponsavelLegadoService,
+        )
+
+        CustodiaResponsavelLegadoService.sincronizar_custodia(self.custodia)
+
+    @property
+    def ativo_referenciado(self):
+        return self.equipamento if self.equipamento_id else self.linha_movel
+
+    def __str__(self):
+        return f'{self.custodia} — {self.descricao_snapshot}'
+
+
+class DevolucaoCustodia(models.Model):
+    custodia = models.ForeignKey(
+        Custodia,
+        on_delete=models.PROTECT,
+        related_name='devolucoes',
+    )
+    data_devolucao = models.DateTimeField(default=timezone.now, db_index=True)
+    motivo = models.CharField(max_length=255)
+    observacao = models.TextField(blank=True)
+    responsavel_recebimento = models.ForeignKey(
+        Colaborador,
+        on_delete=models.PROTECT,
+        related_name='devolucoes_custodia_recebidas',
+    )
+    registrado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='devolucoes_custodia_registradas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Devolução de Custódia'
+        verbose_name_plural = 'Devoluções de Custódia'
+        ordering = ('-data_devolucao', '-id')
+        indexes = [
+            models.Index(
+                fields=('custodia', 'data_devolucao'),
+                name='devol_custodia_data_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.custodia_id:
+            if self.custodia.status not in Custodia.STATUS_VIGENTES:
+                errors['custodia'] = (
+                    'Somente uma Custódia vigente pode receber devoluções.'
+                )
+            if (
+                self.data_devolucao
+                and self.data_devolucao.date() < self.custodia.data_entrega
+            ):
+                errors['data_devolucao'] = (
+                    'A devolução não pode ser anterior à entrega.'
+                )
+        if self.responsavel_recebimento_id and self.custodia_id:
+            responsavel = self.responsavel_recebimento
+            if responsavel.empresa_id != self.custodia.empresa_id:
+                errors['responsavel_recebimento'] = (
+                    'O responsável pelo recebimento deve pertencer à empresa '
+                    'da Custódia.'
+                )
+            elif not responsavel.ativo:
+                errors['responsavel_recebimento'] = (
+                    'O responsável pelo recebimento deve estar ativo.'
+                )
+        if self.registrado_por_id and not self.registrado_por.is_active:
+            errors['registrado_por'] = 'O responsável pelo registro deve estar ativo.'
+        if self.pk:
+            original = DevolucaoCustodia.objects.filter(pk=self.pk).values(
+                'custodia_id', 'data_devolucao', 'responsavel_recebimento_id',
+                'registrado_por_id',
+            ).first()
+            atual = {
+                'custodia_id': self.custodia_id,
+                'data_devolucao': self.data_devolucao,
+                'responsavel_recebimento_id': self.responsavel_recebimento_id,
+                'registrado_por_id': self.registrado_por_id,
+            }
+            if original and original != atual:
+                errors['custodia'] = (
+                    'Os dados estruturais da devolução histórica não podem ser alterados.'
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.motivo = (self.motivo or '').strip()
+        self.observacao = (self.observacao or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Devolução #{self.pk or "nova"} — {self.custodia}'
+
+
+class ItemDevolucaoCustodia(models.Model):
+    class Situacao(models.TextChoices):
+        DEVOLVIDO = 'DEVOLVIDO', 'Devolvido'
+        FALTANTE = 'FALTANTE', 'Faltante'
+
+    devolucao = models.ForeignKey(
+        DevolucaoCustodia,
+        on_delete=models.CASCADE,
+        related_name='itens',
+    )
+    item_custodia = models.ForeignKey(
+        ItemCustodia,
+        on_delete=models.PROTECT,
+        related_name='registros_devolucao',
+    )
+    situacao = models.CharField(max_length=20, choices=Situacao.choices)
+    condicao_devolucao = models.CharField(
+        'Condição na devolução',
+        max_length=20,
+        choices=Custodia.CondicaoGeral.choices,
+        default=Custodia.CondicaoGeral.NAO_INFORMADA,
+    )
+    observacao = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Item de devolução de Custódia'
+        verbose_name_plural = 'Itens de devolução de Custódia'
+        ordering = ('id',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=('devolucao', 'item_custodia'),
+                name='item_devolucao_custodia_unico',
+            ),
+            models.UniqueConstraint(
+                fields=('item_custodia',),
+                condition=Q(situacao='DEVOLVIDO'),
+                name='item_custodia_devolvido_unico',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(situacao='DEVOLVIDO')
+                    | Q(
+                        situacao='FALTANTE',
+                        condicao_devolucao='NAO_INFORMADA',
+                    )
+                ),
+                name='item_dev_faltante_sem_condicao',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('devolucao', 'situacao'),
+                name='item_devol_situacao_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.devolucao_id and self.item_custodia_id:
+            if self.item_custodia.custodia_id != self.devolucao.custodia_id:
+                errors['item_custodia'] = (
+                    'O item deve pertencer à Custódia desta devolução.'
+                )
+            elif self._state.adding and not self.item_custodia.vigente:
+                errors['item_custodia'] = (
+                    'Somente um item de Custódia vigente pode ser registrado.'
+                )
+        if (
+            self.situacao == self.Situacao.DEVOLVIDO
+            and self.condicao_devolucao == Custodia.CondicaoGeral.NAO_INFORMADA
+        ):
+            errors['condicao_devolucao'] = (
+                'Informe a condição do item devolvido.'
+            )
+        if (
+            self.situacao == self.Situacao.FALTANTE
+            and self.condicao_devolucao != Custodia.CondicaoGeral.NAO_INFORMADA
+        ):
+            errors['condicao_devolucao'] = (
+                'Item faltante não pode possuir condição de devolução.'
+            )
+        if self.pk:
+            original = ItemDevolucaoCustodia.objects.filter(pk=self.pk).values(
+                'devolucao_id', 'item_custodia_id', 'situacao',
+                'condicao_devolucao',
+            ).first()
+            atual = {
+                'devolucao_id': self.devolucao_id,
+                'item_custodia_id': self.item_custodia_id,
+                'situacao': self.situacao,
+                'condicao_devolucao': self.condicao_devolucao,
+            }
+            if original and original != atual:
+                errors['item_custodia'] = (
+                    'A classificação histórica do item não pode ser alterada.'
+                )
         if errors:
             raise ValidationError(errors)
 
@@ -825,7 +1308,366 @@ class Custodia(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'Custódia #{self.pk or "nova"} — {self.colaborador}'
+        return f'{self.devolucao} — {self.item_custodia}: {self.get_situacao_display()}'
+
+
+class TermoEntregaCustodia(models.Model):
+    custodia = models.OneToOneField(
+        Custodia,
+        on_delete=models.PROTECT,
+        related_name='termo_entrega',
+    )
+    versao = models.PositiveSmallIntegerField(default=1, editable=False)
+    dados_snapshot = models.JSONField(editable=False)
+    arquivo_pdf = models.FileField(
+        storage=termo_entrega_custodia_storage,
+        upload_to=termo_entrega_custodia_upload_to,
+        editable=False,
+    )
+    sha256 = models.CharField(max_length=64, editable=False)
+    gerado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='termos_entrega_custodia_gerados',
+    )
+    gerado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Termo de Entrega de Custódia'
+        verbose_name_plural = 'Termos de Entrega de Custódia'
+        ordering = ('-gerado_em', '-id')
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(versao__gte=1),
+                name='termo_entrega_versao_positiva',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.custodia_id:
+            permitidos = (
+                Custodia.Status.ATIVA,
+                Custodia.Status.EM_DEVOLUCAO,
+                Custodia.Status.FINALIZADA,
+            )
+            if self.custodia.status not in permitidos:
+                errors['custodia'] = (
+                    'O Termo de Entrega exige uma Custódia ativada.'
+                )
+            elif not self.custodia.itens.exists():
+                errors['custodia'] = (
+                    'O Termo de Entrega exige ao menos um item de Custódia.'
+                )
+        if self.gerado_por_id and not self.gerado_por.is_active:
+            errors['gerado_por'] = 'O usuário gerador deve estar ativo.'
+        if not isinstance(self.dados_snapshot, dict) or not {
+            'schema_version', 'custodia', 'empresa', 'base', 'colaborador', 'itens',
+        }.issubset(self.dados_snapshot):
+            errors['dados_snapshot'] = 'O snapshot do Termo de Entrega é inválido.'
+        hash_normalizado = str(self.sha256 or '').strip().lower()
+        if len(hash_normalizado) != 64 or any(
+            caractere not in '0123456789abcdef' for caractere in hash_normalizado
+        ):
+            errors['sha256'] = 'O hash SHA-256 do documento é inválido.'
+        else:
+            self.sha256 = hash_normalizado
+        if self.arquivo_pdf and not self.arquivo_pdf.name.lower().endswith('.pdf'):
+            errors['arquivo_pdf'] = 'O Termo de Entrega deve ser um arquivo PDF.'
+        if self.pk:
+            errors['custodia'] = (
+                'O Termo de Entrega é imutável após sua geração.'
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Termo de Entrega #{self.pk or "novo"} — {self.custodia}'
+
+
+class TermoDevolucaoCustodia(models.Model):
+    devolucao = models.OneToOneField(
+        DevolucaoCustodia,
+        on_delete=models.PROTECT,
+        related_name='termo_devolucao',
+    )
+    versao = models.PositiveSmallIntegerField(default=1, editable=False)
+    dados_snapshot = models.JSONField(editable=False)
+    arquivo_pdf = models.FileField(
+        storage=termo_devolucao_custodia_storage,
+        upload_to=termo_devolucao_custodia_upload_to,
+        editable=False,
+    )
+    sha256 = models.CharField(max_length=64, editable=False)
+    gerado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='termos_devolucao_custodia_gerados',
+    )
+    gerado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Termo de Devolução de Custódia'
+        verbose_name_plural = 'Termos de Devolução de Custódia'
+        ordering = ('-gerado_em', '-id')
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(versao__gte=1),
+                name='termo_devolucao_versao_positiva',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.devolucao_id and not self.devolucao.itens.exists():
+            errors['devolucao'] = (
+                'O Termo de Devolução exige ao menos um item classificado.'
+            )
+        if self.gerado_por_id and not self.gerado_por.is_active:
+            errors['gerado_por'] = 'O usuário gerador deve estar ativo.'
+        if not isinstance(self.dados_snapshot, dict) or not {
+            'schema_version', 'devolucao', 'custodia', 'empresa', 'base',
+            'colaborador', 'responsavel_recebimento', 'itens',
+        }.issubset(self.dados_snapshot):
+            errors['dados_snapshot'] = 'O snapshot do Termo de Devolução é inválido.'
+        hash_normalizado = str(self.sha256 or '').strip().lower()
+        if len(hash_normalizado) != 64 or any(
+            caractere not in '0123456789abcdef' for caractere in hash_normalizado
+        ):
+            errors['sha256'] = 'O hash SHA-256 do documento é inválido.'
+        else:
+            self.sha256 = hash_normalizado
+        if self.arquivo_pdf and not self.arquivo_pdf.name.lower().endswith('.pdf'):
+            errors['arquivo_pdf'] = 'O Termo de Devolução deve ser um arquivo PDF.'
+        if self.pk:
+            errors['devolucao'] = (
+                'O Termo de Devolução é imutável após sua geração.'
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Termo de Devolução #{self.pk or "novo"} — {self.devolucao}'
+
+
+class EventoNotificacaoCustodia(models.Model):
+    class Evento(models.TextChoices):
+        CUSTODIA_CRIADA = 'CUSTODIA_CRIADA', 'Custódia criada'
+        TERMO_GERADO = 'TERMO_GERADO', 'Termo gerado'
+        TERMO_ENVIADO = 'TERMO_ENVIADO', 'Termo enviado'
+        TERMO_ASSINADO = 'TERMO_ASSINADO', 'Termo assinado'
+        TERMO_CONCLUIDO = 'TERMO_CONCLUIDO', 'Termo concluído'
+        DEVOLUCAO_REGISTRADA = 'DEVOLUCAO_REGISTRADA', 'Devolução registrada'
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao_custodia',
+    )
+    custodia = models.ForeignKey(
+        Custodia,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao',
+    )
+    devolucao = models.ForeignKey(
+        DevolucaoCustodia,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao',
+    )
+    termo_entrega = models.ForeignKey(
+        TermoEntregaCustodia,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao',
+    )
+    termo_devolucao = models.ForeignKey(
+        TermoDevolucaoCustodia,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao',
+    )
+    envelope_docusign = models.ForeignKey(
+        'integracao.DocusignEnvelope',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao_custodia',
+    )
+    comunicado = models.OneToOneField(
+        'Comunicado',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='evento_custodia',
+    )
+    evento = models.CharField(max_length=30, choices=Evento.choices, db_index=True)
+    event_key = models.CharField(max_length=160, unique=True, editable=False)
+    titulo = models.CharField(max_length=180)
+    mensagem = models.TextField()
+    link = models.CharField(max_length=500, blank=True, default='')
+    dados = models.JSONField(default=dict, blank=True, editable=False)
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='eventos_notificacao_custodia_criados',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Evento de notificação de Custódia'
+        verbose_name_plural = 'Eventos de notificação de Custódia'
+        ordering = ('criado_em', 'id')
+        indexes = [
+            models.Index(
+                fields=('empresa', 'evento', 'criado_em'),
+                name='notif_cust_empresa_evento_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.custodia_id and self.empresa_id != self.custodia.empresa_id:
+            errors['empresa'] = 'A empresa deve ser a mesma da Custódia.'
+        if self.devolucao_id and self.devolucao.custodia_id != self.custodia_id:
+            errors['devolucao'] = 'A devolução deve pertencer à Custódia.'
+        if self.termo_entrega_id and self.termo_entrega.custodia_id != self.custodia_id:
+            errors['termo_entrega'] = 'O Termo de Entrega deve pertencer à Custódia.'
+        if (
+            self.termo_devolucao_id
+            and self.termo_devolucao.devolucao.custodia_id != self.custodia_id
+        ):
+            errors['termo_devolucao'] = 'O Termo de Devolução deve pertencer à Custódia.'
+        if (
+            self.envelope_docusign_id
+            and self.envelope_docusign.custodia_id != self.custodia_id
+        ):
+            errors['envelope_docusign'] = 'O envelope deve pertencer à Custódia.'
+        if self.criado_por_id and not self.criado_por.is_active:
+            errors['criado_por'] = 'O usuário responsável deve estar ativo.'
+        if self.pk:
+            errors['evento'] = 'O evento oficial de notificação é imutável.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.evento} — {self.custodia}'
+
+
+class EntregaNotificacaoCustodia(models.Model):
+    class Canal(models.TextChoices):
+        SISTEMA = 'SISTEMA', 'Sistema'
+        EMAIL = 'EMAIL', 'E-mail'
+        WHATSAPP = 'WHATSAPP', 'WhatsApp'
+
+    class Status(models.TextChoices):
+        PENDENTE = 'PENDENTE', 'Pendente'
+        PROCESSANDO = 'PROCESSANDO', 'Processando'
+        ENVIADA = 'ENVIADA', 'Enviada'
+        ENTREGUE = 'ENTREGUE', 'Entregue'
+        FALHA = 'FALHA', 'Falha'
+        IGNORADA = 'IGNORADA', 'Ignorada'
+        CANCELADA = 'CANCELADA', 'Cancelada'
+
+    notificacao = models.ForeignKey(
+        EventoNotificacaoCustodia,
+        on_delete=models.CASCADE,
+        related_name='entregas',
+    )
+    usuario = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='entregas_notificacao_custodia',
+    )
+    colaborador = models.ForeignKey(
+        Colaborador,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='entregas_notificacao_custodia',
+    )
+    canal = models.CharField(max_length=20, choices=Canal.choices)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDENTE,
+        db_index=True,
+    )
+    destinatario_nome = models.CharField(max_length=200)
+    destino = models.CharField(max_length=254)
+    provedor = models.CharField(max_length=100, blank=True, default='')
+    template_codigo = models.CharField(max_length=100, blank=True, default='')
+    parametros = models.JSONField(default=dict, blank=True)
+    provider_message_id = models.CharField(max_length=255, blank=True, default='')
+    provider_resposta = models.JSONField(default=dict, blank=True)
+    idempotency_key = models.CharField(max_length=64, unique=True, editable=False)
+    tentativas = models.PositiveIntegerField(default=0)
+    proxima_tentativa_em = models.DateTimeField(null=True, blank=True, db_index=True)
+    ultimo_erro = models.TextField(blank=True, default='')
+    criada_em = models.DateTimeField(auto_now_add=True)
+    processada_em = models.DateTimeField(null=True, blank=True)
+    enviada_em = models.DateTimeField(null=True, blank=True)
+    entregue_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Entrega de notificação de Custódia'
+        verbose_name_plural = 'Entregas de notificação de Custódia'
+        ordering = ('criada_em', 'id')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('notificacao', 'canal', 'destino'),
+                name='notif_cust_evento_canal_destino_unico',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('canal', 'status', 'proxima_tentativa_em'),
+                name='notif_cust_outbox_idx',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if (
+            self.colaborador_id
+            and self.colaborador.empresa_id != self.notificacao.empresa_id
+        ):
+            errors['colaborador'] = 'O colaborador deve pertencer à mesma empresa.'
+        if self.usuario_id and not self.usuario.is_active:
+            errors['usuario'] = 'O usuário destinatário deve estar ativo.'
+        if not (self.destino or '').strip():
+            errors['destino'] = 'Informe o destino da entrega.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.destino = (self.destino or '').strip().lower()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.notificacao.evento} — {self.canal}: {self.status}'
 
 
 class EnderecoPostalBase(models.Model):

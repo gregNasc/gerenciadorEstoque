@@ -14,6 +14,8 @@ from .models import (
     CapacidadeRelacionamentoEmpresa,
     ComunicadoLeitura,
     DriverImpressora,
+    EntregaNotificacaoCustodia,
+    EventoNotificacaoCustodia,
     ResolucaoDocumento,
     RelacionamentoEmpresa,
     VideoDocumentacao,
@@ -419,6 +421,42 @@ class VideoDocumentacaoAdmin(admin.ModelAdmin):
 class DescricaoAdmin(admin.ModelAdmin):
     list_display = ("descricao",)
     search_fields = ("descricao",)
+
+
+@admin.register(EventoNotificacaoCustodia)
+class EventoNotificacaoCustodiaAdmin(SomenteSuperuserAdminMixin, admin.ModelAdmin):
+    list_display = ('evento', 'empresa', 'custodia', 'criado_em')
+    list_filter = ('evento', 'empresa')
+    search_fields = ('event_key', 'titulo', 'custodia__colaborador__nome')
+    readonly_fields = [field.name for field in EventoNotificacaoCustodia._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(EntregaNotificacaoCustodia)
+class EntregaNotificacaoCustodiaAdmin(SomenteSuperuserAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'notificacao', 'canal', 'destino', 'status', 'tentativas', 'criada_em',
+    )
+    list_filter = ('canal', 'status', 'notificacao__empresa')
+    search_fields = ('destino', 'notificacao__event_key', 'provider_message_id')
+    readonly_fields = [field.name for field in EntregaNotificacaoCustodia._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 app_models = apps.get_app_config('estoque').get_models()
 
