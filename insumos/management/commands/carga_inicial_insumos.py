@@ -119,7 +119,7 @@ class Command(BaseCommand):
                 'tipo': 'REUTILIZAVEL',
             },
             {
-                'descricao': 'Botas do 33/48',
+                'descricao': 'Botas',
                 'unidade': 'PAR',
                 'tipo': 'REUTILIZAVEL',
             },
@@ -262,15 +262,33 @@ class Command(BaseCommand):
 
             for item in itens:
 
+                descricao_canonica = item['descricao'].upper()
+                if descricao_canonica == 'BOTAS':
+                    descricao_canonica = 'Botas'
+
+                if categoria_nome.upper() == 'EPI':
+                    natureza = Insumo.Natureza.EPI
+                elif item['tipo'] == 'REUTILIZAVEL':
+                    natureza = Insumo.Natureza.REUTILIZAVEL
+                else:
+                    natureza = Insumo.Natureza.CONSUMIVEL
+                forma_controle = (
+                    Insumo.FormaControle.LOTE
+                    if item['tipo'] == 'LOTE'
+                    else Insumo.FormaControle.QUANTIDADE
+                )
+
                 insumo = Insumo.objects.filter(
-                    descricao=item['descricao'].upper(), categoria=categoria,
+                    descricao=descricao_canonica, categoria=categoria,
                 ).first()
                 created = insumo is None
                 if created:
                     insumo = Insumo.objects.create(
-                        descricao=item['descricao'], categoria=categoria,
+                        descricao=descricao_canonica, categoria=categoria,
                         unidade_medida=item['unidade'],
                         tipo_controle=item['tipo'],
+                        natureza=natureza,
+                        forma_controle=forma_controle,
                         ativo=True,
                     )
                 else:
@@ -281,6 +299,12 @@ class Command(BaseCommand):
                     if insumo.tipo_controle != item['tipo']:
                         insumo.tipo_controle = item['tipo']
                         campos.append('tipo_controle')
+                    if insumo.natureza != natureza:
+                        insumo.natureza = natureza
+                        campos.append('natureza')
+                    if insumo.forma_controle != forma_controle:
+                        insumo.forma_controle = forma_controle
+                        campos.append('forma_controle')
                     if not insumo.ativo:
                         insumo.ativo = True
                         campos.append('ativo')

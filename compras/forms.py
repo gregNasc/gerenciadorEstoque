@@ -82,6 +82,12 @@ class CatalogoEmpresaForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         label='Produtos que representam chip como ativo independente',
     )
+    produtos_custodia = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Equipamentos elegíveis para Custódia pessoal'),
+    )
 
     def __init__(self, *args, user=None, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -124,6 +130,7 @@ class CatalogoEmpresaForm(forms.Form):
             produtos = produtos.exclude(pk__in=produtos_chip)
         produtos = produtos.order_by('categoria', 'descricao')
         self.fields['produtos'].queryset = produtos
+        self.fields['produtos_custodia'].queryset = produtos
         if self.pode_configurar_linhas_moveis:
             self.fields['produtos_conectividade_movel'].queryset = produtos
             self.fields['produtos_chip_independente'].queryset = produtos
@@ -146,9 +153,14 @@ class CatalogoEmpresaForm(forms.Form):
                 'pk', flat=True,
             )
         )
-        if not conectividade <= produtos or not chips <= produtos:
+        custodia = set(
+            dados.get('produtos_custodia', Produto.objects.none()).values_list(
+                'pk', flat=True,
+            )
+        )
+        if not conectividade <= produtos or not chips <= produtos or not custodia <= produtos:
             raise forms.ValidationError(
-                'As capacidades móveis só podem ser aplicadas a itens ativos no catálogo.'
+                'As capacidades só podem ser aplicadas a itens ativos no catálogo.'
             )
         sobreposicao = conectividade & chips
         if sobreposicao:

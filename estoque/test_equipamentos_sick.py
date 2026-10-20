@@ -247,10 +247,12 @@ class ContextoBaseTests(EquipamentosSickBaseTests):
         self.assertEqual(response.context['base_selecionada'], self.base)
         self.assertTrue(response.context['form'].fields['regional'].disabled)
 
-    def test_gestor_sem_compras_nao_acessa_cadastro_de_equipamento(self):
+    def test_gestor_sem_compras_acessa_cadastro_na_base_vinculada(self):
         self.client.force_login(self.gestor)
         response = self.client.get(reverse('estoque:cadastrar_equipamento'))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['base_selecionada'], self.base)
+        self.assertTrue(response.context['form'].fields['regional'].disabled)
 
     def test_formulario_rejeita_base_fora_das_regionais(self):
         form = EquipamentoForm({

@@ -1,4 +1,5 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block title %}
 Insumos
@@ -17,7 +18,7 @@ Insumos
             </small>
         </div>
 
-        <a href="{% url 'insumos:cadastrar_insumos' %}"
+        <a href="{% url 'insumos:criar_item_insumo' %}"
            class="btn btn-primary">
 
             <i class="bi bi-plus-circle"></i>
@@ -41,7 +42,8 @@ Insumos
                             <th>Descrição</th>
                             <th>Categoria</th>
                             <th>Unidade</th>
-                            <th>Controle</th>
+                            <th>{% trans "Natureza" %}</th>
+                            <th>{% trans "Forma de controle" %}</th>
                             <th>Valor Médio</th>
                             <th>Status</th>
                             <th width="120">Ações</th>
@@ -68,7 +70,11 @@ Insumos
                             </td>
 
                             <td>
-                                {{ insumo.get_tipo_controle_display }}
+                                {{ insumo.get_natureza_display }}
+                            </td>
+
+                            <td>
+                                {{ insumo.get_forma_controle_display }}
                             </td>
 
                             <td>
@@ -106,7 +112,7 @@ Insumos
 
                         <tr>
 
-                            <td colspan="7" class="text-center py-4">
+                            <td colspan="8" class="text-center py-4">
 
                                 Nenhum insumo cadastrado.
 

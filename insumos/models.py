@@ -10,7 +10,9 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import storages
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db.models import F, Q
+from django.db.models.functions import Lower
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 
 def checklist_cliente_storage():
@@ -29,6 +31,16 @@ class CategoriaInsumo(models.Model):
 
 class Insumo(models.Model):
 
+    class Natureza(models.TextChoices):
+        CONSUMIVEL = 'CONSUMIVEL', _('Consumível')
+        EPI = 'EPI', _('EPI')
+        REUTILIZAVEL = 'REUTILIZAVEL', _('Reutilizável')
+
+    class FormaControle(models.TextChoices):
+        QUANTIDADE = 'QUANTIDADE', _('Quantidade')
+        LOTE = 'LOTE', _('Lote')
+        INDIVIDUALIZADO = 'INDIVIDUALIZADO', _('Individualizado')
+
     TIPO_CONTROLE = [
         ('QUANTIDADE', 'Quantidade'),
         ('LOTE', 'Lote/Faixa'),
@@ -36,6 +48,12 @@ class Insumo(models.Model):
     ]
 
     descricao = models.CharField(max_length=150)
+    imagem_principal = models.ImageField(
+        upload_to='insumos/catalogo/',
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])],
+    )
     termo_pesquisa_online = models.CharField(
         max_length=255,
         blank=True,
@@ -44,7 +62,26 @@ class Insumo(models.Model):
 
     categoria = models.ForeignKey(CategoriaInsumo, on_delete=models.PROTECT)
     unidade_medida = models.CharField(max_length=20)
-    tipo_controle = models.CharField(max_length=20, choices=TIPO_CONTROLE, default='QUANTIDADE')
+    tipo_controle = models.CharField(
+        max_length=20,
+        choices=TIPO_CONTROLE,
+        default='QUANTIDADE',
+        help_text='Campo legado preservado temporariamente para compatibilidade.',
+    )
+    natureza = models.CharField(
+        max_length=20,
+        choices=Natureza.choices,
+        default=Natureza.CONSUMIVEL,
+        db_index=True,
+        help_text='Classificação funcional do item: consumível, EPI ou reutilizável.',
+    )
+    forma_controle = models.CharField(
+        max_length=20,
+        choices=FormaControle.choices,
+        default=FormaControle.QUANTIDADE,
+        db_index=True,
+        help_text='Forma usada para controlar o estoque do item.',
+    )
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -76,10 +113,295 @@ class Insumo(models.Model):
                 ),
                 name='insumo_estoque_minimo_entre_0_e_10',
             ),
+            models.CheckConstraint(
+                condition=Q(natureza__in=('CONSUMIVEL', 'EPI', 'REUTILIZAVEL')),
+                name='insumo_natureza_valida',
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    forma_controle__in=('QUANTIDADE', 'LOTE', 'INDIVIDUALIZADO'),
+                ),
+                name='insumo_forma_controle_valida',
+            ),
         ]
 
     def __str__(self):
         return self.descricao
+
+
+class ProdutoEpi(models.Model):
+    insumo = models.OneToOneField(
+        Insumo,
+        on_delete=models.PROTECT,
+        related_name='dados_epi',
+    )
+    fabricante_importador = models.CharField(max_length=180, blank=True)
+    observacao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('insumo__descricao',)
+        verbose_name = 'dados de EPI'
+        verbose_name_plural = 'dados de EPI'
+
+    def clean(self):
+        super().clean()
+        if self.insumo_id and self.insumo.natureza != Insumo.Natureza.EPI:
+            raise ValidationError({
+                'insumo': 'Somente um Insumo com natureza EPI pode receber dados de EPI.'
+            })
+
+    def __str__(self):
+        return f'{self.insumo} — {self.fabricante_importador}'
+
+
+class CertificadoEpi(models.Model):
+    produto_epi = models.ForeignKey(
+        ProdutoEpi,
+        on_delete=models.PROTECT,
+        related_name='certificados',
+    )
+    numero_ca = models.CharField(max_length=40, unique=True, db_index=True)
+    validade_ca = models.DateField(null=True, blank=True, db_index=True)
+    situacao_oficial = models.CharField(max_length=120, blank=True, default='')
+    snapshot_oficial = models.JSONField(default=dict, blank=True)
+    consultado_em = models.DateTimeField(null=True, blank=True)
+    importacao_caepi = models.ForeignKey(
+        'integracao.CaepiImportacao',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='certificados_vinculados',
+    )
+    observacao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('numero_ca',)
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(numero_ca=''),
+                name='epi_ca_numero_nao_vazio',
+            ),
+        ]
+        verbose_name = 'certificado de EPI'
+        verbose_name_plural = 'certificados de EPI'
+
+    def clean(self):
+        self.numero_ca = (self.numero_ca or '').strip().upper()
+        super().clean()
+        if not self.numero_ca:
+            raise ValidationError({'numero_ca': 'Informe o número do CA.'})
+        if (
+            self.produto_epi_id
+            and self.produto_epi.insumo.natureza != Insumo.Natureza.EPI
+        ):
+            raise ValidationError({
+                'produto_epi': 'O certificado deve pertencer a um produto de natureza EPI.'
+            })
+
+    def save(self, *args, **kwargs):
+        self.numero_ca = (self.numero_ca or '').strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'CA {self.numero_ca} — {self.produto_epi.insumo}'
+
+
+class VarianteEpi(models.Model):
+    produto_epi = models.ForeignKey(
+        ProdutoEpi,
+        on_delete=models.PROTECT,
+        related_name='variantes',
+    )
+    nome = models.CharField(max_length=120)
+    tamanho = models.CharField(max_length=60, blank=True)
+    codigo = models.CharField(max_length=80, blank=True)
+    observacao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('produto_epi__insumo__descricao', 'nome', 'tamanho')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('produto_epi', 'nome', 'tamanho'),
+                name='epi_var_produto_nome_tam_uq',
+            ),
+            models.UniqueConstraint(
+                fields=('produto_epi', 'codigo'),
+                condition=~Q(codigo=''),
+                name='epi_var_produto_codigo_uq',
+            ),
+        ]
+        verbose_name = 'variante de EPI'
+        verbose_name_plural = 'variantes de EPI'
+
+    def __str__(self):
+        complemento = f' — {self.tamanho}' if self.tamanho else ''
+        return f'{self.nome}{complemento}'
+
+
+class LoteEpi(models.Model):
+    base = models.ForeignKey(
+        Base,
+        on_delete=models.PROTECT,
+        related_name='lotes_epi',
+    )
+    produto_epi = models.ForeignKey(
+        ProdutoEpi,
+        on_delete=models.PROTECT,
+        related_name='lotes',
+    )
+    variante = models.ForeignKey(
+        VarianteEpi,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='lotes',
+    )
+    certificado = models.ForeignKey(
+        CertificadoEpi,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='lotes',
+    )
+    codigo_lote = models.CharField(max_length=100, blank=True, default='')
+    fabricado_em = models.DateField(null=True, blank=True)
+    validade_fisica = models.DateField(null=True, blank=True, db_index=True)
+    observacao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = (
+            'base__empresa__nome', 'base__nome',
+            'produto_epi__insumo__descricao', 'codigo_lote',
+        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=('base', 'produto_epi', 'codigo_lote'),
+                condition=Q(variante__isnull=True),
+                name='epi_lote_sem_variante_uq',
+            ),
+            models.UniqueConstraint(
+                fields=('base', 'produto_epi', 'variante', 'codigo_lote'),
+                condition=Q(variante__isnull=False),
+                name='epi_lote_com_variante_uq',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('base', 'ativo', 'validade_fisica'),
+                name='epi_lote_base_validade_idx',
+            ),
+        ]
+        verbose_name = 'lote de EPI'
+        verbose_name_plural = 'lotes de EPI'
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.variante_id and self.variante.produto_epi_id != self.produto_epi_id:
+            errors['variante'] = 'A variante deve pertencer ao mesmo produto EPI.'
+        if self.certificado_id and self.certificado.produto_epi_id != self.produto_epi_id:
+            errors['certificado'] = 'O certificado deve pertencer ao mesmo produto EPI.'
+        if self.fabricado_em and self.validade_fisica:
+            if self.validade_fisica < self.fabricado_em:
+                errors['validade_fisica'] = (
+                    'A validade física não pode ser anterior à fabricação.'
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.codigo_lote = (self.codigo_lote or '').strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.produto_epi.insumo} — lote {self.codigo_lote} — {self.base}'
+
+
+class AtivoInsumoIndividualizado(models.Model):
+    """Unidade patrimonial de um insumo reutilizável/individualizado."""
+
+    base = models.ForeignKey(
+        Base,
+        on_delete=models.PROTECT,
+        related_name='ativos_insumos_individualizados',
+    )
+    insumo = models.ForeignKey(
+        Insumo,
+        on_delete=models.PROTECT,
+        related_name='ativos_individualizados',
+    )
+    patrimonio = models.CharField(max_length=100, db_index=True)
+    observacao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('base__empresa__nome', 'base__nome', 'insumo__descricao', 'patrimonio')
+        constraints = [
+            models.UniqueConstraint(
+                Lower('patrimonio'),
+                name='insumo_ativo_patrimonio_ci_uq',
+            ),
+            models.CheckConstraint(
+                condition=~Q(patrimonio=''),
+                name='insumo_ativo_patrimonio_nao_vazio',
+            ),
+        ]
+        verbose_name = 'ativo de insumo individualizado'
+        verbose_name_plural = 'ativos de insumos individualizados'
+
+    def clean(self):
+        self.patrimonio = (self.patrimonio or '').strip().upper()
+        super().clean()
+        from estoque.models import Equipamento
+
+        errors = {}
+        if not self.patrimonio:
+            errors['patrimonio'] = 'Informe o número de patrimônio.'
+        if self.insumo_id and not (
+            self.insumo.natureza == Insumo.Natureza.REUTILIZAVEL
+            or self.insumo.forma_controle == Insumo.FormaControle.INDIVIDUALIZADO
+        ):
+            errors['insumo'] = (
+                'Patrimônio somente pode ser associado a um insumo reutilizável '
+                'ou de controle individualizado.'
+            )
+        duplicado = type(self).objects.filter(
+            patrimonio__iexact=self.patrimonio,
+        )
+        if self.pk:
+            duplicado = duplicado.exclude(pk=self.pk)
+        if self.patrimonio and duplicado.exists():
+            errors['patrimonio'] = 'Este número de patrimônio já está cadastrado.'
+        if self.patrimonio and Equipamento.objects.filter(
+            patrimonio__iexact=self.patrimonio,
+        ).exists():
+            errors['patrimonio'] = (
+                'Este número de patrimônio já pertence a um equipamento.'
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.patrimonio = (self.patrimonio or '').strip().upper()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.patrimonio} — {self.insumo} — {self.base}'
 
 class FornecedorInsumo(models.Model):
     FONTES_ONLINE = [
@@ -289,6 +611,20 @@ class MovimentacaoInsumo(models.Model):
     quantidade = models.DecimalField(max_digits=10, decimal_places=2)
     valor_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     solicitacao = models.ForeignKey(SolicitacaoInsumo, null=True, blank=True, on_delete=models.SET_NULL)
+    lote_epi = models.ForeignKey(
+        LoteEpi,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='movimentacoes',
+    )
+    ativo_individualizado = models.ForeignKey(
+        AtivoInsumoIndividualizado,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='movimentacoes',
+    )
     usuario = models.ForeignKey(User, on_delete=models.PROTECT)
     observacao = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -767,6 +1103,14 @@ class ItemChecklist(models.Model):
     quantidade_retornada = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     quantidade_perdida = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status_retorno = models.CharField(max_length=20, choices=STATUS_RETORNO, default='PENDENTE')
+    metadados_epi_snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Snapshot técnico resolvido automaticamente para itens EPI; '
+            'não altera o preenchimento operacional do Checklist.'
+        ),
+    )
 
     class Meta:
         unique_together = (('checklist', 'insumo'),)

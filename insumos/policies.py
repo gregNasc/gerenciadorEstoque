@@ -148,6 +148,26 @@ class InsumosTenantPolicy:
         )
 
     @classmethod
+    def epi_lots(cls, user, queryset, *, action=VIEW):
+        return cls.queryset(
+            queryset,
+            user,
+            base_field='base',
+            resource=cls.SUPPLIES,
+            action=action,
+        )
+
+    @classmethod
+    def individualized_assets(cls, user, queryset, *, action=VIEW):
+        return cls.queryset(
+            queryset,
+            user,
+            base_field='base',
+            resource=cls.SUPPLIES,
+            action=action,
+        )
+
+    @classmethod
     def consumptions(cls, user, queryset, *, action=VIEW):
         return cls.queryset(
             queryset,

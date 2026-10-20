@@ -1,5 +1,35 @@
 {% extends 'estoque/base.html' %}
-
-{% block title %}
-Editar Insumo
+{% load i18n %}
+{% block title %}{% trans "Editar Insumo" %}{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><h1 class="h3 mb-1">{% trans "Editar Insumo" %}</h1><p class="text-secondary mb-0">{% trans "Defina separadamente a natureza do item e sua forma de controle." %}</p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'insumos:lista_insumos' %}">{% trans "Voltar" %}</a>
+  </div>
+  {% include 'insumos/partials/form_insumo.html' with acao="Salvar alterações" %}
+  {% if produto_epi %}
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white"><h2 class="h6 mb-0">{% trans "Dados EPI já cadastrados" %}</h2></div>
+    <div class="card-body row g-3">
+      <div class="col-md-4"><div class="small text-secondary">{% trans "Certificados CA" %}</div>{% for ca in produto_epi.certificados.all %}<div><strong>{{ ca.numero_ca }}</strong>{% if ca.validade_ca %} · {{ ca.validade_ca|date:'d/m/Y' }}{% endif %}</div>{% empty %}<span class="text-secondary">{% trans "Nenhum" %}</span>{% endfor %}</div>
+      <div class="col-md-4"><div class="small text-secondary">{% trans "Tamanhos / variantes" %}</div>{% for variante in produto_epi.variantes.all %}<span class="badge text-bg-light border me-1">{{ variante.tamanho|default:variante.nome }}</span>{% empty %}<span class="text-secondary">{% trans "Nenhum" %}</span>{% endfor %}</div>
+      <div class="col-md-4"><div class="small text-secondary">{% trans "Lotes" %}</div>{% for lote in lotes_epi %}<div>{{ lote.codigo_lote|default:'Sem número' }} · {{ lote.base.nome }}{% if lote.validade_fisica %} · {{ lote.validade_fisica|date:'d/m/Y' }}{% endif %}</div>{% empty %}<span class="text-secondary">{% trans "Nenhum" %}</span>{% endfor %}</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if ativos_individualizados %}
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white"><h2 class="h6 mb-0">{% trans "Unidades patrimoniais cadastradas" %}</h2></div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2">
+        {% for ativo in ativos_individualizados %}
+          <span class="badge text-bg-light border px-3 py-2"><strong>{{ ativo.patrimonio }}</strong> · {{ ativo.base.nome }}</span>
+        {% endfor %}
+      </div>
+      <p class="small text-secondary mt-3 mb-0">{% trans "Para adicionar outra unidade do mesmo insumo, informe uma Base e um novo patrimônio no formulário acima." %}</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

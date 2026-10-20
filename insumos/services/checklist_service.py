@@ -68,10 +68,20 @@ class ChecklistService:
         if quantidade_enviada <= 0:
             return None
 
+        from insumos.services.checklist_epi_metadata_service import (
+            ChecklistEpiMetadataService,
+        )
+
         item, criado = ItemChecklist.objects.get_or_create(
             checklist=checklist,
             insumo=insumo,
-            defaults={'quantidade_enviada': quantidade_enviada},
+            defaults={
+                'quantidade_enviada': quantidade_enviada,
+                'metadados_epi_snapshot': ChecklistEpiMetadataService.resolver(
+                    base=checklist.inventario.base,
+                    insumo=insumo,
+                ),
+            },
         )
         if not criado:
             raise ValueError('Este insumo já foi adicionado ao checklist.')

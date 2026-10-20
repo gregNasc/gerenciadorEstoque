@@ -7,6 +7,7 @@ from . import declaracao_views
 from . import comunicacao_views
 from . import onboarding_views
 from . import linhas_moveis_views
+from . import custodia_views
 
 app_name = 'estoque'
 
@@ -55,6 +56,18 @@ urlpatterns = [
     path('linhas-moveis/operadoras/', linhas_moveis_views.operadoras_moveis, name='operadoras_moveis'),
     path('linhas-moveis/operadoras/<int:operadora_id>/editar/', linhas_moveis_views.operadoras_moveis, name='editar_operadora_movel'),
     path('linhas-moveis/operadoras/<int:operadora_id>/alternar/', linhas_moveis_views.alternar_operadora_movel, name='alternar_operadora_movel'),
+
+    # ---------------- CUSTÓDIA ----------------
+    path('custodias/', custodia_views.lista_custodias, name='lista_custodias'),
+    path('custodias/nova/', custodia_views.criar_custodia, name='criar_custodia'),
+    path('custodias/<int:custodia_id>/', custodia_views.detalhe_custodia, name='detalhe_custodia'),
+    path('custodias/<int:custodia_id>/termo/gerar/', custodia_views.gerar_termo_entrega, name='gerar_termo_entrega_custodia'),
+    path('custodias/<int:custodia_id>/termo/', custodia_views.baixar_termo_entrega, name='baixar_termo_entrega_custodia'),
+    path('custodias/<int:custodia_id>/devolver/', custodia_views.devolver_custodia, name='devolver_custodia'),
+    path('custodias/devolucoes/<int:devolucao_id>/termo/', custodia_views.baixar_termo_devolucao, name='baixar_termo_devolucao_custodia'),
+    path('custodias/colaboradores/', custodia_views.lista_colaboradores, name='lista_colaboradores'),
+    path('custodias/colaboradores/novo/', custodia_views.criar_colaborador, name='criar_colaborador'),
+    path('custodias/colaboradores/<int:colaborador_id>/editar/', custodia_views.editar_colaborador, name='editar_colaborador'),
 
     # ---------------- USUÁRIOS ----------------
     path('usuarios/cadastro/', views.gerenciar_usuarios, name='cadastrar_usuario'),

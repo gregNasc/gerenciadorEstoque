@@ -1,0 +1,14 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Custódias" %}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><div><h1 class="h3 mb-1"><i class="bi bi-person-badge me-2"></i>{% trans "Custódias" %}</h1><p class="text-secondary mb-0">{% trans "Equipamentos e linhas móveis sob responsabilidade de colaboradores." %}</p></div>{% if pode_gerenciar_custodias %}<a class="btn btn-primary" href="{% url 'estoque:criar_custodia' %}"><i class="bi bi-plus-circle me-1"></i>{% trans "Nova Custódia" %}</a>{% endif %}</div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body border-bottom"><form method="get" class="row g-2"><div class="col-md"><input class="form-control" name="q" value="{{ busca }}" placeholder="{% trans 'Colaborador, matrícula, patrimônio ou série' %}"></div><div class="col-md-3"><select class="form-select" name="status"><option value="">{% trans "Todos os status" %}</option>{% for valor,nome in status_choices %}<option value="{{ valor }}" {% if status_filtro == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div><div class="col-auto"><button class="btn btn-outline-primary">{% trans "Filtrar" %}</button></div></form></div>
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>#</th><th>{% trans "Colaborador" %}</th><th>{% trans "Empresa / Base" %}</th><th>{% trans "Entrega" %}</th><th>{% trans "Itens" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead><tbody>
+    {% for custodia in custodias %}<tr><td><strong>{{ custodia.id }}</strong></td><td>{{ custodia.colaborador.nome }}{% if custodia.colaborador.usuario %}<div class="small text-secondary">{{ custodia.colaborador.usuario.username }}</div>{% endif %}</td><td>{{ custodia.empresa.nome }}<div class="small text-secondary">{{ custodia.base.nome }}</div></td><td>{{ custodia.data_entrega|date:"d/m/Y" }}</td><td>{{ custodia.itens.count }}</td><td><span class="badge {% if custodia.vigente %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ custodia.get_status_display }}</span></td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'estoque:detalhe_custodia' custodia.id %}">{% trans "Abrir" %}</a></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-secondary py-5">{% trans "Nenhuma Custódia encontrada." %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Nova Custódia" %}{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4"><div><h1 class="h3 mb-1">{% trans "Nova Custódia" %}</h1><p class="text-secondary mb-0">{% trans "Selecione o colaborador e os ativos entregues sob sua responsabilidade." %}</p></div><a class="btn btn-outline-secondary" href="{% url 'estoque:lista_custodias' %}">{% trans "Voltar" %}</a></div>
+  {% if not tem_colaboradores %}<div class="alert alert-warning"><strong>{% trans "Cadastre primeiro um colaborador." %}</strong> <a href="{% url 'estoque:criar_colaborador' %}">{% trans "Abrir cadastro" %}</a></div>{% endif %}
+  <form method="post" class="card border-0 shadow-sm"><div class="card-body p-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% if equipamento_inicial %}<div class="alert alert-info"><i class="bi bi-pc-display me-2"></i>{% trans "Equipamento selecionado" %}: <strong>{{ equipamento_inicial }}</strong></div>{% endif %}
+    <div class="row g-3">
+      {% for field in form %}<div class="{% if field.name == 'observacao' or field.name == 'equipamentos' or field.name == 'linhas_moveis' %}col-12{% else %}col-md-6{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+      <div id="custodia-sem-equipamentos" class="col-12 alert alert-warning d-none mb-0">
+        {% trans "Nenhum equipamento elegível está disponível nesta Base." %}
+        <a href="{% url 'compras:catalogo_empresa' %}">{% trans "Configure os modelos permitidos para Custódia no Catálogo da Empresa." %}</a>
+      </div>
+    </div>
+    <div class="alert alert-light border mt-4 mb-0"><i class="bi bi-shield-check me-2"></i>{% trans "Ao salvar, a Custódia será ativada, o responsável do equipamento será sincronizado e o Termo de Entrega será gerado." %}</div>
+  </div><div class="card-footer bg-white d-flex justify-content-end gap-2"><a class="btn btn-light border" href="{% url 'estoque:lista_custodias' %}">{% trans "Cancelar" %}</a><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>{% trans "Ativar Custódia" %}</button></div></form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const empresa = document.getElementById('id_empresa');
+  const base = document.getElementById('id_base');
+  const equipamentos = document.getElementById('id_equipamentos');
+  const linhas = document.getElementById('id_linhas_moveis');
+  const aviso = document.getElementById('custodia-sem-equipamentos');
+
+  function filtrar(select, mostrarAviso) {
+    if (!select) return 0;
+    const baseId = base ? base.value : '';
+    const empresaId = empresa ? empresa.value : '';
+    let visiveis = 0;
+    Array.from(select.options).forEach(function (option) {
+      const compativel = Boolean(baseId) && option.dataset.baseId === baseId &&
+        (!empresaId || option.dataset.empresaId === empresaId);
+      option.hidden = !compativel;
+      option.disabled = !compativel;
+      if (!compativel) option.selected = false;
+      if (compativel) visiveis += 1;
+    });
+    if (mostrarAviso && aviso) aviso.classList.toggle('d-none', !baseId || visiveis > 0);
+    return visiveis;
+  }
+
+  function atualizarAtivos() {
+    filtrar(equipamentos, true);
+    filtrar(linhas, false);
+  }
+  if (empresa) empresa.addEventListener('change', atualizarAtivos);
+  if (base) base.addEventListener('change', atualizarAtivos);
+  atualizarAtivos();
+});
+</script>
+{% endblock %}

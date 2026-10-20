@@ -5,11 +5,13 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from estoque.models import Base
 from insumos.models import Cliente
 from integracao.models import (
     BindingSource,
+    CaepiImportacao,
     PlanningClient,
     PlanningClientBinding,
     PlanningEvent,
@@ -18,6 +20,7 @@ from integracao.models import (
     PlanningRegion,
     PlanningRegionBinding,
 )
+from integracao.services.caepi_import_service import CaepiImportService
 from integracao.services.binding_suggestions import (
     is_oxxo_client,
     suggest_local_clients,
@@ -28,6 +31,66 @@ from integracao.services.operational_base_resolver import (
     OperationalBaseResolver,
     PlanningClientResolver,
 )
+
+
+def _require_superuser(user):
+    if not user.is_superuser:
+        raise PermissionDenied('A Base CAEPI é exclusiva do Superuser.')
+
+
+@login_required
+def caepi_importacoes(request):
+    _require_superuser(request.user)
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('arquivo')
+        if uploaded_file is None:
+            messages.error(request, 'Selecione o relatório oficial CAEPI.')
+        else:
+            try:
+                importacao = CaepiImportService.preparar_previa(
+                    uploaded_file=uploaded_file,
+                    user=request.user,
+                )
+            except Exception as exc:
+                messages.error(request, f'Não foi possível preparar a prévia: {exc}')
+            else:
+                messages.success(request, 'Arquivo processado. Revise a prévia antes de publicar.')
+                return redirect('integracao:caepi_detalhe', pk=importacao.pk)
+    return render(request, 'integracao/caepi/importacoes.html', {
+        'importacoes': CaepiImportacao.objects.select_related('criado_por')[:20],
+        'publicada': CaepiImportacao.objects.filter(
+            status=CaepiImportacao.Status.PUBLICADA,
+        ).first(),
+    })
+
+
+@login_required
+def caepi_detalhe(request, pk):
+    _require_superuser(request.user)
+    importacao = get_object_or_404(
+        CaepiImportacao.objects.select_related('criado_por'), pk=pk,
+    )
+    amostra = importacao.registros.all()[:20]
+    return render(request, 'integracao/caepi/detalhe.html', {
+        'importacao': importacao,
+        'amostra': amostra,
+    })
+
+
+@login_required
+@require_POST
+def caepi_publicar(request, pk):
+    _require_superuser(request.user)
+    try:
+        importacao = CaepiImportService.publicar(pk)
+    except Exception as exc:
+        messages.error(request, f'Não foi possível publicar: {exc}')
+    else:
+        messages.success(
+            request,
+            f'Base CAEPI publicada com {importacao.total_registros} registros.',
+        )
+    return redirect('integracao:caepi_detalhe', pk=pk)
 
 
 def _pending_parent_events():

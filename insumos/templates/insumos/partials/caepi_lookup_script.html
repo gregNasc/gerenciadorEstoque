@@ -1,0 +1,110 @@
+{% load i18n %}
+<script>
+(function () {
+  if (window.caepiLookupBound) return;
+  window.caepiLookupBound = true;
+
+  function preencher(name, value) {
+    if (!value) return;
+    document.querySelectorAll(`[name="${name}"]`).forEach((field) => {
+      field.value = value;
+    });
+  }
+
+  function classeSituacao(valor) {
+    const normalizado = (valor || '').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    if (normalizado === 'VALIDO') return 'success';
+    if (['VENCIDO', 'CANCELADO', 'SUSPENSO'].includes(normalizado)) return 'danger';
+    return 'warning';
+  }
+
+  function mostrarResultadoEncontrado(status, data) {
+    const situacao = data.situacao || '{% trans "Não informada" %}';
+    const cor = classeSituacao(situacao);
+    const cabecalho = document.createElement('span');
+    cabecalho.className = 'd-inline-flex align-items-center gap-2 fw-semibold';
+
+    const indicador = document.createElement('span');
+    indicador.className = `d-inline-block rounded-circle bg-${cor}`;
+    indicador.style.width = '0.65rem';
+    indicador.style.height = '0.65rem';
+    indicador.setAttribute('aria-hidden', 'true');
+
+    const titulo = document.createElement('span');
+    titulo.className = `text-${cor}`;
+    titulo.textContent = `{% trans "CA localizado na base oficial publicada" %} · ${situacao}`;
+    cabecalho.append(indicador, titulo);
+
+    const detalhes = [
+      data.natureza ? `{% trans "Natureza da fabricação" %}: ${data.natureza}` : '',
+      data.produto ? `{% trans "Equipamento oficial" %}: ${data.produto}` : '',
+      data.marca ? `{% trans "Marca" %}: ${data.marca}` : '',
+      data.referencia ? `{% trans "Referência" %}: ${data.referencia}` : '',
+      data.norma ? `{% trans "Norma" %}: ${data.norma}` : '',
+    ].filter(Boolean);
+
+    status.className = 'form-text mt-2';
+    status.replaceChildren(cabecalho);
+    if (detalhes.length) {
+      const texto = document.createElement('span');
+      texto.className = 'd-block text-body-secondary mt-1';
+      texto.textContent = detalhes.join(' · ');
+      status.appendChild(texto);
+    }
+  }
+
+  document.addEventListener('click', async function (event) {
+    const button = event.target.closest('.js-consultar-ca');
+    if (!button) return;
+    const input = button.closest('.input-group')?.querySelector('[name="numero_ca"]');
+    const status = document.getElementById(button.dataset.target);
+    const numero = (input?.value || '').trim();
+    if (!numero) {
+      status.className = 'form-text text-danger';
+      status.textContent = '{% trans "Informe o número do CA antes de verificar." %}';
+      input?.focus();
+      return;
+    }
+
+    button.disabled = true;
+    status.className = 'form-text text-secondary';
+    status.textContent = '{% trans "Consultando o certificado..." %}';
+    try {
+      const url = new URL(button.dataset.url, window.location.origin);
+      url.searchParams.set('numero_ca', numero);
+      const response = await fetch(url, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+      });
+      const data = await response.json();
+      if (data.status === 'FOUND') {
+        preencher('numero_ca', data.numero_ca);
+        preencher('validade_ca', data.validade_ca);
+        preencher('natureza_fabricacao_ca', data.natureza);
+        mostrarResultadoEncontrado(status, data);
+      } else {
+        status.className = data.status === 'NOT_FOUND'
+          ? 'form-text text-danger'
+          : 'form-text text-warning';
+        status.replaceChildren(document.createTextNode(
+          data.detail || '{% trans "A verificação automática não está disponível." %}'
+        ));
+        if (data.consulta_oficial_url) {
+          status.appendChild(document.createTextNode(' '));
+          const link = document.createElement('a');
+          link.href = data.consulta_oficial_url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = '{% trans "Consultar no MTE" %}';
+          status.appendChild(link);
+        }
+      }
+    } catch (error) {
+      status.className = 'form-text text-warning';
+      status.textContent = '{% trans "Não foi possível consultar o CA agora. O preenchimento manual continua disponível." %}';
+    } finally {
+      button.disabled = false;
+    }
+  });
+}());
+</script>

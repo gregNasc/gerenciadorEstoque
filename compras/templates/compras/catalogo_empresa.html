@@ -42,6 +42,12 @@
                     {% trans "somente os itens marcados aparecerão no cadastro de equipamentos." %}
                 </div>
                 <div class="catalogo-opcoes">{{ form.produtos }}</div>
+                <hr class="my-4">
+                <div class="border rounded-3 p-3">
+                    <h2 class="h6 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>{{ form.produtos_custodia.label }}</h2>
+                    <p class="small text-secondary mb-3">{% trans "Marque somente modelos individualizados que podem ser entregues a um colaborador, como notebook, monitor, celular, carregador, mouse, mochila, dock ou headset. Balanças não devem ser marcadas." %}</p>
+                    <div class="catalogo-opcoes">{{ form.produtos_custodia }}</div>
+                </div>
                 {% if pode_configurar_linhas_moveis %}
                 <hr class="my-4">
                 <div class="row g-4">

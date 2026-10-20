@@ -182,7 +182,7 @@
                         <li><a class="dropdown-item {% if url_name == 'dashboard_saude_geral' %}active{% endif %}" href="{% url 'insumos:dashboard_saude_geral' %}"><i class="bi bi-speedometer2 me-2"></i>{% trans "Geral" %}</a></li>
                         {% endif %}
                         {% endif %}
-                        {% if pode_visualizar_valores %}
+                        {% if pode_visualizar_valores and url_name != 'estoque_insumos' %}
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header"><i class="bi bi-cart-check me-1"></i> {% trans "Compras" %}</h6></li>
                         <!--li><a class="dropdown-item" href="{% url 'compras:aquisicao_lista' %}"><i class="bi bi-receipt me-2"></i>Aquisições</a></li-->
@@ -634,6 +634,28 @@
                 {% endif %}
                 {% endif %}
 
+                <!-- CUSTÓDIA -->
+                {% if pode_visualizar_custodias %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if url_name == 'lista_custodias' or url_name == 'criar_custodia' or url_name == 'detalhe_custodia' or url_name == 'lista_colaboradores' or url_name == 'criar_colaborador' or url_name == 'editar_colaborador' %}active{% endif %}"
+                       href="#" id="custodiaDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-badge"></i>
+                        {% trans "Custódia" %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
+                        aria-labelledby="custodiaDropdown">
+                        <li><a class="dropdown-item" href="{% url 'estoque:lista_custodias' %}"><i class="bi bi-card-list"></i> {% trans "Custódias" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:lista_colaboradores' %}"><i class="bi bi-people"></i> {% trans "Colaboradores" %}</a></li>
+                        {% if pode_gerenciar_custodias %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:criar_custodia' %}"><i class="bi bi-plus-circle"></i> {% trans "Nova Custódia" %}</a></li>
+                        <li><a class="dropdown-item" href="{% url 'estoque:criar_colaborador' %}"><i class="bi bi-person-plus"></i> {% trans "Novo colaborador" %}</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+
                 <!-- CADASTROS -->
                 {% if 'cadastros' in tenant_features and 'equipamentos' in tenant_features or 'cadastros' in tenant_features and 'insumos' in tenant_features %}
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
@@ -726,6 +748,13 @@
                 {% endif %}
 
                 {% if request.user.is_superuser %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.namespace == 'integracao' and request.resolver_match.url_name == 'caepi_importacoes' or request.resolver_match.namespace == 'integracao' and request.resolver_match.url_name == 'caepi_detalhe' %}active{% endif %}"
+                       href="{% url 'integracao:caepi_importacoes' %}">
+                        <i class="bi bi-shield-check"></i>
+                        {% trans "Base CAEPI" %}
+                    </a>
+                </li>
                 <!--
                 <li class="nav-item">
                     <a class="nav-link"

@@ -63,6 +63,39 @@
 
                 </div>
 
+                <section id="camposEpi" class="border rounded-3 p-3 mt-2 d-none">
+                    <div class="d-flex align-items-start gap-2 mb-3">
+                        <i class="bi bi-shield-check fs-4 text-primary" aria-hidden="true"></i>
+                        <div>
+                            <h2 class="h6 mb-1">{% trans "Dados do EPI recebido" %}</h2>
+                            <p class="small text-secondary mb-0">{% trans "Informe o CA e o tamanho desta entrada. Lote e datas são opcionais." %}</p>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.numero_ca.id_for_label }}">{{ form.numero_ca.label }}</label><div class="input-group">{{ form.numero_ca }}<button class="btn btn-outline-primary js-consultar-ca" type="button" data-url="{% url 'insumos:consultar_ca_epi' %}" data-target="caepi-status-entrada"><i class="bi bi-shield-check me-1"></i>{% trans "Verificar CA" %}</button></div><div id="caepi-status-entrada" class="form-text" role="status" aria-live="polite"></div>{% for error in form.numero_ca.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                        <div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.validade_ca.id_for_label }}">{{ form.validade_ca.label }}</label>{{ form.validade_ca }}{% for error in form.validade_ca.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                        <div class="col-md-6"><label class="form-label fw-semibold" for="id_natureza_fabricacao_ca_entrada">{% trans "Natureza da fabricação (CAEPI)" %}</label><input id="id_natureza_fabricacao_ca_entrada" name="natureza_fabricacao_ca" class="form-control" type="text" readonly placeholder="{% trans 'Preenchida ao verificar o CA' %}"><div class="form-text">{% trans "Nacional ou importada; a data de fabricação do lote continua sendo informada no recebimento." %}</div></div>
+                        <div class="col-md-6" id="campoTamanhoVariante"><label class="form-label fw-semibold" for="{{ form.tamanho_variante.id_for_label }}">{{ form.tamanho_variante.label }}</label>{{ form.tamanho_variante }}{% for error in form.tamanho_variante.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                        <div class="col-md-6 d-none" id="campoTamanhoBota"><label class="form-label fw-semibold" for="{{ form.tamanho_bota.id_for_label }}">{{ form.tamanho_bota.label }}</label>{{ form.tamanho_bota }}{% for error in form.tamanho_bota.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                        <div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.codigo_lote.id_for_label }}">{{ form.codigo_lote.label }}</label>{{ form.codigo_lote }}{% for error in form.codigo_lote.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                        <div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.fabricado_em.id_for_label }}">{{ form.fabricado_em.label }}</label>{{ form.fabricado_em }}{% for error in form.fabricado_em.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                        <div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.validade_fisica.id_for_label }}">{{ form.validade_fisica.label }}</label>{{ form.validade_fisica }}{% for error in form.validade_fisica.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+                    </div>
+                </section>
+
+                <section id="camposPatrimonio" class="border rounded-3 p-3 mt-3 d-none">
+                    <div class="d-flex align-items-start gap-2 mb-3">
+                        <i class="bi bi-upc-scan fs-4 text-primary" aria-hidden="true"></i>
+                        <div>
+                            <h2 class="h6 mb-1">{% trans "Identificação patrimonial" %}</h2>
+                            <p class="small text-secondary mb-0">{% trans "Opcional. Para cadastrar mais de uma unidade patrimonial, registre uma entrada de quantidade 1 para cada patrimônio." %}</p>
+                        </div>
+                    </div>
+                    <label class="form-label fw-semibold" for="{{ form.patrimonio.id_for_label }}">{{ form.patrimonio.label }}</label>
+                    {{ form.patrimonio }}
+                    {% for error in form.patrimonio.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </section>
+
                 <!-- SALVAR -->
                 <div class="text-end mt-3">
                     <button type="button" class="btn btn-primary" id="btnSalvarInsumo">
@@ -90,6 +123,12 @@
                 <div class="mb-2"><strong>Categoria:</strong> <span id="modalCategoria"></span></div>
                 <div class="mb-2"><strong>Insumo:</strong> <span id="modalInsumo"></span></div>
                 <div class="mb-2"><strong>Quantidade:</strong> <span id="modalQuantidade"></span></div>
+                <div class="mb-2 d-none" id="modalLinhaCa"><strong>CA:</strong> <span id="modalCa"></span></div>
+                <div class="mb-2 d-none" id="modalLinhaValidadeCa"><strong>{% trans "Validade do CA" %}:</strong> <span id="modalValidadeCa"></span></div>
+                <div class="mb-2 d-none" id="modalLinhaTamanho"><strong>{% trans "Tamanho" %}:</strong> <span id="modalTamanho"></span></div>
+                <div class="mb-2 d-none" id="modalLinhaLote"><strong>{% trans "Lote" %}:</strong> <span id="modalLote"></span></div>
+                <div class="mb-2 d-none" id="modalLinhaValidadeFisica"><strong>{% trans "Validade física" %}:</strong> <span id="modalValidadeFisica"></span></div>
+                <div class="mb-2 d-none" id="modalLinhaPatrimonio"><strong>{% trans "Patrimônio" %}:</strong> <span id="modalPatrimonio"></span></div>
             </div>
 
             <div class="modal-footer">
@@ -106,51 +145,71 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('JS carregou');
     const categoriaSelect = document.querySelector('[name="categoria"]');
     const insumoSelect = document.querySelector('[name="insumo"]');
-    console.log(categoriaSelect);
-    console.log(insumoSelect);
     const url = "{% url 'insumos:insumos_por_categoria' %}";
+    const camposEpi = document.getElementById('camposEpi');
+    const camposPatrimonio = document.getElementById('camposPatrimonio');
+    const campoTamanhoVariante = document.getElementById('campoTamanhoVariante');
+    const campoTamanhoBota = document.getElementById('campoTamanhoBota');
+    const numeroCa = document.querySelector('[name="numero_ca"]');
+    const tamanhoVariante = document.querySelector('[name="tamanho_variante"]');
+    const tamanhoBota = document.querySelector('[name="tamanho_bota"]');
+    const patrimonio = document.querySelector('[name="patrimonio"]');
+
+    function atualizarCamposComplementares() {
+        const option = insumoSelect?.options[insumoSelect.selectedIndex];
+        const epi = option?.dataset.epi === 'true';
+        const bota = option?.dataset.bota === 'true';
+        const permitePatrimonio = option?.dataset.permitePatrimonio === 'true';
+        camposEpi?.classList.toggle('d-none', !epi);
+        camposPatrimonio?.classList.toggle('d-none', !permitePatrimonio || epi);
+        campoTamanhoVariante?.classList.toggle('d-none', !epi || bota);
+        campoTamanhoBota?.classList.toggle('d-none', !epi || !bota);
+        if (numeroCa) numeroCa.required = epi;
+        if (tamanhoVariante) tamanhoVariante.required = epi && !bota;
+        if (tamanhoBota) tamanhoBota.required = epi && bota;
+    }
+
+    async function carregarInsumos(categoriaId, selecionado) {
+        insumoSelect.innerHTML = '<option value="">{% trans "Carregando..." %}</option>';
+        if (!categoriaId) {
+            insumoSelect.innerHTML = '<option value="">{% trans "Selecione a categoria" %}</option>';
+            atualizarCamposComplementares();
+            return;
+        }
+        const resp = await fetch(`${url}?categoria=${categoriaId}`);
+        if (!resp.ok) throw new Error('Erro ao buscar insumos');
+        const data = await resp.json();
+        insumoSelect.innerHTML = '<option value="">{% trans "Selecione" %}</option>';
+        data.insumos.forEach(i => {
+            const opt = document.createElement('option');
+            opt.value = i.id;
+            opt.textContent = i.descricao;
+            opt.dataset.epi = String(i.epi);
+            opt.dataset.bota = String(i.bota);
+            opt.dataset.permitePatrimonio = String(i.permite_patrimonio);
+            opt.selected = String(i.id) === String(selecionado || '');
+            insumoSelect.appendChild(opt);
+        });
+        atualizarCamposComplementares();
+    }
 
     // FILTRO INSUMO
     if (categoriaSelect && insumoSelect) {
 
         categoriaSelect.addEventListener('change', async function () {
-            insumoSelect.innerHTML = '<option value="">Carregando...</option>';
-            if (!this.value) {
-                insumoSelect.innerHTML = '<option value="">Selecione a categoria</option>';
-                return;
-            }
-
             try {
-                const resp = await fetch(`${url}?categoria=${this.value}`);
-                if (!resp.ok) throw new Error('Erro ao buscar insumos');
-                const data = await resp.json();
-                insumoSelect.innerHTML = '<option value="">Selecione</option>';
-                if (!data.insumos || data.insumos.length === 0) {
-                    insumoSelect.innerHTML = '<option value="">Nenhum insumo encontrado</option>';
-                    return;
-                }
-
-                data.insumos.sort((a, b) => {
-                        const na = parseInt(a.descricao.match(/\d+/)?.[0] || 999999);
-                        const nb = parseInt(b.descricao.match(/\d+/)?.[0] || 999999);
-                        return na - nb;
-                    });
-
-                    data.insumos.forEach(i => {
-                    const opt = document.createElement('option');
-                    opt.value = i.id;
-                    opt.textContent = i.descricao;
-                    insumoSelect.appendChild(opt);
-                });
-
+                await carregarInsumos(this.value, '');
             } catch (e) {
                 console.error(e);
-                insumoSelect.innerHTML = '<option value="">Erro ao carregar insumos</option>';
+                insumoSelect.innerHTML = '<option value="">{% trans "Erro ao carregar insumos" %}</option>';
             }
         });
+        insumoSelect.addEventListener('change', atualizarCamposComplementares);
+        if (categoriaSelect.value) {
+            carregarInsumos(categoriaSelect.value, '{{ form.insumo.value|default_if_none:"" }}').catch(console.error);
+        }
     }
 
     // MODAL
@@ -193,10 +252,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.getElementById('modalQuantidade').innerText =
             quantidade?.value || '';
+        const option = insumo?.options[insumo.selectedIndex];
+        const epi = option?.dataset.epi === 'true';
+        const bota = option?.dataset.bota === 'true';
+        const ca = numeroCa?.value || '';
+        const tamanho = bota ? (tamanhoBota?.value || '') : (tamanhoVariante?.value || '');
+        const lote = document.querySelector('[name="codigo_lote"]')?.value || '';
+        const validadeCa = document.querySelector('[name="validade_ca"]')?.value || '';
+        const validadeFisica = document.querySelector('[name="validade_fisica"]')?.value || '';
+        const patrimonioValor = patrimonio?.value || '';
+        document.getElementById('modalCa').innerText = ca;
+        document.getElementById('modalValidadeCa').innerText = validadeCa || '{% trans "Não informada" %}';
+        document.getElementById('modalTamanho').innerText = tamanho;
+        document.getElementById('modalLote').innerText = lote || '{% trans "Sem número" %}';
+        document.getElementById('modalValidadeFisica').innerText = validadeFisica || '{% trans "Não informada" %}';
+        document.getElementById('modalPatrimonio').innerText = patrimonioValor;
+        document.getElementById('modalLinhaCa').classList.toggle('d-none', !epi);
+        document.getElementById('modalLinhaValidadeCa').classList.toggle('d-none', !epi);
+        document.getElementById('modalLinhaTamanho').classList.toggle('d-none', !epi);
+        document.getElementById('modalLinhaLote').classList.toggle('d-none', !epi);
+        document.getElementById('modalLinhaValidadeFisica').classList.toggle('d-none', !epi);
+        document.getElementById('modalLinhaPatrimonio').classList.toggle('d-none', !patrimonioValor);
     }
 
     // EVENTS
     document.getElementById('btnSalvarInsumo').addEventListener('click', function () {
+        const form = document.getElementById('formInsumo');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
         preencherModal();
         abrirModal();
     });
@@ -234,6 +319,8 @@ document.addEventListener('DOMContentLoaded', function () {
 .modal-backdrop.show { opacity: .5; }
 .modal-open { overflow: hidden; }
 </style>
+
+{% include 'insumos/partials/caepi_lookup_script.html' %}
 
 {% endif %}
 {% endblock %}

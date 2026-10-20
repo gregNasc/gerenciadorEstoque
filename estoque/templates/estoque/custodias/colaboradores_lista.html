@@ -1,0 +1,32 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Colaboradores" %}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><h1 class="h3 mb-1"><i class="bi bi-people me-2"></i>{% trans "Colaboradores" %}</h1><p class="text-secondary mb-0">{% trans "Pessoas que podem receber equipamentos em Custódia, com ou sem acesso ao sistema." %}</p></div>
+    {% if pode_gerenciar_custodias %}<a class="btn btn-primary" href="{% url 'estoque:criar_colaborador' %}"><i class="bi bi-person-plus me-1"></i>{% trans "Novo colaborador" %}</a>{% endif %}
+  </div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body border-bottom">
+      <form method="get" class="d-flex gap-2"><input class="form-control" name="q" value="{{ busca }}" placeholder="{% trans 'Nome, matrícula ou usuário' %}"><button class="btn btn-outline-primary">{% trans "Buscar" %}</button></form>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>{% trans "Colaborador" %}</th><th>{% trans "Empresa / Base" %}</th><th>{% trans "Acesso ao sistema" %}</th><th>{% trans "Status" %}</th><th></th></tr></thead>
+        <tbody>
+        {% for colaborador in colaboradores %}
+          <tr>
+            <td><strong>{{ colaborador.nome }}</strong>{% if colaborador.matricula %}<div class="small text-secondary">{% trans "Matrícula" %}: {{ colaborador.matricula }}</div>{% endif %}</td>
+            <td>{{ colaborador.empresa.nome }}<div class="small text-secondary">{{ colaborador.base.nome|default:"Todas as Bases" }}</div></td>
+            <td>{% if colaborador.usuario %}<span class="badge text-bg-primary">{{ colaborador.usuario.username }}</span>{% else %}<span class="badge text-bg-light border">{% trans "Sem login" %}</span>{% endif %}</td>
+            <td>{% if colaborador.ativo %}<span class="badge text-bg-success">{% trans "Ativo" %}</span>{% else %}<span class="badge text-bg-secondary">{% trans "Inativo" %}</span>{% endif %}</td>
+            <td class="text-end">{% if pode_gerenciar_custodias %}<a class="btn btn-sm btn-outline-primary" href="{% url 'estoque:editar_colaborador' colaborador.id %}"><i class="bi bi-pencil"></i></a>{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="text-center text-secondary py-5">{% trans "Nenhum colaborador encontrado." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

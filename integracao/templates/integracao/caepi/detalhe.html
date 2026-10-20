@@ -1,0 +1,24 @@
+{% extends "estoque/base.html" %}
+{% block title %}Prévia CAEPI{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div><h1 class="h3 mb-1">{{ importacao.nome_arquivo }}</h1><p class="text-secondary mb-0">SHA-256 <span class="font-monospace">{{ importacao.sha256 }}</span></p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'integracao:caepi_importacoes' %}">Voltar</a>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Total</small><div class="h4">{{ importacao.total_registros }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Novos</small><div class="h4 text-success">{{ importacao.novos }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Alterados/ausentes</small><div class="h4 text-warning">{{ importacao.alterados }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Inalterados</small><div class="h4">{{ importacao.inalterados }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Rejeitados</small><div class="h4 text-danger">{{ importacao.rejeitados }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Status</small><div class="fw-semibold">{{ importacao.get_status_display }}</div></div></div></div>
+  </div>
+  {% if importacao.advertencias %}<div class="alert alert-warning"><strong>Advertências:</strong><ul class="mb-0">{% for warning in importacao.advertencias %}<li>{{ warning }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if importacao.erro %}<div class="alert alert-danger">{{ importacao.erro }}</div>{% endif %}
+  {% if importacao.status == 'PREVIA' %}
+  <form method="post" action="{% url 'integracao:caepi_publicar' importacao.pk %}" class="mb-4">{% csrf_token %}<button class="btn btn-success" type="submit"><i class="bi bi-check-circle me-1"></i>Confirmar publicação</button></form>
+  {% endif %}
+  <div class="card shadow-sm border-0"><div class="card-header bg-light fw-semibold">Amostra validada</div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>CA</th><th>Situação</th><th>Validade</th><th>Natureza</th><th>Equipamento</th><th>Marca/Referência</th><th>Norma</th></tr></thead><tbody>{% for item in amostra %}<tr><td class="fw-semibold">{{ item.numero_ca }}</td><td>{{ item.situacao }}</td><td>{{ item.validade_ca|date:"d/m/Y"|default:"-" }}</td><td>{{ item.natureza|default:"-" }}</td><td>{{ item.equipamento }}{% if item.descricao_equipamento %}<div class="small text-secondary">{{ item.descricao_equipamento|truncatechars:120 }}</div>{% endif %}</td><td>{{ item.marca|default:"-" }}{% if item.referencia %}<div class="small">{{ item.referencia }}</div>{% endif %}</td><td>{{ item.norma|default:"-" }}</td></tr>{% empty %}<tr><td colspan="7" class="text-center py-4">Sem registros válidos.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

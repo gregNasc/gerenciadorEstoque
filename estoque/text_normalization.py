@@ -90,6 +90,7 @@ TECHNICAL_MODEL_FIELDS = {
     ('integracao.DocusignEvent', 'event_key'),
     ('integracao.DocusignEvent', 'event_type'),
     ('integracao.DocusignEvent', 'payload_sha256'),
+    ('integracao.CaepiImportacao', 'sha256'),
 }
 
 
@@ -118,7 +119,14 @@ def normalizar_textos_de_negocio(instance):
             continue
         valor = getattr(instance, field.attname, None)
         if isinstance(valor, str):
-            setattr(instance, field.attname, valor.upper())
+            if (
+                instance._meta.label == 'insumos.Insumo'
+                and field.name == 'descricao'
+                and valor.strip().upper() == 'BOTAS'
+            ):
+                setattr(instance, field.attname, 'Botas')
+            else:
+                setattr(instance, field.attname, valor.upper())
 
 
 def _query_sem_instancia(instance):

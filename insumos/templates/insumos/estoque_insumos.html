@@ -289,6 +289,7 @@
                                             {% endif %}
 
                                             <th>{% trans "Base" %}</th>
+                                            <th class="text-center">{% trans "Imagem" %}</th>
                                             <th>{% trans "Insumo" %}</th>
                                             <th class="text-center">{% trans "Unidade" %}</th>
                                             <th class="text-center">{% trans "Saldo" %}</th>
@@ -315,12 +316,135 @@
                                                     </td>
                                                 {% endif %}
 
+                                                <td class="text-center" style="width:72px">
+                                                    {% if item.insumo.imagem_principal %}
+                                                        <img src="{{ item.insumo.imagem_principal.url }}" alt="{{ item.insumo.descricao }}" class="rounded border object-fit-cover" width="52" height="52">
+                                                    {% else %}
+                                                        <span class="d-inline-flex align-items-center justify-content-center rounded border bg-light text-secondary" style="width:52px;height:52px"><i class="bi bi-box-seam fs-4"></i></span>
+                                                    {% endif %}
+                                                </td>
                                                 <td>
                                                     {{ item.base.nome }}
                                                 </td>
 
-                                                <td class="fw-semibold">
-                                                    {{ item.insumo.descricao }}
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-link p-0 border-0 fw-semibold text-start text-decoration-none"
+                                                        data-detalhe-insumo
+                                                        data-insumo-nome="{{ item.insumo.descricao }}"
+                                                        data-detail-template="detalhe-insumo-{{ item.base.id }}-{{ item.insumo.id }}"
+                                                        aria-label="{% blocktrans with nome=item.insumo.descricao %}Ver detalhes de {{ nome }}{% endblocktrans %}"
+                                                    >
+                                                        {{ item.insumo.descricao }}
+                                                        <i class="bi bi-info-circle ms-1 small" aria-hidden="true"></i>
+                                                    </button>
+                                                    {% if item.ativos_individualizados %}
+                                                        <div class="small text-secondary mt-1">
+                                                            <span class="me-1">{% trans "Patrimônio" %}:</span>
+                                                            {% for ativo in item.ativos_individualizados %}
+                                                                <span class="badge text-bg-light border me-1 mb-1">{{ ativo.patrimonio }}</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                    <template id="detalhe-insumo-{{ item.base.id }}-{{ item.insumo.id }}">
+                                                        <div class="row g-3">
+                                                            {% if item.insumo.imagem_principal %}<div class="col-12"><img src="{{ item.insumo.imagem_principal.url }}" alt="{{ item.insumo.descricao }}" class="rounded border object-fit-cover" width="120" height="120"></div>{% endif %}
+                                                            <div class="col-md-6">
+                                                                <div class="small text-secondary">{% trans "Empresa" %}</div>
+                                                                <div class="fw-semibold">{{ item.base.empresa.nome }}</div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="small text-secondary">{% trans "Base" %}</div>
+                                                                <div class="fw-semibold">{{ item.base.nome }}</div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="small text-secondary">{% trans "Categoria" %}</div>
+                                                                <div>{{ item.insumo.categoria.nome }}</div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="small text-secondary">{% trans "Natureza / controle" %}</div>
+                                                                <div>{{ item.insumo.get_natureza_display }} · {{ item.insumo.get_forma_controle_display }}</div>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <div class="small text-secondary">{% trans "Unidade" %}</div>
+                                                                <div>{{ item.insumo.unidade_medida }}</div>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <div class="small text-secondary">{% trans "Saldo atual" %}</div>
+                                                                <div class="fw-semibold">{{ item.saldo|floatformat:2 }}</div>
+                                                            </div>
+                                                            <div class="col-md-4">
+                                                                <div class="small text-secondary">{% trans "Estoque mínimo" %}</div>
+                                                                <div>{{ item.minimo|floatformat:2 }}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {% if item.lotes_epi %}
+                                                            <hr class="my-4">
+                                                            <h3 class="h6 mb-3"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>{% trans "Dados do EPI nesta Base" %}</h3>
+                                                            <div class="vstack gap-2">
+                                                                {% for lote in item.lotes_epi %}
+                                                                    <div class="border rounded-3 p-3 bg-light">
+                                                                        <div class="row g-2 small">
+                                                                            <div class="col-sm-6"><span class="text-secondary">{% trans "CA" %}:</span> <strong>{% if lote.certificado %}{{ lote.certificado.numero_ca }}{% else %}{% trans "Não informado" %}{% endif %}</strong></div>
+                                                                            <div class="col-sm-6"><span class="text-secondary">{% trans "Validade do CA" %}:</span> {% if lote.certificado.validade_ca %}{{ lote.certificado.validade_ca|date:'d/m/Y' }}{% else %}{% trans "Não informada" %}{% endif %}</div>
+                                                                            <div class="col-sm-6">
+                                                                                <span class="text-secondary">{% trans "Situação oficial" %}:</span>
+                                                                                {% if lote.certificado.situacao_oficial %}
+                                                                                    <span class="d-inline-flex align-items-center gap-1 fw-semibold {% if lote.certificado.situacao_oficial == 'VÁLIDO' %}text-success{% elif lote.certificado.situacao_oficial == 'VENCIDO' or lote.certificado.situacao_oficial == 'CANCELADO' or lote.certificado.situacao_oficial == 'SUSPENSO' %}text-danger{% else %}text-warning{% endif %}">
+                                                                                        <span class="d-inline-block rounded-circle {% if lote.certificado.situacao_oficial == 'VÁLIDO' %}bg-success{% elif lote.certificado.situacao_oficial == 'VENCIDO' or lote.certificado.situacao_oficial == 'CANCELADO' or lote.certificado.situacao_oficial == 'SUSPENSO' %}bg-danger{% else %}bg-warning{% endif %}" style="width:.55rem;height:.55rem" aria-hidden="true"></span>
+                                                                                        {{ lote.certificado.situacao_oficial }}
+                                                                                    </span>
+                                                                                {% else %}
+                                                                                    {% trans "Não consultada" %}
+                                                                                {% endif %}
+                                                                            </div>
+                                                                            <div class="col-sm-6"><span class="text-secondary">{% trans "Tamanho" %}:</span> {% if lote.variante %}{{ lote.variante.tamanho|default:lote.variante.nome }}{% else %}{% trans "Não informado" %}{% endif %}</div>
+                                                                            <div class="col-sm-6"><span class="text-secondary">{% trans "Lote" %}:</span> {% if lote.codigo_lote %}{{ lote.codigo_lote }}{% else %}{% trans "Sem número" %}{% endif %}</div>
+                                                                            <div class="col-sm-6"><span class="text-secondary">{% trans "Fabricação" %}:</span> {% if lote.fabricado_em %}{{ lote.fabricado_em|date:'d/m/Y' }}{% else %}{% trans "Não informada" %}{% endif %}</div>
+                                                                            <div class="col-sm-6"><span class="text-secondary">{% trans "Validade física" %}:</span> {% if lote.validade_fisica %}{{ lote.validade_fisica|date:'d/m/Y' }}{% else %}{% trans "Não informada" %}{% endif %}</div>
+                                                                            <div class="col-12"><span class="text-secondary">{% trans "Observação" %}:</span> {% if lote.observacao %}{{ lote.observacao }}{% else %}{% trans "Sem observação" %}{% endif %}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                {% endfor %}
+                                                            </div>
+
+                                                            <form method="get" action="{% url 'insumos:exportar_dados_epi' %}" class="border rounded-3 p-3 mt-3 bg-white">
+                                                                <input type="hidden" name="base" value="{{ item.base.id }}">
+                                                                <input type="hidden" name="insumo" value="{{ item.insumo.id }}">
+                                                                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                                                                    <div>
+                                                                        <div class="fw-semibold mb-2"><i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>{% trans "Exportar dados deste EPI" %}</div>
+                                                                        <div class="small text-secondary mb-2">{% trans "Selecione os registros que devem constar na planilha." %}</div>
+                                                                        <div class="small fw-semibold mb-1">{% trans "Validade" %}</div>
+                                                                        <div class="d-flex flex-wrap gap-3 mb-2">
+                                                                            <label class="form-check"><input class="form-check-input" type="checkbox" name="validade" value="vencido" checked> <span class="form-check-label">{% trans "Vencidos" %}</span></label>
+                                                                            <label class="form-check"><input class="form-check-input" type="checkbox" name="validade" value="proximo" checked> <span class="form-check-label">{% trans "Próximos do vencimento (6 meses)" %}</span></label>
+                                                                            <label class="form-check"><input class="form-check-input" type="checkbox" name="validade" value="vigente"> <span class="form-check-label">{% trans "Vigentes por mais de 6 meses" %}</span></label>
+                                                                            <label class="form-check"><input class="form-check-input" type="checkbox" name="validade" value="sem_data"> <span class="form-check-label">{% trans "Sem data" %}</span></label>
+                                                                        </div>
+                                                                        <div class="small fw-semibold mb-1">{% trans "Status do registro" %}</div>
+                                                                        <div class="d-flex flex-wrap gap-3">
+                                                                            <label class="form-check"><input class="form-check-input" type="checkbox" name="registro" value="ativo" checked> <span class="form-check-label">{% trans "Ativos" %}</span></label>
+                                                                            <label class="form-check"><input class="form-check-input" type="checkbox" name="registro" value="inativo" checked> <span class="form-check-label">{% trans "Inativos" %}</span></label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button type="submit" class="btn btn-outline-success"><i class="bi bi-download me-1" aria-hidden="true"></i>{% trans "Exportar Excel" %}</button>
+                                                                </div>
+                                                            </form>
+                                                        {% endif %}
+
+                                                        {% if item.ativos_individualizados %}
+                                                            <hr class="my-4">
+                                                            <h3 class="h6 mb-3"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>{% trans "Patrimônios nesta Base" %}</h3>
+                                                            <div class="d-flex flex-wrap gap-2">
+                                                                {% for ativo in item.ativos_individualizados %}
+                                                                    <span class="badge text-bg-light border px-3 py-2">{{ ativo.patrimonio }}</span>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% endif %}
+                                                    </template>
                                                 </td>
 
                                                 <td class="text-center">
@@ -371,7 +495,7 @@
                                         {% empty %}
                                             <tr>
                                                 <td
-                                                    colspan="{% if exibir_filtros %}8{% else %}7{% endif %}"
+                                                    colspan="{% if exibir_filtros %}9{% else %}8{% endif %}"
                                                     class="text-center text-muted py-5"
                                                 >
                                                     {% trans "Nenhum item encontrado nesta categoria." %}
@@ -384,7 +508,7 @@
                                             style="display: none;"
                                         >
                                             <td
-                                                colspan="{% if exibir_filtros %}8{% else %}7{% endif %}"
+                                                colspan="{% if exibir_filtros %}9{% else %}8{% endif %}"
                                                 class="text-center text-muted py-5"
                                             >
                                                 {% trans "Nenhum item corresponde ao filtro selecionado." %}
@@ -413,6 +537,25 @@
 
             {% endif %}
 
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE DETALHES DO INSUMO -->
+<div class="modal fade" id="modalDetalheInsumo" tabindex="-1" aria-labelledby="modalDetalheInsumoTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <div>
+                    <div class="small text-secondary text-uppercase fw-semibold">{% trans "Informações do insumo" %}</div>
+                    <h2 class="modal-title h5 mb-0" id="modalDetalheInsumoTitulo"></h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fechar' %}"></button>
+            </div>
+            <div class="modal-body p-4" id="modalDetalheInsumoConteudo"></div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Fechar" %}</button>
+            </div>
         </div>
     </div>
 </div>
@@ -672,6 +815,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const painelAjuste = document.getElementById('painelAjusteEstoque');
     const ajusteSaldoReal = document.getElementById('ajusteSaldoReal');
+    const modalDetalheElemento = document.getElementById('modalDetalheInsumo');
+    const modalDetalheTitulo = document.getElementById('modalDetalheInsumoTitulo');
+    const modalDetalheConteudo = document.getElementById('modalDetalheInsumoConteudo');
 
     let elementoFocadoAntesAjuste = null;
 
@@ -833,6 +979,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         filtrarBasesPorEmpresa();
     }
+
+    document
+        .querySelectorAll('[data-detalhe-insumo]')
+        .forEach(function (button) {
+            button.addEventListener('click', function () {
+                const template = document.getElementById(
+                    button.dataset.detailTemplate
+                );
+                if (!template || !modalDetalheElemento || !modalDetalheConteudo) {
+                    return;
+                }
+                modalDetalheTitulo.textContent = button.dataset.insumoNome || '';
+                modalDetalheConteudo.replaceChildren(
+                    template.content.cloneNode(true)
+                );
+                bootstrap.Modal.getOrCreateInstance(modalDetalheElemento).show();
+            });
+        });
 
     document
         .querySelectorAll('[data-ajuste-toggle]')

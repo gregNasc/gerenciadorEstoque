@@ -1,0 +1,79 @@
+{% load i18n %}
+<form method="post" enctype="multipart/form-data" class="card border-0 shadow-sm">
+  <div class="card-body p-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="row g-3">
+      {% for field in form %}
+        {% if field.name not in 'fabricante_importador,numero_ca,validade_ca,tamanho_variante,tamanho_bota,base_lote,patrimonio_insumo,codigo_lote,fabricado_em,validade_fisica,observacao_epi' %}
+        <div class="{% if field.name == 'termo_pesquisa_online' %}col-12{% else %}col-md-6{% endif %}">
+          {% if field.name == 'ativo' %}<div class="form-check mt-4">{{ field }}<label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <section id="localizacao-item" class="border rounded-3 p-3 mt-4">
+      <div class="d-flex align-items-start gap-2 mb-3"><i class="bi bi-geo-alt fs-4 text-primary"></i><div><h2 class="h6 mb-1">{% trans "Base e identificação" %}</h2><p class="small text-secondary mb-0">{% trans "A Base é obrigatória para EPI e para qualquer unidade que receba patrimônio." %}</p></div></div>
+      <div class="row g-3">
+        {% for field in form %}
+          {% if field.name in 'base_lote,patrimonio_insumo' %}
+          <div class="{% if field.name == 'observacao_epi' %}col-12{% else %}col-md-6{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+    <section id="dados-epi" class="border rounded-3 p-3 mt-4">
+      <div class="d-flex align-items-start gap-2 mb-3"><i class="bi bi-shield-check fs-4 text-primary"></i><div><h2 class="h6 mb-1">{% trans "Dados do EPI" %}</h2><p class="small text-secondary mb-0">{% trans "CA e tamanho são obrigatórios. Lote e datas de validade permanecem opcionais." %}</p></div></div>
+      <div class="row g-3">
+        {% for field in form %}
+          {% if field.name in 'fabricante_importador,numero_ca,validade_ca,tamanho_variante,tamanho_bota,codigo_lote,fabricado_em,validade_fisica,observacao_epi' %}
+          <div data-campo-epi="{{ field.name }}" class="{% if field.name == 'observacao_epi' %}col-12{% else %}col-md-6{% endif %}">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.name == 'numero_ca' %}
+              <div class="input-group">{{ field }}<button class="btn btn-outline-primary js-consultar-ca" type="button" data-url="{% url 'insumos:consultar_ca_epi' %}" data-target="caepi-status-catalogo"><i class="bi bi-shield-check me-1"></i>{% trans "Verificar CA" %}</button></div>
+              <div id="caepi-status-catalogo" class="form-text" role="status" aria-live="polite"></div>
+            {% else %}{{ field }}{% endif %}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          {% endif %}
+        {% endfor %}
+        <div class="col-md-6" data-campo-epi="natureza_fabricacao_ca">
+          <label class="form-label" for="id_natureza_fabricacao_ca_catalogo">{% trans "Natureza da fabricação (CAEPI)" %}</label>
+          <input id="id_natureza_fabricacao_ca_catalogo" name="natureza_fabricacao_ca" class="form-control" type="text" readonly placeholder="{% trans 'Preenchida ao verificar o CA' %}">
+          <div class="form-text">{% trans "Indica se a fabricação oficial é nacional ou importada; não substitui a data de fabricação do lote." %}</div>
+        </div>
+      </div>
+    </section>
+    <div class="alert alert-light border mt-4 mb-0">{% trans "O controle legado permanece preservado para compatibilidade com os fluxos existentes." %}</div>
+  </div>
+  <div class="card-footer bg-white d-flex justify-content-end gap-2"><a class="btn btn-light border" href="{% url 'insumos:lista_insumos' %}">{% trans "Cancelar" %}</a><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>{% trans acao %}</button></div>
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const natureza = document.getElementById('id_natureza');
+  const formaControle = document.getElementById('id_forma_controle');
+  const descricao = document.getElementById('id_descricao');
+  const dadosEpi = document.getElementById('dados-epi');
+  const localizacao = document.getElementById('localizacao-item');
+  const patrimonio = document.getElementById('id_patrimonio_insumo')?.closest('.col-md-6');
+  const tamanhoVariante = document.querySelector('[data-campo-epi="tamanho_variante"]');
+  const tamanhoBota = document.querySelector('[data-campo-epi="tamanho_bota"]');
+  function atualizar() {
+    if (!natureza || !dadosEpi) return;
+    const epi = natureza.value === 'EPI';
+    const individualizado = natureza.value === 'REUTILIZAVEL' || formaControle?.value === 'INDIVIDUALIZADO';
+    const bota = (descricao?.value || '').trim().toUpperCase().includes('BOTA');
+    dadosEpi.classList.toggle('d-none', !epi);
+    localizacao?.classList.toggle('d-none', !epi && !individualizado);
+    patrimonio?.classList.toggle('d-none', !individualizado || epi);
+    tamanhoVariante?.classList.toggle('d-none', epi && bota);
+    tamanhoBota?.classList.toggle('d-none', !epi || !bota);
+  }
+  if (natureza) natureza.addEventListener('change', atualizar);
+  if (formaControle) formaControle.addEventListener('change', atualizar);
+  if (descricao) descricao.addEventListener('input', atualizar);
+  atualizar();
+});
+</script>
+{% include 'insumos/partials/caepi_lookup_script.html' %}

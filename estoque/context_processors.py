@@ -213,6 +213,7 @@ def notificacoes_context(request):
 def permissoes_especiais(request):
     if request.user.is_authenticated:
         from chamados.policies import ChamadoAccessPolicy
+        from estoque.policies.custodias import CustodiaAccessPolicy
         from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
         compras_restrito = ComprasAccessPolicy.restrito(request.user)
         perfil = request.user.perfil
@@ -287,6 +288,14 @@ def permissoes_especiais(request):
                     scope=getattr(request, 'tenant_scope', None),
                 ).exists()
             ),
+            'pode_visualizar_custodias': CustodiaAccessPolicy.permite(
+                request.user,
+                CustodiaAccessPolicy.VIEW,
+            ),
+            'pode_gerenciar_custodias': CustodiaAccessPolicy.permite(
+                request.user,
+                CustodiaAccessPolicy.MANAGE,
+            ),
         }
 
     return {
@@ -308,6 +317,8 @@ def permissoes_especiais(request):
         'pode_acessar_checklist': False,
         'operador_restrito': False,
         'pode_acessar_linhas_moveis': False,
+        'pode_visualizar_custodias': False,
+        'pode_gerenciar_custodias': False,
     }
 
 

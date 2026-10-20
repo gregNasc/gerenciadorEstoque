@@ -1,6 +1,8 @@
 from django.contrib import admin
 
 from integracao.models import (
+    CaepiImportacao,
+    CaepiRegistro,
     DocusignEnvelope,
     DocusignEvent,
     DocusignTenantConfig,
@@ -15,6 +17,34 @@ from integracao.models import (
     PlanningRegionBinding,
     PlanningStore,
 )
+
+
+@admin.register(CaepiImportacao)
+class CaepiImportacaoAdmin(admin.ModelAdmin):
+    list_display = ('nome_arquivo', 'status', 'total_registros', 'criado_por', 'criado_em', 'publicado_em')
+    list_filter = ('status',)
+    search_fields = ('nome_arquivo', 'sha256')
+    readonly_fields = [field.name for field in CaepiImportacao._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CaepiRegistro)
+class CaepiRegistroAdmin(admin.ModelAdmin):
+    list_display = ('numero_ca', 'situacao', 'validade_ca', 'natureza', 'equipamento', 'importacao')
+    list_filter = ('situacao', 'natureza')
+    search_fields = ('numero_ca', 'equipamento', 'descricao_equipamento', 'marca', 'referencia')
+    readonly_fields = [field.name for field in CaepiRegistro._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(DocusignTenantConfig)

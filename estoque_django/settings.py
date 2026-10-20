@@ -145,8 +145,9 @@ else:
 if DATABASE_SSL_REQUIRED and DATABASES['default']['ENGINE'] != 'django.db.backends.sqlite3':
     DATABASES['default'].setdefault('OPTIONS', {}).setdefault('sslmode', 'require')
 
-INSTALLED_APPS = [
+INSTALLED_APPS = ([
     'daphne',
+] if env_bool('ENABLE_DAPHNE', True) else []) + [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

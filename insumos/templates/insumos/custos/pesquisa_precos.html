@@ -1,121 +1,238 @@
 {% extends 'estoque/base.html' %}
 {% load i18n %}
-
 {% block title %}{% trans "Pesquisa e decisão de compra" %}{% endblock %}
+{% block extra_css %}
+<style>
+:root{--buy-ink:#17283e;--buy-muted:#69798d;--buy-edge:#e0e7ef;--buy-blue:#2458a6;--buy-soft:#f4f7fb}
+.buy-page{max-width:1680px;margin:auto;color:var(--buy-ink)}
+.buy-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:24px}
+.buy-eyebrow{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;color:var(--buy-blue);font-weight:750}
+.buy-title{font-size:clamp(1.5rem,2vw,2.05rem);font-weight:750;letter-spacing:-.035em;margin:3px 0 6px}
+.buy-muted{color:var(--buy-muted)}
+.buy-panel,.buy-stat,.buy-offer,.buy-source,.buy-chart{background:#fff;border:1px solid var(--buy-edge);border-radius:15px;box-shadow:0 4px 22px rgba(18,42,75,.035)}
+.buy-panel{padding:22px;margin-bottom:24px}
+.buy-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.buy-section-title{font-size:1.04rem;font-weight:750;margin:0}
+.buy-page .form-label{font-size:.77rem;font-weight:700;color:#43556d;margin-bottom:7px}
+.buy-page .form-control,.buy-page .form-select{min-height:42px;border-color:#dce4ef;border-radius:9px}
+.buy-page .btn{border-radius:9px;font-weight:650}
+.buy-search-button{min-height:42px;white-space:nowrap}
+.buy-stat{height:100%;padding:19px;position:relative;overflow:hidden}
+.buy-stat-label{color:var(--buy-muted);font-size:.78rem;margin-bottom:12px;display:block}
+.buy-stat-value{font-size:clamp(1.28rem,1.8vw,1.75rem);font-weight:800;line-height:1.15;letter-spacing:-.04em;overflow-wrap:anywhere}
+.buy-stat-note{font-size:.74rem;color:var(--buy-muted);margin-top:8px}
+.buy-stat--accent{background:#eff8f2;border-color:#cde8d4}.buy-stat--accent .buy-stat-value{color:#16653c}
+.buy-source{height:100%;padding:19px}.buy-source-name{font-weight:750}.buy-source-price{font-size:1.45rem;font-weight:800;margin:12px 0 6px}
+.buy-source-product{font-size:.84rem;color:var(--buy-muted);min-height:42px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.buy-source-status{font-size:.8rem;color:var(--buy-muted);margin:12px 0}
+.buy-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:26px 0 15px}
+.buy-offer{height:100%;padding:19px;display:flex;flex-direction:column;transition:box-shadow .2s,border-color .2s}
+.buy-offer:hover{box-shadow:0 11px 32px rgba(20,50,90,.10);border-color:#aabfda}
+.buy-offer--best{border:2px solid #56b47b;background:linear-gradient(180deg,#f7fdf9 0,#fff 45%)}
+.buy-badges{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:15px}
+.buy-pill{display:inline-block;font-size:.7rem;font-weight:800;background:#edf2f8;color:#425873;border-radius:100px;padding:5px 10px}
+.buy-pill--best{background:#dff3e5;color:#17633d}
+.buy-offer-title{font-size:1rem;font-weight:750;line-height:1.45;min-height:44px;margin-bottom:5px;overflow-wrap:anywhere}
+.buy-offer-vendor{color:var(--buy-muted);font-size:.82rem;margin-bottom:17px}
+.buy-offer-price{font-size:1.7rem;line-height:1.2;font-weight:850;letter-spacing:-.045em;margin-bottom:17px}
+.buy-offer-details{border-top:1px solid var(--buy-edge);border-bottom:1px solid var(--buy-edge);padding:13px 0;margin-bottom:17px}
+.buy-detail{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:.82rem;padding:5px 0}
+.buy-detail strong{font-weight:750;text-align:right}.buy-price-total{color:#1d5d9e;font-size:1.1rem}
+.buy-offer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.buy-offer-actions form{flex:1;min-width:135px}.buy-offer-actions form button{width:100%}
+.buy-charts{margin-top:28px}.buy-chart{padding:20px;height:320px}.buy-chart-canvas{position:relative;height:248px;margin-top:12px}
+.buy-table-pane{display:none}.buy-card-pane[hidden],.buy-table-pane[hidden]{display:none!important}.buy-table-pane:not([hidden]){display:block}
+.buy-card-pane:not([hidden]){display:block}.buy-page .table th{font-size:.76rem;color:#66778b;background:#f6f8fb;white-space:nowrap}.buy-page .table td{font-size:.85rem}
+.buy-empty{text-align:center;padding:55px 15px;border:1px dashed #cbd6e5;border-radius:13px;background:#f9fbfd}
+.buy-switch{display:inline-flex;border:1px solid #dce4ef;border-radius:10px;padding:3px;background:#f5f7fa}.buy-switch button{border:none;background:none;padding:7px 12px;border-radius:8px;color:#52647b;font-size:.83rem;font-weight:700}.buy-switch button.active{background:#fff;color:#2458a6;box-shadow:0 1px 5px #dae2ee}
+.buy-hint{font-size:.79rem;color:var(--buy-muted);margin-top:15px}
+@media(max-width:575px){.buy-panel{padding:15px}.buy-offer-price{font-size:1.5rem}.buy-chart{height:280px}.buy-chart-canvas{height:208px}.buy-page{padding:14px!important}}
 
-{% block extra_css %}<style>
-.purchase-kpi { border: 1px solid #dee2e6; border-left: 4px solid #1e3c72; border-radius: 6px; padding: 14px; height: 100%; background: #fff; }
-.purchase-kpi strong { display: block; font-size: 1.4rem; }
-.purchase-chart { border: 1px solid #d8e0e8; border-radius: 6px; padding: 16px; height: 340px; }
-.purchase-chart canvas { max-height: 280px; }
-</style>{% endblock %}
-
+/* Seletor dinâmico de fornecedores */
+.buy-provider-picker{position:relative}
+.buy-provider-trigger{width:100%;min-height:42px;background:#fff;border:1px solid #dce4ef;border-radius:9px;padding:8px 11px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--buy-ink)}
+.buy-provider-trigger:focus{outline:3px solid rgba(36,88,166,.18);border-color:#2458a6}
+.buy-provider-dropdown{position:absolute;top:calc(100% + 6px);left:0;width:min(400px,calc(100vw - 45px));z-index:30;background:#fff;border:1px solid #dce4ef;border-radius:12px;box-shadow:0 16px 35px rgba(18,42,75,.18);padding:12px}
+.buy-provider-dropdown[hidden],.buy-provider-mode[hidden]{display:none!important}
+.buy-provider-list{max-height:230px;overflow:auto;margin-top:9px;border-top:1px solid #e9eef5}
+.buy-provider-option{display:flex;align-items:center;gap:9px;padding:10px 5px;border-bottom:1px solid #f0f3f7;font-size:.88rem;cursor:pointer}
+.buy-provider-option input{width:16px;height:16px;accent-color:#2458a6}
+.buy-provider-option.is-disabled{color:#9aabbc;cursor:not-allowed}
+.buy-provider-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:10px}
+.buy-provider-summary{font-size:.76rem;color:var(--buy-muted);margin-top:6px}
+.buy-provider-error{color:#b42318;font-size:.8rem;margin-top:6px}
+.buy-provider-mode{display:flex;gap:15px;align-items:center;flex-wrap:wrap;min-height:42px}
+.buy-provider-mode label{display:inline-flex;gap:6px;align-items:center;cursor:pointer;font-size:.88rem}
+</style>
+{% endblock %}
 {% block content %}
-<main class="container-fluid p-4">
-    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
-        <div><h1 class="h3 mb-1">{% trans "Pesquisa e decisão de compra" %}</h1><p class="text-secondary mb-0">{% trans "Compare ofertas online e cotações cadastradas antes de comprar." %}</p></div>
-        <div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="{% url 'insumos:precos_insumos' %}"><i class="bi bi-tags"></i> {% trans "Cotações" %}</a><a class="btn btn-outline-secondary" href="{% url 'insumos:fornecedores_insumos' %}"><i class="bi bi-building"></i> {% trans "Fornecedores" %}</a></div>
-    </header>
-
-    {% if pode_pesquisar and not api_configurada %}<div class="alert alert-warning"><strong>{% trans "Integração pendente." %}</strong> {% trans "Habilite Gimba ou Fidelity nas variáveis de ambiente, ou configure o token do Mercado Livre, para fazer novas pesquisas." %}</div>{% endif %}
-
-    <form method="post" class="row g-2 align-items-end bg-light border p-3 mb-3">{% csrf_token %}
-        <div class="col-lg-2"><label class="form-label" for="empresa-pesquisa">{% trans "Empresa" %}</label><select class="form-select" id="empresa-pesquisa" name="empresa" required>{% for empresa in empresas %}<option value="{{ empresa.id }}" {% if empresa_selecionada.id == empresa.id %}selected{% endif %}>{{ empresa.nome }}</option>{% endfor %}</select></div>
-        <div class="col-lg-2"><label class="form-label" for="insumo-pesquisa">{% trans "Insumo" %}</label><select class="form-select" id="insumo-pesquisa" name="insumo" required><option value="">{% trans "Selecione" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" data-termo="{{ insumo.termo_pesquisa_online|default:insumo.descricao }}" {% if insumo_selecionado.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
-        <div class="col-lg-2"><label class="form-label" for="fonte-pesquisa">{% trans "Fornecedor" %}</label><select class="form-select" id="fonte-pesquisa" name="fonte" required><option value="">{% trans "Selecione" %}</option>{% for item in fontes %}<option value="{{ item.codigo }}" {% if fonte == item.codigo %}selected{% endif %} {% if not item.habilitada %}disabled{% endif %}>{{ item.nome }}{% if not item.habilitada %} — {% trans "desabilitado" %}{% endif %}</option>{% endfor %}</select></div>
-        <div class="col-lg-2"><label class="form-label" for="termo-pesquisa">{% trans "Termo de pesquisa" %}</label><input class="form-control" id="termo-pesquisa" name="termo" value="{{ termo }}" placeholder="{% trans 'Ex.: papel sulfite A4 500 folhas' %}"></div>
-        <div class="col-lg-2"><label class="form-label" for="quantidade-pesquisa">{% trans "Quantidade desejada" %}</label><input class="form-control" id="quantidade-pesquisa" name="quantidade" type="number" min="0.01" step="0.01" value="{{ quantidade }}"></div>
-        <div class="col-lg-2"><button class="btn btn-primary w-100" type="submit" {% if not pode_pesquisar or not api_configurada %}disabled{% endif %}><i class="bi bi-cloud-download"></i> {% trans "Pesquisar preços" %}</button></div>
-    </form>
-
-    {% if comparacao_fornecedores %}
-    <section class="mb-3" aria-labelledby="titulo-comparacao-fornecedores">
-        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
-            <h2 class="h5 mb-0" id="titulo-comparacao-fornecedores">{% trans "Menor preço por fornecedor" %}</h2>
-            <small class="text-secondary">{% trans "Compare a embalagem e a unidade antes de escolher." %}</small>
+<main class="container-fluid p-4 buy-page">
+  <header class="buy-header">
+    <div><div class="buy-eyebrow">{% trans "Compras e suprimentos" %}</div><h1 class="buy-title">{% trans "Pesquisa e decisão de compra" %}</h1><p class="buy-muted mb-0">{% trans "Compare preços, fornecedores e condições antes de definir o custo do insumo." %}</p></div>
+    <div class="d-flex gap-2 flex-wrap"><a class="btn btn-outline-secondary" href="{% url 'insumos:precos_insumos' %}"><i class="bi bi-tags me-1"></i>{% trans "Cotações" %}</a><a class="btn btn-outline-secondary" href="{% url 'insumos:fornecedores_insumos' %}"><i class="bi bi-building me-1"></i>{% trans "Fornecedores" %}</a></div>
+  </header>
+  {% if pode_pesquisar and not api_configurada %}<div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle me-2"></i><strong>{% trans "Pesquisa automática indisponível." %}</strong> {% trans "Nenhum provedor de consulta está configurado. Ative Gimba, Fidelity ou outra integração no servidor para realizar novas pesquisas. Você ainda pode acessar cotações e fornecedores cadastrados." %}</div>{% endif %}
+  <section class="buy-panel" aria-labelledby="buy-search-title">
+    <div class="buy-panel-head"><h2 class="buy-section-title" id="buy-search-title"><i class="bi bi-search me-2 text-primary"></i>{% trans "Pesquisar produtos" %}</h2><small class="buy-muted">{% trans "Selecione um fornecedor ou compare dois ou mais fornecedores." %}</small></div>
+    <form method="post" id="buy-search-form" class="row g-3 align-items-end">{% csrf_token %}
+      <div class="col-12 col-md-6 col-xl-2"><label class="form-label" for="empresa-pesquisa">{% trans "Empresa" %}</label><select class="form-select" id="empresa-pesquisa" name="empresa" required>{% for empresa in empresas %}<option value="{{ empresa.id }}" {% if empresa_selecionada.id == empresa.id %}selected{% endif %}>{{ empresa.nome }}</option>{% endfor %}</select></div>
+      <div class="col-12 col-md-6 col-xl-3"><label class="form-label" for="insumo-pesquisa">{% trans "Insumo" %}</label><select class="form-select" id="insumo-pesquisa" name="insumo" required><option value="">{% trans "Selecione um insumo" %}</option>{% for insumo in insumos %}<option value="{{ insumo.id }}" data-termo="{{ insumo.termo_pesquisa_online|default:insumo.descricao }}" {% if insumo_selecionado.id == insumo.id %}selected{% endif %}>{{ insumo.descricao }}</option>{% endfor %}</select></div>
+      <div class="col-12 col-md-6 col-xl-2">
+        <label class="form-label" for="buy-mode-single">{% trans "Tipo de pesquisa" %}</label>
+        <div class="buy-provider-mode" role="radiogroup" aria-label="{% trans 'Tipo de pesquisa' %}">
+          <label><input type="radio" id="buy-mode-single" name="modo_pesquisa" value="individual" {% if modo_pesquisa != 'comparar' %}checked{% endif %}> {% trans "Individual" %}</label>
+          <label><input type="radio" id="buy-mode-compare" name="modo_pesquisa" value="comparar" {% if modo_pesquisa == 'comparar' %}checked{% endif %}> {% trans "Comparar" %}</label>
         </div>
-        <div class="row g-3">
-            {% for item in comparacao_fornecedores %}
-            <div class="col-md-6">
-                <article class="purchase-kpi">
-                    <span class="small text-secondary">{{ item.nome }}</span>
-                    {% if item.oferta %}
-                    <strong>R$ {{ item.oferta.preco|floatformat:2 }}</strong>
-                    <div class="small mb-2">{{ item.oferta.titulo }}</div>
-                    <a class="btn btn-sm btn-outline-primary" href="{{ item.oferta.url }}" target="_blank" rel="noopener noreferrer">{% trans "Ver melhor oferta" %}</a>
-                    {% elif item.habilitada %}
-                    <strong>—</strong><div class="small text-secondary">{% trans "Nenhuma oferta encontrada para este termo." %}</div>
-                    {% else %}
-                    <strong>—</strong><div class="small text-warning">{% trans "Integração desabilitada." %}</div>
-                    {% endif %}
-                </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-2" id="buy-single-wrapper">
+        <label class="form-label" for="fonte-pesquisa">{% trans "Fornecedor" %}</label>
+        <select class="form-select" id="fonte-pesquisa" name="fonte">
+          <option value="">{% trans "Selecione" %}</option>
+          {% for item in fontes %}{% if item.habilitada and item.codigo != 'comparar' and item.codigo != 'comparar_gimba_fidelity' and item.codigo != 'gimba_fidelity' %}
+          <option value="{{ item.codigo }}" {% if fonte == item.codigo %}selected{% endif %}>{{ item.nome }}</option>
+          {% endif %}{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-xl-2" id="buy-compare-wrapper" hidden>
+        <label class="form-label" for="buy-provider-trigger">{% trans "Comparar fornecedores" %}</label>
+        <div class="buy-provider-picker" id="buy-provider-picker">
+          <button type="button" class="buy-provider-trigger" id="buy-provider-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="buy-provider-dropdown">
+            <span id="buy-provider-trigger-text">{% trans "Selecionar fornecedores" %}</span><i class="bi bi-chevron-down"></i>
+          </button>
+          <div id="buy-provider-dropdown" class="buy-provider-dropdown" hidden>
+            <input class="form-control form-control-sm" id="buy-provider-filter" type="search" placeholder="{% trans 'Buscar fornecedor...' %}" aria-label="{% trans 'Filtrar fornecedores' %}">
+            <div class="buy-provider-list" id="buy-provider-list">
+              {% for item in fontes %}{% if item.codigo != 'comparar' and item.codigo != 'comparar_gimba_fidelity' and item.codigo != 'gimba_fidelity' %}
+              <label class="buy-provider-option {% if not item.habilitada %}is-disabled{% endif %}">
+                <input class="buy-provider-check" type="checkbox" name="fontes" value="{{ item.codigo }}" data-name="{{ item.nome }}" {% if not item.habilitada %}disabled{% endif %} {% if item.codigo in fontes_selecionadas %}checked{% endif %}>
+                <span>{{ item.nome }}{% if not item.habilitada %} ({% trans "indisponível" %}){% endif %}</span>
+              </label>
+              {% endif %}{% endfor %}
             </div>
-            {% endfor %}
+            <div class="buy-provider-actions"><button type="button" class="btn btn-link btn-sm p-0" id="buy-select-all">{% trans "Selecionar todos" %}</button><button type="button" class="btn btn-link btn-sm p-0" id="buy-clear-all">{% trans "Limpar" %}</button><button type="button" class="btn btn-primary btn-sm" id="buy-provider-done">{% trans "Concluir" %}</button></div>
+          </div>
         </div>
-    </section>
-    {% endif %}
-
-    <section class="row g-3 mb-3" aria-label="{% trans 'Indicadores da pesquisa' %}">
-        <div class="col-xl col-md-4"><div class="purchase-kpi"><span class="small text-secondary">{% trans "Ofertas encontradas" %}</span><strong>{{ ofertas|length }}</strong></div></div>
-        <div class="col-xl col-md-4"><div class="purchase-kpi"><span class="small text-secondary">{% trans "Melhor preço" %}</span><strong>R$ {{ menor|floatformat:2 }}</strong></div></div>
-        <div class="col-xl col-md-4"><div class="purchase-kpi"><span class="small text-secondary">{% trans "Preço médio" %}</span><strong>R$ {{ media|floatformat:2 }}</strong></div></div>
-        <div class="col-xl col-md-4"><div class="purchase-kpi"><span class="small text-secondary">{% trans "Maior preço" %}</span><strong>R$ {{ maior|floatformat:2 }}</strong></div></div>
-        <div class="col-xl col-md-4"><div class="purchase-kpi"><span class="small text-secondary">{% trans "Economia potencial" %}</span><strong>R$ {{ economia|floatformat:2 }}</strong><small class="text-secondary">{% blocktrans %}para {{ quantidade }} unidade(s){% endblocktrans %}</small></div></div>
-    </section>
-
-    <section class="row g-3 mb-3">
-        <div class="col-xl-7"><div class="purchase-chart"><h2 class="h6">{% trans "Comparação das ofertas atuais" %}</h2><canvas id="chartOfertas"></canvas></div></div>
-        <div class="col-xl-5"><div class="purchase-chart"><h2 class="h6">{% trans "Histórico das pesquisas" %}</h2><canvas id="chartHistorico"></canvas></div></div>
-    </section>
-
-    <section class="border-top pt-3"><div class="d-flex justify-content-between align-items-center gap-2 flex-wrap"><h2 class="h5 mb-0">{% trans "Ofertas online" %}</h2>{% if pesquisa %}<small class="text-secondary">{% trans "Atualizado em" %} {{ pesquisa.pesquisado_em|date:'d/m/Y H:i' }}</small>{% endif %}</div>
-        <div class="table-responsive mt-2">
-            <table class="table table-hover align-middle">
-                <thead><tr><th>{% trans "Posição" %}</th><th>{% trans "Produto" %}</th><th>{% trans "Vendedor" %}</th><th>{% trans "Preço" %}</th><th>{% trans "Frete" %}</th><th>{% trans "Total comparado" %}</th><th></th></tr></thead>
-                <tbody>
-                {% for oferta in ofertas %}
-                    <tr {% if oferta.preco_total == menor %}class="table-success"{% endif %}>
-                        <td>{{ forloop.counter }}</td>
-                        <td><strong>{{ oferta.titulo }}</strong><div class="small text-secondary">{{ oferta.get_fonte_display|default:oferta.fonte }}</div></td>
-                        <td>{{ oferta.vendedor|default:'-' }}</td>
-                        <td>R$ {{ oferta.preco|floatformat:2 }}</td>
-                        <td>{% if oferta.frete_conhecido %}R$ {{ oferta.frete|floatformat:2 }}{% else %}<span class="text-warning">{% trans "Consultar" %}</span>{% endif %}</td>
-                        <td><strong>R$ {{ oferta.preco_total|floatformat:2 }}</strong>{% if not oferta.frete_conhecido %}<div class="small text-secondary">{% trans "sem frete" %}</div>{% endif %}</td>
-                        <td class="text-end">
-                            <div class="d-inline-flex gap-1">
-                                <a class="btn btn-sm btn-outline-primary" href="{{ oferta.url }}" target="_blank" rel="noopener noreferrer" title="{% trans 'Abrir oferta' %}"><i class="bi bi-box-arrow-up-right"></i></a>
-                                {% if pode_pesquisar and oferta.fornecedor_integrado %}
-                                <form method="post" action="{% url 'insumos:usar_oferta_como_preco' oferta.id %}" onsubmit="return confirm('{% trans "Confirma usar este valor como custo padrão do insumo? Verifique antes a embalagem e a unidade do anúncio." %}')">
-                                    {% csrf_token %}
-                                    <button class="btn btn-sm btn-success" type="submit" title="{% trans 'Usar como padrão' %}"><i class="bi bi-check2-circle"></i> {% trans "Usar como padrão" %}</button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="7" class="text-center text-secondary py-4">{% trans "Selecione um insumo e faça uma pesquisa para comparar ofertas." %}</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <p class="small text-secondary">{% trans "Quando o frete não é informado pela fonte, o ranking considera apenas o preço do produto e sinaliza essa limitação." %}</p>
-    </section>
-
-    {{ chart_ofertas|json_script:'chart-ofertas-data' }}
-    {{ chart_historico|json_script:'chart-historico-data' }}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-    function readChart(id) { return JSON.parse(document.getElementById(id).textContent); }
-    function renderChart(id, data, type) { new Chart(document.getElementById(id), {type: type, data: {labels: data.labels, datasets: [{data: data.values, backgroundColor: '#3d5a80', borderColor: '#1e3c72', borderWidth: 2}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}}); }
-    renderChart('chartOfertas', readChart('chart-ofertas-data'), 'bar');
-    renderChart('chartHistorico', readChart('chart-historico-data'), 'line');
-    const seletorInsumo = document.getElementById('insumo-pesquisa');
-    const campoTermo = document.getElementById('termo-pesquisa');
-    seletorInsumo.addEventListener('change', function () {
-        const opcao = this.options[this.selectedIndex];
-        campoTermo.value = opcao.dataset.termo || '';
-    });
-    </script>
+        <div class="buy-provider-summary" id="buy-provider-summary" aria-live="polite"></div>
+        <div class="buy-provider-error" id="buy-provider-error" role="alert" hidden>{% trans "Selecione pelo menos dois fornecedores." %}</div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3"><label class="form-label" for="termo-pesquisa">{% trans "Termo de pesquisa" %}</label><input class="form-control" id="termo-pesquisa" name="termo" value="{{ termo }}" placeholder="{% trans 'Ex.: papel sulfite A4 500 folhas' %}"></div>
+      <div class="col-6 col-md-4 col-xl-1"><label class="form-label" for="quantidade-pesquisa">{% trans "Quantidade" %}</label><input class="form-control" id="quantidade-pesquisa" name="quantidade" type="number" min="0.01" step="0.01" value="{{ quantidade }}"></div>
+      <div class="col-6 col-md-8 col-xl-1"><button class="btn btn-primary w-100 buy-search-button" type="submit" {% if not pode_pesquisar or not api_configurada %}disabled{% endif %} title="{% trans 'Pesquisar preços' %}"><i class="bi bi-search me-1"></i><span class="d-xl-none">{% trans "Pesquisar" %}</span><span class="d-none d-xl-inline">{% trans "Buscar" %}</span></button></div>
+    </form>
+  </section>
+  <section aria-label="{% trans 'Indicadores da pesquisa' %}">
+    <div class="row g-3">
+      <div class="col-6 col-lg"><div class="buy-stat"><span class="buy-stat-label">{% trans "Ofertas encontradas" %}</span><div class="buy-stat-value">{{ ofertas|length }}</div><div class="buy-stat-note">{% trans "Resultados disponíveis" %}</div></div></div>
+      <div class="col-6 col-lg"><div class="buy-stat"><span class="buy-stat-label">{% trans "Menor preço" %}</span><div class="buy-stat-value">{% if ofertas %}R$ {{ menor|floatformat:2 }}{% else %}—{% endif %}</div><div class="buy-stat-note">{% trans "Preço de referência" %}</div></div></div>
+      <div class="col-6 col-lg"><div class="buy-stat"><span class="buy-stat-label">{% trans "Preço médio" %}</span><div class="buy-stat-value">{% if ofertas %}R$ {{ media|floatformat:2 }}{% else %}—{% endif %}</div><div class="buy-stat-note">{% trans "Média das ofertas" %}</div></div></div>
+      <div class="col-6 col-lg"><div class="buy-stat"><span class="buy-stat-label">{% trans "Maior preço" %}</span><div class="buy-stat-value">{% if ofertas %}R$ {{ maior|floatformat:2 }}{% else %}—{% endif %}</div><div class="buy-stat-note">{% trans "Maior valor localizado" %}</div></div></div>
+      <div class="col-12 col-lg"><div class="buy-stat buy-stat--accent"><span class="buy-stat-label">{% trans "Economia potencial" %}</span><div class="buy-stat-value">{% if ofertas %}R$ {{ economia|floatformat:2 }}{% else %}—{% endif %}</div><div class="buy-stat-note">{% blocktrans %}Para {{ quantidade }} unidade(s){% endblocktrans %}</div></div></div>
+    </div>
+  </section>
+  {% if comparacao_fornecedores %}
+  <section aria-labelledby="buy-supplier-title">
+    <div class="buy-section-head"><h2 class="buy-section-title" id="buy-supplier-title">{% trans "Melhor oferta por fornecedor" %}</h2><span class="buy-muted small">{% trans "Compare também embalagem, unidade e frete." %}</span></div>
+    <div class="row g-3">{% for item in comparacao_fornecedores %}<div class="col-12 col-md-6 col-xl-4"><article class="buy-source"><div class="d-flex align-items-center justify-content-between gap-2"><span class="buy-source-name">{{ item.nome }}</span>{% if not item.habilitada %}<span class="buy-pill">{% trans "Desabilitado" %}</span>{% elif item.oferta %}<span class="buy-pill buy-pill--best">{% trans "Oferta disponível" %}</span>{% endif %}</div>{% if item.oferta %}<div class="buy-source-price">R$ {{ item.oferta.preco|floatformat:2 }}</div><div class="buy-source-product" title="{{ item.oferta.titulo }}">{{ item.oferta.titulo }}</div><a class="btn btn-outline-primary btn-sm mt-3" href="{{ item.oferta.url }}" target="_blank" rel="noopener noreferrer">{% trans "Ver oferta" %} <i class="bi bi-box-arrow-up-right ms-1"></i></a>{% else %}<div class="buy-source-price">—</div><div class="buy-source-status">{% if item.habilitada %}{% trans "Nenhuma oferta encontrada." %}{% else %}{% trans "Integração desabilitada." %}{% endif %}</div>{% endif %}</article></div>{% endfor %}</div>
+  </section>
+  {% endif %}
+  <section aria-labelledby="buy-results-title">
+    <div class="buy-section-head"><div><h2 class="buy-section-title" id="buy-results-title">{% trans "Ofertas online" %} <span class="buy-muted">({{ ofertas|length }})</span></h2>{% if pesquisa %}<small class="buy-muted">{% trans "Atualizado em" %} {{ pesquisa.pesquisado_em|date:'d/m/Y H:i' }}</small>{% endif %}</div><div class="buy-switch" role="group" aria-label="{% trans 'Modo de visualização' %}"><button type="button" id="buy-view-cards" class="active" aria-pressed="true"><i class="bi bi-grid-3x2-gap me-1"></i>{% trans "Cards" %}</button><button type="button" id="buy-view-table" aria-pressed="false"><i class="bi bi-list-ul me-1"></i>{% trans "Tabela" %}</button></div></div>
+    <div class="buy-card-pane" id="buy-card-pane"><div class="row g-3">{% for oferta in ofertas %}<div class="col-12 col-md-6 col-xl-4"><article class="buy-offer {% if oferta.preco_total == menor %}buy-offer--best{% endif %}"><div class="buy-badges">{% if oferta.preco_total == menor %}<span class="buy-pill buy-pill--best"><i class="bi bi-award me-1"></i>{% trans "Menor total informado" %}</span>{% endif %}<span class="buy-pill">{{ oferta.get_fonte_display|default:oferta.fonte }}</span><span class="buy-pill">#{{ forloop.counter }}</span></div><h3 class="buy-offer-title">{{ oferta.titulo }}</h3><div class="buy-offer-vendor"><i class="bi bi-shop me-1"></i>{{ oferta.vendedor|default:'Fornecedor não informado' }}</div><div class="buy-offer-price">R$ {{ oferta.preco|floatformat:2 }}</div><div class="buy-offer-details"><div class="buy-detail"><span class="buy-muted">{% trans "Preço do produto" %}</span><strong>R$ {{ oferta.preco|floatformat:2 }}</strong></div><div class="buy-detail"><span class="buy-muted">{% trans "Frete" %}</span>{% if oferta.frete_conhecido %}<strong>R$ {{ oferta.frete|floatformat:2 }}</strong>{% else %}<strong class="text-warning">{% trans "Consultar" %}</strong>{% endif %}</div><div class="buy-detail"><span class="buy-muted">{% trans "Total comparado" %}</span><strong class="buy-price-total">R$ {{ oferta.preco_total|floatformat:2 }}</strong></div>{% if not oferta.frete_conhecido %}<small class="text-warning"><i class="bi bi-info-circle me-1"></i>{% trans "Total sem frete: classificação provisória." %}</small>{% endif %}</div><div class="buy-offer-actions"><a class="btn btn-outline-primary" href="{{ oferta.url }}" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right me-1"></i>{% trans "Ver oferta" %}</a>{% if pode_pesquisar and oferta.fornecedor_integrado %}<form method="post" action="{% url 'insumos:usar_oferta_como_preco' oferta.id %}" onsubmit="return confirm(this.dataset.confirm)" data-confirm="{% trans 'Confirma usar este valor como custo padrão do insumo? Verifique antes a embalagem e a unidade do anúncio.' %}">{% csrf_token %}<button class="btn btn-success" type="submit"><i class="bi bi-check2-circle me-1"></i>{% trans "Usar como padrão" %}</button></form>{% endif %}</div></article></div>{% empty %}<div class="col-12"><div class="buy-empty"><i class="bi bi-search fs-2 text-secondary"></i><h3 class="h6 mt-3">{% trans "Nenhuma oferta para exibir" %}</h3><p class="buy-muted mb-0">{% trans "Selecione um insumo e consulte um fornecedor habilitado para encontrar preços." %}</p></div></div>{% endfor %}</div></div>
+    <div class="buy-table-pane" id="buy-table-pane" hidden><div class="table-responsive buy-panel p-0"><table class="table table-hover align-middle mb-0"><thead><tr><th>{% trans "Posição" %}</th><th>{% trans "Produto" %}</th><th>{% trans "Vendedor" %}</th><th>{% trans "Preço" %}</th><th>{% trans "Frete" %}</th><th>{% trans "Total comparado" %}</th><th>{% trans "Ações" %}</th></tr></thead><tbody>{% for oferta in ofertas %}<tr {% if oferta.preco_total == menor %}class="table-success"{% endif %}><td>{{ forloop.counter }}</td><td><strong>{{ oferta.titulo }}</strong><div class="small buy-muted">{{ oferta.get_fonte_display|default:oferta.fonte }}</div></td><td>{{ oferta.vendedor|default:'-' }}</td><td>R$ {{ oferta.preco|floatformat:2 }}</td><td>{% if oferta.frete_conhecido %}R$ {{ oferta.frete|floatformat:2 }}{% else %}<span class="text-warning">{% trans "Consultar" %}</span>{% endif %}</td><td><strong>R$ {{ oferta.preco_total|floatformat:2 }}</strong>{% if not oferta.frete_conhecido %}<div class="small buy-muted">{% trans "Sem frete" %}</div>{% endif %}</td><td><div class="d-flex gap-2 flex-wrap"><a class="btn btn-sm btn-outline-primary" href="{{ oferta.url }}" target="_blank" rel="noopener noreferrer" title="{% trans 'Abrir oferta' %}"><i class="bi bi-box-arrow-up-right"></i></a>{% if pode_pesquisar and oferta.fornecedor_integrado %}<form method="post" action="{% url 'insumos:usar_oferta_como_preco' oferta.id %}" onsubmit="return confirm(this.dataset.confirm)" data-confirm="{% trans 'Confirma usar este valor como custo padrão do insumo? Verifique antes a embalagem e a unidade do anúncio.' %}">{% csrf_token %}<button class="btn btn-sm btn-success" type="submit">{% trans "Usar como padrão" %}</button></form>{% endif %}</div></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-secondary py-5">{% trans "Nenhuma oferta para exibir." %}</td></tr>{% endfor %}</tbody></table></div></div>
+    <p class="buy-hint"><i class="bi bi-info-circle me-1"></i>{% trans "O ranking utiliza o total informado pela integração. Quando o frete não é conhecido, considera apenas o produto; confirme embalagem, unidade e entrega antes da decisão." %}</p>
+  </section>
+  <section class="buy-charts" aria-labelledby="buy-charts-title"><div class="buy-section-head"><h2 class="buy-section-title" id="buy-charts-title">{% trans "Análise de preços" %}</h2></div><div class="row g-3"><div class="col-lg-7"><div class="buy-chart"><h3 class="buy-section-title">{% trans "Comparação das ofertas atuais" %}</h3><div class="buy-chart-canvas"><canvas id="chartOfertas"></canvas></div></div></div><div class="col-lg-5"><div class="buy-chart"><h3 class="buy-section-title">{% trans "Histórico das pesquisas" %}</h3><div class="buy-chart-canvas"><canvas id="chartHistorico"></canvas></div></div></div></div></section>
+  {{ chart_ofertas|json_script:'chart-ofertas-data' }}
+  {{ chart_historico|json_script:'chart-historico-data' }}
 </main>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // Interface para pesquisa individual ou múltipla.
+  // No modo comparar, a view deve ler request.POST.getlist('fontes').
+  const searchForm = document.getElementById('buy-search-form');
+  const modeSingle = document.getElementById('buy-mode-single');
+  const modeCompare = document.getElementById('buy-mode-compare');
+  const singleWrapper = document.getElementById('buy-single-wrapper');
+  const compareWrapper = document.getElementById('buy-compare-wrapper');
+  const singleSelect = document.getElementById('fonte-pesquisa');
+  const trigger = document.getElementById('buy-provider-trigger');
+  const dropdown = document.getElementById('buy-provider-dropdown');
+  const checks = Array.from(document.querySelectorAll('.buy-provider-check:not(:disabled)'));
+  const filter = document.getElementById('buy-provider-filter');
+  const triggerText = document.getElementById('buy-provider-trigger-text');
+  const summary = document.getElementById('buy-provider-summary');
+  const error = document.getElementById('buy-provider-error');
+  function checkedProviders() {return checks.filter(c => c.checked);}
+  function updateProviderSummary() {
+    const picked = checkedProviders();
+    triggerText.textContent = picked.length === 0 ? '{% trans "Selecionar fornecedores" %}' : picked.length === 1 ? picked[0].dataset.name : picked.length + ' {% trans "fornecedores selecionados" %}';
+    summary.textContent = picked.length ? picked.slice(0, 3).map(c => c.dataset.name).join(', ') + (picked.length > 3 ? ' +' + (picked.length - 3) : '') : '{% trans "Selecione pelo menos dois para comparar." %}';
+    error.hidden = true;
+  }
+  function setMode() {
+    const isCompare = modeCompare.checked;
+    singleWrapper.hidden = isCompare;
+    compareWrapper.hidden = !isCompare;
+    singleSelect.disabled = isCompare;
+    checks.forEach(c => {c.disabled = !isCompare;});
+    if (!isCompare) {dropdown.hidden = true;trigger.setAttribute('aria-expanded','false');}
+  }
+  modeSingle.addEventListener('change', setMode);
+  modeCompare.addEventListener('change', setMode);
+  trigger.addEventListener('click', () => {dropdown.hidden = !dropdown.hidden;trigger.setAttribute('aria-expanded',String(!dropdown.hidden));if (!dropdown.hidden) filter.focus();});
+  document.getElementById('buy-provider-done').addEventListener('click', () => {dropdown.hidden = true;trigger.setAttribute('aria-expanded','false');});
+  document.getElementById('buy-select-all').addEventListener('click', () => {checks.forEach(c => {c.checked = true;});updateProviderSummary();});
+  document.getElementById('buy-clear-all').addEventListener('click', () => {checks.forEach(c => {c.checked = false;});updateProviderSummary();});
+  checks.forEach(c => c.addEventListener('change', updateProviderSummary));
+  filter.addEventListener('input', () => {const q = filter.value.trim().toLocaleLowerCase();document.querySelectorAll('.buy-provider-option').forEach(el => {el.hidden = !el.textContent.toLocaleLowerCase().includes(q);});});
+  document.addEventListener('click', e => {if (!document.getElementById('buy-provider-picker').contains(e.target)){dropdown.hidden = true;trigger.setAttribute('aria-expanded','false');}});
+  searchForm.addEventListener('submit', e => {
+    if (modeCompare.checked && checkedProviders().length < 2) {e.preventDefault();error.hidden = false;dropdown.hidden = false;trigger.setAttribute('aria-expanded','true');trigger.focus();}
+    else if (modeSingle.checked && !singleSelect.value) {e.preventDefault();singleSelect.focus();}
+  });
+  updateProviderSummary();
+  setMode();
+
+  const cardButton = document.getElementById('buy-view-cards');
+  const tableButton = document.getElementById('buy-view-table');
+  const cards = document.getElementById('buy-card-pane');
+  const table = document.getElementById('buy-table-pane');
+  function switchView(mode) {
+    const showCards = mode === 'cards';
+    cards.hidden = !showCards;
+    table.hidden = showCards;
+    cardButton.classList.toggle('active', showCards);
+    tableButton.classList.toggle('active', !showCards);
+    cardButton.setAttribute('aria-pressed', String(showCards));
+    tableButton.setAttribute('aria-pressed', String(!showCards));
+    try { localStorage.setItem('buy-view', mode); } catch (e) { /* Storage unavailable */ }
+  }
+  cardButton.addEventListener('click', () => switchView('cards'));
+  tableButton.addEventListener('click', () => switchView('table'));
+  try { if (localStorage.getItem('buy-view') === 'table') switchView('table'); } catch (e) { /* Storage unavailable */ }
+  const insumo = document.getElementById('insumo-pesquisa');
+  const termo = document.getElementById('termo-pesquisa');
+  if (insumo && termo) insumo.addEventListener('change', function () {
+    const option = this.options[this.selectedIndex];
+    termo.value = option ? (option.dataset.termo || '') : '';
+  });
+  function chartData(id) {
+    const node = document.getElementById(id);
+    if (!node) return {labels: [], values: []};
+    try { return JSON.parse(node.textContent) || {labels: [], values: []}; }
+    catch (e) { return {labels: [], values: []}; }
+  }
+  function draw(id, data, type) {
+    const canvas = document.getElementById(id);
+    if (!canvas || typeof Chart === 'undefined') return;
+    const labels = Array.isArray(data.labels) ? data.labels : [];
+    const values = Array.isArray(data.values) ? data.values : [];
+    new Chart(canvas, {type, data: {labels, datasets: [{data: values, backgroundColor: type === 'bar' ? '#3e77bd' : 'rgba(62,119,189,.12)', borderColor: '#2458a6', borderWidth: 2, borderRadius: 5, fill: type === 'line', tension: .3, pointRadius: 3}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true, grid: {color: '#edf1f6'}}, x: {grid: {display: false}, ticks: {maxRotation: 35}}}}});
+  }
+  draw('chartOfertas', chartData('chart-ofertas-data'), 'bar');
+  draw('chartHistorico', chartData('chart-historico-data'), 'line');
+})();
+</script>
 {% endblock %}

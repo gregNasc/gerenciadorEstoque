@@ -3,12 +3,14 @@ from django.db.models import (Q, Sum, F)
 from django.http import HttpResponse
 from insumos.models import ConsumoInsumo
 from insumos.models import (
+    AtivoInsumoIndividualizado,
     AlteracaoCalendario,
     ChecklistDiario,
     ChecklistEquipamentoQuantidade,
     Insumo,
     Inventario,
     MovimentacaoInsumo,
+    LoteEpi,
     SolicitacaoInsumo,
 )
 from django.contrib.auth.decorators import login_required
@@ -28,6 +30,7 @@ from django.utils import timezone
 from estoque.decorators import role_required
 import openpyxl
 import unicodedata
+import calendar
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
@@ -44,11 +47,13 @@ from io import BytesIO
 from pathlib import Path
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.security import secure_queryset
 from insumos.policies import InsumosTenantPolicy
 from integracao.scopes import IntegrationExecutionScope
+from integracao.clients.caepi import CaepiLookupStatus
+from integracao.services.caepi_service import CaepiService
 
 
 def _permissao_ou_perfil(user, permissao, *roles):
@@ -66,6 +71,52 @@ def _pode_acessar_checklist(user, checklist):
         checklist.inventario.base,
         resource=InsumosTenantPolicy.CHECKLISTS,
     )
+
+
+@login_required
+@require_GET
+def consultar_ca_epi(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissao para consultar certificados CA.')
+
+    numero_ca = (request.GET.get('numero_ca') or '').strip()
+    try:
+        resultado = CaepiService().consultar(numero_ca)
+    except ValueError as exc:
+        return JsonResponse({'ok': False, 'detail': str(exc)}, status=400)
+
+    return JsonResponse({
+        'ok': resultado.status == CaepiLookupStatus.FOUND,
+        'status': resultado.status.value,
+        'numero_ca': resultado.numero_ca,
+        'validade_ca': (
+            resultado.validade_ca.isoformat() if resultado.validade_ca else ''
+        ),
+        'fabricante_importador': resultado.fabricante_importador,
+        'produto': resultado.produto,
+        'situacao': resultado.situacao,
+        'natureza': resultado.natureza,
+        'descricao': resultado.descricao,
+        'marca': resultado.marca,
+        'referencia': resultado.referencia,
+        'cor': resultado.cor,
+        'aprovado_para': resultado.aprovado_para,
+        'restricao': resultado.restricao,
+        'observacao_analise': resultado.observacao_analise,
+        'numero_laudo': resultado.numero_laudo,
+        'norma': resultado.norma,
+        'catalogo_publicado_em': (
+            resultado.catalogo_publicado_em.isoformat()
+            if resultado.catalogo_publicado_em else ''
+        ),
+        'ocorrencias': resultado.ocorrencias,
+        'source': resultado.source,
+        'detail': resultado.detail,
+        'consulta_oficial_url': (
+            'https://caepi.trabalho.gov.br/internet/ConsultaCAInternet.aspx'
+            f'?txtNumeroCA={resultado.numero_ca}'
+        ),
+    })
 
 @login_required
 @role_required('admin', 'gestor', 'operador')
@@ -175,6 +226,33 @@ def estoque_insumos(request):
         )
     }
 
+    lotes_epi_por_par = defaultdict(list)
+    epi_ids = {
+        insumo.id for insumo in insumos_por_id.values()
+        if insumo.natureza == Insumo.Natureza.EPI
+    }
+    for lote in LoteEpi.objects.filter(
+            base_id__in=bases_por_id,
+            produto_epi__insumo_id__in=epi_ids,
+            ativo=True,
+        ).select_related('certificado', 'variante', 'produto_epi') if epi_ids else ():
+        lotes_epi_por_par[(lote.base_id, lote.produto_epi.insumo_id)].append(lote)
+
+    ativos_por_par = defaultdict(list)
+    individualizados_ids = {
+        insumo.id for insumo in insumos_por_id.values()
+        if (
+            insumo.natureza == Insumo.Natureza.REUTILIZAVEL
+            or insumo.forma_controle == Insumo.FormaControle.INDIVIDUALIZADO
+        )
+    }
+    for ativo in AtivoInsumoIndividualizado.objects.filter(
+            base_id__in=bases_por_id,
+            insumo_id__in=individualizados_ids,
+            ativo=True,
+        ) if individualizados_ids else ():
+        ativos_por_par[(ativo.base_id, ativo.insumo_id)].append(ativo)
+
     estoque = []
     for agregado in saldos_positivos:
         base = bases_por_id.get(agregado['base_id'])
@@ -187,6 +265,8 @@ def estoque_insumos(request):
             'saldo': agregado['saldo'],
             'minimo': insumo.estoque_minimo,
             'critico': agregado['saldo'] <= insumo.estoque_minimo,
+            'lotes_epi': lotes_epi_por_par.get((base.id, insumo.id), []),
+            'ativos_individualizados': ativos_por_par.get((base.id, insumo.id), []),
         })
 
     estoque.sort(key=lambda item: (
@@ -253,6 +333,145 @@ def estoque_insumos(request):
             'aguardando_filtro_base': aguardando_filtro_base,
         },
     )
+
+
+def _data_apos_meses(data_inicial, meses):
+    indice_mes = data_inicial.month - 1 + meses
+    ano = data_inicial.year + indice_mes // 12
+    mes = indice_mes % 12 + 1
+    dia = min(data_inicial.day, calendar.monthrange(ano, mes)[1])
+    return data_inicial.replace(year=ano, month=mes, day=dia)
+
+
+@login_required
+@role_required('admin', 'gestor', 'operador')
+@require_GET
+def exportar_dados_epi(request):
+    """Exporta dados operacionais de EPI sem incluir informações financeiras."""
+    base_id = (request.GET.get('base') or '').strip()
+    insumo_id = (request.GET.get('insumo') or '').strip()
+    if not base_id.isdigit() or not insumo_id.isdigit():
+        return HttpResponse('Informe uma Base e um EPI válidos.', status=400)
+    base = get_object_or_404(
+        Base.objects.select_related('empresa'),
+        pk=base_id,
+    )
+    if not InsumosTenantPolicy.can_access_base(
+        request.user,
+        base,
+        resource=InsumosTenantPolicy.SUPPLIES,
+    ):
+        raise PermissionDenied('Sem acesso a esta Base.')
+
+    insumo = get_object_or_404(
+        Insumo.objects.select_related('categoria'),
+        pk=insumo_id,
+        natureza=Insumo.Natureza.EPI,
+    )
+    filtros_validade = set(request.GET.getlist('validade'))
+    filtros_registro = set(request.GET.getlist('registro'))
+    permitidos_validade = {'vencido', 'proximo', 'vigente', 'sem_data'}
+    permitidos_registro = {'ativo', 'inativo'}
+    filtros_validade &= permitidos_validade
+    filtros_registro &= permitidos_registro
+    if not filtros_validade:
+        filtros_validade = permitidos_validade
+    if not filtros_registro:
+        filtros_registro = permitidos_registro
+
+    hoje = timezone.localdate()
+    limite = _data_apos_meses(hoje, 6)
+    lotes = LoteEpi.objects.filter(
+        base=base,
+        produto_epi__insumo=insumo,
+    ).select_related('certificado', 'variante').order_by(
+        'ativo', 'certificado__validade_ca', 'validade_fisica', 'codigo_lote',
+    )
+
+    linhas = []
+    for lote in lotes:
+        certificado = lote.certificado
+        datas = [
+            valor for valor in (
+                certificado.validade_ca if certificado else None,
+                lote.validade_fisica,
+            ) if valor
+        ]
+        if any(valor < hoje for valor in datas):
+            status_validade = 'vencido'
+            status_validade_label = 'Vencido'
+        elif any(hoje <= valor <= limite for valor in datas):
+            status_validade = 'proximo'
+            status_validade_label = 'Próximo do vencimento (até 6 meses)'
+        elif datas:
+            status_validade = 'vigente'
+            status_validade_label = 'Vigente por mais de 6 meses'
+        else:
+            status_validade = 'sem_data'
+            status_validade_label = 'Sem data de validade'
+
+        registro_ativo = bool(lote.ativo and (certificado is None or certificado.ativo))
+        status_registro = 'ativo' if registro_ativo else 'inativo'
+        if status_validade not in filtros_validade or status_registro not in filtros_registro:
+            continue
+
+        snapshot = certificado.snapshot_oficial if certificado else {}
+        linhas.append([
+            base.empresa.nome,
+            base.nome,
+            insumo.descricao,
+            'Ativo' if registro_ativo else 'Inativo',
+            status_validade_label,
+            certificado.numero_ca if certificado else '',
+            certificado.situacao_oficial if certificado else '',
+            certificado.validade_ca if certificado else None,
+            snapshot.get('natureza', ''),
+            snapshot.get('produto', ''),
+            snapshot.get('marca', ''),
+            snapshot.get('referencia', ''),
+            snapshot.get('norma', ''),
+            (lote.variante.tamanho or lote.variante.nome) if lote.variante else '',
+            lote.codigo_lote,
+            lote.fabricado_em,
+            lote.validade_fisica,
+            lote.observacao,
+        ])
+
+    workbook = openpyxl.Workbook()
+    planilha = workbook.active
+    planilha.title = 'EPIs'
+    planilha.append([
+        'EMPRESA', 'BASE', 'INSUMO', 'STATUS DO REGISTRO', 'STATUS DA VALIDADE',
+        'CA', 'SITUAÇÃO OFICIAL DO CA', 'VALIDADE DO CA',
+        'NATUREZA DA FABRICAÇÃO', 'EQUIPAMENTO OFICIAL', 'MARCA', 'REFERÊNCIA',
+        'NORMA', 'TAMANHO', 'LOTE', 'FABRICAÇÃO', 'VALIDADE FÍSICA', 'OBSERVAÇÃO',
+    ])
+    for linha in linhas:
+        planilha.append(linha)
+    planilha.freeze_panes = 'A2'
+    planilha.auto_filter.ref = planilha.dimensions
+    for celula in planilha[1]:
+        celula.font = openpyxl.styles.Font(bold=True, color='FFFFFF')
+        celula.fill = openpyxl.styles.PatternFill('solid', fgColor='1F3F77')
+    for coluna in planilha.columns:
+        largura = min(max(len(str(celula.value or '')) for celula in coluna) + 2, 55)
+        planilha.column_dimensions[coluna[0].column_letter].width = largura
+    for linha in planilha.iter_rows(min_row=2):
+        for indice in (7, 15, 16):
+            linha[indice].number_format = 'DD/MM/YYYY'
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    nome_seguro = ''.join(
+        caractere if caractere.isalnum() else '_'
+        for caractere in insumo.descricao.lower()
+    ).strip('_') or 'epi'
+    response['Content-Disposition'] = (
+        f'attachment; filename="epi_{nome_seguro}_{hoje.isoformat()}.xlsx"'
+    )
+    workbook.save(response)
+    return response
 
 @login_required
 def kpi_inventarios(request):
@@ -330,6 +549,21 @@ def lista_insumos(request):
     })
 
 @login_required
+def criar_item_insumo(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissao para cadastrar insumos.')
+
+    form = InsumoForm(request.POST or None, request.FILES or None, user=request.user)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            insumo = form.save()
+        messages.success(request, 'Insumo cadastrado com sucesso.')
+        return redirect('insumos:editar_insumos', pk=insumo.pk)
+
+    return render(request, 'insumos/criar_insumo.html', {'form': form})
+
+
+@login_required
 def cadastrar_insumo(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied('Sem permissao para registrar entradas de insumos.')
@@ -339,19 +573,22 @@ def cadastrar_insumo(request):
         form = CadastroInsumoForm(request.POST, user=request.user)
 
         if form.is_valid():
+            with transaction.atomic():
+                base = form.cleaned_data['base']
+                insumo = form.cleaned_data['insumo']
+                quantidade = form.cleaned_data['quantidade']
+                lote_epi, ativo_individualizado = form.criar_vinculos_da_entrada()
 
-            base = form.cleaned_data['base']
-            insumo = form.cleaned_data['insumo']
-            quantidade = form.cleaned_data['quantidade']
-
-            MovimentacaoService.entrada(
-                base=base,
-                insumo=insumo,
-                quantidade=quantidade,
-                usuario=request.user,
-                valor_unitario=Decimal('0.00'),
-                observacao='Cadastro inicial de estoque'
-            )
+                MovimentacaoService.entrada(
+                    base=base,
+                    insumo=insumo,
+                    quantidade=quantidade,
+                    usuario=request.user,
+                    valor_unitario=Decimal('0.00'),
+                    observacao='Cadastro inicial de estoque',
+                    lote_epi=lote_epi,
+                    ativo_individualizado=ativo_individualizado,
+                )
 
             messages.success(request, 'Entrada registrada com sucesso.')
 
@@ -408,20 +645,37 @@ def editar_insumo(request, pk):
     insumo = get_object_or_404(Insumo, pk=pk)
 
     if request.method == 'POST':
-        form = InsumoForm(request.POST, instance=insumo)
+        form = InsumoForm(request.POST, request.FILES, instance=insumo, user=request.user)
 
         if form.is_valid():
-            form.save()
+            with transaction.atomic():
+                form.save()
             messages.success(request, 'Insumo atualizado com sucesso.')
             return redirect('insumos:lista_insumos')
 
     else:
-        form = InsumoForm(instance=insumo)
+        form = InsumoForm(instance=insumo, user=request.user)
 
-    return render(request,'insumos/cadastrar_insumo.html',
+    produto_epi = getattr(insumo, 'dados_epi', None)
+    lotes_epi = (
+        InsumosTenantPolicy.epi_lots(
+            request.user,
+            produto_epi.lotes.select_related('base', 'variante', 'certificado'),
+        )
+        if produto_epi
+        else LoteEpi.objects.none()
+    )
+    ativos_individualizados = InsumosTenantPolicy.individualized_assets(
+        request.user,
+        insumo.ativos_individualizados.select_related('base', 'base__empresa'),
+    )
+    return render(request, 'insumos/editar_insumos.html',
         {
             'form': form,
-            'insumo': insumo
+            'insumo': insumo,
+            'produto_epi': produto_epi,
+            'lotes_epi': lotes_epi,
+            'ativos_individualizados': ativos_individualizados,
         }
     )
 
@@ -433,9 +687,29 @@ def insumos_por_categoria(request):
     if not categoria_id:
         return JsonResponse({'insumos': []})
 
-    insumos = (Insumo.objects.filter(categoria_id=categoria_id, ativo=True).order_by('descricao').values('id', 'descricao'))
+    insumos = Insumo.objects.filter(
+        categoria_id=categoria_id,
+        ativo=True,
+    ).select_related('categoria').order_by('descricao')
 
-    return JsonResponse({'insumos': list(insumos)})
+    return JsonResponse({
+        'insumos': [
+            {
+                'id': insumo.id,
+                'descricao': insumo.descricao,
+                'natureza': insumo.natureza,
+                'forma_controle': insumo.forma_controle,
+                'epi': insumo.natureza == Insumo.Natureza.EPI,
+                'bota': 'BOTA' in (insumo.descricao or '').upper(),
+                'permite_patrimonio': (
+                    (insumo.categoria.nome or '').strip().upper() == 'OPERACIONAL'
+                    or insumo.natureza == Insumo.Natureza.REUTILIZAVEL
+                    or insumo.forma_controle == Insumo.FormaControle.INDIVIDUALIZADO
+                ),
+            }
+            for insumo in insumos
+        ],
+    })
 
 def finalizar_checklist_legado(checklist_id, usuario):
     checklist = ChecklistDiario.objects.get(id=checklist_id)

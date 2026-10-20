@@ -1,0 +1,16 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4"><div><h1 class="h3 mb-1">{{ titulo }}</h1><p class="text-secondary mb-0">{% trans "Vincule uma conta existente ou cadastre uma pessoa sem acesso ao sistema." %}</p></div><a class="btn btn-outline-secondary" href="{% url 'estoque:lista_colaboradores' %}">{% trans "Voltar" %}</a></div>
+  <form method="post" class="card border-0 shadow-sm"><div class="card-body p-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>{% trans "Usuário do sistema também pode ser colaborador. Para pessoas sem login, deixe o campo Usuário vazio e informe o nome." %}</div>
+    <div class="row g-3">
+    {% for field in form %}<div class="{% if field.name == 'ativo' %}col-12{% else %}col-md-6{% endif %}">{% if field.name == 'ativo' %}<div class="form-check mt-3">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+    </div>
+  </div><div class="card-footer bg-white d-flex justify-content-end gap-2"><a class="btn btn-light border" href="{% url 'estoque:lista_colaboradores' %}">{% trans "Cancelar" %}</a><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>{% trans "Salvar colaborador" %}</button></div></form>
+</div>
+{% endblock %}

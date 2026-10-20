@@ -388,6 +388,14 @@ def configurar_catalogo_empresa(request):
                 ),
                 catalogos_empresa__capacidades__ativa=True,
             ),
+            'produtos_custodia': Produto.objects.filter(
+                catalogos_empresa__empresa=empresa,
+                catalogos_empresa__ativo=True,
+                catalogos_empresa__capacidades__codigo=(
+                    CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL
+                ),
+                catalogos_empresa__capacidades__ativa=True,
+            ),
         },
     )
     if request.method == 'POST' and form.is_valid():
@@ -395,6 +403,9 @@ def configurar_catalogo_empresa(request):
         produtos_ids = set(form.cleaned_data['produtos'].values_list('pk', flat=True))
         conectividade_ids = set()
         chips_ids = set()
+        custodia_ids = set(
+            form.cleaned_data['produtos_custodia'].values_list('pk', flat=True)
+        )
         if pode_configurar_linhas_moveis:
             conectividade_ids = set(
                 form.cleaned_data['produtos_conectividade_movel'].values_list(
@@ -446,6 +457,14 @@ def configurar_catalogo_empresa(request):
                                 'configurado_por': request.user,
                             },
                         )
+                CapacidadeCatalogoProdutoEmpresa.objects.update_or_create(
+                    catalogo=catalogo,
+                    codigo=CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL,
+                    defaults={
+                        'ativa': produto_id in custodia_ids,
+                        'configurado_por': request.user,
+                    },
+                )
         messages.success(
             request,
             _('Catálogo de %(empresa)s atualizado: %(quantidade)s equipamento(s) disponível(is).') % {

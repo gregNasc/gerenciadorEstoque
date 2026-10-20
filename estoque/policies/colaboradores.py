@@ -1,4 +1,5 @@
 from estoque.models import Colaborador
+from estoque.policies.custodias import CustodiaAccessPolicy
 from estoque.tenant_scope import TenantScope
 
 
@@ -9,7 +10,7 @@ class ColaboradorAccessPolicy:
     @classmethod
     def colaboradores(cls, user, *, action=VIEW, queryset=None):
         queryset = queryset if queryset is not None else Colaborador.objects.all()
-        if not user or not user.is_authenticated:
+        if not CustodiaAccessPolicy.permite(user, action):
             return queryset.none()
 
         scope = TenantScope.fresh_for_user(user)

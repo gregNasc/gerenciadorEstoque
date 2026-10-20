@@ -672,3 +672,97 @@ class DocusignEvent(models.Model):
 
     def __str__(self):
         return f'{self.event_type} — {self.envelope}'
+
+
+class CaepiImportacao(models.Model):
+    class Status(models.TextChoices):
+        PROCESSANDO = 'PROCESSANDO', 'Processando'
+        PREVIA = 'PREVIA', 'Prévia pronta'
+        PUBLICADA = 'PUBLICADA', 'Publicada'
+        SUBSTITUIDA = 'SUBSTITUIDA', 'Substituída'
+        FALHOU = 'FALHOU', 'Falhou'
+
+    nome_arquivo = models.CharField(max_length=255)
+    sha256 = models.CharField(max_length=64, unique=True, db_index=True)
+    tamanho_bytes = models.PositiveBigIntegerField()
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PROCESSANDO,
+        db_index=True,
+    )
+    total_registros = models.PositiveIntegerField(default=0)
+    novos = models.PositiveIntegerField(default=0)
+    alterados = models.PositiveIntegerField(default=0)
+    inalterados = models.PositiveIntegerField(default=0)
+    rejeitados = models.PositiveIntegerField(default=0)
+    advertencias = models.JSONField(default=list, blank=True)
+    erro = models.TextField(blank=True, default='')
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name='importacoes_caepi',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    finalizado_em = models.DateTimeField(null=True, blank=True)
+    publicado_em = models.DateTimeField(null=True, blank=True)
+    duracao_ms = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        ordering = ('-criado_em',)
+        verbose_name = 'Importação CAEPI'
+        verbose_name_plural = 'Importações CAEPI'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('status',),
+                condition=Q(status='PUBLICADA'),
+                name='caepi_uma_importacao_publicada',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.nome_arquivo} — {self.get_status_display()}'
+
+
+class CaepiRegistro(models.Model):
+    importacao = models.ForeignKey(
+        CaepiImportacao,
+        on_delete=models.CASCADE,
+        related_name='registros',
+    )
+    numero_ca = models.CharField(max_length=40, db_index=True)
+    validade_ca = models.DateField(null=True, blank=True, db_index=True)
+    situacao = models.CharField(max_length=80, blank=True, default='', db_index=True)
+    natureza = models.CharField(max_length=80, blank=True, default='')
+    equipamento = models.CharField(max_length=255, blank=True, default='')
+    descricao_equipamento = models.TextField(blank=True, default='')
+    marca = models.CharField(max_length=255, blank=True, default='')
+    referencia = models.CharField(max_length=255, blank=True, default='')
+    cor = models.CharField(max_length=255, blank=True, default='')
+    aprovado_para = models.TextField(blank=True, default='')
+    restricao = models.TextField(blank=True, default='')
+    observacao_analise = models.TextField(blank=True, default='')
+    numero_laudo = models.CharField(max_length=255, blank=True, default='')
+    norma = models.TextField(blank=True, default='')
+    hash_registro = models.CharField(max_length=64, db_index=True)
+
+    class Meta:
+        ordering = ('numero_ca', 'id')
+        verbose_name = 'Registro CAEPI'
+        verbose_name_plural = 'Registros CAEPI'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('importacao', 'hash_registro'),
+                name='caepi_registro_hash_importacao_uq',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=('importacao', 'numero_ca'),
+                name='caepi_import_ca_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'CA {self.numero_ca} — {self.equipamento or self.descricao_equipamento}'

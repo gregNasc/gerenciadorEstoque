@@ -47,7 +47,10 @@ class MovimentacaoService:
 
     @staticmethod
     @transaction.atomic
-    def entrada(*, base, insumo, quantidade, usuario, valor_unitario, observacao='', solicitacao=None,):
+    def entrada(
+        *, base, insumo, quantidade, usuario, valor_unitario, observacao='',
+        solicitacao=None, lote_epi=None, ativo_individualizado=None,
+    ):
         InsumosTenantPolicy.require_base(
             usuario,
             base,
@@ -60,6 +63,16 @@ class MovimentacaoService:
             raise ValueError('A quantidade de entrada deve ser positiva.')
         if valor_unitario < 0:
             raise ValueError('O valor unitário não pode ser negativo.')
+        if lote_epi and (
+            lote_epi.base_id != base.id
+            or lote_epi.produto_epi.insumo_id != insumo.id
+        ):
+            raise ValueError('O lote de EPI não pertence à Base e ao insumo informados.')
+        if ativo_individualizado and (
+            ativo_individualizado.base_id != base.id
+            or ativo_individualizado.insumo_id != insumo.id
+        ):
+            raise ValueError('O patrimônio não pertence à Base e ao insumo informados.')
         saldo_base = SaldoInsumoService.bloquear(base, insumo)
 
         movimentacao = MovimentacaoInsumo.objects.create(
@@ -69,6 +82,8 @@ class MovimentacaoService:
             quantidade=quantidade,
             valor_unitario=valor_unitario,
             solicitacao=solicitacao,
+            lote_epi=lote_epi,
+            ativo_individualizado=ativo_individualizado,
             usuario=usuario,
             observacao=observacao,
         )

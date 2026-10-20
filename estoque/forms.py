@@ -393,6 +393,14 @@ class EquipamentoForm(forms.ModelForm):
         patrimonio = self.cleaned_data['patrimonio'].strip().upper()
         if Equipamento.objects.filter(patrimonio=patrimonio).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Patrimônio já cadastrado.")
+        from insumos.models import AtivoInsumoIndividualizado
+
+        if AtivoInsumoIndividualizado.objects.filter(
+            patrimonio__iexact=patrimonio,
+        ).exists():
+            raise ValidationError(
+                "Este patrimônio já pertence a um insumo individualizado."
+            )
         return patrimonio
 
     def clean_regional(self):

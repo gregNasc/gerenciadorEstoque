@@ -63,6 +63,14 @@ class ComprasAccessPolicy:
         )
 
     @classmethod
+    def operacional_sem_financeiro(cls, user):
+        """Exceção operacional que nunca remove o bloqueio financeiro."""
+        return bool(
+            cls._autenticado(user)
+            and user.get_username().strip().lower() == 'jose.barboza'
+        )
+
+    @classmethod
     def _admin_ou_compras(cls, user):
         if not cls._autenticado(user) or cls.restrito(user):
             return False
@@ -122,8 +130,16 @@ class ComprasAccessPolicy:
     def _possui_escopo_delegado(cls, user):
         return bool(
             cls._autenticado(user)
-            and not cls.restrito(user)
-            and any(user.has_perm(permissao) for permissao in cls.PERMISSOES_OPERACIONAIS)
+            and (
+                cls.operacional_sem_financeiro(user)
+                or (
+                    not cls.restrito(user)
+                    and any(
+                        user.has_perm(permissao)
+                        for permissao in cls.PERMISSOES_OPERACIONAIS
+                    )
+                )
+            )
         )
 
     @classmethod
@@ -156,10 +172,14 @@ class ComprasAccessPolicy:
 
     @classmethod
     def pode_gerenciar_catalogo(cls, user):
-        return cls._admin_ou_compras(user) or (
+        perfil = getattr(user, 'perfil', None)
+        return cls.operacional_sem_financeiro(user) or cls._admin_ou_compras(user) or (
             cls._autenticado(user)
             and not cls.restrito(user)
-            and user.has_perm('estoque.cadastrar_equipamentos')
+            and (
+                bool(perfil and perfil.is_gestor)
+                or user.has_perm('estoque.cadastrar_equipamentos')
+            )
         )
 
     @classmethod

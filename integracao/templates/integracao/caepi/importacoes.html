@@ -1,0 +1,52 @@
+{% extends "estoque/base.html" %}
+{% load i18n %}
+{% block title %}Base CAEPI{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="h3 mb-1">Base CAEPI</h1>
+      <p class="text-secondary mb-0">Catálogo oficial local.</p>
+    </div>
+    {% if publicada %}
+      <span class="badge text-bg-success p-2">Publicada em {{ publicada.publicado_em|date:"d/m/Y H:i" }}</span>
+    {% else %}
+      <span class="badge text-bg-warning p-2">Catálogo não carregado</span>
+    {% endif %}
+  </div>
+
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-dark text-white">Nova importação oficial</div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+        {% csrf_token %}
+        <div class="col-lg-9">
+          <label class="form-label" for="id_arquivo_caepi">Relatório CAEPI</label>
+          <input class="form-control" id="id_arquivo_caepi" name="arquivo" type="file" accept=".csv,.txt,.zip,.gz" required>
+          <div class="form-text">CSV/TXT, ZIP ou GZIP; UTF-8 ou Windows-1252. O conteúdo é validado antes da prévia.</div>
+        </div>
+        <div class="col-lg-3 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-cloud-upload me-1"></i>Processar prévia</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-light fw-semibold">Histórico auditável</div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Arquivo</th><th>Status</th><th>Registros</th><th>Usuário</th><th>Data</th><th></th></tr></thead>
+        <tbody>
+          {% for item in importacoes %}
+          <tr>
+            <td><div class="fw-semibold">{{ item.nome_arquivo }}</div><small class="text-secondary font-monospace">{{ item.sha256|slice:":16" }}…</small></td>
+            <td><span class="badge {% if item.status == 'PUBLICADA' %}text-bg-success{% elif item.status == 'FALHOU' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ item.get_status_display }}</span></td>
+            <td>{{ item.total_registros }}</td><td>{{ item.criado_por|default:"Sistema" }}</td><td>{{ item.criado_em|date:"d/m/Y H:i" }}</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'integracao:caepi_detalhe' item.pk %}">Detalhar</a></td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="text-center text-secondary py-4">Nenhuma importação realizada.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -22,6 +22,7 @@ from estoque.models import (
     VinculoLinhaEquipamento,
 )
 from estoque.services.linhas_moveis_service import LinhasMoveisService
+from estoque.policies.compras import ComprasAccessPolicy
 
 
 class LinhaMovelCadastroEquipamentoTests(TestCase):
@@ -227,6 +228,45 @@ class LinhaMovelCadastroEquipamentoTests(TestCase):
             Historico.objects.get(equipamento=equipamento).detalhes['linha_movel_id'],
             self.linha.pk,
         )
+
+    def test_jose_cadastra_e_vincula_sem_acesso_financeiro(self):
+        jose = User.objects.create_user('jose.barboza', password='senha-jose')
+        Perfil.objects.update_or_create(
+            user=jose,
+            defaults={'empresa': self.empresa, 'role': Perfil.Role.ADMIN},
+        )
+        self.client.force_login(jose)
+
+        self.assertTrue(ComprasAccessPolicy.pode_gerenciar_catalogo(jose))
+        self.assertFalse(ComprasAccessPolicy.pode_visualizar_valores(jose))
+        self.assertFalse(ComprasAccessPolicy.pode_editar_precos(jose))
+        self.assertFalse(ComprasAccessPolicy.pode_definir_preco_produto(jose))
+        self.assertFalse(ComprasAccessPolicy.pode_importar_precos(jose))
+        self.assertEqual(
+            self.client.get(reverse('insumos:cadastrar_insumos')).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get(reverse('insumos:dashboard_financeiro')).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.get(reverse('insumos:precos_insumos')).status_code,
+            403,
+        )
+
+        response = self.client.post(
+            reverse('estoque:cadastrar_equipamento'),
+            self.payload(linha=self.linha.pk),
+        )
+
+        self.assertRedirects(response, reverse('estoque:cadastrar_equipamento'))
+        equipamento = Equipamento.objects.latest('pk')
+        self.assertTrue(VinculoLinhaEquipamento.objects.filter(
+            equipamento=equipamento,
+            linha=self.linha,
+            fim_em__isnull=True,
+        ).exists())
 
     def test_chip_permanece_ativo_independente_sem_equipamento(self):
         response = self.client.post(
