@@ -1,21 +1,86 @@
 import csv
+import gzip
 import hashlib
 import io
 import time
 import zipfile
 import zlib
-from datetime import datetime
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Subquery
 from django.utils import timezone
 
 from integracao.models import CaepiImportacao, CaepiRegistro
 
 
+class _LimitedReader(io.RawIOBase):
+    """Limita o conteúdo descompactado sem carregá-lo integralmente em RAM."""
+
+    def __init__(self, source, limit):
+        self.source = source
+        self.limit = limit
+        self.total = 0
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        data = self.source.read(len(buffer))
+        if not data:
+            return 0
+        self.total += len(data)
+        if self.total > self.limit:
+            raise ValidationError('O conteúdo descompactado excede 350 MB.')
+        buffer[:len(data)] = data
+        return len(data)
+
+
+class _GzipStream(io.RawIOBase):
+    """Descompacta incrementalmente e ignora apenas bytes após o membro GZIP."""
+
+    def __init__(self, source, chunk_size=1024 * 1024):
+        self.source = source
+        self.chunk_size = chunk_size
+        self.decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        self.pending = bytearray()
+        self.finished = False
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        while len(self.pending) < len(buffer) and not self.finished:
+            chunk = self.source.read(self.chunk_size)
+            if not chunk:
+                if not self.decoder.eof:
+                    raise gzip.BadGzipFile('Fluxo GZIP incompleto.')
+                self.pending.extend(self.decoder.flush())
+                self.finished = True
+                break
+            try:
+                self.pending.extend(self.decoder.decompress(chunk))
+            except zlib.error as exc:
+                raise gzip.BadGzipFile('Fluxo GZIP inválido.') from exc
+            if self.decoder.eof:
+                self.pending.extend(self.decoder.flush())
+                self.finished = True
+        quantidade = min(len(buffer), len(self.pending))
+        if not quantidade:
+            return 0
+        buffer[:quantidade] = self.pending[:quantidade]
+        del self.pending[:quantidade]
+        return quantidade
+
+
 class CaepiImportService:
     MAX_UPLOAD_BYTES = 150 * 1024 * 1024
     MAX_EXTRACTED_BYTES = 350 * 1024 * 1024
+    HASH_CHUNK_BYTES = 1024 * 1024
+    INSERT_BATCH_SIZE = 1000
+    STALE_AFTER = timedelta(minutes=10)
     REQUIRED_COLUMNS = {
         'NR Registro CA', 'DATA DE VALIDADE', 'SITUACAO', 'NATUREZA',
         'EQUIPAMENTO', 'DESCRICAO EQUIPAMENTO', 'MARCA CA', 'REFERENCIA',
@@ -37,45 +102,70 @@ class CaepiImportService:
     }
 
     @classmethod
-    def _extract(cls, payload):
-        if len(payload) > cls.MAX_UPLOAD_BYTES:
-            raise ValidationError('O arquivo excede o limite de 80 MB.')
-        if payload.startswith(b'PK\x03\x04'):
+    def _fingerprint(cls, uploaded_file):
+        uploaded_file.seek(0)
+        digest = hashlib.sha256()
+        total = 0
+        while True:
+            chunk = uploaded_file.read(cls.HASH_CHUNK_BYTES)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > cls.MAX_UPLOAD_BYTES:
+                raise ValidationError('O arquivo excede o limite de 150 MB.')
+            digest.update(chunk)
+        uploaded_file.seek(0)
+        return digest.hexdigest(), total
+
+    @classmethod
+    @contextmanager
+    def _content_stream(cls, uploaded_file):
+        uploaded_file.seek(0)
+        signature = uploaded_file.read(4)
+        uploaded_file.seek(0)
+        archive = None
+        source = uploaded_file
+        try:
+            if signature.startswith(b'PK\x03\x04'):
+                try:
+                    archive = zipfile.ZipFile(uploaded_file)
+                except zipfile.BadZipFile as exc:
+                    raise ValidationError('Arquivo ZIP inválido.') from exc
+                files = [item for item in archive.infolist() if not item.is_dir()]
+                if len(files) != 1:
+                    raise ValidationError('O ZIP deve conter exatamente um CSV ou TXT.')
+                item = files[0]
+                if item.file_size > cls.MAX_EXTRACTED_BYTES:
+                    raise ValidationError('O conteúdo descompactado excede 350 MB.')
+                if '..' in item.filename.replace('\\', '/').split('/'):
+                    raise ValidationError('O ZIP contém um caminho inválido.')
+                source = archive.open(item)
+            elif signature.startswith(b'\x1f\x8b'):
+                source = _GzipStream(uploaded_file, cls.HASH_CHUNK_BYTES)
+
+            buffered = io.BufferedReader(
+                _LimitedReader(source, cls.MAX_EXTRACTED_BYTES),
+                buffer_size=cls.HASH_CHUNK_BYTES,
+            )
             try:
-                with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-                    files = [item for item in archive.infolist() if not item.is_dir()]
-                    if len(files) != 1:
-                        raise ValidationError('O ZIP deve conter exatamente um CSV ou TXT.')
-                    item = files[0]
-                    if item.file_size > cls.MAX_EXTRACTED_BYTES:
-                        raise ValidationError('O conteúdo descompactado excede 350 MB.')
-                    if '..' in item.filename.replace('\\', '/').split('/'):
-                        raise ValidationError('O ZIP contém um caminho inválido.')
-                    return archive.read(item)
-            except zipfile.BadZipFile as exc:
-                raise ValidationError('Arquivo ZIP inválido.') from exc
-        if payload.startswith(b'\x1f\x8b'):
-            try:
-                decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-                content = decoder.decompress(payload, cls.MAX_EXTRACTED_BYTES + 1)
-                content += decoder.flush()
-            except zlib.error as exc:
-                raise ValidationError('Arquivo GZIP inválido.') from exc
-            if len(content) > cls.MAX_EXTRACTED_BYTES:
-                raise ValidationError('O conteúdo descompactado excede 350 MB.')
-            return content
-        if len(payload) > cls.MAX_EXTRACTED_BYTES:
-            raise ValidationError('O conteúdo excede 350 MB.')
-        return payload
+                yield buffered
+            finally:
+                buffered.close()
+        except (gzip.BadGzipFile, EOFError) as exc:
+            raise ValidationError('Arquivo GZIP inválido.') from exc
+        finally:
+            if archive is not None:
+                archive.close()
 
     @staticmethod
-    def _decode(content):
-        for encoding in ('utf-8-sig', 'cp1252'):
-            try:
-                return content.decode(encoding)
-            except UnicodeDecodeError:
-                continue
-        raise ValidationError('Codificação não reconhecida; use UTF-8 ou Windows-1252.')
+    def _text_stream(content_stream):
+        sample = content_stream.peek(64 * 1024)[:64 * 1024]
+        try:
+            sample.decode('utf-8-sig')
+            encoding = 'utf-8-sig'
+        except UnicodeDecodeError:
+            encoding = 'cp1252'
+        return io.TextIOWrapper(content_stream, encoding=encoding, newline='')
 
     @staticmethod
     def _parse_date(value):
@@ -88,9 +178,8 @@ class CaepiImportService:
             raise ValidationError(f'Data de validade inválida: {value}.') from exc
 
     @classmethod
-    def _rows(cls, content):
-        text = cls._decode(content)
-        reader = csv.DictReader(io.StringIO(text, newline=''), delimiter=';')
+    def _rows(cls, text_stream):
+        reader = csv.DictReader(text_stream, delimiter=';')
         if not reader.fieldnames:
             raise ValidationError('O arquivo não possui cabeçalho.')
         reader.fieldnames = [name.lstrip('\ufeff').strip() for name in reader.fieldnames]
@@ -130,12 +219,24 @@ class CaepiImportService:
     @classmethod
     def preparar_previa(cls, *, uploaded_file, user):
         started = time.monotonic()
-        payload = uploaded_file.read(cls.MAX_UPLOAD_BYTES + 1)
-        if len(payload) > cls.MAX_UPLOAD_BYTES:
-            raise ValidationError('O arquivo excede o limite de 80 MB.')
-        digest = hashlib.sha256(payload).hexdigest()
+        digest, tamanho_bytes = cls._fingerprint(uploaded_file)
         existing = CaepiImportacao.objects.filter(sha256=digest).first()
-        if existing and existing.status != CaepiImportacao.Status.FALHOU:
+        if existing and existing.status == CaepiImportacao.Status.PROCESSANDO:
+            if existing.atualizado_em > timezone.now() - cls.STALE_AFTER:
+                return existing
+            existing.status = CaepiImportacao.Status.INTERROMPIDA
+            existing.erro = (
+                'A execução anterior foi interrompida antes da conclusão. '
+                'O mesmo arquivo poderá ser processado novamente.'
+            )
+            existing.finalizado_em = timezone.now()
+            existing.save(update_fields=(
+                'status', 'erro', 'finalizado_em', 'atualizado_em',
+            ))
+        if existing and existing.status not in (
+            CaepiImportacao.Status.FALHOU,
+            CaepiImportacao.Status.INTERROMPIDA,
+        ):
             return existing
         if existing:
             importacao = existing
@@ -148,59 +249,81 @@ class CaepiImportService:
             importacao.alterados = 0
             importacao.inalterados = 0
             importacao.rejeitados = 0
+            importacao.processados = 0
             importacao.criado_por = user
+            importacao.finalizado_em = None
+            importacao.publicado_em = None
+            importacao.nome_arquivo = (uploaded_file.name or 'caepi.csv')[:255]
+            importacao.tamanho_bytes = tamanho_bytes
             importacao.save()
         else:
             importacao = CaepiImportacao.objects.create(
                 nome_arquivo=(uploaded_file.name or 'caepi.csv')[:255],
                 sha256=digest,
-                tamanho_bytes=len(payload),
+                tamanho_bytes=tamanho_bytes,
                 criado_por=user,
             )
         try:
-            content = cls._extract(payload)
             records = []
             rejected = 0
             valid_source_rows = 0
             warnings = []
-            for data, warning in cls._rows(content):
-                if warning:
-                    rejected += 1
-                    if len(warnings) < 100:
-                        warnings.append(warning)
-                    continue
-                valid_source_rows += 1
-                records.append(CaepiRegistro(importacao=importacao, **data))
-                if len(records) >= 2000:
+            with cls._content_stream(uploaded_file) as content_stream:
+                text_stream = cls._text_stream(content_stream)
+                for data, warning in cls._rows(text_stream):
+                    if warning:
+                        rejected += 1
+                        if len(warnings) < 100:
+                            warnings.append(warning)
+                    else:
+                        valid_source_rows += 1
+                        records.append(CaepiRegistro(importacao=importacao, **data))
+                    if len(records) < cls.INSERT_BATCH_SIZE:
+                        continue
                     CaepiRegistro.objects.bulk_create(
-                        records, batch_size=2000, ignore_conflicts=True,
+                        records,
+                        batch_size=cls.INSERT_BATCH_SIZE,
+                        ignore_conflicts=True,
                     )
                     records = []
+                    CaepiImportacao.objects.filter(pk=importacao.pk).update(
+                        processados=valid_source_rows + rejected,
+                        rejeitados=rejected,
+                        atualizado_em=timezone.now(),
+                    )
             if records:
                 CaepiRegistro.objects.bulk_create(
-                    records, batch_size=2000, ignore_conflicts=True,
+                    records,
+                    batch_size=cls.INSERT_BATCH_SIZE,
+                    ignore_conflicts=True,
                 )
 
             published = CaepiImportacao.objects.filter(
                 status=CaepiImportacao.Status.PUBLICADA,
-            ).first()
-            current_hashes = set(
-                published.registros.values_list('hash_registro', flat=True)
-            ) if published else set()
-            incoming_hashes = set(
-                importacao.registros.values_list('hash_registro', flat=True)
-            )
-            duplicate_rows = valid_source_rows - len(incoming_hashes)
+            ).exclude(pk=importacao.pk).first()
+            total_registros = importacao.registros.count()
+            incoming_hashes = importacao.registros.values('hash_registro')
+            if published:
+                inalterados = published.registros.filter(
+                    hash_registro__in=Subquery(incoming_hashes),
+                ).count()
+                alterados = published.registros.exclude(
+                    hash_registro__in=Subquery(incoming_hashes),
+                ).count()
+            else:
+                inalterados = 0
+                alterados = 0
+            duplicate_rows = valid_source_rows - total_registros
             if duplicate_rows:
                 warnings.append(
                     f'{duplicate_rows} linha(s) exatamente duplicada(s) foram '
                     'consolidadas sem perda de informação.'
                 )
-            unchanged = len(current_hashes & incoming_hashes)
-            importacao.total_registros = len(incoming_hashes)
-            importacao.novos = len(incoming_hashes - current_hashes)
-            importacao.alterados = max(0, len(current_hashes - incoming_hashes))
-            importacao.inalterados = unchanged
+            importacao.total_registros = total_registros
+            importacao.processados = valid_source_rows + rejected
+            importacao.novos = total_registros - inalterados
+            importacao.alterados = alterados
+            importacao.inalterados = inalterados
             importacao.rejeitados = rejected
             importacao.advertencias = warnings
             importacao.status = CaepiImportacao.Status.PREVIA

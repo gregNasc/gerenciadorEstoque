@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import storages
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from integracao.constants import DATA_SOURCE_INVENTORY_PLANNING
 
@@ -681,6 +682,7 @@ class CaepiImportacao(models.Model):
         PUBLICADA = 'PUBLICADA', 'Publicada'
         SUBSTITUIDA = 'SUBSTITUIDA', 'Substituída'
         FALHOU = 'FALHOU', 'Falhou'
+        INTERROMPIDA = 'INTERROMPIDA', 'Interrompida'
 
     nome_arquivo = models.CharField(max_length=255)
     sha256 = models.CharField(max_length=64, unique=True, db_index=True)
@@ -692,6 +694,7 @@ class CaepiImportacao(models.Model):
         db_index=True,
     )
     total_registros = models.PositiveIntegerField(default=0)
+    processados = models.PositiveBigIntegerField(default=0)
     novos = models.PositiveIntegerField(default=0)
     alterados = models.PositiveIntegerField(default=0)
     inalterados = models.PositiveIntegerField(default=0)
@@ -705,6 +708,7 @@ class CaepiImportacao(models.Model):
         related_name='importacoes_caepi',
     )
     criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True, db_index=True)
     finalizado_em = models.DateTimeField(null=True, blank=True)
     publicado_em = models.DateTimeField(null=True, blank=True)
     duracao_ms = models.PositiveBigIntegerField(default=0)
@@ -723,6 +727,22 @@ class CaepiImportacao(models.Model):
 
     def __str__(self):
         return f'{self.nome_arquivo} — {self.get_status_display()}'
+
+    @property
+    def esta_interrompida(self):
+        from datetime import timedelta
+
+        return (
+            self.status == self.Status.INTERROMPIDA
+            or (
+                self.status == self.Status.PROCESSANDO
+                and self.atualizado_em <= timezone.now() - timedelta(minutes=10)
+            )
+        )
+
+    @property
+    def status_exibicao(self):
+        return 'Interrompida' if self.esta_interrompida else self.get_status_display()
 
 
 class CaepiRegistro(models.Model):

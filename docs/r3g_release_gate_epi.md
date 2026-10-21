@@ -57,9 +57,36 @@ Migrations de Integração:
 
 - `0006_caepi_catalogo_local`;
 - `0007_ampliar_numero_laudo_caepi`.
+- `0008_caepi_progresso_recuperacao`.
 
 A `0007` amplia `numero_laudo` para 255 caracteres e corrige o erro de upload
 causado por valores oficiais maiores que `varchar(120)`.
+
+A `0008` acrescenta progresso e última atualização, identifica importações
+interrompidas e marca como interrompidos os processamentos antigos que ficaram
+órfãos após reinício da instância.
+
+## Correção de memória no Render
+
+Em 20/10/2026, o Render encerrou duas vezes a instância Starter por ultrapassar
+512 MB durante a importação. A causa era a retenção simultânea do upload, do
+conteúdo descompactado/decodificado e de conjuntos completos de hashes.
+
+O importador agora:
+
+- calcula SHA-256 em blocos de 1 MB;
+- descompacta CSV/GZIP/ZIP incrementalmente;
+- mantém lotes de até 1.000 registros em memória;
+- atualiza o progresso no banco a cada lote;
+- calcula novos, ausentes e inalterados por consultas no banco;
+- permite reprocessar o mesmo SHA quando a execução anterior falhou ou foi
+  interrompida;
+- preserva a versão publicada até a confirmação explícita da nova prévia.
+
+O relatório oficial de 21.629.809 bytes foi revalidado em banco isolado:
+123.927 linhas processadas, 123.817 registros únicos, zero rejeitados e prévia
+concluída em aproximadamente 51 segundos. A repetição idêntica foi idempotente
+e retornou em menos de quatro segundos.
 
 As migrations são incrementais. A R3 não remove tabelas, saldos, movimentos ou
 campos legados necessários para compatibilidade.
@@ -115,7 +142,7 @@ python manage.py check
 python manage.py showmigrations insumos integracao
 ```
 
-Confirmar que `insumos.0039` até `0048` e `integracao.0006`/`0007` aparecem
+Confirmar que `insumos.0039` até `0048` e `integracao.0006` até `0008` aparecem
 aplicadas. Depois, como Superuser, publicar o arquivo oficial pela tela Base
 CAEPI ou pelo comando:
 

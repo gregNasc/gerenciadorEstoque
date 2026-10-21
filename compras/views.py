@@ -361,6 +361,32 @@ def configurar_catalogo_empresa(request):
     if not empresa:
         raise PermissionDenied('Nenhuma empresa disponível para configurar o catálogo.')
 
+    from estoque.services.ativo_capacidade_service import AtivoCapacidadeService
+
+    capacidades_r4 = {
+        'produtos_individualizaveis': CapacidadeCatalogoProdutoEmpresa.INDIVIDUALIZAVEL,
+        'produtos_com_patrimonio': CapacidadeCatalogoProdutoEmpresa.POSSUI_PATRIMONIO,
+        'produtos_patrimonio_obrigatorio': CapacidadeCatalogoProdutoEmpresa.PATRIMONIO_OBRIGATORIO,
+        'produtos_com_serie': CapacidadeCatalogoProdutoEmpresa.POSSUI_SERIE,
+        'produtos_serie_obrigatoria': CapacidadeCatalogoProdutoEmpresa.SERIE_OBRIGATORIA,
+        'produtos_sick': CapacidadeCatalogoProdutoEmpresa.PERMITE_SICK,
+        'produtos_manutencao': CapacidadeCatalogoProdutoEmpresa.PERMITE_MANUTENCAO,
+        'produtos_transferencia': CapacidadeCatalogoProdutoEmpresa.PERMITE_TRANSFERENCIA,
+        'produtos_inativacao': CapacidadeCatalogoProdutoEmpresa.PERMITE_INATIVACAO,
+    }
+    produtos_ativos_ids = CatalogoProdutoEmpresa.objects.filter(
+        empresa=empresa,
+        ativo=True,
+    ).values_list('produto_id', flat=True)
+    capacidades_iniciais = {
+        campo: AtivoCapacidadeService.produtos_habilitados(
+            empresa=empresa,
+            codigo=codigo,
+            produtos=produtos_ativos_ids,
+        )
+        for campo, codigo in capacidades_r4.items()
+    }
+
     form = CatalogoEmpresaForm(
         request.POST or None,
         user=request.user,
@@ -396,6 +422,7 @@ def configurar_catalogo_empresa(request):
                 ),
                 catalogos_empresa__capacidades__ativa=True,
             ),
+            **capacidades_iniciais,
         },
     )
     if request.method == 'POST' and form.is_valid():
@@ -406,6 +433,12 @@ def configurar_catalogo_empresa(request):
         custodia_ids = set(
             form.cleaned_data['produtos_custodia'].values_list('pk', flat=True)
         )
+        capacidades_ids = {
+            codigo: set(
+                form.cleaned_data[campo].values_list('pk', flat=True)
+            )
+            for campo, codigo in capacidades_r4.items()
+        }
         if pode_configurar_linhas_moveis:
             conectividade_ids = set(
                 form.cleaned_data['produtos_conectividade_movel'].values_list(
@@ -465,6 +498,15 @@ def configurar_catalogo_empresa(request):
                         'configurado_por': request.user,
                     },
                 )
+                for codigo, selecionados in capacidades_ids.items():
+                    CapacidadeCatalogoProdutoEmpresa.objects.update_or_create(
+                        catalogo=catalogo,
+                        codigo=codigo,
+                        defaults={
+                            'ativa': produto_id in selecionados,
+                            'configurado_por': request.user,
+                        },
+                    )
         messages.success(
             request,
             _('Catálogo de %(empresa)s atualizado: %(quantidade)s equipamento(s) disponível(is).') % {

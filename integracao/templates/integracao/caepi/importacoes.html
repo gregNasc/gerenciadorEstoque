@@ -23,7 +23,7 @@
         <div class="col-lg-9">
           <label class="form-label" for="id_arquivo_caepi">Relatório CAEPI</label>
           <input class="form-control" id="id_arquivo_caepi" name="arquivo" type="file" accept=".csv,.txt,.zip,.gz" required>
-          <div class="form-text">CSV/TXT, ZIP ou GZIP; UTF-8 ou Windows-1252. O conteúdo é validado antes da prévia.</div>
+          <div class="form-text">CSV/TXT, ZIP ou GZIP; UTF-8 ou Windows-1252. A leitura é feita em lotes para preservar a memória do serviço.</div>
         </div>
         <div class="col-lg-3 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-cloud-upload me-1"></i>Processar prévia</button></div>
       </form>
@@ -39,8 +39,14 @@
           {% for item in importacoes %}
           <tr>
             <td><div class="fw-semibold">{{ item.nome_arquivo }}</div><small class="text-secondary font-monospace">{{ item.sha256|slice:":16" }}…</small></td>
-            <td><span class="badge {% if item.status == 'PUBLICADA' %}text-bg-success{% elif item.status == 'FALHOU' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ item.get_status_display }}</span></td>
-            <td>{{ item.total_registros }}</td><td>{{ item.criado_por|default:"Sistema" }}</td><td>{{ item.criado_em|date:"d/m/Y H:i" }}</td>
+            <td><span class="badge {% if item.status == 'PUBLICADA' %}text-bg-success{% elif item.status == 'FALHOU' or item.esta_interrompida %}text-bg-danger{% elif item.status == 'PREVIA' %}text-bg-primary{% else %}text-bg-secondary{% endif %}">{{ item.status_exibicao }}</span></td>
+            <td>
+              {% if item.status == 'PROCESSANDO' and not item.esta_interrompida %}
+                {{ item.processados }} processados
+              {% else %}
+                {{ item.total_registros }}
+              {% endif %}
+            </td><td>{{ item.criado_por|default:"Sistema" }}</td><td>{{ item.criado_em|date:"d/m/Y H:i" }}</td>
             <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'integracao:caepi_detalhe' item.pk %}">Detalhar</a></td>
           </tr>
           {% empty %}<tr><td colspan="6" class="text-center text-secondary py-4">Nenhuma importação realizada.</td></tr>{% endfor %}

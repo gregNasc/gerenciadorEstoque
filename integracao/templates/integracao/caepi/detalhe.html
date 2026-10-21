@@ -12,8 +12,9 @@
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Alterados/ausentes</small><div class="h4 text-warning">{{ importacao.alterados }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Inalterados</small><div class="h4">{{ importacao.inalterados }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Rejeitados</small><div class="h4 text-danger">{{ importacao.rejeitados }}</div></div></div></div>
-    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Status</small><div class="fw-semibold">{{ importacao.get_status_display }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Status</small><div class="fw-semibold">{{ importacao.status_exibicao }}</div>{% if importacao.status == 'PROCESSANDO' and not importacao.esta_interrompida %}<small>{{ importacao.processados }} linhas processadas</small>{% endif %}</div></div></div></div>
   </div>
+  {% if importacao.esta_interrompida %}<div class="alert alert-danger"><strong>Importação interrompida.</strong> Reenvie o mesmo arquivo para reiniciar a carga com segurança. Os registros parciais desta tentativa serão substituídos e a base anteriormente publicada continuará preservada.</div>{% endif %}
   {% if importacao.advertencias %}<div class="alert alert-warning"><strong>Advertências:</strong><ul class="mb-0">{% for warning in importacao.advertencias %}<li>{{ warning }}</li>{% endfor %}</ul></div>{% endif %}
   {% if importacao.erro %}<div class="alert alert-danger">{{ importacao.erro }}</div>{% endif %}
   {% if importacao.status == 'PREVIA' %}

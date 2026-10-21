@@ -88,6 +88,51 @@ class CatalogoEmpresaForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         label=_('Equipamentos elegíveis para Custódia pessoal'),
     )
+    produtos_individualizaveis = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Ativos individualizáveis'),
+    )
+    produtos_com_patrimonio = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem patrimônio'),
+    )
+    produtos_patrimonio_obrigatorio = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Exigem patrimônio'),
+    )
+    produtos_com_serie = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem número de série'),
+    )
+    produtos_serie_obrigatoria = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Exigem número de série'),
+    )
+    produtos_sick = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem SICK'),
+    )
+    produtos_manutencao = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem manutenção'),
+    )
+    produtos_transferencia = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem transferência'),
+    )
+    produtos_inativacao = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem inativação'),
+    )
 
     def __init__(self, *args, user=None, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -131,6 +176,14 @@ class CatalogoEmpresaForm(forms.Form):
         produtos = produtos.order_by('categoria', 'descricao')
         self.fields['produtos'].queryset = produtos
         self.fields['produtos_custodia'].queryset = produtos
+        for nome in (
+            'produtos_individualizaveis', 'produtos_com_patrimonio',
+            'produtos_patrimonio_obrigatorio', 'produtos_com_serie',
+            'produtos_serie_obrigatoria', 'produtos_sick',
+            'produtos_manutencao', 'produtos_transferencia',
+            'produtos_inativacao',
+        ):
+            self.fields[nome].queryset = produtos
         if self.pode_configurar_linhas_moveis:
             self.fields['produtos_conectividade_movel'].queryset = produtos
             self.fields['produtos_chip_independente'].queryset = produtos
@@ -158,9 +211,32 @@ class CatalogoEmpresaForm(forms.Form):
                 'pk', flat=True,
             )
         )
-        if not conectividade <= produtos or not chips <= produtos or not custodia <= produtos:
+        capacidades = {
+            nome: set(dados.get(nome, Produto.objects.none()).values_list('pk', flat=True))
+            for nome in (
+                'produtos_individualizaveis', 'produtos_com_patrimonio',
+                'produtos_patrimonio_obrigatorio', 'produtos_com_serie',
+                'produtos_serie_obrigatoria', 'produtos_sick',
+                'produtos_manutencao', 'produtos_transferencia',
+                'produtos_inativacao',
+            )
+        }
+        if (
+            not conectividade <= produtos
+            or not chips <= produtos
+            or not custodia <= produtos
+            or any(not selecionados <= produtos for selecionados in capacidades.values())
+        ):
             raise forms.ValidationError(
                 'As capacidades só podem ser aplicadas a itens ativos no catálogo.'
+            )
+        if not capacidades['produtos_patrimonio_obrigatorio'] <= capacidades['produtos_com_patrimonio']:
+            raise forms.ValidationError(
+                'Todo item que exige patrimônio também deve permitir patrimônio.'
+            )
+        if not capacidades['produtos_serie_obrigatoria'] <= capacidades['produtos_com_serie']:
+            raise forms.ValidationError(
+                'Todo item que exige número de série também deve permitir número de série.'
             )
         sobreposicao = conectividade & chips
         if sobreposicao:

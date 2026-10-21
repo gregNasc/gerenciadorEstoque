@@ -43,6 +43,40 @@
                 </div>
                 <div class="catalogo-opcoes">{{ form.produtos }}</div>
                 <hr class="my-4">
+                <details class="border rounded-3 p-3" open>
+                    <summary class="fw-bold mb-3">
+                        <i class="bi bi-sliders me-2 text-primary"></i>{% trans "Capacidades dos ativos" %}
+                    </summary>
+                    <p class="small text-secondary">
+                        {% trans "Defina os identificadores e os fluxos permitidos para cada tipo. As exigências devem estar contidas nas respectivas permissões." %}
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="capacidade-grupo h-100">
+                                <h2 class="h6 fw-bold">{% trans "Identificação" %}</h2>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_com_patrimonio.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_com_patrimonio }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_patrimonio_obrigatorio.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_patrimonio_obrigatorio }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_com_serie.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_com_serie }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_serie_obrigatoria.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_serie_obrigatoria }}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="capacidade-grupo h-100">
+                                <h2 class="h6 fw-bold">{% trans "Ciclo de vida" %}</h2>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_individualizaveis.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_individualizaveis }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_sick.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_sick }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_manutencao.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_manutencao }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_transferencia.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_transferencia }}</div></div>
+                                    <div class="col-md-6"><strong class="small">{{ form.produtos_inativacao.label }}</strong><div class="catalogo-opcoes catalogo-opcoes-uma-coluna">{{ form.produtos_inativacao }}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <hr class="my-4">
                 <div class="border rounded-3 p-3">
                     <h2 class="h6 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>{{ form.produtos_custodia.label }}</h2>
                     <p class="small text-secondary mb-3">{% trans "Marque somente modelos individualizados que podem ser entregues a um colaborador, como notebook, monitor, celular, carregador, mouse, mochila, dock ou headset. Balanças não devem ser marcadas." %}</p>
@@ -81,6 +115,8 @@
 .catalogo-opcoes ul { list-style: none; padding-left: 0; columns: 2; column-gap: 2rem; }
 .catalogo-opcoes li { break-inside: avoid; padding: .4rem 0; }
 .catalogo-opcoes-uma-coluna ul { columns: 1; max-height: 280px; overflow: auto; }
+.capacidade-grupo { border: 1px solid var(--bs-border-color); border-radius: .75rem; padding: 1rem; background: var(--bs-tertiary-bg); }
+.capacidade-grupo .catalogo-opcoes-uma-coluna ul { max-height: 170px; font-size: .875rem; }
 @media (max-width: 767px) { .catalogo-opcoes ul { columns: 1; } }
 </style>
 {% endblock %}
