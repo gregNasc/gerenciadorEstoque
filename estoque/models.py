@@ -2044,8 +2044,23 @@ class Equipamento(models.Model):
     ]
 
     produto = models.ForeignKey(Produto, null=True, on_delete=models.SET_NULL)
-    numero_serie = models.CharField(max_length=100, unique=True)
-    patrimonio = models.CharField(max_length=100, unique=True)
+    # Identificadores variam conforme as capacidades configuradas no catálogo
+    # da empresa. NULL mantém a unicidade dos valores informados e permite
+    # vários ativos sem um identificador que não se aplique ao seu tipo.
+    numero_serie = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+    patrimonio = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+    imei_1 = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    imei_2 = models.CharField(max_length=15, unique=True, null=True, blank=True)
     regional = models.ForeignKey(Base, on_delete=models.PROTECT)
     responsavel = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=40, choices=STATUS_CHOICES, default='ATIVO')
@@ -2081,12 +2096,21 @@ class Equipamento(models.Model):
     data_atualizacao = models.DateTimeField(auto_now=True)
     codigo = models.CharField(max_length=50, unique=True)
     qr_code = models.ImageField(upload_to="qrcodes/", null=True, blank=True)
+    observacao_operacional = models.TextField(blank=True, default='')
 
     def __str__(self):
         descricao = self.produto.descricao if self.produto_id else 'SEM PRODUTO'
-        return f"{self.numero_serie} - {descricao}"
+        identificador = self.numero_serie or self.patrimonio or self.codigo
+        return f"{identificador} - {descricao}"
 
     def save(self, *args, **kwargs):
+        self.numero_serie = (self.numero_serie or '').strip().upper() or None
+        self.patrimonio = (self.patrimonio or '').strip().upper() or None
+        self.imei_1 = (self.imei_1 or '').strip() or None
+        self.imei_2 = (self.imei_2 or '').strip() or None
+        self.observacao_operacional = (
+            self.observacao_operacional or ''
+        ).strip()
         if self._state.adding and self.produto_id and self.preco_referencia is None:
             from compras.models import CatalogoProdutoEmpresa
 

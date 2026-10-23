@@ -369,6 +369,7 @@ def configurar_catalogo_empresa(request):
         'produtos_patrimonio_obrigatorio': CapacidadeCatalogoProdutoEmpresa.PATRIMONIO_OBRIGATORIO,
         'produtos_com_serie': CapacidadeCatalogoProdutoEmpresa.POSSUI_SERIE,
         'produtos_serie_obrigatoria': CapacidadeCatalogoProdutoEmpresa.SERIE_OBRIGATORIA,
+        'produtos_com_imei': CapacidadeCatalogoProdutoEmpresa.POSSUI_IMEI,
         'produtos_sick': CapacidadeCatalogoProdutoEmpresa.PERMITE_SICK,
         'produtos_manutencao': CapacidadeCatalogoProdutoEmpresa.PERMITE_MANUTENCAO,
         'produtos_transferencia': CapacidadeCatalogoProdutoEmpresa.PERMITE_TRANSFERENCIA,

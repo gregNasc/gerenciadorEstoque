@@ -29,7 +29,7 @@
                     <div class="border border-primary rounded-3 p-3 h-100 bg-primary-subtle">
                         <span class="badge text-bg-primary mb-2">{% trans "Cadastro atual" %}</span>
                         <h2 class="h6 fw-bold mb-1"><i class="bi bi-pc-display me-2"></i>{% trans "Equipamento" %}</h2>
-                        <p class="small text-secondary mb-0">{% trans "Usa número de série, patrimônio, finalidade e foto." %}</p>
+                        <p class="small text-secondary mb-0">{% trans "Os identificadores exigidos são definidos pelo catálogo da empresa." %}</p>
                     </div>
                 </div>
                 {% if pode_acessar_linhas_moveis %}
@@ -99,9 +99,10 @@
                     <!-- DEMAIS CAMPOS -->
                     {% for field in form %}
                         {% if field.name != 'categoria' and field.name != 'produto' and field.name != 'regional' and field.name != 'linha_movel' and field.name != 'foto' %}
-                            <div class="col-md-6 mb-3">
+                            <div class="{% if field.name == 'observacao_operacional' %}col-12{% else %}col-md-6{% endif %} mb-3"{% if field.name == 'numero_serie' %} id="campoNumeroSerie"{% elif field.name == 'patrimonio' %} id="campoPatrimonio"{% elif field.name == 'imei_1' %} id="campoImei1"{% elif field.name == 'imei_2' %} id="campoImei2"{% endif %}>
                                 <label class="form-label fw-bold">{{ field.label }}</label>
                                 {{ field }}
+                                {% if field.name == 'numero_serie' or field.name == 'patrimonio' or field.name == 'imei_1' or field.name == 'imei_2' %}<div class="form-text identificador-ajuda"></div>{% endif %}
                                 {% if field.errors %}
                                     <div class="text-danger small">{{ field.errors }}</div>
                                 {% endif %}
@@ -144,9 +145,12 @@
                     <div class="col-md-6 mb-2"><strong>{{ tenant_labels.equipamento.singular }}:</strong> <span id="modalProduto"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Nº de Série:" %}</strong> <span id="modalNumeroSerie"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Patrimônio:" %}</strong> <span id="modalPatrimonio"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "IMEI 1:" %}</strong> <span id="modalImei1"></span></div>
+                    <div class="col-md-6 mb-2"><strong>{% trans "IMEI 2:" %}</strong> <span id="modalImei2"></span></div>
                     <div class="col-md-6 mb-2"><strong>{{ tenant_labels.regional.singular }}:</strong> <span id="modalRegional"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Finalidade:" %}</strong> <span id="modalFinalidade"></span></div>
                     <div class="col-md-6 mb-2"><strong>{% trans "Responsável:" %}</strong> <span id="modalResponsavel"></span></div>
+                    <div class="col-12 mb-2"><strong>{% trans "Observação operacional:" %}</strong> <span id="modalObservacaoOperacional"></span></div>
                     {% if pode_acessar_linhas_moveis %}<div class="col-md-6 mb-2" id="modalLinhaMovelGrupo"><strong>{% trans "Linha móvel:" %}</strong> <span id="modalLinhaMovel"></span></div>{% endif %}
                     <div class="col-12 mb-2">
                         <strong>{% trans "Foto:" %}</strong>
@@ -190,6 +194,45 @@
                 const linhaMovelSelect = document.querySelector('[name="linha_movel"]');
                 const linhaMovelSelecionada = linhaMovelSelect?.value || '';
                 const campoLinhaMovel = document.getElementById('campoLinhaMovel');
+                const campoNumeroSerie = document.getElementById('campoNumeroSerie');
+                const campoPatrimonio = document.getElementById('campoPatrimonio');
+                const campoImei1 = document.getElementById('campoImei1');
+                const campoImei2 = document.getElementById('campoImei2');
+
+                function atualizarCampoIdentificador(campo, nome, possui, obrigatorio) {
+                    if (!campo) return;
+                    const input = campo.querySelector(`[name="${nome}"]`);
+                    const ajuda = campo.querySelector('.identificador-ajuda');
+                    campo.classList.toggle('d-none', !possui);
+                    if (input) {
+                        input.disabled = !possui;
+                        input.required = Boolean(possui && obrigatorio);
+                        if (!possui) input.value = '';
+                    }
+                    if (ajuda) {
+                        ajuda.textContent = obrigatorio
+                            ? '{% trans "Obrigatório para este produto." %}'
+                            : '{% trans "Opcional para este produto." %}';
+                    }
+                }
+
+                function atualizarIdentificadores() {
+                    const option = produtoSelect.options[produtoSelect.selectedIndex];
+                    const possuiSerie = option?.dataset.possuiSerie === 'true';
+                    const serieObrigatoria = option?.dataset.serieObrigatoria === 'true';
+                    const possuiPatrimonio = option?.dataset.possuiPatrimonio === 'true';
+                    const patrimonioObrigatorio = option?.dataset.patrimonioObrigatorio === 'true';
+                    const possuiImei = option?.dataset.possuiImei === 'true';
+                    const imeiObrigatorio = option?.dataset.imeiObrigatorio === 'true';
+                    atualizarCampoIdentificador(
+                        campoNumeroSerie, 'numero_serie', possuiSerie, serieObrigatoria
+                    );
+                    atualizarCampoIdentificador(
+                        campoPatrimonio, 'patrimonio', possuiPatrimonio, patrimonioObrigatorio
+                    );
+                    atualizarCampoIdentificador(campoImei1, 'imei_1', possuiImei, imeiObrigatorio);
+                    atualizarCampoIdentificador(campoImei2, 'imei_2', possuiImei, false);
+                }
 
                 function ocultarLinhasMoveis() {
                     campoLinhaMovel?.classList.add('d-none');
@@ -247,11 +290,19 @@
                         produtoSelect.innerHTML = `<option value="">${textos.selecione}</option>`;
                         data.produtos.forEach(p => {
                             const opt = document.createElement('option');
+                            const capacidades = data.capacidades?.[String(p.id)] || {};
                             opt.value = p.id;
                             opt.textContent = p.descricao;
+                            opt.dataset.possuiSerie = String(Boolean(capacidades.possui_serie));
+                            opt.dataset.serieObrigatoria = String(Boolean(capacidades.serie_obrigatoria));
+                            opt.dataset.possuiPatrimonio = String(Boolean(capacidades.possui_patrimonio));
+                            opt.dataset.patrimonioObrigatorio = String(Boolean(capacidades.patrimonio_obrigatorio));
+                            opt.dataset.possuiImei = String(Boolean(capacidades.possui_imei));
+                            opt.dataset.imeiObrigatorio = 'false';
                             if (selectedId && selectedId == p.id) opt.selected = true;
                             produtoSelect.appendChild(opt);
                         });
+                        atualizarIdentificadores();
                         await atualizarLinhasMoveis(selectedLineId);
                     } catch(e) {
                         console.warn("Erro ao carregar produtos:", e);
@@ -281,6 +332,7 @@
                     if (categoriaSelect.value) carregarProdutos(categoriaSelect.value);
                 });
                 produtoSelect.addEventListener('change', function() {
+                    atualizarIdentificadores();
                     atualizarLinhasMoveis();
                 });
             }
@@ -354,6 +406,11 @@
                 const patrimonio = document.querySelector('[name="patrimonio"]');
                 document.getElementById('modalPatrimonio').innerText = patrimonio?.value.trim() || textos.naoInformado;
 
+                const imei1 = document.querySelector('[name="imei_1"]');
+                const imei2 = document.querySelector('[name="imei_2"]');
+                document.getElementById('modalImei1').innerText = imei1?.value.trim() || textos.naoInformado;
+                document.getElementById('modalImei2').innerText = imei2?.value.trim() || textos.naoInformado;
+
                 // Regional
                 const regSelect = document.querySelector('[name="regional"]');
                 const regText = regSelect?.options[regSelect.selectedIndex]?.text || '';
@@ -366,6 +423,9 @@
                 // Responsável
                 const resp = document.querySelector('[name="responsavel"]');
                 document.getElementById('modalResponsavel').innerText = resp?.value.trim() || textos.naoInformado;
+
+                const observacaoOperacional = document.querySelector('[name="observacao_operacional"]');
+                document.getElementById('modalObservacaoOperacional').innerText = observacaoOperacional?.value.trim() || textos.naoInformado;
 
                 const linhaSelect = document.querySelector('[name="linha_movel"]');
                 const linhaText = linhaSelect?.options[linhaSelect.selectedIndex]?.text || '';

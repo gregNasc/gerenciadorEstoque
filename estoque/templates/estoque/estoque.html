@@ -1570,6 +1570,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     >
                         <td class="text-nowrap fw-semibold">
                             ${escapeHtml(serie)}
+                            ${eq.imei_1 ? `<br><small class="text-secondary">IMEI 1: ${escapeHtml(eq.imei_1)}</small>` : ''}
+                            ${eq.imei_2 ? `<br><small class="text-secondary">IMEI 2: ${escapeHtml(eq.imei_2)}</small>` : ''}
+                            ${eq.observacao_operacional ? `<br><small class="text-secondary">${escapeHtml(eq.observacao_operacional)}</small>` : ''}
                         </td>
 
                         <td class="text-nowrap">

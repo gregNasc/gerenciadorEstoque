@@ -9,8 +9,26 @@
       {% csrf_token %}
       <div class="alert alert-light border"><strong>{{ tenant_labels.empresa.singular }} / {{ tenant_labels.base.singular }}:</strong> {{ equipamento.regional.empresa.nome }} / {{ equipamento.regional.nome }}</div>
       <div class="row g-3">
-        <div class="col-md-6"><label class="form-label">{% trans "Número de série" %}</label><input name="numero_serie" value="{{ equipamento.numero_serie }}" required class="form-control"></div>
-        <div class="col-md-6"><label class="form-label">{% trans "Patrimônio" %}</label><input name="patrimonio" value="{{ equipamento.patrimonio }}" required class="form-control"></div>
+        <div class="col-md-6{% if not capacidades_identificacao.possui_serie and not equipamento.numero_serie %} d-none{% endif %}" id="campoNumeroSerie">
+          <label class="form-label">{% trans "Número de série" %}</label>
+          <input name="numero_serie" value="{{ equipamento.numero_serie|default_if_none:'' }}" {% if capacidades_identificacao.serie_obrigatoria %}required{% endif %} class="form-control">
+          <div class="form-text identificador-ajuda">{% if capacidades_identificacao.serie_obrigatoria %}{% trans "Obrigatório para este produto." %}{% else %}{% trans "Opcional para este produto." %}{% endif %}</div>
+        </div>
+        <div class="col-md-6{% if not capacidades_identificacao.possui_patrimonio and not equipamento.patrimonio %} d-none{% endif %}" id="campoPatrimonio">
+          <label class="form-label">{% trans "Patrimônio" %}</label>
+          <input name="patrimonio" value="{{ equipamento.patrimonio|default_if_none:'' }}" {% if capacidades_identificacao.patrimonio_obrigatorio %}required{% endif %} class="form-control">
+          <div class="form-text identificador-ajuda">{% if capacidades_identificacao.patrimonio_obrigatorio %}{% trans "Obrigatório para este produto." %}{% else %}{% trans "Opcional para este produto." %}{% endif %}</div>
+        </div>
+        <div class="col-md-6{% if not capacidades_identificacao.possui_imei and not equipamento.imei_1 %} d-none{% endif %}" id="campoImei1">
+          <label class="form-label">{% trans "IMEI 1 (opcional)" %}</label>
+          <input name="imei_1" value="{{ equipamento.imei_1|default_if_none:'' }}" inputmode="numeric" maxlength="15" class="form-control">
+          <div class="form-text identificador-ajuda">{% trans "Opcional; informe 15 dígitos." %}</div>
+        </div>
+        <div class="col-md-6{% if not capacidades_identificacao.possui_imei and not equipamento.imei_2 %} d-none{% endif %}" id="campoImei2">
+          <label class="form-label">{% trans "IMEI 2 (opcional)" %}</label>
+          <input name="imei_2" value="{{ equipamento.imei_2|default_if_none:'' }}" inputmode="numeric" maxlength="15" class="form-control">
+          <div class="form-text identificador-ajuda">{% trans "Opcional; use somente em aparelhos dual SIM." %}</div>
+        </div>
         <fieldset class="col-12">
           <legend class="form-label mb-2">Finalidade: {{ tenant_labels.equipamento.singular|lower }}</legend>
           <div class="row g-2">
@@ -55,6 +73,7 @@
         </div>
         {% endif %}
         <div class="col-md-6"><label class="form-label">{% trans "Nova foto" %}</label><input type="file" name="foto" accept="image/*" class="form-control"></div>
+        <div class="col-12"><label class="form-label">{% trans "Observação operacional" %}</label><textarea name="observacao_operacional" rows="3" class="form-control">{{ equipamento.observacao_operacional }}</textarea><div class="form-text">{% trans "Registre condição, localização ou outra informação útil sobre esta unidade." %}</div></div>
         <div class="col-12"><label class="form-label">{% trans "Justificativa da edição" %}</label><textarea name="observacao_edicao" required class="form-control"></textarea></div>
         <div class="col-md-6"><label class="form-label">{% trans "Confirme sua senha" %}</label><input type="password" name="senha_confirmacao" required class="form-control"></div>
       </div>
@@ -82,4 +101,40 @@
   </div>
   {% endif %}
 </div>
+{{ capacidades_produtos|json_script:"capacidades-produtos" }}
+<script>
+(function () {
+  const produto = document.querySelector('[name="produto"]');
+  if (!produto) return;
+  const capacidades = JSON.parse(document.getElementById('capacidades-produtos').textContent || '{}');
+
+  function configurarCampo(id, nome, possui, obrigatorio) {
+    const grupo = document.getElementById(id);
+    const input = grupo?.querySelector(`[name="${nome}"]`);
+    if (!grupo || !input) return;
+    const possuiValorLegado = Boolean(input.value.trim());
+    grupo.classList.toggle('d-none', !possui && !possuiValorLegado);
+    input.disabled = !possui && !possuiValorLegado;
+    input.required = Boolean(possui && obrigatorio);
+    const ajuda = grupo.querySelector('.identificador-ajuda');
+    if (ajuda) {
+      ajuda.textContent = !possui && possuiValorLegado
+        ? '{% trans "Identificador legado preservado. Novos valores não são aceitos para este produto." %}'
+        : (obrigatorio
+          ? '{% trans "Obrigatório para este produto." %}'
+          : '{% trans "Opcional para este produto." %}');
+    }
+  }
+
+  function atualizar() {
+    const regras = capacidades[produto.value] || {};
+    configurarCampo('campoNumeroSerie', 'numero_serie', regras.possui_serie, regras.serie_obrigatoria);
+    configurarCampo('campoPatrimonio', 'patrimonio', regras.possui_patrimonio, regras.patrimonio_obrigatorio);
+    configurarCampo('campoImei1', 'imei_1', regras.possui_imei, false);
+    configurarCampo('campoImei2', 'imei_2', regras.possui_imei, false);
+  }
+  produto.addEventListener('change', atualizar);
+  atualizar();
+})();
+</script>
 {% endblock %}

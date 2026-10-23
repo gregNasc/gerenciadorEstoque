@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db.models import Q
 from .models import (
     Base,
     CategoriaEquipamentoEmpresa,
@@ -243,9 +244,12 @@ class EquipamentoForm(forms.ModelForm):
             'produto',
             'numero_serie',
             'patrimonio',
+            'imei_1',
+            'imei_2',
             'regional',
             'finalidade',
             'responsavel',
+            'observacao_operacional',
             'foto',
         ]
 
@@ -253,9 +257,20 @@ class EquipamentoForm(forms.ModelForm):
             'produto': forms.Select(attrs={'class': 'form-control'}),
             'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
             'patrimonio': forms.TextInput(attrs={'class': 'form-control'}),
+            'imei_1': forms.TextInput(attrs={
+                'class': 'form-control', 'inputmode': 'numeric', 'maxlength': 15,
+            }),
+            'imei_2': forms.TextInput(attrs={
+                'class': 'form-control', 'inputmode': 'numeric', 'maxlength': 15,
+            }),
             'regional': forms.Select(attrs={'class': 'form-control'}),
             'finalidade': forms.Select(attrs={'class': 'form-control'}),
             'responsavel': forms.TextInput(attrs={'class': 'form-control'}),
+            'observacao_operacional': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': _('Condição, localização ou observação útil sobre o ativo.'),
+            }),
         }
 
     def __init__(self, *args, user=None, base_selecionada=None, **kwargs):
@@ -353,6 +368,30 @@ class EquipamentoForm(forms.ModelForm):
                     status=LinhaMovel.Status.DISPONIVEL,
                 ).select_related('operadora').order_by('numero_normalizado')
 
+            from estoque.services.ativo_capacidade_service import (
+                AtivoCapacidadeService,
+            )
+
+            regras_identificacao = AtivoCapacidadeService.identificadores(
+                empresa=base_catalogo.empresa,
+                produto=produto,
+            )
+            self.fields['numero_serie'].required = regras_identificacao[
+                'serie_obrigatoria'
+            ]
+            self.fields['patrimonio'].required = regras_identificacao[
+                'patrimonio_obrigatorio'
+            ]
+            self.fields['imei_1'].required = False
+            self.fields['imei_2'].required = False
+        else:
+            # A obrigatoriedade passa a ser definida assim que Base e produto
+            # forem conhecidos, e não por uma regra global do modelo.
+            self.fields['numero_serie'].required = False
+            self.fields['patrimonio'].required = False
+            self.fields['imei_1'].required = False
+            self.fields['imei_2'].required = False
+
         if user and not user.is_superuser:
             perfil = getattr(user, 'perfil', None)
 
@@ -384,13 +423,17 @@ class EquipamentoForm(forms.ModelForm):
             self.fields['regional'].disabled = True
 
     def clean_numero_serie(self):
-        serie = self.cleaned_data['numero_serie'].strip().upper()
+        serie = (self.cleaned_data.get('numero_serie') or '').strip().upper() or None
+        if not serie:
+            return None
         if Equipamento.objects.filter(numero_serie=serie).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Número de série já cadastrado.")
         return serie
 
     def clean_patrimonio(self):
-        patrimonio = self.cleaned_data['patrimonio'].strip().upper()
+        patrimonio = (self.cleaned_data.get('patrimonio') or '').strip().upper() or None
+        if not patrimonio:
+            return None
         if Equipamento.objects.filter(patrimonio=patrimonio).exclude(pk=self.instance.pk).exists():
             raise ValidationError("Patrimônio já cadastrado.")
         from insumos.models import AtivoInsumoIndividualizado
@@ -402,6 +445,24 @@ class EquipamentoForm(forms.ModelForm):
                 "Este patrimônio já pertence a um insumo individualizado."
             )
         return patrimonio
+
+    def _clean_imei(self, campo):
+        imei = (self.cleaned_data.get(campo) or '').strip() or None
+        if not imei:
+            return None
+        if not imei.isdigit() or len(imei) != 15:
+            raise ValidationError('Informe exatamente 15 dígitos numéricos.')
+        if Equipamento.objects.filter(Q(imei_1=imei) | Q(imei_2=imei)).exclude(
+            pk=self.instance.pk,
+        ).exists():
+            raise ValidationError('IMEI já cadastrado.')
+        return imei
+
+    def clean_imei_1(self):
+        return self._clean_imei('imei_1')
+
+    def clean_imei_2(self):
+        return self._clean_imei('imei_2')
 
     def clean_regional(self):
         regional = self.cleaned_data.get('regional')
@@ -431,6 +492,9 @@ class EquipamentoForm(forms.ModelForm):
             self.add_error('produto', 'O equipamento não pertence à categoria selecionada.')
         if regional and produto:
             from estoque.policies.compras import ComprasAccessPolicy
+            from estoque.services.ativo_capacidade_service import (
+                AtivoCapacidadeService,
+            )
 
             if not ComprasAccessPolicy.produtos_catalogo(
                 self.user,
@@ -440,6 +504,27 @@ class EquipamentoForm(forms.ModelForm):
                     'produto',
                     'Este equipamento não está habilitado no catálogo da empresa.',
                 )
+            serie, patrimonio, regras_identificacao, erros_identificacao = (
+                AtivoCapacidadeService.validar_identificadores(
+                    empresa=regional.empresa,
+                    produto=produto,
+                    numero_serie=dados.get('numero_serie'),
+                    patrimonio=dados.get('patrimonio'),
+                )
+            )
+            dados['numero_serie'] = serie
+            dados['patrimonio'] = patrimonio
+            for campo, mensagem in erros_identificacao.items():
+                self.add_error(campo, mensagem)
+            imei_1 = dados.get('imei_1')
+            imei_2 = dados.get('imei_2')
+            if not regras_identificacao['possui_imei'] and (imei_1 or imei_2):
+                self.add_error(
+                    'imei_1',
+                    'O produto selecionado não utiliza IMEI.',
+                )
+            if imei_1 and imei_2 and imei_1 == imei_2:
+                self.add_error('imei_2', 'O IMEI 2 deve ser diferente do IMEI 1.')
         if linha_movel and not self.linha_movel_habilitada:
             self.add_error(
                 'linha_movel',

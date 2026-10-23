@@ -113,6 +113,11 @@ class CatalogoEmpresaForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         label=_('Exigem número de série'),
     )
+    produtos_com_imei = forms.ModelMultipleChoiceField(
+        queryset=Produto.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Permitem IMEI'),
+    )
     produtos_sick = forms.ModelMultipleChoiceField(
         queryset=Produto.objects.none(), required=False,
         widget=forms.CheckboxSelectMultiple,
@@ -180,6 +185,7 @@ class CatalogoEmpresaForm(forms.Form):
             'produtos_individualizaveis', 'produtos_com_patrimonio',
             'produtos_patrimonio_obrigatorio', 'produtos_com_serie',
             'produtos_serie_obrigatoria', 'produtos_sick',
+            'produtos_com_imei',
             'produtos_manutencao', 'produtos_transferencia',
             'produtos_inativacao',
         ):
@@ -217,6 +223,7 @@ class CatalogoEmpresaForm(forms.Form):
                 'produtos_individualizaveis', 'produtos_com_patrimonio',
                 'produtos_patrimonio_obrigatorio', 'produtos_com_serie',
                 'produtos_serie_obrigatoria', 'produtos_sick',
+                'produtos_com_imei',
                 'produtos_manutencao', 'produtos_transferencia',
                 'produtos_inativacao',
             )

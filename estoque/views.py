@@ -2153,7 +2153,14 @@ def cadastrar_equipamento_view(request):
                             equipamento_id=equipamento.pk,
                         )
 
-                    detalhes_historico = {'mensagem': 'Equipamento cadastrado'}
+                    detalhes_historico = {
+                        'mensagem': 'Equipamento cadastrado',
+                        'numero_serie': equipamento.numero_serie,
+                        'patrimonio': equipamento.patrimonio,
+                        'imei_1': equipamento.imei_1,
+                        'imei_2': equipamento.imei_2,
+                        'observacao_operacional': equipamento.observacao_operacional,
+                    }
                     if linha_movel is not None:
                         detalhes_historico['linha_movel_id'] = linha_movel.pk
                     Historico.objects.create(
@@ -2249,10 +2256,25 @@ def produtos_por_categoria(request):
                 capacidades__ativa=True,
             ),
         )
-    produtos = produtos.order_by('descricao').values('id', 'descricao')
+    from estoque.services.ativo_capacidade_service import AtivoCapacidadeService
+
+    produtos_payload = []
+    capacidades_payload = {}
+    for produto in produtos.order_by('descricao'):
+        produtos_payload.append({
+            'id': produto.pk,
+            'descricao': produto.descricao,
+        })
+        capacidades_payload[str(produto.pk)] = (
+            AtivoCapacidadeService.identificadores(
+                empresa=base.empresa if base else None,
+                produto=produto,
+            )
+        )
 
     return JsonResponse({
-        'produtos': list(produtos)
+        'produtos': produtos_payload,
+        'capacidades': capacidades_payload,
     })
 
 
@@ -6617,6 +6639,9 @@ def equipamentos_por_regional(request, produto_id, regional_id):
                 'id': e.id,
                 'numero_serie': e.numero_serie,
                 'patrimonio': e.patrimonio,
+                'imei_1': e.imei_1,
+                'imei_2': e.imei_2,
+                'observacao_operacional': e.observacao_operacional,
                 'status': e.status,
                 'status_label': e.get_status_display(),
                 'finalidade': e.finalidade,
@@ -6774,6 +6799,20 @@ def editar_equipamento(request, equipamento_id):
         equipamento,
     )
 
+    from estoque.services.ativo_capacidade_service import AtivoCapacidadeService
+
+    capacidades_identificacao = AtivoCapacidadeService.identificadores(
+        empresa=equipamento.regional.empresa,
+        produto=equipamento.produto,
+    )
+    capacidades_produtos = {
+        str(produto.pk): AtivoCapacidadeService.identificadores(
+            empresa=equipamento.regional.empresa,
+            produto=produto,
+        )
+        for produto in produtos
+    }
+
     if request.method == 'GET':
 
         return render(
@@ -6790,6 +6829,8 @@ def editar_equipamento(request, equipamento_id):
                 'is_gestor': is_gestor,
                 'permitir_edicao': True,
                 'item_custodia_vigente': item_custodia_vigente,
+                'capacidades_identificacao': capacidades_identificacao,
+                'capacidades_produtos': capacidades_produtos,
                 **contexto_linha_movel,
             }
         )
@@ -6817,12 +6858,20 @@ def editar_equipamento(request, equipamento_id):
     patrimonio = request.POST.get(
         'patrimonio',
         ''
-    ).strip()
+    ).strip().upper() or None
 
     numero_serie = request.POST.get(
         'numero_serie',
         ''
+    ).strip().upper() or None
+
+    observacao_operacional = request.POST.get(
+        'observacao_operacional',
+        '',
     ).strip()
+
+    imei_1 = request.POST.get('imei_1', '').strip() or None
+    imei_2 = request.POST.get('imei_2', '').strip() or None
 
     observacao = request.POST.get(
         'observacao_edicao',
@@ -6885,6 +6934,9 @@ def editar_equipamento(request, equipamento_id):
                 'responsavel': equipamento.responsavel,
                 'status': equipamento.status,
                 'finalidade': equipamento.finalidade,
+                'observacao_operacional': equipamento.observacao_operacional,
+                'imei_1': equipamento.imei_1,
+                'imei_2': equipamento.imei_2,
                 'foto': (
                     str(equipamento.foto)
                     if equipamento.foto else None
@@ -6917,6 +6969,21 @@ def editar_equipamento(request, equipamento_id):
                 }
 
                 equipamento.numero_serie = numero_serie
+
+            if observacao_operacional != equipamento.observacao_operacional:
+                alteracoes['observacao_operacional'] = {
+                    'antes': equipamento.observacao_operacional,
+                    'depois': observacao_operacional,
+                }
+                equipamento.observacao_operacional = observacao_operacional
+
+            for campo, valor in (('imei_1', imei_1), ('imei_2', imei_2)):
+                if valor != getattr(equipamento, campo):
+                    alteracoes[campo] = {
+                        'antes': getattr(equipamento, campo),
+                        'depois': valor,
+                    }
+                    setattr(equipamento, campo, valor)
 
             if foto:
 
@@ -7025,6 +7092,69 @@ def editar_equipamento(request, equipamento_id):
                     'O produto não está habilitado no catálogo da empresa de destino.'
                 )
 
+            numero_serie, patrimonio, _, erros_identificacao = (
+                AtivoCapacidadeService.validar_identificadores(
+                    empresa=equipamento.regional.empresa,
+                    produto=equipamento.produto,
+                    numero_serie=numero_serie,
+                    patrimonio=patrimonio,
+                )
+            )
+            # Uma capacidade pode ser desativada depois que unidades já
+            # existem. Edições não relacionadas preservam esses identificadores
+            # históricos; somente um novo valor incompatível é bloqueado.
+            if numero_serie == snapshot_antes['numero_serie']:
+                erros_identificacao.pop('numero_serie', None)
+            if patrimonio == snapshot_antes['patrimonio']:
+                erros_identificacao.pop('patrimonio', None)
+            if erros_identificacao:
+                raise ValidationError(list(erros_identificacao.values()))
+            regras_identificacao = AtivoCapacidadeService.identificadores(
+                empresa=equipamento.regional.empresa,
+                produto=equipamento.produto,
+            )
+            imeis_informados = [imei for imei in (imei_1, imei_2) if imei]
+            imeis_legados_inalterados = (
+                imei_1 == snapshot_antes['imei_1']
+                and imei_2 == snapshot_antes['imei_2']
+            )
+            if (
+                not regras_identificacao['possui_imei']
+                and imeis_informados
+                and not imeis_legados_inalterados
+            ):
+                raise ValidationError(
+                    'O produto selecionado não utiliza IMEI.'
+                )
+            if any(not imei.isdigit() or len(imei) != 15 for imei in imeis_informados):
+                raise ValidationError('Cada IMEI deve conter exatamente 15 dígitos numéricos.')
+            if imei_1 and imei_2 and imei_1 == imei_2:
+                raise ValidationError('O IMEI 2 deve ser diferente do IMEI 1.')
+            for imei in imeis_informados:
+                if Equipamento.objects.filter(
+                    Q(imei_1=imei) | Q(imei_2=imei)
+                ).exclude(pk=equipamento.pk).exists():
+                    raise ValidationError('IMEI já cadastrado.')
+            if numero_serie and Equipamento.objects.filter(
+                numero_serie=numero_serie,
+            ).exclude(pk=equipamento.pk).exists():
+                raise ValidationError('Número de série já cadastrado.')
+            if patrimonio and Equipamento.objects.filter(
+                patrimonio=patrimonio,
+            ).exclude(pk=equipamento.pk).exists():
+                raise ValidationError('Patrimônio já cadastrado.')
+            if patrimonio:
+                from insumos.models import AtivoInsumoIndividualizado
+
+                if AtivoInsumoIndividualizado.objects.filter(
+                    patrimonio__iexact=patrimonio,
+                ).exists():
+                    raise ValidationError(
+                        'Este patrimônio já pertence a um insumo individualizado.'
+                    )
+            equipamento.numero_serie = numero_serie
+            equipamento.patrimonio = patrimonio
+
             from compras.models import CapacidadeCatalogoProdutoEmpresa
             from estoque.models import VinculoLinhaEquipamento
 
@@ -7082,6 +7212,9 @@ def editar_equipamento(request, equipamento_id):
                         'responsavel': equipamento.responsavel,
                         'status': equipamento.status,
                         'finalidade': equipamento.finalidade,
+                        'observacao_operacional': equipamento.observacao_operacional,
+                        'imei_1': equipamento.imei_1,
+                        'imei_2': equipamento.imei_2,
                         'foto': (
                             str(equipamento.foto)
                             if equipamento.foto else None
