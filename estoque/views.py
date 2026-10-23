@@ -670,16 +670,37 @@ def index(request):
         regional = bases_grupo[0]
         bases_ids = [base.id for base in bases_grupo]
         equip_regional = equipamentos.filter(regional_id__in=bases_ids)
+        # KPIs regionais — contagem consolidada
+        metricas = equip_regional.aggregate(
+            total=Count('pk'),
+            ativos=Count(
+                'pk',
+                filter=Q(
+                    status='ATIVO',
+                    finalidade=Equipamento.Finalidade.OPERACIONAL,
+                ),
+            ),
+            administrativos=Count(
+                'pk',
+                filter=Q(
+                    finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+                ) & ~Q(status='BAIXA'),
+            ),
+            sick=Count(
+                'pk',
+                filter=Q(status='SICK'),
+            ),
+            inativos=Count(
+                'pk',
+                filter=Q(status='INATIVO'),
+            ),
+        )
 
-        total = equip_regional.count()
-        ativos = equip_regional.filter(
-            status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
-        ).count()
-        administrativos = equip_regional.filter(
-            finalidade=Equipamento.Finalidade.ADMINISTRATIVO
-        ).exclude(status='BAIXA').count()
-        sick = equip_regional.filter(status='SICK').count()
-        inativos = equip_regional.filter(status='INATIVO').count()
+        total = metricas['total']
+        ativos = metricas['ativos']
+        administrativos = metricas['administrativos']
+        sick = metricas['sick']
+        inativos = metricas['inativos']
 
         regional_data = {
             'regional__id': regional.id,
