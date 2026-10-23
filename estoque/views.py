@@ -548,18 +548,37 @@ def index(request):
         request.session['estoque_base_contexto_id'] = int(regional_id)
 
     # KPI SUPERIOR
-    total_filtrado = equipamentos.count()
-    ativos_filtrado = equipamentos.filter(
-        status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
-    ).count()
-    administrativos_filtrado = equipamentos.filter(
-        finalidade=Equipamento.Finalidade.ADMINISTRATIVO
-    ).exclude(status='BAIXA').count()
-    sick_filtrado = equipamentos.filter(status='SICK').count()
-    inativos_filtrado = equipamentos.filter(status='INATIVO').count()
-    manutencao_filtrado = equipamentos.filter(status='MANUTENCAO').count()
-    disponibilidade_filtrada = round((ativos_filtrado / total_filtrado * 100), 2) if total_filtrado else 0
+    kpis = equipamentos.aggregate(
+        total=Count('pk'),
+        ativos=Count(
+            'pk',
+            filter=Q(
+                status='ATIVO',
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
+            ),
+        ),
+        administrativos=Count(
+            'pk',
+            filter=Q(
+                finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+            ) & ~Q(status='BAIXA'),
+        ),
+        sick=Count('pk', filter=Q(status='SICK')),
+        inativos=Count('pk', filter=Q(status='INATIVO')),
+        manutencao=Count('pk', filter=Q(status='MANUTENCAO')),
+    )
+    total_filtrado = kpis['total']
+    ativos_filtrado = kpis['ativos']
+    administrativos_filtrado = kpis['administrativos']
+    sick_filtrado = kpis['sick']
+    inativos_filtrado = kpis['inativos']
+    manutencao_filtrado = kpis['manutencao']
 
+    disponibilidade_filtrada = (
+        round((ativos_filtrado / total_filtrado * 100), 2)
+        if total_filtrado
+        else 0
+    )
     if categoria:
         # Por produto
         produtos_na_categoria = list(
