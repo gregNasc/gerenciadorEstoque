@@ -351,3 +351,53 @@ class TenantDashboardCategoryTests(TestCase):
         )
         self.assertEqual(response.context['kpis_totais']['total'], 1)
         self.assertNotContains(response, self.category_b.nome)
+
+    def test_kpis_regionais_agrupam_bases_sem_vazar_tenants(self):
+        base_1 = Base.objects.create(
+            nome='Bauru',
+            empresa=self.company_a,
+        )
+        base_2 = Base.objects.create(
+            nome=' BAURU ',
+            empresa=self.company_a,
+        )
+        base_externa = Base.objects.create(
+            nome='Bauru',
+            empresa=self.company_b,
+        )
+
+        dados = [
+            (base_1, self.product_a, 'ATIVO', 'A1'),
+            (base_2, self.product_a, 'SICK', 'A2'),
+            (base_externa, self.product_b, 'ATIVO', 'B1'),
+        ]
+
+        for base, produto, status, identificador in dados:
+            Equipamento.objects.create(
+                produto=produto,
+                regional=base,
+                status=status,
+                finalidade=Equipamento.Finalidade.OPERACIONAL,
+                numero_serie=f'REG-SER-{identificador}',
+                patrimonio=f'REG-PAT-{identificador}',
+                codigo=f'REG-EQP-{identificador}',
+            )
+
+        response = self.client.get(reverse('estoque:index'))
+
+        self.assertEqual(response.status_code, 200)
+
+        regionais = response.context['kpis_regionais']
+        bauru = [
+            regional
+            for regional in regionais
+            if regional['regional__nome'].strip().upper() == 'BAURU'
+        ]
+
+        self.assertEqual(len(bauru), 1)
+        self.assertEqual(bauru[0]['total'], 2)
+        self.assertEqual(bauru[0]['ativos'], 1)
+        self.assertEqual(bauru[0]['sick'], 1)
+        self.assertEqual(bauru[0]['disponibilidade'], 50.0)
+
+        self.assertEqual(response.context['kpis_totais']['total'], 3)

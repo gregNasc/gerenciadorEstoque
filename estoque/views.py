@@ -664,43 +664,57 @@ def index(request):
     regionais_ids = equipamentos.values_list('regional_id', flat=True).distinct()
     regionais_por_nome = _bases_agrupadas_por_nome(Base.objects.filter(id__in=regionais_ids))
 
+    # Calcula indicadores de todas as bases em uma consulta
+    metricas_por_base = {
+        item['regional_id']: item
+        for item in (
+            equipamentos
+            .order_by()
+            .values('regional_id')
+            .annotate(
+                total=Count('pk'),
+                ativos=Count(
+                    'pk',
+                    filter=Q(
+                        status='ATIVO',
+                        finalidade=Equipamento.Finalidade.OPERACIONAL,
+                    ),
+                ),
+                administrativos=Count(
+                    'pk',
+                    filter=Q(
+                        finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+                    ) & ~Q(status='BAIXA'),
+                ),
+                sick=Count('pk', filter=Q(status='SICK')),
+                inativos=Count('pk', filter=Q(status='INATIVO')),
+            )
+        )
+    }
+
     kpis_regionais = []
 
     for bases_grupo in regionais_por_nome.values():
         regional = bases_grupo[0]
         bases_ids = [base.id for base in bases_grupo]
         equip_regional = equipamentos.filter(regional_id__in=bases_ids)
-        # KPIs regionais — contagem consolidada
-        metricas = equip_regional.aggregate(
-            total=Count('pk'),
-            ativos=Count(
-                'pk',
-                filter=Q(
-                    status='ATIVO',
-                    finalidade=Equipamento.Finalidade.OPERACIONAL,
-                ),
-            ),
-            administrativos=Count(
-                'pk',
-                filter=Q(
-                    finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
-                ) & ~Q(status='BAIXA'),
-            ),
-            sick=Count(
-                'pk',
-                filter=Q(status='SICK'),
-            ),
-            inativos=Count(
-                'pk',
-                filter=Q(status='INATIVO'),
-            ),
-        )
 
-        total = metricas['total']
-        ativos = metricas['ativos']
-        administrativos = metricas['administrativos']
-        sick = metricas['sick']
-        inativos = metricas['inativos']
+        # Consolida bases que compartilham o mesmo nome
+        total = 0
+        ativos = 0
+        administrativos = 0
+        sick = 0
+        inativos = 0
+
+        for base_id in bases_ids:
+            metricas = metricas_por_base.get(base_id, {})
+
+            total += metricas.get('total', 0)
+            ativos += metricas.get('ativos', 0)
+            administrativos += metricas.get('administrativos', 0)
+            sick += metricas.get('sick', 0)
+            inativos += metricas.get('inativos', 0)
+
 
         regional_data = {
             'regional__id': regional.id,
