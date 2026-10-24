@@ -26,7 +26,7 @@ from .forms_documentacao import (
 )
 from django.utils.translation import gettext as _
 from .services.assistente.response_builder import construir_erro, construir_resposta
-from insumos.models import Inventario, Insumo
+from insumos.models import HistoricoInsumo, Inventario, Insumo
 from insumos.services.checklist_service import ChecklistService
 from insumos.services.checklist_catalog_service import ChecklistCatalogService
 from django.db import transaction
@@ -3081,6 +3081,9 @@ def sick_view(request):
         'equipamento',
         'equipamento__produto',
         'equipamento__regional__empresa',
+        'ativo_insumo',
+        'ativo_insumo__insumo',
+        'ativo_insumo__base__empresa',
         'resolvido_por',
         'enviado_manutencao_por',
         'recebido_manutencao_por',
@@ -3135,7 +3138,7 @@ def sick_view(request):
 
     if regional_filter:
         sicks = sicks.filter(
-            equipamento__regional_id=regional_filter
+            base_origem_id=regional_filter
         )
 
     if busca:
@@ -3147,7 +3150,11 @@ def sick_view(request):
             Q(equipamento__patrimonio__icontains=busca) |
             Q(equipamento__codigo__icontains=busca) |
             Q(equipamento__regional__nome__icontains=busca) |
-            Q(equipamento__regional__empresa__nome__icontains=busca)
+            Q(equipamento__regional__empresa__nome__icontains=busca) |
+            Q(ativo_insumo__insumo__descricao__icontains=busca) |
+            Q(ativo_insumo__patrimonio__icontains=busca) |
+            Q(ativo_insumo__base__nome__icontains=busca) |
+            Q(ativo_insumo__base__empresa__nome__icontains=busca)
         )
 
     sicks_base_filtros = sicks
@@ -3240,9 +3247,10 @@ def sick_view(request):
     bases_usuario_ids = set(perfil.regionais.values_list('pk', flat=True))
 
     for sick in sicks:
+        base_alvo = sick.base_alvo
         tem_acesso_base = (
             perfil.is_admin or
-            sick.equipamento.regional_id in bases_usuario_ids
+            base_alvo.pk in bases_usuario_ids
         )
         sick.pode_acao_base = (
             perfil.is_admin or
@@ -3259,6 +3267,35 @@ def sick_view(request):
         sick.pode_confirmar_recebimento = (
             perfil.is_admin or usuario_manutencao
         )
+        if sick.ativo_insumo_id:
+            sick.historico_completo = list(
+                SickService.visiveis_para(request.user).filter(
+                    ativo_insumo_id=sick.ativo_insumo_id,
+                ).order_by('-data_ocorrencia')
+            )
+            sick.total_ocorrencias = len(sick.historico_completo)
+            sick.total_envios_manutencao = sum(
+                1 for ocorrencia in sick.historico_completo
+                if ocorrencia.enviado_manutencao_em
+            )
+            sick.reincidente = sick.total_ocorrencias > 1
+            sick.ultimo_sick = (
+                sick.historico_completo[0] if sick.historico_completo else None
+            )
+            sick.timeline = [
+                {'nome': Sick.Etapa.IDENTIFICADO.label, 'data': sick.data_ocorrencia, 'usuario': None},
+                {'nome': Sick.Etapa.EM_TRANSITO.label, 'data': sick.enviado_manutencao_em, 'usuario': sick.enviado_manutencao_por},
+                {'nome': Sick.Etapa.RECEBIDO.label, 'data': sick.recebido_manutencao_em, 'usuario': sick.recebido_manutencao_por},
+                {'nome': Sick.Etapa.EM_AVALIACAO.label, 'data': sick.avaliacao_iniciada_em, 'usuario': sick.avaliacao_iniciada_por},
+                {'nome': Sick.Etapa.EM_MANUTENCAO.label, 'data': sick.manutencao_iniciada_em, 'usuario': sick.manutencao_iniciada_por},
+                {'nome': Sick.Etapa.AGUARDANDO_RETORNO.label, 'data': sick.manutencao_concluida_em, 'usuario': sick.manutencao_concluida_por},
+                {
+                    'nome': Sick.Etapa.FINALIZADO.label,
+                    'data': sick.retorno_confirmado_em or sick.data_resolucao,
+                    'usuario': sick.retorno_confirmado_por or sick.resolvido_por,
+                },
+            ]
+            continue
         sick.historico_completo = sick.equipamento.historico_sick_prefetch
         eventos_por_sick = {}
         for evento in sick.equipamento.eventos_sick_prefetch:
@@ -3365,7 +3402,7 @@ def sick_view(request):
     ).distinct().order_by('descricao')
 
     regionais = Base.objects.filter(
-        pk__in=sicks_base_filtros.values('equipamento__regional_id'),
+        pk__in=sicks_base_filtros.values('base_origem_id'),
         empresa__ativa=True,
     ).order_by('nome')
 
@@ -3517,15 +3554,23 @@ def detalhes_sick(request, sick_id):
             'equipamento',
             'equipamento__produto',
             'equipamento__regional',
+            'ativo_insumo__insumo',
+            'ativo_insumo__base',
             'resolvido_por'
         )),
         id=sick_id
     )
 
-    historicos = Historico.objects.filter(
-        equipamento=sick.equipamento,
-        detalhes__sick_id=sick.pk,
-    ).order_by('-data')
+    if sick.equipamento_id:
+        historicos = Historico.objects.filter(
+            equipamento=sick.equipamento,
+            detalhes__sick_id=sick.pk,
+        ).order_by('-data')
+    else:
+        historicos = HistoricoInsumo.objects.filter(
+            base=sick.ativo_insumo.base,
+            dados__sick_id=sick.pk,
+        ).order_by('-criado_em')
 
     return render(
         request,

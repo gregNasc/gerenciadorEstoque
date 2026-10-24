@@ -49,6 +49,30 @@ class AtivoInsumoIndividualizadoTests(TestCase):
         self.assertEqual(ativo.base, self.base)
         self.assertEqual(ativo.patrimonio, 'PAT-ESCADA-001')
         self.assertEqual(ativo.insumo.natureza, Insumo.Natureza.REUTILIZAVEL)
+        self.assertEqual(
+            ativo.status,
+            AtivoInsumoIndividualizado.Status.OPERACIONAL,
+        )
+
+    def test_status_inativo_sincroniza_campo_legado(self):
+        insumo = Insumo.objects.create(
+            descricao='Balança com estado individual',
+            categoria=self.categoria,
+            unidade_medida='UN',
+            natureza=Insumo.Natureza.REUTILIZAVEL,
+            forma_controle=Insumo.FormaControle.INDIVIDUALIZADO,
+        )
+        ativo = AtivoInsumoIndividualizado.objects.create(
+            base=self.base,
+            insumo=insumo,
+            patrimonio='BAL-R5-001',
+            status=AtivoInsumoIndividualizado.Status.INATIVO,
+        )
+
+        self.assertFalse(ativo.ativo)
+        ativo.status = AtivoInsumoIndividualizado.Status.OPERACIONAL
+        ativo.save()
+        self.assertTrue(ativo.ativo)
 
     def test_patrimonio_e_unico_sem_diferenciar_caixa(self):
         insumo = Insumo.objects.create(
@@ -122,10 +146,11 @@ class AtivoInsumoIndividualizadoTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, 'PAT-VISIVEL-001')
+        self.assertContains(resposta, 'Operacional')
         self.assertNotContains(resposta, 'PAT-OCULTO-999')
         self.assertContains(resposta, 'data-detalhe-insumo')
         self.assertContains(resposta, 'modalDetalheInsumo')
-        self.assertContains(resposta, 'Patrimônios nesta Base')
+        self.assertContains(resposta, 'Unidades reutilizáveis nesta Base')
         self.assertNotContains(resposta, 'Preço')
         self.assertNotContains(resposta, 'Custo')
         self.assertNotContains(resposta, 'Valor médio')

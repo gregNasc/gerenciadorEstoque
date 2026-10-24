@@ -9,7 +9,12 @@ def filtrar_por_empresa(queryset, empresa):
             Q(regional_origem__empresa=empresa) |
             Q(regional_destino__empresa=empresa)
         )
-    if model.__name__ in ["Historico", "Sick"]:
+    if model.__name__ == "Sick":
+        return queryset.filter(
+            Q(equipamento__regional__empresa=empresa)
+            | Q(ativo_insumo__base__empresa=empresa)
+        )
+    if model.__name__ == "Historico":
         return queryset.filter(equipamento__regional__empresa=empresa)
 
     if any(f.name == "regional" for f in model._meta.get_fields()):

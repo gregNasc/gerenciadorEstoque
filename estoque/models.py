@@ -2667,7 +2667,20 @@ class Sick(models.Model):
         AGUARDANDO_RETORNO = 'AGUARDANDO_RETORNO', _('Aguardando retorno para a base')
         FINALIZADO = 'FINALIZADO', _('Finalizado')
 
-    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='sicks')
+    equipamento = models.ForeignKey(
+        Equipamento,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='sicks',
+    )
+    ativo_insumo = models.ForeignKey(
+        'insumos.AtivoInsumoIndividualizado',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='sicks',
+    )
     base_origem = models.ForeignKey(
         Base,
         null=True,
@@ -2747,7 +2760,69 @@ class Sick(models.Model):
     def url_rastreio_retorno(self):
         return _url_rastreamento_correios(self.codigo_rastreio_retorno)
 
+    @property
+    def alvo(self):
+        return self.equipamento or self.ativo_insumo
+
+    @property
+    def base_alvo(self):
+        if self.equipamento_id:
+            return self.equipamento.regional
+        return self.ativo_insumo.base if self.ativo_insumo_id else None
+
+    @property
+    def empresa_alvo(self):
+        base = self.base_alvo
+        return base.empresa if base else None
+
+    @property
+    def identificacao_alvo(self):
+        if self.equipamento_id:
+            return (
+                self.equipamento.patrimonio
+                or self.equipamento.numero_serie
+                or self.equipamento.codigo
+            )
+        return self.ativo_insumo.patrimonio if self.ativo_insumo_id else ''
+
+    @property
+    def descricao_alvo(self):
+        if self.equipamento_id:
+            produto = self.equipamento.produto
+            return produto.descricao if produto else self.equipamento.codigo
+        return self.ativo_insumo.insumo.descricao if self.ativo_insumo_id else ''
+
+    @property
+    def tipo_alvo(self):
+        return 'EQUIPAMENTO' if self.equipamento_id else 'INSUMO_REUTILIZAVEL'
+
+    def clean(self):
+        super().clean()
+        if bool(self.equipamento_id) == bool(self.ativo_insumo_id):
+            raise ValidationError(
+                'Informe exatamente um alvo para o SICK: equipamento ou unidade reutilizável.'
+            )
+        if self.base_origem_id and self.base_alvo:
+            if self.base_origem_id != self.base_alvo.pk:
+                raise ValidationError(
+                    {'base_origem': 'A base de origem deve ser a mesma do ativo.'}
+                )
+
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(equipamento__isnull=False, ativo_insumo__isnull=True)
+                    | Q(equipamento__isnull=True, ativo_insumo__isnull=False)
+                ),
+                name='sick_exatamente_um_alvo',
+            ),
+            models.UniqueConstraint(
+                fields=('ativo_insumo',),
+                condition=Q(ativo=True, ativo_insumo__isnull=False),
+                name='sick_ativo_insumo_aberto_uq',
+            ),
+        ]
         permissions = [
             ('enviar_equipamento_manutencao', 'Pode enviar equipamento para manutenção'),
             ('receber_equipamento_manutencao', 'Pode confirmar recebimento na manutenção'),

@@ -168,19 +168,38 @@ class OrdemServicoService:
         ordem = OrdemServico.objects.filter(sick=sick).first()
         if ordem:
             return ordem
+        base = sick.base_origem or sick.base_alvo
         ordem = cls.criar(
-            empresa=sick.equipamento.regional.empresa,
+            empresa=base.empresa,
             tipo=OrdemServico.Tipo.SICK,
             solicitante=usuario,
             motivo=sick.motivo,
             descricao=sick.descricao,
             status=OrdemServico.Status.EM_EXECUCAO,
-            base_responsavel=sick.base_origem or sick.equipamento.regional,
-            base_origem=sick.base_origem or sick.equipamento.regional,
+            base_responsavel=base,
+            base_origem=base,
             sick=sick,
             executado_em=timezone.now(),
         )
-        cls._linha_equipamento(ordem, sick.equipamento)
+        if sick.equipamento_id:
+            cls._linha_equipamento(ordem, sick.equipamento)
+        else:
+            ativo = sick.ativo_insumo
+            OrdemServicoLinha.objects.create(
+                ordem=ordem,
+                natureza=OrdemServicoLinha.Natureza.INSUMO_TRANSFERIDO,
+                insumo=ativo.insumo,
+                descricao=ativo.insumo.descricao,
+                unidade='UN',
+                quantidade=1,
+                patrimonio=ativo.patrimonio,
+                origem=ativo.base.nome,
+                dados_snapshot={
+                    'tipo_item': 'ATIVO_INSUMO_INDIVIDUALIZADO',
+                    'ativo_insumo_id': ativo.pk,
+                    'status': ativo.status,
+                },
+            )
         return ordem
 
     @classmethod

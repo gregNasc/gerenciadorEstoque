@@ -46,7 +46,8 @@ from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from estoque.policies.compras import ComprasAccessPolicy
 from estoque.security import secure_queryset
@@ -54,6 +55,7 @@ from insumos.policies import InsumosTenantPolicy
 from integracao.scopes import IntegrationExecutionScope
 from integracao.clients.caepi import CaepiLookupStatus
 from integracao.services.caepi_service import CaepiService
+from estoque.services.sick_service import SickService
 
 
 def _permissao_ou_perfil(user, permissao, *roles):
@@ -70,6 +72,37 @@ def _pode_acessar_checklist(user, checklist):
         user,
         checklist.inventario.base,
         resource=InsumosTenantPolicy.CHECKLISTS,
+    )
+
+
+@login_required
+@require_POST
+@role_required('admin', 'gestor')
+def marcar_ativo_insumo_sick(request, ativo_id):
+    ativo = get_object_or_404(
+        InsumosTenantPolicy.individualized_assets(
+            request.user,
+            AtivoInsumoIndividualizado.objects.select_related(
+                'base__empresa', 'insumo'
+            ),
+            action=InsumosTenantPolicy.MOVE,
+        ),
+        pk=ativo_id,
+    )
+    try:
+        sick = SickService.marcar_ativo_insumo_como_sick(
+            ativo_insumo_id=ativo.pk,
+            usuario=request.user,
+            categoria=request.POST.get('categoria'),
+            motivo=request.POST.get('motivo'),
+            observacao=request.POST.get('observacao'),
+        )
+    except ValidationError as exc:
+        messages.error(request, '; '.join(exc.messages))
+        return redirect('insumos:estoque_insumos')
+    messages.success(request, 'Unidade reutilizável encaminhada ao fluxo SICK.')
+    return redirect(
+        f"{reverse('estoque:sick')}?etapa={sick.etapa}&sick={sick.pk}#sick-{sick.pk}"
     )
 
 
@@ -249,8 +282,7 @@ def estoque_insumos(request):
     for ativo in AtivoInsumoIndividualizado.objects.filter(
             base_id__in=bases_por_id,
             insumo_id__in=individualizados_ids,
-            ativo=True,
-        ) if individualizados_ids else ():
+        ).order_by('insumo__descricao', 'patrimonio') if individualizados_ids else ():
         ativos_por_par[(ativo.base_id, ativo.insumo_id)].append(ativo)
 
     estoque = []

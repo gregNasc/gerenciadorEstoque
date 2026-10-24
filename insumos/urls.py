@@ -41,6 +41,11 @@ urlpatterns = [
     path('api/insumos-por-categoria/', insumos_por_categoria, name='insumos_por_categoria'),
     path('api/consultar-ca/', api.consultar_ca_epi, name='consultar_ca_epi'),
     path('estoque/', api.estoque_insumos, name='estoque_insumos'),
+    path(
+        'estoque/unidades/<int:ativo_id>/marcar-sick/',
+        api.marcar_ativo_insumo_sick,
+        name='marcar_ativo_insumo_sick',
+    ),
     path('estoque/exportar-epi/', api.exportar_dados_epi, name='exportar_dados_epi'),
     path('importar-excel/', api.importar_excel, name='importar_excel'),
     path('api/inventario/<int:inventario_id>/', api.inventario_detalhes, name='inventario_detalhes'),

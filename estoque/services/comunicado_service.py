@@ -315,12 +315,17 @@ class ComunicadoService:
                 status_final='MANUTENCAO',
                 previsao_retorno=data_previsao,
             )
-            .select_related('equipamento__produto', 'equipamento__regional__empresa')
+            .select_related(
+                'equipamento__produto',
+                'equipamento__regional__empresa',
+                'ativo_insumo__insumo',
+                'ativo_insumo__base__empresa',
+            )
         )
         for sick in manutencoes:
             from estoque.policies.tenant_operations import TenantOperationPolicy
 
-            empresa = sick.equipamento.regional.empresa
+            empresa = sick.empresa_alvo
             candidatos_manutencao = User.objects.filter(
                 is_active=True,
                 groups__name=GruposCorporativos.SICK_MANUTENCAO,
@@ -359,16 +364,27 @@ class ComunicadoService:
             if Comunicado.objects.filter(titulo=titulo_normalizado).exists():
                 continue
 
-            equipamento = sick.equipamento
+            if sick.equipamento_id:
+                equipamento = sick.equipamento
+                descricao_alvo = (
+                    equipamento.produto.descricao
+                    if equipamento.produto else equipamento.codigo
+                )
+                detalhes_alvo = (
+                    f'Código: {equipamento.codigo}\n'
+                    f'Série: {equipamento.numero_serie or "N/A"}\n'
+                )
+            else:
+                descricao_alvo = sick.ativo_insumo.insumo.descricao
+                detalhes_alvo = 'Tipo: insumo reutilizável individualizado\n'
             comunicado = ComunicadoService.criar_acao(
                 titulo=titulo,
                 mensagem=(
-                    'A previsão de retorno deste equipamento é amanhã.\n\n'
-                    f'Equipamento: {equipamento.produto.descricao if equipamento.produto else equipamento.codigo}\n'
-                    f'Código: {equipamento.codigo}\n'
-                    f'Patrimônio: {equipamento.patrimonio or "N/A"}\n'
-                    f'Série: {equipamento.numero_serie or "N/A"}\n'
-                    f'Base: {equipamento.regional.nome}\n'
+                    'A previsão de retorno deste ativo é amanhã.\n\n'
+                    f'Ativo: {descricao_alvo}\n'
+                    f'{detalhes_alvo}'
+                    f'Patrimônio: {sick.identificacao_alvo or "N/A"}\n'
+                    f'Base: {sick.base_alvo.nome}\n'
                     f'Previsão: {data_previsao.strftime("%d/%m/%Y")}\n'
                     f'Motivo: {sick.motivo or "Não informado"}'
                 ),

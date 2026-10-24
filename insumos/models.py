@@ -332,6 +332,12 @@ class LoteEpi(models.Model):
 class AtivoInsumoIndividualizado(models.Model):
     """Unidade patrimonial de um insumo reutilizável/individualizado."""
 
+    class Status(models.TextChoices):
+        OPERACIONAL = 'OPERACIONAL', _('Operacional')
+        SICK = 'SICK', _('SICK')
+        MANUTENCAO = 'MANUTENCAO', _('Manutenção')
+        INATIVO = 'INATIVO', _('Inativo')
+
     base = models.ForeignKey(
         Base,
         on_delete=models.PROTECT,
@@ -344,6 +350,12 @@ class AtivoInsumoIndividualizado(models.Model):
     )
     patrimonio = models.CharField(max_length=100, db_index=True)
     observacao = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.OPERACIONAL,
+        db_index=True,
+    )
     ativo = models.BooleanField(default=True, db_index=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -358,6 +370,10 @@ class AtivoInsumoIndividualizado(models.Model):
             models.CheckConstraint(
                 condition=~Q(patrimonio=''),
                 name='insumo_ativo_patrimonio_nao_vazio',
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=('OPERACIONAL', 'SICK', 'MANUTENCAO', 'INATIVO')),
+                name='insumo_ativo_status_valido',
             ),
         ]
         verbose_name = 'ativo de insumo individualizado'
@@ -397,6 +413,13 @@ class AtivoInsumoIndividualizado(models.Model):
 
     def save(self, *args, **kwargs):
         self.patrimonio = (self.patrimonio or '').strip().upper()
+        # ``ativo`` permanece por compatibilidade com consultas legadas. O
+        # estado individual passa a ser a fonte de verdade da disponibilidade.
+        self.ativo = self.status != self.Status.INATIVO
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {
+                'ativo', 'status',
+            }
         self.full_clean()
         super().save(*args, **kwargs)
 

@@ -156,9 +156,12 @@ class TenantOperationPolicy:
                 CapacidadeRelacionamentoEmpresa.Recurso.SICK,
                 action,
             )
-        internal = Q(
-            ~Q(tipo_destino=Sick.TipoDestino.TERCEIRIZADA),
-            equipamento__regional__in=bases,
+        internal = (
+            ~Q(tipo_destino=Sick.TipoDestino.TERCEIRIZADA)
+            & (
+                Q(equipamento__regional__in=bases)
+                | Q(ativo_insumo__base__in=bases)
+            )
         )
         # O fluxo terceirizado permanece estritamente na base de origem e não
         # herda o escopo ampliado de Admin ou de grupos funcionais.
@@ -167,6 +170,6 @@ class TenantOperationPolicy:
             external = Q(
                 tipo_destino=Sick.TipoDestino.TERCEIRIZADA,
                 base_origem__in=perfil.regionais.all(),
-                equipamento__regional__empresa_id=perfil.empresa_id,
+                base_origem__empresa_id=perfil.empresa_id,
             )
         return queryset.filter(internal | external)
