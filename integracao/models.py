@@ -40,6 +40,10 @@ def caepi_source_upload_to(instance, filename):
     return f'caepi/fontes/{uuid.uuid4().hex}{extension}'
 
 
+def caepi_processing_upload_to(instance, filename):
+    return f'caepi/processamento/{uuid.uuid4().hex}.jsonl'
+
+
 class SyncState(models.TextChoices):
     PRESENT = "PRESENT", "Presente"
     MISSING = "MISSING", "Ausente na fonte"
@@ -702,6 +706,14 @@ class CaepiImportacao(models.Model):
         blank=True,
         editable=False,
     )
+    arquivo_processamento = models.FileField(
+        upload_to=caepi_processing_upload_to,
+        storage=caepi_source_storage,
+        blank=True,
+        editable=False,
+    )
+    cursor_processamento = models.PositiveBigIntegerField(default=0)
+    total_linhas_fonte = models.PositiveBigIntegerField(default=0)
     status = models.CharField(
         max_length=16,
         choices=Status.choices,

@@ -218,3 +218,40 @@ class CaepiR3GTests(TestCase):
         self.assertEqual(resultado.status, CaepiImportacao.Status.PREVIA)
         self.assertEqual(resultado.total_registros, 1)
         resultado.arquivo_fonte.delete(save=False)
+
+    def test_csv_existente_reposiciona_cursor_apos_linhas_confirmadas(self):
+        second_row = ROW.replace('12345', '67890').replace('REF-1', 'REF-2')
+        third_row = ROW.replace('12345', '54321').replace('REF-1', 'REF-3')
+        payload = ('﻿' + HEADER + ROW + second_row + third_row).encode('utf-8')
+        importacao, _ = CaepiImportService.enfileirar_previa(
+            uploaded_file=SimpleUploadedFile('relatorio-oficial.csv', payload),
+            user=self.superuser,
+        )
+        parcial = CaepiImportService.processar_lote_salvo(
+            importacao.pk, max_rows=1, max_seconds=30,
+        )
+        nome_staged = parcial.arquivo_processamento.name
+        storage = parcial.arquivo_processamento.storage
+        if nome_staged and storage.exists(nome_staged):
+            storage.delete(nome_staged)
+        CaepiImportacao.objects.filter(pk=parcial.pk).update(
+            arquivo_processamento='',
+            cursor_processamento=0,
+            status=CaepiImportacao.Status.INTERROMPIDA,
+        )
+
+        retomada = CaepiImportService.processar_lote_salvo(
+            parcial.pk, max_rows=1, max_seconds=30,
+        )
+
+        self.assertEqual(retomada.processados, 2)
+        self.assertEqual(retomada.registros.count(), 2)
+        self.assertSetEqual(
+            set(retomada.registros.values_list('numero_ca', flat=True)),
+            {'12345', '67890'},
+        )
+        concluida = CaepiImportService.processar_upload_salvo(retomada.pk)
+        self.assertEqual(concluida.status, CaepiImportacao.Status.PREVIA)
+        self.assertEqual(concluida.total_registros, 3)
+        concluida.arquivo_fonte.delete(save=False)
+        concluida.arquivo_processamento.delete(save=False)

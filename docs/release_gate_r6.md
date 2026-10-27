@@ -34,6 +34,10 @@
 3. `integracao/0009_caepi_arquivo_fonte_assincrono.py`
    - guarda o arquivo-fonte da importação CAEPI para processamento retomável;
    - elimina a importação pesada da requisição de upload e divide a carga em lotes curtos.
+4. `integracao/0010_caepi_cursor_arquivo_processamento.py`
+   - cria uma fonte privada normalizada com cursor real em bytes;
+   - evita reler desde o início as linhas já confirmadas;
+   - preserva e reposiciona tentativas iniciadas antes da atualização.
 
 Todas as mudanças de schema são aditivas. A migration de linha do tempo contém carga de dados legados e deve ser aplicada antes de liberar a nova interface.
 
@@ -44,7 +48,7 @@ Todas as mudanças de schema são aditivas. A migration de linha do tempo conté
 - `git diff --check`: sem erro de whitespace;
 - suíte completa de `insumos`: **121 testes aprovados**;
 - conjunto integrado R6 + Compras + Ordens de Serviço + CAEPI: **27 testes aprovados**;
-- suíte dirigida da importação CAEPI retomável: **10 testes aprovados**;
+- suíte dirigida da importação CAEPI retomável: **11 testes aprovados**;
 - teste específico de criação autorizada e vínculo ao pedido: **1 teste aprovado**.
 
 Os testes foram executados em SQLite isolado porque o PostgreSQL local não estava disponível. Isso não substitui o smoke test pós-migration no PostgreSQL do ambiente de deploy.

@@ -2,7 +2,9 @@ import csv
 import gzip
 import hashlib
 import io
+import json
 import logging
+import tempfile
 import time
 import zipfile
 import zlib
@@ -11,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
+from django.core.files import File
 from django.db import transaction
 from django.db.models import Subquery
 from django.utils import timezone
@@ -85,8 +88,8 @@ class CaepiImportService:
     MAX_EXTRACTED_BYTES = 350 * 1024 * 1024
     HASH_CHUNK_BYTES = 1024 * 1024
     INSERT_BATCH_SIZE = 1000
-    WEB_BATCH_ROWS = 5000
-    WEB_BATCH_SECONDS = 15
+    WEB_BATCH_ROWS = 20000
+    WEB_BATCH_SECONDS = 45
     STALE_AFTER = timedelta(minutes=10)
     REQUIRED_COLUMNS = {
         'NR Registro CA', 'DATA DE VALIDADE', 'SITUACAO', 'NATUREZA',
@@ -141,6 +144,8 @@ class CaepiImportService:
         )
         if importacao.arquivo_fonte:
             importacao.arquivo_fonte.delete(save=False)
+        if importacao.arquivo_processamento:
+            importacao.arquivo_processamento.delete(save=False)
         importacao.registros.all().delete() if importacao.pk else None
         importacao.nome_arquivo = nome[:255]
         importacao.tamanho_bytes = tamanho_bytes
@@ -156,6 +161,9 @@ class CaepiImportService:
         importacao.rejeitados = 0
         importacao.finalizado_em = None
         importacao.publicado_em = None
+        importacao.arquivo_processamento = ''
+        importacao.cursor_processamento = 0
+        importacao.total_linhas_fonte = 0
         uploaded_file.seek(0)
         importacao.arquivo_fonte.save(nome, uploaded_file, save=False)
         importacao.save()
@@ -179,8 +187,9 @@ class CaepiImportService:
     ):
         """Processa um lote curto e retoma pela quantidade de linhas consumidas.
 
-        A linha do arquivo é o cursor persistente. O lock impede que duas abas
-        avancem o mesmo cursor; ``ignore_conflicts`` mantém a carga idempotente.
+        Um JSONL privado fornece cursor real em bytes. O lock impede que duas
+        abas avancem o mesmo cursor; ``ignore_conflicts`` mantém a carga
+        idempotente.
         """
         max_rows = max(1, int(max_rows or cls.WEB_BATCH_ROWS))
         max_seconds = max(1, int(max_seconds or cls.WEB_BATCH_SECONDS))
@@ -206,6 +215,9 @@ class CaepiImportService:
                         'O arquivo-fonte da importação não foi encontrado.'
                     )
 
+                if not importacao.arquivo_processamento:
+                    cls._preparar_arquivo_processamento(importacao)
+
                 importacao.status = CaepiImportacao.Status.PROCESSANDO
                 importacao.erro = ''
                 importacao.finalizado_em = None
@@ -215,35 +227,35 @@ class CaepiImportService:
                 fim_arquivo = False
                 advertencias = list(importacao.advertencias or [])
 
-                with importacao.arquivo_fonte.open('rb') as source:
-                    with cls._content_stream(source) as content_stream:
-                        linhas = iter(cls._rows(cls._text_stream(content_stream)))
-                        for _ in range(int(importacao.processados)):
-                            try:
-                                next(linhas)
-                            except StopIteration:
-                                fim_arquivo = True
-                                break
-
-                        batch_started = time.monotonic()
-                        while not fim_arquivo and consumidos < max_rows:
-                            if time.monotonic() - batch_started >= max_seconds:
-                                break
-                            try:
-                                dados, advertencia = next(linhas)
-                            except StopIteration:
-                                fim_arquivo = True
-                                break
-                            consumidos += 1
-                            if advertencia:
-                                rejeitados_lote += 1
-                                if len(advertencias) < 100:
-                                    advertencias.append(advertencia)
-                            else:
-                                registros.append(CaepiRegistro(
-                                    importacao=importacao,
-                                    **dados,
-                                ))
+                with importacao.arquivo_processamento.open('rb') as staged:
+                    staged.seek(int(importacao.cursor_processamento))
+                    batch_started = time.monotonic()
+                    while consumidos < max_rows:
+                        if time.monotonic() - batch_started >= max_seconds:
+                            break
+                        linha = staged.readline()
+                        if not linha:
+                            fim_arquivo = True
+                            break
+                        payload = json.loads(linha.decode('utf-8'))
+                        dados = payload.get('data')
+                        advertencia = payload.get('warning')
+                        consumidos += 1
+                        if advertencia:
+                            rejeitados_lote += 1
+                            if len(advertencias) < 100:
+                                advertencias.append(advertencia)
+                        else:
+                            validade = dados.get('validade_ca')
+                            dados['validade_ca'] = (
+                                datetime.strptime(validade, '%Y-%m-%d').date()
+                                if validade else None
+                            )
+                            registros.append(CaepiRegistro(
+                                importacao=importacao,
+                                **dados,
+                            ))
+                    importacao.cursor_processamento = staged.tell()
 
                 if registros:
                     CaepiRegistro.objects.bulk_create(
@@ -283,6 +295,50 @@ class CaepiImportService:
                     atualizado_em=timezone.now(),
                 )
             raise
+
+    @classmethod
+    def _preparar_arquivo_processamento(cls, importacao):
+        """Normaliza uma vez o CSV comprimido e posiciona o cursor legado."""
+        cursor_confirmado = 0
+        linhas = 0
+        temporario = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
+        try:
+            with importacao.arquivo_fonte.open('rb') as source:
+                with cls._content_stream(source) as content_stream:
+                    for dados, advertencia in cls._rows(
+                        cls._text_stream(content_stream),
+                    ):
+                        if dados:
+                            dados = dict(dados)
+                            validade = dados.get('validade_ca')
+                            dados['validade_ca'] = (
+                                validade.isoformat() if validade else ''
+                            )
+                        payload = json.dumps(
+                            {'data': dados, 'warning': advertencia},
+                            ensure_ascii=False,
+                            separators=(',', ':'),
+                        ).encode('utf-8') + b'\n'
+                        temporario.write(payload)
+                        linhas += 1
+                        if linhas == int(importacao.processados):
+                            cursor_confirmado = temporario.tell()
+            if int(importacao.processados) > linhas:
+                raise ValidationError(
+                    'O cursor salvo excede o total de linhas do arquivo-fonte.'
+                )
+            if not importacao.processados:
+                cursor_confirmado = 0
+            temporario.seek(0)
+            importacao.arquivo_processamento.save(
+                f'caepi-{importacao.pk}.jsonl',
+                File(temporario),
+                save=False,
+            )
+            importacao.cursor_processamento = cursor_confirmado
+            importacao.total_linhas_fonte = linhas
+        finally:
+            temporario.close()
 
     @classmethod
     def _finalizar_previa_em_lote(cls, importacao):

@@ -7,23 +7,27 @@
     <a class="btn btn-outline-secondary" href="{% url 'integracao:caepi_importacoes' %}">Voltar</a>
   </div>
   <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Total</small><div class="h4">{{ importacao.total_registros }}</div></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>{% if pode_processar %}Linhas concluídas{% else %}Total{% endif %}</small><div class="h4">{% if pode_processar %}{{ importacao.processados }}{% else %}{{ importacao.total_registros }}{% endif %}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Novos</small><div class="h4 text-success">{{ importacao.novos }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Alterados/ausentes</small><div class="h4 text-warning">{{ importacao.alterados }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Inalterados</small><div class="h4">{{ importacao.inalterados }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Rejeitados</small><div class="h4 text-danger">{{ importacao.rejeitados }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Status</small><div class="fw-semibold">{{ importacao.status_exibicao }}</div>{% if importacao.status == 'PROCESSANDO' and not importacao.esta_interrompida %}<small>{{ importacao.processados }} linhas processadas</small>{% endif %}</div></div></div></div>
   </div>
-  {% if importacao.esta_interrompida and pode_processar %}<div class="alert alert-warning"><strong>Processamento pausado.</strong> O arquivo permanece preservado e a carga será retomada a partir do último lote confirmado, sem afetar a base publicada.</div>{% elif importacao.esta_interrompida %}<div class="alert alert-danger"><strong>Importação interrompida.</strong> O arquivo-fonte não está mais disponível; reenvie o mesmo arquivo. A base anteriormente publicada continua preservada.</div>{% endif %}
+  {% if importacao.esta_interrompida and pode_processar %}<div class="alert alert-warning"><strong>Processamento pausado.</strong> O arquivo e as linhas concluídas estão seguros. A carga continuará do ponto em que parou.</div>{% elif importacao.esta_interrompida %}<div class="alert alert-danger"><strong>Não foi possível continuar.</strong> Reenvie o mesmo arquivo para iniciar uma nova tentativa. A base atualmente publicada não foi alterada.</div>{% endif %}
   {% if pode_processar %}
   <div id="caepi-processing" class="alert alert-info d-flex align-items-center justify-content-between gap-3 flex-wrap">
-    <div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><div><strong>Processamento retomável em lotes.</strong> Mantenha esta página aberta até a prévia ficar pronta. Linhas confirmadas: <span id="caepi-progress-count">{{ importacao.processados }}</span>.</div></div>
-    <button id="caepi-retry" class="btn btn-sm btn-outline-primary d-none" type="button">Tentar novamente</button>
+    <div class="flex-grow-1">
+      <div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><div><strong id="caepi-stage">Preparando o arquivo.</strong> <span id="caepi-guidance">Mantenha esta página aberta. As linhas concluídas ficam salvas mesmo se a conexão cair.</span></div></div>
+      <div id="caepi-progress-wrap" class="progress mt-3 d-none" role="progressbar" aria-label="Progresso da importação" aria-valuemin="0" aria-valuemax="100"><div id="caepi-progress-bar" class="progress-bar" style="width:0%">0%</div></div>
+      <div class="small mt-2">Linhas concluídas: <strong id="caepi-progress-count">{{ importacao.processados }}</strong><span id="caepi-progress-total"></span>.</div>
+    </div>
+    <button id="caepi-retry" class="btn btn-sm btn-outline-primary d-none" type="button">Retomar processamento</button>
   </div>
   <form id="caepi-batch-form" class="d-none" method="post" action="{% url 'integracao:caepi_processar_lote' importacao.pk %}">{% csrf_token %}</form>
   {% endif %}
   {% if importacao.advertencias %}<div class="alert alert-warning"><strong>Advertências:</strong><ul class="mb-0">{% for warning in importacao.advertencias %}<li>{{ warning }}</li>{% endfor %}</ul></div>{% endif %}
-  {% if importacao.erro %}<div class="alert alert-danger">{{ importacao.erro }}</div>{% endif %}
+  {% if importacao.erro and not pode_processar %}<div class="alert alert-danger"><strong>O arquivo não pôde ser concluído.</strong> Verifique se ele mantém o formato oficial e tente novamente.{% if request.user.is_superuser %}<details class="mt-2"><summary>Detalhes para o suporte técnico</summary><code>{{ importacao.erro }}</code></details>{% endif %}</div>{% endif %}
   {% if importacao.status == 'PREVIA' %}
   <form method="post" action="{% url 'integracao:caepi_publicar' importacao.pk %}" class="mb-4">{% csrf_token %}<button class="btn btn-success" type="submit"><i class="bi bi-check-circle me-1"></i>Confirmar publicação</button></form>
   {% endif %}
@@ -35,6 +39,11 @@
   const form = document.getElementById('caepi-batch-form');
   const panel = document.getElementById('caepi-processing');
   const count = document.getElementById('caepi-progress-count');
+  const total = document.getElementById('caepi-progress-total');
+  const stage = document.getElementById('caepi-stage');
+  const guidance = document.getElementById('caepi-guidance');
+  const progressWrap = document.getElementById('caepi-progress-wrap');
+  const progressBar = document.getElementById('caepi-progress-bar');
   const retry = document.getElementById('caepi-retry');
   let running = false;
 
@@ -53,6 +62,16 @@
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.erro || 'Não foi possível processar o lote.');
       count.textContent = payload.processados;
+      stage.textContent = 'Importando os dados.';
+      guidance.textContent = 'Aguarde a conclusão para revisar e publicar a nova base.';
+      if (payload.total_linhas) {
+        const percent = Math.min(100, Math.round((payload.processados / payload.total_linhas) * 100));
+        total.textContent = ` de ${payload.total_linhas}`;
+        progressWrap.classList.remove('d-none');
+        progressWrap.setAttribute('aria-valuenow', percent);
+        progressBar.style.width = `${percent}%`;
+        progressBar.textContent = `${percent}%`;
+      }
       if (payload.concluida) {
         window.location.reload();
         return;
@@ -61,7 +80,8 @@
     } catch (error) {
       panel.classList.remove('alert-info');
       panel.classList.add('alert-danger');
-      panel.querySelector('div div').innerHTML = `<strong>Processamento pausado.</strong> ${error.message} O arquivo e os lotes confirmados permanecem preservados.`;
+      stage.textContent = 'Processamento pausado.';
+      guidance.textContent = 'As linhas concluídas estão seguras. Clique em Retomar processamento para continuar.';
       retry.classList.remove('d-none');
     } finally {
       running = false;

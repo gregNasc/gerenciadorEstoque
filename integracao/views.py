@@ -113,6 +113,7 @@ def caepi_processar_lote(request, pk):
             'status': importacao.status,
             'status_exibicao': importacao.status_exibicao,
             'processados': importacao.processados,
+            'total_linhas': importacao.total_linhas_fonte,
             'concluida': importacao.status == CaepiImportacao.Status.PREVIA,
         }
         if importacao.status == CaepiImportacao.Status.FALHOU:
@@ -131,6 +132,7 @@ def caepi_processar_lote(request, pk):
         'status': importacao.status,
         'status_exibicao': importacao.status_exibicao,
         'processados': importacao.processados,
+        'total_linhas': importacao.total_linhas_fonte,
         'total_registros': importacao.total_registros,
         'rejeitados': importacao.rejeitados,
         'concluida': importacao.status == CaepiImportacao.Status.PREVIA,
