@@ -275,22 +275,40 @@ class OrdemServicoService:
                 responsavel_operacional=usuario,
                 executado_em=timezone.now(),
             )
-        existentes = set(ordem.linhas.values_list('insumo_id', flat=True))
-        for item in solicitacao.itens.select_related('insumo'):
-            if item.insumo_id in existentes:
+        existentes = set(
+            ordem.linhas.values_list(
+                'dados_snapshot__item_solicitacao_id', flat=True,
+            )
+        )
+        for item in solicitacao.itens.select_related(
+            'insumo', 'insumo__categoria', 'produto_equipamento',
+        ):
+            if item.pk in existentes:
                 continue
+            equipamento = item.produto_equipamento
             OrdemServicoLinha.objects.create(
                 ordem=ordem,
-                natureza=OrdemServicoLinha.Natureza.INSUMO_TRANSFERIDO,
+                natureza=(
+                    OrdemServicoLinha.Natureza.EQUIPAMENTO
+                    if equipamento
+                    else OrdemServicoLinha.Natureza.INSUMO_TRANSFERIDO
+                ),
                 insumo=item.insumo,
-                descricao=item.insumo.descricao,
-                unidade=item.insumo.unidade_medida,
+                descricao=item.descricao_exibicao,
+                fabricante=equipamento.fabricante if equipamento else '',
+                modelo=equipamento.modelo if equipamento else '',
+                codigo=equipamento.codigo if equipamento else '',
+                unidade=item.unidade_exibicao,
                 quantidade=item.quantidade,
                 destino=solicitacao.base.nome,
                 dados_snapshot={
                     'solicitacao_id': solicitacao.pk,
                     'item_solicitacao_id': item.pk,
                     'insumo_id': item.insumo_id,
+                    'produto_equipamento_id': item.produto_equipamento_id,
+                    'tipo_item': item.tipo,
+                    'especificacao': item.especificacao,
+                    'justificativa_item': item.justificativa_item,
                     'observacao': item.observacao,
                 },
             )

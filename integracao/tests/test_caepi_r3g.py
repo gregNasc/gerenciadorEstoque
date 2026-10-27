@@ -1,6 +1,5 @@
 import gzip
 from datetime import timedelta
-
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -123,3 +122,82 @@ class CaepiR3GTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['validade_ca'], '2030-12-31')
         self.assertEqual(response.json()['natureza'], 'Nacional')
+
+    def test_upload_web_persiste_fonte_sem_processar_na_requisicao(self):
+        payload = gzip.compress(('﻿' + HEADER + ROW).encode('utf-8'), mtime=0)
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            reverse('integracao:caepi_importacoes'),
+            {'arquivo': SimpleUploadedFile('atualizado.csv.gz', payload)},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        importacao = CaepiImportacao.objects.get(
+            nome_arquivo__iexact='atualizado.csv.gz',
+        )
+        self.assertEqual(importacao.status, CaepiImportacao.Status.PROCESSANDO)
+        self.assertTrue(importacao.arquivo_fonte.name)
+        self.assertEqual(importacao.processados, 0)
+        importacao.arquivo_fonte.delete(save=False)
+
+    def test_processamento_retomavel_avanca_cursor_sem_reenviar_arquivo(self):
+        second_row = ROW.replace('12345', '67890').replace('REF-1', 'REF-2')
+        payload = gzip.compress(
+            ('﻿' + HEADER + ROW + second_row).encode('utf-8'), mtime=0,
+        )
+        importacao, deve_processar = CaepiImportService.enfileirar_previa(
+            uploaded_file=SimpleUploadedFile('retomavel.csv.gz', payload),
+            user=self.superuser,
+        )
+
+        primeiro = CaepiImportService.processar_lote_salvo(
+            importacao.pk, max_rows=1, max_seconds=30,
+        )
+        segundo = CaepiImportService.processar_lote_salvo(
+            importacao.pk, max_rows=1, max_seconds=30,
+        )
+        concluido = CaepiImportService.processar_lote_salvo(
+            importacao.pk, max_rows=1, max_seconds=30,
+        )
+
+        self.assertTrue(deve_processar)
+        self.assertEqual(primeiro.status, CaepiImportacao.Status.PROCESSANDO)
+        self.assertEqual(primeiro.processados, 1)
+        self.assertEqual(segundo.status, CaepiImportacao.Status.PROCESSANDO)
+        self.assertEqual(segundo.processados, 2)
+        self.assertEqual(concluido.status, CaepiImportacao.Status.PREVIA)
+        self.assertEqual(concluido.total_registros, 2)
+        self.assertSetEqual(
+            set(concluido.registros.values_list('numero_ca', flat=True)),
+            {'12345', '67890'},
+        )
+        concluido.arquivo_fonte.delete(save=False)
+
+    def test_endpoint_retoma_importacao_interrompida_sem_novo_upload(self):
+        payload = gzip.compress(('﻿' + HEADER + ROW).encode('utf-8'), mtime=0)
+        importacao, deve_processar = CaepiImportService.enfileirar_previa(
+            uploaded_file=SimpleUploadedFile('retomar.csv.gz', payload),
+            user=self.superuser,
+        )
+        CaepiImportacao.objects.filter(pk=importacao.pk).update(
+            atualizado_em=timezone.now() - timedelta(minutes=11),
+        )
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(reverse(
+            'integracao:caepi_processar_lote', args=[importacao.pk],
+        ))
+        if response.json()['status'] == CaepiImportacao.Status.PROCESSANDO:
+            response = self.client.post(reverse(
+                'integracao:caepi_processar_lote', args=[importacao.pk],
+            ))
+
+        self.assertTrue(deve_processar)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['concluida'])
+        importacao.refresh_from_db()
+        self.assertEqual(importacao.status, CaepiImportacao.Status.PREVIA)
+        self.assertEqual(importacao.total_registros, 1)
+        self.assertTrue(importacao.arquivo_fonte.name)
+        importacao.arquivo_fonte.delete(save=False)

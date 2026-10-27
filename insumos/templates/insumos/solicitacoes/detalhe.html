@@ -51,8 +51,10 @@
                     text-bg-danger
                 {% elif solicitacao.status == 'APROVADA' %}
                     text-bg-success
-                {% elif solicitacao.status == 'EM_COMPRA' %}
+                {% elif solicitacao.status == 'RECEBIDA_COMPRAS' or solicitacao.status == 'EM_ANALISE' or solicitacao.status == 'EM_COMPRA' or solicitacao.status == 'PEDIDO_REALIZADO' %}
                     text-bg-primary
+                {% elif solicitacao.status == 'RECEBIDA' or solicitacao.status == 'FINALIZADA' %}
+                    text-bg-success
                 {% else %}
                     text-bg-secondary
                 {% endif %}"
@@ -63,8 +65,12 @@
                     <i class="bi bi-x-circle me-1"></i>
                 {% elif solicitacao.status == 'APROVADA' %}
                     <i class="bi bi-check-circle me-1"></i>
-                {% elif solicitacao.status == 'EM_COMPRA' %}
+                {% elif solicitacao.status == 'PEDIDO_REALIZADO' or solicitacao.status == 'EM_COMPRA' %}
                     <i class="bi bi-cart3 me-1"></i>
+                {% elif solicitacao.status == 'RECEBIDA_COMPRAS' or solicitacao.status == 'EM_ANALISE' %}
+                    <i class="bi bi-search me-1"></i>
+                {% elif solicitacao.status == 'RECEBIDA' or solicitacao.status == 'FINALIZADA' %}
+                    <i class="bi bi-check2-all me-1"></i>
                 {% else %}
                     <i class="bi bi-info-circle me-1"></i>
                 {% endif %}
@@ -183,7 +189,7 @@
                 <thead class="table-light">
                     <tr>
                         <th class="ps-4">
-                            {% trans "Insumo" %}
+                            {% trans "Item" %}
                         </th>
 
                         <th>
@@ -206,13 +212,78 @@
 
                             <td class="ps-4">
                                 <div class="fw-semibold">
-                                    {{ item.insumo.descricao }}
+                                    {{ item.descricao_exibicao }}
                                 </div>
+                                <div class="small text-secondary">{{ item.get_tipo_display }}</div>
+                                {% if item.especificacao %}
+                                    <div class="small mt-2">
+                                        <span class="text-secondary">{% trans "Especificação:" %}</span>
+                                        {{ item.especificacao }}
+                                    </div>
+                                {% endif %}
+                                {% if item.justificativa_item %}
+                                    <div class="small mt-1">
+                                        <span class="text-secondary">{% trans "Justificativa do item:" %}</span>
+                                        {{ item.justificativa_item }}
+                                    </div>
+                                {% endif %}
+                                {% if item.anexo %}
+                                    <a
+                                        class="btn btn-sm btn-outline-secondary mt-2"
+                                        href="{% url 'insumos:baixar_anexo_solicitacao' solicitacao.pk item.pk %}"
+                                    >
+                                        <i class="bi bi-paperclip me-1"></i>
+                                        {% trans "Baixar anexo" %}
+                                    </a>
+                                {% endif %}
+                                {% if item.tipo == 'NOVO_ITEM' %}
+                                    {% if item.foi_resolvido %}
+                                        <div class="alert alert-success py-2 px-3 mt-2 mb-0 small">
+                                            <i class="bi bi-link-45deg me-1"></i>
+                                            {% trans "Vinculado ao catálogo:" %}
+                                            <strong>{{ item.resolucao_exibicao }}</strong>
+                                            {% if item.resolvido_por %}
+                                                · {{ item.resolvido_por.get_full_name|default:item.resolvido_por.username }}
+                                            {% endif %}
+                                        </div>
+                                    {% elif pode_decidir %}
+                                        <div class="border rounded-3 p-3 mt-2 bg-body-tertiary">
+                                            <div class="small fw-semibold mb-2">{% trans "Resolver novo item" %}</div>
+                                            <form method="post" action="{% url 'insumos:resolver_novo_item_solicitacao' solicitacao.pk item.pk %}" class="row g-2 mb-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="tipo_resolucao" value="INSUMO">
+                                                <div class="col-lg-8">
+                                                    <select class="form-select form-select-sm" name="referencia" required>
+                                                        <option value="">{% trans "Vincular a insumo/EPI existente" %}</option>
+                                                        {% for referencia in catalogo_resolucao.INSUMO %}<option value="{{ referencia.id }}">{{ referencia.nome }} — {{ referencia.categoria }}</option>{% endfor %}
+                                                        {% for referencia in catalogo_resolucao.EPI %}<option value="{{ referencia.id }}">{{ referencia.nome }} — EPI</option>{% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-lg-4 d-grid"><button class="btn btn-sm btn-outline-primary" type="submit">{% trans "Vincular" %}</button></div>
+                                            </form>
+                                            <form method="post" action="{% url 'insumos:resolver_novo_item_solicitacao' solicitacao.pk item.pk %}" class="row g-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="tipo_resolucao" value="EQUIPAMENTO">
+                                                <div class="col-lg-8">
+                                                    <select class="form-select form-select-sm" name="referencia" required>
+                                                        <option value="">{% trans "Vincular a equipamento existente" %}</option>
+                                                        {% for referencia in catalogo_resolucao.EQUIPAMENTO %}<option value="{{ referencia.id }}">{{ referencia.nome }} — {{ referencia.categoria }}</option>{% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-lg-4 d-grid"><button class="btn btn-sm btn-outline-primary" type="submit">{% trans "Vincular" %}</button></div>
+                                            </form>
+                                            <div class="d-flex gap-2 flex-wrap mt-2">
+                                                <a class="small" href="{% url 'insumos:criar_item_insumo' %}?solicitacao={{ solicitacao.pk }}&amp;item={{ item.pk }}&amp;base={{ solicitacao.base_id }}">{% trans "Criar insumo autorizado" %}</a>
+                                                <a class="small" href="{% url 'compras:criar_produto_catalogo' %}?solicitacao={{ solicitacao.pk }}&amp;item={{ item.pk }}&amp;empresa={{ solicitacao.base.empresa_id }}">{% trans "Criar equipamento autorizado" %}</a>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
                             </td>
 
                             <td>
                                 <span class="badge bg-body-secondary text-body border fw-normal">
-                                    {{ item.insumo.categoria.nome }}
+                                    {{ item.categoria_exibicao }}
                                 </span>
                             </td>
 
@@ -222,7 +293,7 @@
                                 </strong>
 
                                 <span class="text-secondary">
-                                    {{ item.insumo.unidade_medida }}
+                                    {{ item.unidade_exibicao }}
                                 </span>
                             </td>
 
@@ -245,6 +316,41 @@
             </table>
         </div>
 
+    </section>
+
+
+    <!-- LINHA DO TEMPO AUDITÁVEL -->
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-body border-bottom py-3">
+            <h2 class="h6 fw-semibold mb-0">
+                <i class="bi bi-clock-history me-2 text-secondary"></i>
+                {% trans "Linha do tempo" %}
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="vstack gap-3">
+                {% for evento in solicitacao.eventos.all %}
+                    <div class="d-flex gap-3">
+                        <div class="pt-1"><span class="badge rounded-pill text-bg-primary">{{ forloop.counter }}</span></div>
+                        <div class="flex-grow-1 border-bottom pb-3">
+                            <div class="d-flex justify-content-between gap-2 flex-wrap">
+                                <strong>{{ evento.get_tipo_display }}</strong>
+                                <time class="small text-secondary">{{ evento.ocorrido_em|date:'d/m/Y H:i' }}</time>
+                            </div>
+                            <div class="small text-secondary">
+                                {% if evento.autor %}{{ evento.autor.get_full_name|default:evento.autor.username }}{% else %}{% trans "Sistema" %}{% endif %}
+                                {% if evento.status_anterior or evento.status_novo %}
+                                    · {{ evento.status_anterior|default:'-' }} → {{ evento.status_novo|default:'-' }}
+                                {% endif %}
+                            </div>
+                            {% if evento.descricao %}<div class="small mt-1">{{ evento.descricao|linebreaksbr }}</div>{% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-secondary">{% trans "Nenhum evento registrado." %}</div>
+                {% endfor %}
+            </div>
+        </div>
     </section>
 
 
@@ -278,6 +384,18 @@
     ========================================================== -->
 
     {% if pode_decidir and solicitacao.status == 'PENDENTE' %}
+        <section class="card border-primary shadow-sm mb-4"><div class="card-body p-4 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div><h2 class="h6 fw-semibold mb-1"><i class="bi bi-inbox me-2"></i>{% trans "Receber em Compras" %}</h2><p class="small text-secondary mb-0">{% trans "Confirme que Compras recebeu e assumiu o acompanhamento deste pedido." %}</p></div>
+            <form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<button class="btn btn-primary" type="submit" name="acao" value="receber_compras"><i class="bi bi-check2-circle me-1"></i>{% trans "Confirmar recebimento" %}</button></form>
+        </div></section>
+    {% elif pode_decidir and solicitacao.status == 'RECEBIDA_COMPRAS' %}
+        <section class="card border-primary shadow-sm mb-4"><div class="card-body p-4 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div><h2 class="h6 fw-semibold mb-1"><i class="bi bi-search me-2"></i>{% trans "Iniciar análise" %}</h2><p class="small text-secondary mb-0">{% trans "Inicie a conferência dos itens, do catálogo e das justificativas." %}</p></div>
+            <form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}<button class="btn btn-primary" type="submit" name="acao" value="iniciar_analise"><i class="bi bi-play-circle me-1"></i>{% trans "Iniciar análise" %}</button></form>
+        </div></section>
+    {% endif %}
+
+    {% if pode_decidir and solicitacao.status == 'EM_ANALISE' %}
 
         <section class="card border-warning shadow-sm mb-4">
 
@@ -396,21 +514,21 @@
         </section>
 
 
-    {% elif pode_decidir and solicitacao.status == 'EM_COMPRA' %}
+    {% elif pode_decidir and aguarda_recebimento %}
 
         <section class="card border-success shadow-sm mb-4">
 
             <div class="card-header bg-success-subtle border-success-subtle py-3">
                 <h2 class="h6 fw-semibold mb-0">
                     <i class="bi bi-check-circle me-2"></i>
-                    {% trans "Finalizar solicitação" %}
+                    {% trans "Registrar recebimento" %}
                 </h2>
             </div>
 
             <div class="card-body">
 
                 <p class="text-secondary small">
-                    {% trans "Finalize a solicitação quando o processo de compra estiver concluído." %}
+                    {% trans "Confirme quando o material ou equipamento solicitado tiver sido recebido." %}
                 </p>
 
                 <form
@@ -422,7 +540,7 @@
                     <input
                         type="hidden"
                         name="acao"
-                        value="finalizar"
+                        value="receber_material"
                     >
 
                     <div class="mb-3">
@@ -430,7 +548,7 @@
                             class="form-label fw-semibold"
                             for="observacao-finalizacao"
                         >
-                            {% trans "Observação da finalização" %}
+                            {% trans "Observação do recebimento" %}
                         </label>
 
                         <textarea
@@ -438,23 +556,37 @@
                             id="observacao-finalizacao"
                             name="observacao"
                             rows="4"
-                            placeholder="{% trans 'Informe detalhes sobre a conclusão da solicitação...' %}"
+                            placeholder="{% trans 'Informe nota, quantidade recebida ou alguma divergência...' %}"
                         ></textarea>
                     </div>
 
                     <button
                         class="btn btn-success px-4"
                         type="submit"
-                        onclick="return confirm('{% trans "Confirma a finalização desta solicitação?" %}')"
+                        onclick="return confirm('{% trans "Confirma o recebimento desta solicitação?" %}')"
                     >
                         <i class="bi bi-check-circle me-1"></i>
-                        {% trans "Finalizar solicitação" %}
+                        {% trans "Registrar recebimento" %}
                     </button>
 
                 </form>
 
             </div>
 
+        </section>
+
+    {% elif pode_decidir and pode_atender %}
+
+        <section class="card border-success shadow-sm mb-4">
+            <div class="card-header bg-success-subtle border-success-subtle py-3"><h2 class="h6 fw-semibold mb-0"><i class="bi bi-check-circle me-2"></i>{% trans "Confirmar atendimento" %}</h2></div>
+            <div class="card-body">
+                <p class="text-secondary small">{% trans "Finalize quando os itens recebidos tiverem sido conferidos e disponibilizados à Base." %}</p>
+                <form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">{% csrf_token %}
+                    <input type="hidden" name="acao" value="finalizar">
+                    <div class="mb-3"><label class="form-label fw-semibold" for="observacao-atendimento">{% trans "Observação do atendimento" %}</label><textarea class="form-control" id="observacao-atendimento" name="observacao" rows="3"></textarea></div>
+                    <button class="btn btn-success px-4" type="submit" onclick="return confirm('{% trans "Confirma que esta solicitação foi atendida?" %}')"><i class="bi bi-check-circle me-1"></i>{% trans "Marcar como atendida" %}</button>
+                </form>
+            </div>
         </section>
 
     {% endif %}

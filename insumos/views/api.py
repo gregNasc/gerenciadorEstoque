@@ -75,6 +75,28 @@ def _pode_acessar_checklist(user, checklist):
     )
 
 
+def _situacao_ca_para_exibicao(certificado):
+    """Normaliza a situação do CA, inclusive em bases legadas com mojibake."""
+    situacao = (certificado.situacao_oficial or '').strip().upper()
+    normalizada = unicodedata.normalize('NFKD', situacao)
+    normalizada = ''.join(
+        caractere for caractere in normalizada
+        if not unicodedata.combining(caractere)
+    )
+    normalizada = normalizada.replace('\ufffd', '')
+
+    for codigo in ('VENCIDO', 'CANCELADO', 'SUSPENSO'):
+        if codigo in normalizada:
+            return 'invalido', codigo
+    if certificado.validade_ca and certificado.validade_ca < timezone.localdate():
+        return 'invalido', 'VENCIDO'
+    if normalizada == 'VALIDO' or (
+        normalizada.startswith('V') and normalizada.endswith('LIDO')
+    ):
+        return 'valido', 'VÁLIDO'
+    return 'atencao', situacao or 'Não consultada'
+
+
 @login_required
 @require_POST
 @role_required('admin', 'gestor')
@@ -285,20 +307,151 @@ def estoque_insumos(request):
         ).order_by('insumo__descricao', 'patrimonio') if individualizados_ids else ():
         ativos_por_par[(ativo.base_id, ativo.insumo_id)].append(ativo)
 
+    # O saldo geral precisa ser reconciliável com os detalhes exibidos no
+    # modal. Calculamos, em uma única consulta, o saldo associado a cada
+    # lote/CA de EPI e a cada patrimônio operacional.
+    saldos_por_lote = {}
+    saldos_por_ativo = {}
+    ids_com_detalhamento = epi_ids | individualizados_ids
+    if ids_com_detalhamento:
+        movimentos_vinculados = (
+            MovimentacaoInsumo.objects
+            .filter(
+                base_id__in=bases_por_id,
+                insumo_id__in=ids_com_detalhamento,
+            )
+            .filter(
+                Q(lote_epi_id__isnull=False)
+                | Q(ativo_individualizado_id__isnull=False)
+            )
+            .values(
+                'base_id', 'insumo_id',
+                'lote_epi_id', 'ativo_individualizado_id',
+            )
+            .annotate(
+                entradas=Sum(
+                    'quantidade',
+                    filter=Q(tipo__in=[
+                        'ENTRADA', 'DEVOLUCAO', 'AJUSTE_ENTRADA',
+                    ]),
+                ),
+                saidas=Sum(
+                    'quantidade',
+                    filter=Q(tipo__in=[
+                        'SAIDA', 'PERDA', 'AJUSTE_SAIDA',
+                    ]),
+                ),
+            )
+        )
+        for movimento in movimentos_vinculados:
+            saldo_vinculado = (
+                (movimento['entradas'] or Decimal('0'))
+                - (movimento['saidas'] or Decimal('0'))
+            )
+            if movimento['lote_epi_id']:
+                saldos_por_lote[movimento['lote_epi_id']] = saldo_vinculado
+            if movimento['ativo_individualizado_id']:
+                saldos_por_ativo[
+                    movimento['ativo_individualizado_id']
+                ] = saldo_vinculado
+
     estoque = []
     for agregado in saldos_positivos:
         base = bases_por_id.get(agregado['base_id'])
         insumo = insumos_por_id.get(agregado['insumo_id'])
         if base is None or insumo is None:
             continue
+        lotes_epi = lotes_epi_por_par.get((base.id, insumo.id), [])
+        resumo_ca = {}
+        total_lotes_epi = Decimal('0')
+        for lote in lotes_epi:
+            if lote.certificado_id:
+                (
+                    lote.situacao_visual,
+                    lote.situacao_exibicao,
+                ) = _situacao_ca_para_exibicao(lote.certificado)
+            else:
+                lote.situacao_visual = 'atencao'
+                lote.situacao_exibicao = 'Não consultada'
+            lote.quantidade_estoque = max(
+                saldos_por_lote.get(lote.id, Decimal('0')),
+                Decimal('0'),
+            )
+            total_lotes_epi += lote.quantidade_estoque
+            numero_ca = (
+                lote.certificado.numero_ca
+                if lote.certificado_id
+                else 'Não informado'
+            )
+            dados_ca = resumo_ca.setdefault(
+                numero_ca,
+                {
+                    'numero_ca': numero_ca,
+                    'quantidade': Decimal('0'),
+                    'situacao_oficial': (
+                        lote.situacao_exibicao
+                    ),
+                    'situacao_visual': lote.situacao_visual,
+                    'validade_ca': (
+                        lote.certificado.validade_ca
+                        if lote.certificado_id else None
+                    ),
+                    'tamanhos': {},
+                },
+            )
+            dados_ca['quantidade'] += lote.quantidade_estoque
+            tamanho = (
+                (lote.variante.tamanho or lote.variante.nome)
+                if lote.variante_id else 'Não informado'
+            )
+            dados_ca['tamanhos'][tamanho] = (
+                dados_ca['tamanhos'].get(tamanho, Decimal('0'))
+                + lote.quantidade_estoque
+            )
+
+        resumo_ca_epi = []
+        for numero_ca in sorted(resumo_ca):
+            dados_ca = resumo_ca[numero_ca]
+            dados_ca['tamanhos'] = [
+                {'tamanho': tamanho, 'quantidade': quantidade}
+                for tamanho, quantidade in sorted(
+                    dados_ca['tamanhos'].items(),
+                )
+            ]
+            resumo_ca_epi.append(dados_ca)
+
+        ativos_individualizados = ativos_por_par.get(
+            (base.id, insumo.id), [],
+        )
+        total_ativos_individualizados = Decimal('0')
+        for ativo in ativos_individualizados:
+            # Registros legados podem ter sido criados antes do vínculo da
+            # movimentação ao patrimônio. Nesse caso, uma unidade ativa é a
+            # representação mais fiel do cadastro individualizado.
+            ativo.quantidade_estoque = max(
+                saldos_por_ativo.get(
+                    ativo.id,
+                    Decimal('1') if ativo.ativo else Decimal('0'),
+                ),
+                Decimal('0'),
+            )
+            total_ativos_individualizados += ativo.quantidade_estoque
+
         estoque.append({
             'base': base,
             'insumo': insumo,
             'saldo': agregado['saldo'],
             'minimo': insumo.estoque_minimo,
             'critico': agregado['saldo'] <= insumo.estoque_minimo,
-            'lotes_epi': lotes_epi_por_par.get((base.id, insumo.id), []),
-            'ativos_individualizados': ativos_por_par.get((base.id, insumo.id), []),
+            'lotes_epi': lotes_epi,
+            'resumo_ca_epi': resumo_ca_epi,
+            'total_lotes_epi': total_lotes_epi,
+            'saldo_sem_ca': agregado['saldo'] - total_lotes_epi,
+            'ativos_individualizados': ativos_individualizados,
+            'total_ativos_individualizados': total_ativos_individualizados,
+            'saldo_sem_patrimonio': (
+                agregado['saldo'] - total_ativos_individualizados
+            ),
         })
 
     estoque.sort(key=lambda item: (
@@ -416,7 +569,20 @@ def exportar_dados_epi(request):
     lotes = LoteEpi.objects.filter(
         base=base,
         produto_epi__insumo=insumo,
-    ).select_related('certificado', 'variante').order_by(
+    ).select_related('certificado', 'variante').annotate(
+        quantidade_entradas=Sum(
+            'movimentacoes__quantidade',
+            filter=Q(movimentacoes__tipo__in=[
+                'ENTRADA', 'DEVOLUCAO', 'AJUSTE_ENTRADA',
+            ]),
+        ),
+        quantidade_saidas=Sum(
+            'movimentacoes__quantidade',
+            filter=Q(movimentacoes__tipo__in=[
+                'SAIDA', 'PERDA', 'AJUSTE_SAIDA',
+            ]),
+        ),
+    ).order_by(
         'ativo', 'certificado__validade_ca', 'validade_fisica', 'codigo_lote',
     )
 
@@ -448,6 +614,15 @@ def exportar_dados_epi(request):
             continue
 
         snapshot = certificado.snapshot_oficial if certificado else {}
+        quantidade = max(
+            (lote.quantidade_entradas or Decimal('0'))
+            - (lote.quantidade_saidas or Decimal('0')),
+            Decimal('0'),
+        )
+        _, situacao_ca = (
+            _situacao_ca_para_exibicao(certificado)
+            if certificado else ('atencao', 'Não consultada')
+        )
         linhas.append([
             base.empresa.nome,
             base.nome,
@@ -455,7 +630,7 @@ def exportar_dados_epi(request):
             'Ativo' if registro_ativo else 'Inativo',
             status_validade_label,
             certificado.numero_ca if certificado else '',
-            certificado.situacao_oficial if certificado else '',
+            situacao_ca,
             certificado.validade_ca if certificado else None,
             snapshot.get('natureza', ''),
             snapshot.get('produto', ''),
@@ -463,6 +638,7 @@ def exportar_dados_epi(request):
             snapshot.get('referencia', ''),
             snapshot.get('norma', ''),
             (lote.variante.tamanho or lote.variante.nome) if lote.variante else '',
+            quantidade,
             lote.codigo_lote,
             lote.fabricado_em,
             lote.validade_fisica,
@@ -476,7 +652,8 @@ def exportar_dados_epi(request):
         'EMPRESA', 'BASE', 'INSUMO', 'STATUS DO REGISTRO', 'STATUS DA VALIDADE',
         'CA', 'SITUAÇÃO OFICIAL DO CA', 'VALIDADE DO CA',
         'NATUREZA DA FABRICAÇÃO', 'EQUIPAMENTO OFICIAL', 'MARCA', 'REFERÊNCIA',
-        'NORMA', 'TAMANHO', 'LOTE', 'FABRICAÇÃO', 'VALIDADE FÍSICA', 'OBSERVAÇÃO',
+        'NORMA', 'TAMANHO', 'QUANTIDADE', 'LOTE', 'FABRICAÇÃO',
+        'VALIDADE FÍSICA', 'OBSERVAÇÃO',
     ])
     for linha in linhas:
         planilha.append(linha)
@@ -489,7 +666,7 @@ def exportar_dados_epi(request):
         largura = min(max(len(str(celula.value or '')) for celula in coluna) + 2, 55)
         planilha.column_dimensions[coluna[0].column_letter].width = largura
     for linha in planilha.iter_rows(min_row=2):
-        for indice in (7, 15, 16):
+        for indice in (7, 16, 17):
             linha[indice].number_format = 'DD/MM/YYYY'
 
     response = HttpResponse(
@@ -585,11 +762,81 @@ def criar_item_insumo(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied('Sem permissao para cadastrar insumos.')
 
-    form = InsumoForm(request.POST or None, request.FILES or None, user=request.user)
+    base_inicial = None
+    base_id = request.GET.get('base', '').strip()
+    if base_id.isdigit():
+        base_inicial = InsumosTenantPolicy.bases(
+            request.user,
+            resource=InsumosTenantPolicy.SUPPLIES,
+            action=InsumosTenantPolicy.EDIT,
+        ).filter(pk=base_id).select_related('empresa').first()
+    form = InsumoForm(
+        request.POST or None,
+        request.FILES or None,
+        user=request.user,
+        initial={'base_lote': base_inicial} if base_inicial else None,
+    )
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
             insumo = form.save()
+            base_catalogo = form.cleaned_data.get('base_lote') or base_inicial
+            if base_catalogo:
+                from compras.models import CodigoCatalogo
+
+                codigo = CodigoCatalogo.objects.filter(
+                    empresa=base_catalogo.empresa,
+                    insumo=insumo,
+                ).order_by('-ativo', 'pk').first()
+                if codigo:
+                    if not codigo.ativo:
+                        codigo.ativo = True
+                        codigo.save(update_fields=['ativo', 'atualizado_em'])
+                else:
+                    CodigoCatalogo.objects.create(
+                        empresa=base_catalogo.empresa,
+                        insumo=insumo,
+                        tipo=CodigoCatalogo.Tipo.INTERNO,
+                        codigo=f'INS-{base_catalogo.empresa_id}-{insumo.pk}',
+                        criado_por=request.user,
+                    )
+
+            solicitacao_id = request.GET.get('solicitacao', '').strip()
+            item_id = request.GET.get('item', '').strip()
+            if solicitacao_id.isdigit() and item_id.isdigit():
+                from insumos.models import ItemSolicitacaoInsumo
+                from insumos.services.solicitacao_service import SolicitacaoService
+
+                item = ItemSolicitacaoInsumo.objects.select_related(
+                    'solicitacao__base__empresa',
+                ).filter(
+                    pk=item_id,
+                    solicitacao_id=solicitacao_id,
+                    tipo=ItemSolicitacaoInsumo.Tipo.NOVO_ITEM,
+                ).first()
+                solicitacao_visivel = InsumosTenantPolicy.requests(
+                    request.user,
+                    SolicitacaoInsumo.objects.all(),
+                    action=InsumosTenantPolicy.APPROVE,
+                ).filter(pk=solicitacao_id).exists()
+                if (
+                    not item or not solicitacao_visivel or not base_catalogo
+                    or item.solicitacao.base_id != base_catalogo.pk
+                ):
+                    raise PermissionDenied(
+                        'A solicitação não pertence à Base selecionada.'
+                    )
+                SolicitacaoService.resolver_novo_item(
+                    item=item,
+                    usuario=request.user,
+                    insumo=insumo,
+                    observacao='Item autorizado e criado a partir da solicitação.',
+                )
         messages.success(request, 'Insumo cadastrado com sucesso.')
+        if request.GET.get('solicitacao', '').isdigit():
+            return redirect(
+                'insumos:detalhe_solicitacao',
+                pk=request.GET['solicitacao'],
+            )
         return redirect('insumos:editar_insumos', pk=insumo.pk)
 
     return render(request, 'insumos/criar_insumo.html', {'form': form})

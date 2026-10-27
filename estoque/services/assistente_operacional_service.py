@@ -2144,7 +2144,10 @@ class AssistenteOperacionalService:
             user,
             SolicitacaoInsumo.objects.select_related(
                 'base', 'solicitante'
-            ).prefetch_related('itens__insumo'),
+            ).prefetch_related(
+                'itens__insumo__categoria',
+                'itens__produto_equipamento',
+            ),
         )
         if not pode_ver_todas:
             qs = qs.filter(solicitante=user)
@@ -2165,7 +2168,8 @@ class AssistenteOperacionalService:
         ]
         for solicitacao in solicitacoes:
             itens = ', '.join(
-                f'{item.insumo.descricao} ({cls._formatar_decimal(item.quantidade)})'
+                f'{item.descricao_exibicao} '
+                f'({cls._formatar_decimal(item.quantidade)})'
                 for item in solicitacao.itens.all()
             )
             linhas.append(

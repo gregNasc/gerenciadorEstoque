@@ -2,11 +2,13 @@ import csv
 import gzip
 import hashlib
 import io
+import logging
 import time
 import zipfile
 import zlib
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -14,6 +16,9 @@ from django.db.models import Subquery
 from django.utils import timezone
 
 from integracao.models import CaepiImportacao, CaepiRegistro
+
+
+logger = logging.getLogger(__name__)
 
 
 class _LimitedReader(io.RawIOBase):
@@ -80,6 +85,8 @@ class CaepiImportService:
     MAX_EXTRACTED_BYTES = 350 * 1024 * 1024
     HASH_CHUNK_BYTES = 1024 * 1024
     INSERT_BATCH_SIZE = 1000
+    WEB_BATCH_ROWS = 5000
+    WEB_BATCH_SECONDS = 15
     STALE_AFTER = timedelta(minutes=10)
     REQUIRED_COLUMNS = {
         'NR Registro CA', 'DATA DE VALIDADE', 'SITUACAO', 'NATUREZA',
@@ -100,6 +107,216 @@ class CaepiImportService:
         'NR LAUDO': 'numero_laudo',
         'NORMA': 'norma',
     }
+
+    @classmethod
+    def enfileirar_previa(cls, *, uploaded_file, user):
+        """Persiste o upload e devolve antes da importação pesada começar."""
+        nome = uploaded_file.name or 'caepi.csv'
+        if Path(nome).suffix.lower() not in {'.csv', '.txt', '.zip', '.gz'}:
+            raise ValidationError('Envie o relatório em CSV, TXT, ZIP ou GZIP.')
+        digest, tamanho_bytes = cls._fingerprint(uploaded_file)
+        existing = CaepiImportacao.objects.filter(sha256=digest).first()
+        if existing and existing.status == CaepiImportacao.Status.PROCESSANDO:
+            if existing.atualizado_em > timezone.now() - cls.STALE_AFTER:
+                return existing, False
+            existing.status = CaepiImportacao.Status.INTERROMPIDA
+            existing.erro = (
+                'A execução anterior foi interrompida antes da conclusão. '
+                'O processamento será reiniciado com o arquivo preservado.'
+            )
+            existing.finalizado_em = timezone.now()
+            existing.save(update_fields=(
+                'status', 'erro', 'finalizado_em', 'atualizado_em',
+            ))
+        if existing and existing.status not in (
+            CaepiImportacao.Status.FALHOU,
+            CaepiImportacao.Status.INTERROMPIDA,
+        ):
+            return existing, False
+
+        importacao = existing or CaepiImportacao(
+            sha256=digest,
+            tamanho_bytes=tamanho_bytes,
+            criado_por=user,
+        )
+        if importacao.arquivo_fonte:
+            importacao.arquivo_fonte.delete(save=False)
+        importacao.registros.all().delete() if importacao.pk else None
+        importacao.nome_arquivo = nome[:255]
+        importacao.tamanho_bytes = tamanho_bytes
+        importacao.criado_por = user
+        importacao.status = CaepiImportacao.Status.PROCESSANDO
+        importacao.erro = ''
+        importacao.advertencias = []
+        importacao.total_registros = 0
+        importacao.processados = 0
+        importacao.novos = 0
+        importacao.alterados = 0
+        importacao.inalterados = 0
+        importacao.rejeitados = 0
+        importacao.finalizado_em = None
+        importacao.publicado_em = None
+        uploaded_file.seek(0)
+        importacao.arquivo_fonte.save(nome, uploaded_file, save=False)
+        importacao.save()
+        return importacao, True
+
+    @classmethod
+    def processar_upload_salvo(cls, importacao_id):
+        """Compatibilidade para jobs: conclui a fonte usando lotes retomáveis."""
+        while True:
+            importacao = cls.processar_lote_salvo(
+                importacao_id,
+                max_rows=cls.WEB_BATCH_ROWS,
+                max_seconds=cls.WEB_BATCH_SECONDS,
+            )
+            if importacao.status != CaepiImportacao.Status.PROCESSANDO:
+                return importacao
+
+    @classmethod
+    def processar_lote_salvo(
+        cls, importacao_id, *, max_rows=None, max_seconds=None,
+    ):
+        """Processa um lote curto e retoma pela quantidade de linhas consumidas.
+
+        A linha do arquivo é o cursor persistente. O lock impede que duas abas
+        avancem o mesmo cursor; ``ignore_conflicts`` mantém a carga idempotente.
+        """
+        max_rows = max(1, int(max_rows or cls.WEB_BATCH_ROWS))
+        max_seconds = max(1, int(max_seconds or cls.WEB_BATCH_SECONDS))
+        started = time.monotonic()
+        try:
+            with transaction.atomic():
+                importacao = (
+                    CaepiImportacao.objects.select_for_update()
+                    .select_related('criado_por')
+                    .get(pk=importacao_id)
+                )
+                if importacao.status in {
+                    CaepiImportacao.Status.PREVIA,
+                    CaepiImportacao.Status.PUBLICADA,
+                    CaepiImportacao.Status.SUBSTITUIDA,
+                }:
+                    return importacao
+                if importacao.status == CaepiImportacao.Status.FALHOU:
+                    raise ValidationError(
+                        'A importação falhou por conteúdo inválido; reenvie o arquivo.'
+                    )
+                if not importacao.arquivo_fonte:
+                    raise ValidationError(
+                        'O arquivo-fonte da importação não foi encontrado.'
+                    )
+
+                importacao.status = CaepiImportacao.Status.PROCESSANDO
+                importacao.erro = ''
+                importacao.finalizado_em = None
+                registros = []
+                rejeitados_lote = 0
+                consumidos = 0
+                fim_arquivo = False
+                advertencias = list(importacao.advertencias or [])
+
+                with importacao.arquivo_fonte.open('rb') as source:
+                    with cls._content_stream(source) as content_stream:
+                        linhas = iter(cls._rows(cls._text_stream(content_stream)))
+                        for _ in range(int(importacao.processados)):
+                            try:
+                                next(linhas)
+                            except StopIteration:
+                                fim_arquivo = True
+                                break
+
+                        batch_started = time.monotonic()
+                        while not fim_arquivo and consumidos < max_rows:
+                            if time.monotonic() - batch_started >= max_seconds:
+                                break
+                            try:
+                                dados, advertencia = next(linhas)
+                            except StopIteration:
+                                fim_arquivo = True
+                                break
+                            consumidos += 1
+                            if advertencia:
+                                rejeitados_lote += 1
+                                if len(advertencias) < 100:
+                                    advertencias.append(advertencia)
+                            else:
+                                registros.append(CaepiRegistro(
+                                    importacao=importacao,
+                                    **dados,
+                                ))
+
+                if registros:
+                    CaepiRegistro.objects.bulk_create(
+                        registros,
+                        batch_size=cls.INSERT_BATCH_SIZE,
+                        ignore_conflicts=True,
+                    )
+                importacao.processados += consumidos
+                importacao.rejeitados += rejeitados_lote
+                importacao.advertencias = advertencias
+                importacao.duracao_ms += int((time.monotonic() - started) * 1000)
+
+                if fim_arquivo:
+                    cls._finalizar_previa_em_lote(importacao)
+                importacao.save()
+                return importacao
+        except Exception as exc:
+            logger.exception(
+                'Falha ao processar lote da importação CAEPI %s.', importacao_id,
+            )
+            if not isinstance(exc, ValidationError) or 'falhou por conteúdo' not in str(exc):
+                status_falha = (
+                    CaepiImportacao.Status.FALHOU
+                    if isinstance(exc, ValidationError)
+                    else CaepiImportacao.Status.INTERROMPIDA
+                )
+                CaepiImportacao.objects.filter(pk=importacao_id).exclude(
+                    status__in=[
+                        CaepiImportacao.Status.PREVIA,
+                        CaepiImportacao.Status.PUBLICADA,
+                        CaepiImportacao.Status.SUBSTITUIDA,
+                    ],
+                ).update(
+                    status=status_falha,
+                    erro=str(exc),
+                    finalizado_em=timezone.now(),
+                    atualizado_em=timezone.now(),
+                )
+            raise
+
+    @classmethod
+    def _finalizar_previa_em_lote(cls, importacao):
+        publicada = CaepiImportacao.objects.filter(
+            status=CaepiImportacao.Status.PUBLICADA,
+        ).exclude(pk=importacao.pk).first()
+        total_registros = importacao.registros.count()
+        hashes_recebidos = importacao.registros.values('hash_registro')
+        if publicada:
+            inalterados = publicada.registros.filter(
+                hash_registro__in=Subquery(hashes_recebidos),
+            ).count()
+            alterados = publicada.registros.exclude(
+                hash_registro__in=Subquery(hashes_recebidos),
+            ).count()
+        else:
+            inalterados = 0
+            alterados = 0
+        linhas_validas = int(importacao.processados) - int(importacao.rejeitados)
+        duplicadas = linhas_validas - total_registros
+        advertencias = list(importacao.advertencias or [])
+        if duplicadas and len(advertencias) < 100:
+            advertencias.append(
+                f'{duplicadas} linha(s) exatamente duplicada(s) foram '
+                'consolidadas sem perda de informação.'
+            )
+        importacao.total_registros = total_registros
+        importacao.novos = total_registros - inalterados
+        importacao.alterados = alterados
+        importacao.inalterados = inalterados
+        importacao.advertencias = advertencias
+        importacao.status = CaepiImportacao.Status.PREVIA
+        importacao.finalizado_em = timezone.now()
 
     @classmethod
     def _fingerprint(cls, uploaded_file):

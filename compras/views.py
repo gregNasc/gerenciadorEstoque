@@ -872,6 +872,14 @@ def criar_produto_catalogo(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied
     form = ProdutoForm(request.POST or None, user=request.user)
+    empresa_id_retorno = request.GET.get('empresa', '').strip()
+    if empresa_id_retorno.isdigit() and not request.POST:
+        empresa_permitida = ComprasAccessPolicy.empresas(
+            request.user,
+            action=ComprasAccessPolicy.CREATE,
+        ).filter(pk=empresa_id_retorno).first()
+        if empresa_permitida:
+            form.fields['empresa_catalogo'].initial = empresa_permitida
     if request.method == 'POST' and form.is_valid():
         try:
             with transaction.atomic():
@@ -902,6 +910,41 @@ def criar_produto_catalogo(request):
                     produto=produto,
                     defaults={'ativo': True, 'configurado_por': request.user},
                 )
+
+                solicitacao_id = request.GET.get('solicitacao', '').strip()
+                item_id = request.GET.get('item', '').strip()
+                if solicitacao_id.isdigit() and item_id.isdigit():
+                    from insumos.models import ItemSolicitacaoInsumo, SolicitacaoInsumo
+                    from insumos.policies import InsumosTenantPolicy
+                    from insumos.services.solicitacao_service import SolicitacaoService
+
+                    item = ItemSolicitacaoInsumo.objects.select_related(
+                        'solicitacao__base__empresa',
+                    ).filter(
+                        pk=item_id,
+                        solicitacao_id=solicitacao_id,
+                        tipo=ItemSolicitacaoInsumo.Tipo.NOVO_ITEM,
+                    ).first()
+                    solicitacao_visivel = InsumosTenantPolicy.requests(
+                        request.user,
+                        SolicitacaoInsumo.objects.all(),
+                        action=InsumosTenantPolicy.APPROVE,
+                    ).filter(pk=solicitacao_id).exists()
+                    if (
+                        not item or not solicitacao_visivel
+                        or item.solicitacao.base.empresa_id != empresa_catalogo.pk
+                    ):
+                        raise PermissionDenied(
+                            'A solicitação não pertence à empresa selecionada.'
+                        )
+                    SolicitacaoService.resolver_novo_item(
+                        item=item,
+                        usuario=request.user,
+                        produto=produto,
+                        observacao=(
+                            'Equipamento autorizado e criado a partir da solicitação.'
+                        ),
+                    )
                 preco = form.cleaned_data.get('preco_referencia_inicial')
                 if preco is not None:
                     ProdutoPrecoService.definir(
@@ -922,6 +965,11 @@ def criar_produto_catalogo(request):
                 request,
                 _('Novo item incluído no catálogo e disponibilizado nos filtros.'),
             )
+            if request.GET.get('solicitacao', '').isdigit():
+                return redirect(
+                    'insumos:detalhe_solicitacao',
+                    pk=request.GET['solicitacao'],
+                )
             destino = (
                 'compras:valores_equipamentos'
                 if ComprasAccessPolicy.pode_visualizar_valores(request.user)

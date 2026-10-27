@@ -42,7 +42,7 @@
                     {% if pode_ver_detalhes_administrativos %}<td>{{ solicitacao.solicitante.get_full_name|default:solicitacao.solicitante.username }}</td>{% endif %}
                     <td>{{ solicitacao.get_prioridade_display }}</td>
                     <td>{{ solicitacao.itens.all|length }}</td>
-                    <td><span class="badge {% if solicitacao.status == 'PENDENTE' %}text-bg-warning{% elif solicitacao.status == 'REPROVADA' %}text-bg-danger{% elif solicitacao.status == 'APROVADA' %}text-bg-success{% elif solicitacao.status == 'EM_COMPRA' %}text-bg-primary{% else %}text-bg-secondary{% endif %}">{{ solicitacao.get_status_display }}</span></td>
+                    <td><span class="badge {% if solicitacao.status == 'PENDENTE' %}text-bg-warning{% elif solicitacao.status == 'REPROVADA' %}text-bg-danger{% elif solicitacao.status == 'RECEBIDA_COMPRAS' or solicitacao.status == 'EM_ANALISE' or solicitacao.status == 'EM_COMPRA' or solicitacao.status == 'PEDIDO_REALIZADO' %}text-bg-primary{% elif solicitacao.status == 'APROVADA' or solicitacao.status == 'RECEBIDA' or solicitacao.status == 'FINALIZADA' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ solicitacao.get_status_display }}</span></td>
                     <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'insumos:detalhe_solicitacao' solicitacao.pk %}" title="{% trans 'Ver detalhes' %}"><i class="bi bi-eye"></i></a></td>
                 </tr>
             {% empty %}<tr><td colspan="{% if pode_ver_detalhes_administrativos %}8{% else %}7{% endif %}" class="text-center text-secondary py-4">{% trans "Nenhuma solicitação encontrada." %}</td></tr>{% endfor %}

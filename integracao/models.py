@@ -31,6 +31,15 @@ def docusign_certificate_upload_to(instance, filename):
     )
 
 
+def caepi_source_storage():
+    return storages['private']
+
+
+def caepi_source_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower()
+    return f'caepi/fontes/{uuid.uuid4().hex}{extension}'
+
+
 class SyncState(models.TextChoices):
     PRESENT = "PRESENT", "Presente"
     MISSING = "MISSING", "Ausente na fonte"
@@ -687,6 +696,12 @@ class CaepiImportacao(models.Model):
     nome_arquivo = models.CharField(max_length=255)
     sha256 = models.CharField(max_length=64, unique=True, db_index=True)
     tamanho_bytes = models.PositiveBigIntegerField()
+    arquivo_fonte = models.FileField(
+        upload_to=caepi_source_upload_to,
+        storage=caepi_source_storage,
+        blank=True,
+        editable=False,
+    )
     status = models.CharField(
         max_length=16,
         choices=Status.choices,

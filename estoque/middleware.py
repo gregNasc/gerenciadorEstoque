@@ -218,6 +218,16 @@ class OperatorScopeMiddleware:
 
         if namespace == 'chamados':
             return None
+        if namespace == 'insumos' and url_name in {
+            'lista_solicitacoes_insumo',
+            'criar_solicitacao_insumo',
+            'detalhe_solicitacao',
+            'baixar_anexo_solicitacao',
+        }:
+            # O fluxo de pedidos é deliberadamente aberto ao Operador. As
+            # views aplicam Base/tenant e limitam o acompanhamento ao próprio
+            # solicitante; esta exceção não libera catálogo, estoque ou custo.
+            return None
         if (
             namespace == 'estoque'
             and url_name == 'sick'

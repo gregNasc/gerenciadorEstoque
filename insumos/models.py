@@ -23,6 +23,17 @@ def checklist_cliente_upload_to(instance, filename):
     extensao = Path(filename).suffix.lower()
     return f'checklists_clientes/{instance.cliente_id}/{uuid4().hex}{extensao}'
 
+
+def solicitacao_item_upload_to(instance, filename):
+    extensao = Path(filename).suffix.lower()
+    base_id = instance.solicitacao.base_id if instance.solicitacao_id else 'sem-base'
+    return f'solicitacoes/{base_id}/{uuid4().hex}{extensao}'
+
+
+def validar_tamanho_anexo_solicitacao(arquivo):
+    if arquivo.size > 10 * 1024 * 1024:
+        raise ValidationError(_('O anexo deve ter no máximo 10 MB.'))
+
 class CategoriaInsumo(models.Model):
     nome = models.CharField(max_length=100, unique=True)
 
@@ -574,11 +585,15 @@ class OfertaPrecoOnline(models.Model):
 class SolicitacaoInsumo(models.Model):
 
     STATUS = [
-        ('PENDENTE', 'Pendente'),
+        ('PENDENTE', 'Aguardando Compras'),
+        ('RECEBIDA_COMPRAS', 'Recebida por Compras'),
+        ('EM_ANALISE', 'Em análise'),
         ('APROVADA', 'Aprovada'),
         ('REPROVADA', 'Reprovada'),
-        ('EM_COMPRA', 'Em Compra'),
-        ('FINALIZADA', 'Finalizada'),
+        ('EM_COMPRA', 'Em compra (legado)'),
+        ('PEDIDO_REALIZADO', 'Pedido realizado'),
+        ('RECEBIDA', 'Recebida'),
+        ('FINALIZADA', 'Atendida'),
     ]
     PRIORIDADE = [
         ('BAIXA', 'Baixa'),
@@ -612,11 +627,217 @@ class SolicitacaoInsumo(models.Model):
 
 class ItemSolicitacaoInsumo(models.Model):
 
+    class Tipo(models.TextChoices):
+        INSUMO = 'INSUMO', _('Insumo')
+        EPI = 'EPI', _('EPI')
+        EQUIPAMENTO = 'EQUIPAMENTO', _('Equipamento')
+        NOVO_ITEM = 'NOVO_ITEM', _('Novo item')
+
     solicitacao = models.ForeignKey(SolicitacaoInsumo, on_delete=models.CASCADE, related_name='itens')
-    insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT)
+    tipo = models.CharField(
+        max_length=20,
+        choices=Tipo.choices,
+        default=Tipo.INSUMO,
+        db_index=True,
+    )
+    insumo = models.ForeignKey(
+        Insumo,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    produto_equipamento = models.ForeignKey(
+        'estoque.Produto',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='itens_solicitacao_unificada',
+    )
+    resolvido_insumo = models.ForeignKey(
+        Insumo,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='novos_itens_solicitacao_resolvidos',
+    )
+    resolvido_produto = models.ForeignKey(
+        'estoque.Produto',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='novos_itens_solicitacao_resolvidos',
+    )
+    resolvido_por = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='itens_solicitacao_resolvidos',
+    )
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+    descricao_novo_item = models.CharField(max_length=255, blank=True)
+    especificacao = models.TextField(blank=True)
+    justificativa_item = models.TextField(blank=True)
+    anexo = models.FileField(
+        upload_to=solicitacao_item_upload_to,
+        storage=checklist_cliente_storage,
+        blank=True,
+        validators=[FileExtensionValidator(
+            ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'xlsx', 'docx'],
+            message=_(
+                'Envie um arquivo PDF, imagem, texto, planilha ou Word.'
+            ),
+        ), validar_tamanho_anexo_solicitacao],
+    )
     quantidade = models.DecimalField(max_digits=10, decimal_places=2)
     quantidade_atendida = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     observacao = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        tipo__in=('INSUMO', 'EPI'),
+                        insumo__isnull=False,
+                        produto_equipamento__isnull=True,
+                    )
+                    | Q(
+                        tipo='EQUIPAMENTO',
+                        insumo__isnull=True,
+                        produto_equipamento__isnull=False,
+                    )
+                    | Q(
+                        tipo='NOVO_ITEM',
+                        insumo__isnull=True,
+                        produto_equipamento__isnull=True,
+                    )
+                ),
+                name='item_solicitacao_referencia_tipo_valida',
+            ),
+            models.CheckConstraint(
+                condition=Q(quantidade__gt=0),
+                name='item_solicitacao_quantidade_positiva',
+            ),
+            models.CheckConstraint(
+                condition=~(
+                    Q(resolvido_insumo__isnull=False)
+                    & Q(resolvido_produto__isnull=False)
+                ),
+                name='item_solicitacao_uma_resolucao',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.tipo in (self.Tipo.INSUMO, self.Tipo.EPI):
+            if not self.insumo_id:
+                errors['insumo'] = _('Selecione o item solicitado.')
+            elif (
+                self.tipo == self.Tipo.EPI
+                and self.insumo.natureza != Insumo.Natureza.EPI
+            ):
+                errors['insumo'] = _('O item selecionado não é um EPI.')
+            elif (
+                self.tipo == self.Tipo.INSUMO
+                and self.insumo.natureza == Insumo.Natureza.EPI
+            ):
+                errors['tipo'] = _('Itens de EPI devem usar o tipo EPI.')
+        elif self.tipo == self.Tipo.EQUIPAMENTO:
+            if not self.produto_equipamento_id:
+                errors['produto_equipamento'] = _('Selecione o equipamento solicitado.')
+        elif self.tipo == self.Tipo.NOVO_ITEM:
+            if not self.descricao_novo_item.strip():
+                errors['descricao_novo_item'] = _('Descreva o novo item solicitado.')
+            if not self.justificativa_item.strip():
+                errors['justificativa_item'] = _('Informe a justificativa do novo item.')
+        if self.resolvido_insumo_id and self.resolvido_produto_id:
+            errors['resolvido_insumo'] = _(
+                'Vincule o novo item a apenas uma referência de catálogo.'
+            )
+        if self.quantidade is not None and self.quantidade <= 0:
+            errors['quantidade'] = _('A quantidade deve ser maior que zero.')
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def descricao_exibicao(self):
+        if self.insumo_id:
+            return self.insumo.descricao
+        if self.produto_equipamento_id:
+            return self.produto_equipamento.descricao
+        return self.descricao_novo_item
+
+    @property
+    def categoria_exibicao(self):
+        if self.insumo_id:
+            return self.insumo.categoria.nome
+        if self.produto_equipamento_id:
+            return self.produto_equipamento.categoria
+        return str(_('Novo item'))
+
+    @property
+    def unidade_exibicao(self):
+        if self.insumo_id:
+            return self.insumo.unidade_medida
+        if self.produto_equipamento_id:
+            return self.produto_equipamento.unidade_medida
+        return 'UN'
+
+    @property
+    def foi_resolvido(self):
+        return bool(self.resolvido_insumo_id or self.resolvido_produto_id)
+
+    @property
+    def resolucao_exibicao(self):
+        return self.resolvido_insumo or self.resolvido_produto
+
+
+class EventoSolicitacaoInsumo(models.Model):
+    class Tipo(models.TextChoices):
+        CRIADA = 'CRIADA', _('Criada')
+        RECEBIDA_COMPRAS = 'RECEBIDA_COMPRAS', _('Recebida por Compras')
+        EM_ANALISE = 'EM_ANALISE', _('Em análise')
+        APROVADA = 'APROVADA', _('Aprovada')
+        REPROVADA = 'REPROVADA', _('Reprovada')
+        ENCAMINHADA_COMPRAS = 'ENCAMINHADA_COMPRAS', _('Encaminhada para compra')
+        PEDIDO_REALIZADO = 'PEDIDO_REALIZADO', _('Pedido realizado')
+        RECEBIDA = 'RECEBIDA', _('Recebida')
+        ATENDIDA = 'ATENDIDA', _('Atendida')
+        ITEM_VINCULADO = 'ITEM_VINCULADO', _('Novo item vinculado ao catálogo')
+
+    solicitacao = models.ForeignKey(
+        SolicitacaoInsumo,
+        on_delete=models.CASCADE,
+        related_name='eventos',
+    )
+    tipo = models.CharField(max_length=30, choices=Tipo.choices, db_index=True)
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='eventos_solicitacoes_insumos',
+    )
+    status_anterior = models.CharField(max_length=20, blank=True)
+    status_novo = models.CharField(max_length=20, blank=True)
+    descricao = models.TextField(blank=True)
+    dados = models.JSONField(default=dict, blank=True)
+    ocorrido_em = models.DateTimeField(default=timezone.now, db_index=True)
+    registrado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('ocorrido_em', 'id')
+        indexes = [
+            models.Index(
+                fields=('solicitacao', 'ocorrido_em'),
+                name='sol_evento_linha_tempo_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.solicitacao.protocolo} — {self.get_tipo_display()}'
 
 class MovimentacaoInsumo(models.Model):
     TIPOS = [

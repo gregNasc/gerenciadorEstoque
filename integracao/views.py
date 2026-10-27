@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -47,14 +48,29 @@ def caepi_importacoes(request):
             messages.error(request, 'Selecione o relatório oficial CAEPI.')
         else:
             try:
-                importacao = CaepiImportService.preparar_previa(
+                importacao, deve_processar = CaepiImportService.enfileirar_previa(
                     uploaded_file=uploaded_file,
                     user=request.user,
                 )
             except Exception as exc:
                 messages.error(request, f'Não foi possível preparar a prévia: {exc}')
             else:
-                messages.success(request, 'Arquivo processado. Revise a prévia antes de publicar.')
+                if deve_processar:
+                    messages.success(
+                        request,
+                        'Arquivo recebido. Mantenha a página de progresso aberta; '
+                        'a carga será executada em lotes curtos e retomáveis.',
+                    )
+                elif importacao.status == CaepiImportacao.Status.PROCESSANDO:
+                    messages.info(
+                        request,
+                        'Este arquivo já está sendo processado.',
+                    )
+                else:
+                    messages.info(
+                        request,
+                        'Este arquivo já possui uma importação registrada.',
+                    )
                 return redirect('integracao:caepi_detalhe', pk=importacao.pk)
     return render(request, 'integracao/caepi/importacoes.html', {
         'importacoes': CaepiImportacao.objects.select_related('criado_por')[:20],
@@ -74,6 +90,50 @@ def caepi_detalhe(request, pk):
     return render(request, 'integracao/caepi/detalhe.html', {
         'importacao': importacao,
         'amostra': amostra,
+        'pode_processar': bool(
+            importacao.arquivo_fonte
+            and importacao.status in {
+                CaepiImportacao.Status.PROCESSANDO,
+                CaepiImportacao.Status.INTERROMPIDA,
+            }
+        ),
+    })
+
+
+@login_required
+@require_POST
+def caepi_processar_lote(request, pk):
+    _require_superuser(request.user)
+    importacao = get_object_or_404(CaepiImportacao, pk=pk)
+    if importacao.status not in {
+        CaepiImportacao.Status.PROCESSANDO,
+        CaepiImportacao.Status.INTERROMPIDA,
+    }:
+        resposta = {
+            'status': importacao.status,
+            'status_exibicao': importacao.status_exibicao,
+            'processados': importacao.processados,
+            'concluida': importacao.status == CaepiImportacao.Status.PREVIA,
+        }
+        if importacao.status == CaepiImportacao.Status.FALHOU:
+            resposta['erro'] = importacao.erro or 'A importação falhou.'
+            return JsonResponse(resposta, status=409)
+        return JsonResponse(resposta)
+    try:
+        importacao = CaepiImportService.processar_lote_salvo(pk)
+    except Exception as exc:
+        return JsonResponse({
+            'status': 'FALHOU',
+            'erro': str(exc),
+            'concluida': False,
+        }, status=422)
+    return JsonResponse({
+        'status': importacao.status,
+        'status_exibicao': importacao.status_exibicao,
+        'processados': importacao.processados,
+        'total_registros': importacao.total_registros,
+        'rejeitados': importacao.rejeitados,
+        'concluida': importacao.status == CaepiImportacao.Status.PREVIA,
     })
 
 

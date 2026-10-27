@@ -427,15 +427,18 @@ class ComunicadoService:
 
     @staticmethod
     def solicitacao_insumo_criada(solicitacao, usuario):
-        itens = list(solicitacao.itens.select_related('insumo').all())
+        itens = list(solicitacao.itens.select_related(
+            'insumo', 'insumo__categoria', 'produto_equipamento',
+        ).all())
         linhas = '\n'.join(
-            f'- {item.insumo.descricao}: {item.quantidade:g} {item.insumo.unidade_medida}'
+            f'- {item.descricao_exibicao}: '
+            f'{item.quantidade:g} {item.unidade_exibicao}'
             for item in itens
         )
         return ComunicadoService.criar_acao(
-            titulo=f'Nova solicitação de insumos {solicitacao.protocolo}',
+            titulo=f'Nova solicitação {solicitacao.protocolo}',
             mensagem=(
-                f'{usuario.get_full_name() or usuario.get_username()} criou uma solicitação de insumos.\n\n'
+                f'{usuario.get_full_name() or usuario.get_username()} criou uma solicitação.\n\n'
                 f'Base: {solicitacao.base.nome}\n'
                 f'Prioridade: {solicitacao.get_prioridade_display()}\n'
                 f'Justificativa: {solicitacao.justificativa or "-"}\n\n'
@@ -456,7 +459,7 @@ class ComunicadoService:
         return ComunicadoService.criar_acao(
             titulo=f'Solicitação {solicitacao.protocolo}: {solicitacao.get_status_display()}',
             mensagem=(
-                f'A solicitação de insumos foi atualizada.\n\n'
+                f'A solicitação foi atualizada.\n\n'
                 f'Base: {solicitacao.base.nome}\n'
                 f'Solicitante: {solicitacao.solicitante.get_full_name() or solicitacao.solicitante.get_username()}\n'
                 f'Status: {solicitacao.get_status_display()}\n'

@@ -29,6 +29,16 @@ urlpatterns = [
     path('solicitacoes/', solicitacoes.lista_solicitacoes, name='lista_solicitacoes_insumo'),
     path('solicitacoes/nova/', solicitacoes.criar_solicitacao, name='criar_solicitacao_insumo'),
     path('solicitacoes/<int:pk>/', solicitacoes.detalhe_solicitacao, name='detalhe_solicitacao'),
+    path(
+        'solicitacoes/<int:pk>/itens/<int:item_id>/anexo/',
+        solicitacoes.baixar_anexo_item,
+        name='baixar_anexo_solicitacao',
+    ),
+    path(
+        'solicitacoes/<int:pk>/itens/<int:item_id>/resolver/',
+        solicitacoes.resolver_novo_item,
+        name='resolver_novo_item_solicitacao',
+    ),
     path('solicitacoes/<int:pk>/decidir/', solicitacoes.decidir_solicitacao, name='decidir_solicitacao'),
     path('api/kpis/inventarios/', api.kpi_inventarios),
     path('api/bi/consumo-base/', api.consumo_por_base),

@@ -16,7 +16,7 @@ from django.utils import timezone
 from estoque.models import (
     Base, CategoriaEquipamentoEmpresa, Empresa, Equipamento, Perfil, Produto,
 )
-from compras.models import CatalogoProdutoEmpresa
+from compras.models import CatalogoProdutoEmpresa, CodigoCatalogo
 from insumos.constants import GruposInsumos
 from insumos.management.commands.carga_inicial_insumos import TAG_DESCRICOES
 from insumos.models import (
@@ -30,10 +30,12 @@ from insumos.models import (
     SaldoInsumoBase,
     ItemChecklist,
     ItemSolicitacaoInsumo,
+    EventoSolicitacaoInsumo,
     SolicitacaoInsumo,
 )
 from insumos.services.movimentacao_service import MovimentacaoService
 from insumos.services.saldo_service import SaldoInsumoService
+from insumos.services.solicitacao_service import SolicitacaoService
 
 
 class SaldoInsumoPorBaseTests(TestCase):
@@ -119,13 +121,20 @@ class SolicitacaoInsumoFluxoTests(TestCase):
         self.base = Base.objects.create(nome='BASE SOLICITAÇÕES', empresa=self.empresa)
         self.admin = self._usuario('admin_solicitacoes', Perfil.Role.ADMIN)
         self.gestor = self._usuario('gestor_solicitacoes', Perfil.Role.GESTOR)
+        self.operador = self._usuario('operador_solicitacoes', Perfil.Role.OPERADOR)
         self.outro_gestor = self._usuario('outro_gestor', Perfil.Role.GESTOR)
         self.gestor.perfil.regionais.add(self.base)
+        self.operador.perfil.regionais.add(self.base)
         self.outro_gestor.perfil.regionais.add(self.base)
-        categoria = CategoriaInsumo.objects.create(nome='Categoria solicitações')
+        self.categoria = CategoriaInsumo.objects.create(nome='Categoria solicitações')
         self.insumo = Insumo.objects.create(
-            descricao='Lacre operacional', categoria=categoria,
+            descricao='Lacre operacional', categoria=self.categoria,
             unidade_medida='UN', estoque_minimo=Decimal('5.00'),
+        )
+        SaldoInsumoBase.objects.create(
+            base=self.base,
+            insumo=self.insumo,
+            saldo=Decimal('10.00'),
         )
 
     def _usuario(self, username, role):
@@ -206,6 +215,402 @@ class SolicitacaoInsumoFluxoTests(TestCase):
         solicitacao.refresh_from_db()
         self.assertEqual(resposta.status_code, 403)
         self.assertEqual(solicitacao.status, 'EM_COMPRA')
+
+    def test_r6_formulario_expoe_pedido_livre_sem_criar_catalogo(self):
+        self.client.force_login(self.gestor)
+
+        resposta = self.client.get(reverse('insumos:criar_solicitacao_insumo'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'Pedido livre, catálogo protegido')
+        self.assertContains(resposta, 'não cria item no catálogo')
+        self.assertContains(resposta, 'catalogo-solicitacao')
+        self.assertContains(resposta, 'LACRE OPERACIONAL')
+
+    def test_r6_post_misto_cria_pedido_sem_alterar_catalogo_ou_estoque(self):
+        epi = Insumo.objects.create(
+            descricao='Luva R6', categoria=self.categoria,
+            unidade_medida='PAR', natureza=Insumo.Natureza.EPI,
+        )
+        SaldoInsumoBase.objects.create(
+            base=self.base, insumo=epi, saldo=Decimal('8.00'),
+        )
+        produto = Produto.objects.create(
+            codigo='EQ-R6-FORM', descricao='Coletor R6 formulário',
+            fabricante='Teste', modelo='R6', categoria='COLETOR',
+        )
+        CatalogoProdutoEmpresa.objects.create(
+            empresa=self.empresa, produto=produto, ativo=True,
+        )
+        saldos_antes = list(
+            SaldoInsumoBase.objects.order_by('pk').values_list('pk', 'saldo')
+        )
+        total_insumos = Insumo.objects.count()
+        total_produtos = Produto.objects.count()
+        self.client.force_login(self.gestor)
+
+        resposta = self.client.post(
+            reverse('insumos:criar_solicitacao_insumo'),
+            {
+                'base': self.base.pk,
+                'prioridade': 'ALTA',
+                'justificativa': 'Necessidade operacional.',
+                'item_token': ['a', 'b', 'c', 'd'],
+                'tipo_item_a': 'INSUMO',
+                'referencia_item_a': self.insumo.pk,
+                'quantidade_a': '2',
+                'tipo_item_b': 'EPI',
+                'referencia_item_b': epi.pk,
+                'quantidade_b': '3',
+                'tipo_item_c': 'EQUIPAMENTO',
+                'referencia_item_c': produto.pk,
+                'quantidade_c': '1',
+                'tipo_item_d': 'NOVO_ITEM',
+                'descricao_novo_item_d': 'Suporte especial não cadastrado',
+                'especificacao_d': 'Aço, capacidade de 20 kg.',
+                'justificativa_item_d': 'Necessário para a nova operação.',
+                'quantidade_d': '4',
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        solicitacao = SolicitacaoInsumo.objects.get(
+            justificativa__iexact='Necessidade operacional.',
+        )
+        self.assertEqual(
+            set(solicitacao.itens.values_list('tipo', flat=True)),
+            {'INSUMO', 'EPI', 'EQUIPAMENTO', 'NOVO_ITEM'},
+        )
+        self.assertEqual(Insumo.objects.count(), total_insumos)
+        self.assertEqual(Produto.objects.count(), total_produtos)
+        self.assertEqual(
+            list(SaldoInsumoBase.objects.order_by('pk').values_list('pk', 'saldo')),
+            saldos_antes,
+        )
+        self.assertFalse(
+            MovimentacaoInsumo.objects.filter(
+                base=self.base,
+                observacao__icontains='Necessidade operacional',
+            ).exists()
+        )
+
+    def test_r6_operador_pode_criar_e_acompanhar_somente_o_proprio_pedido(self):
+        self.client.force_login(self.operador)
+        resposta = self.client.post(
+            reverse('insumos:criar_solicitacao_insumo'),
+            {
+                'base': self.base.pk,
+                'prioridade': 'MEDIA',
+                'justificativa': 'Pedido do operador.',
+                'item_token': ['livre'],
+                'tipo_item_livre': 'NOVO_ITEM',
+                'descricao_novo_item_livre': 'Item livre do operador',
+                'justificativa_item_livre': 'Uso operacional aprovado depois.',
+                'quantidade_livre': '1',
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        solicitacao = SolicitacaoInsumo.objects.get(
+            justificativa__iexact='Pedido do operador.',
+        )
+        self.assertEqual(
+            self.client.get(reverse(
+                'insumos:detalhe_solicitacao', args=[solicitacao.pk],
+            )).status_code,
+            200,
+        )
+        alheia = self._solicitacao(
+            self.gestor, protocolo='INS-OPERADOR-ALHEIA',
+        )
+        self.assertEqual(
+            self.client.get(reverse(
+                'insumos:detalhe_solicitacao', args=[alheia.pk],
+            )).status_code,
+            404,
+        )
+
+    def test_r6_rejeita_referencia_de_outro_tenant_e_novo_item_incompleto(self):
+        outra_empresa = Empresa.objects.create(nome='Outro tenant R6')
+        outra_base = Base.objects.create(nome='OUTRA BASE R6', empresa=outra_empresa)
+        outro_insumo = Insumo.objects.create(
+            descricao='Item privado de outro tenant', categoria=self.categoria,
+            unidade_medida='UN',
+        )
+        SaldoInsumoBase.objects.create(
+            base=outra_base, insumo=outro_insumo, saldo=Decimal('2.00'),
+        )
+        self.client.force_login(self.gestor)
+
+        fora_tenant = self.client.post(
+            reverse('insumos:criar_solicitacao_insumo'),
+            {
+                'base': self.base.pk, 'prioridade': 'MEDIA',
+                'justificativa': 'Tentativa cruzada.',
+                'item_token': ['x'], 'tipo_item_x': 'INSUMO',
+                'referencia_item_x': outro_insumo.pk, 'quantidade_x': '1',
+            },
+        )
+        incompleto = self.client.post(
+            reverse('insumos:criar_solicitacao_insumo'),
+            {
+                'base': self.base.pk, 'prioridade': 'MEDIA',
+                'justificativa': 'Livre incompleto.',
+                'item_token': ['y'], 'tipo_item_y': 'NOVO_ITEM',
+                'descricao_novo_item_y': 'Item sem justificativa',
+                'quantidade_y': '1',
+            },
+        )
+
+        self.assertEqual(fora_tenant.status_code, 200)
+        self.assertEqual(incompleto.status_code, 200)
+        self.assertFalse(SolicitacaoInsumo.objects.filter(
+            justificativa__in=['Tentativa cruzada.', 'Livre incompleto.'],
+        ).exists())
+
+    def test_r6_servico_cria_itens_unificados_e_evento_inicial(self):
+        epi = Insumo.objects.create(
+            descricao='Botina R6',
+            categoria=self.categoria,
+            unidade_medida='PAR',
+            natureza=Insumo.Natureza.EPI,
+        )
+        produto = Produto.objects.create(
+            codigo='MON-R6',
+            descricao='Monitor R6',
+            fabricante='Fabricante teste',
+            modelo='Modelo teste',
+            categoria='MONITOR',
+        )
+        CatalogoProdutoEmpresa.objects.create(
+            empresa=self.empresa,
+            produto=produto,
+            ativo=True,
+        )
+
+        solicitacao = SolicitacaoService.criar_solicitacao(
+            base=self.base,
+            solicitante=self.gestor,
+            justificativa='Reposição operacional unificada.',
+            prioridade='MEDIA',
+            itens=[
+                {'insumo': self.insumo, 'quantidade': 3},
+                {'insumo': epi, 'quantidade': 2},
+                {
+                    'tipo': ItemSolicitacaoInsumo.Tipo.EQUIPAMENTO,
+                    'produto_equipamento': produto,
+                    'quantidade': 1,
+                },
+                {
+                    'tipo': ItemSolicitacaoInsumo.Tipo.NOVO_ITEM,
+                    'descricao_novo_item': 'Suporte ergonômico especial',
+                    'especificacao': 'Compatível com bancada operacional.',
+                    'justificativa_item': 'Item ainda não existe no catálogo.',
+                    'quantidade': 4,
+                },
+            ],
+        )
+
+        itens = list(solicitacao.itens.order_by('id'))
+        self.assertEqual(
+            [item.tipo for item in itens],
+            ['INSUMO', 'EPI', 'EQUIPAMENTO', 'NOVO_ITEM'],
+        )
+        self.assertEqual(itens[2].descricao_exibicao, 'MONITOR R6')
+        self.assertEqual(
+            itens[3].descricao_exibicao,
+            'SUPORTE ERGONÔMICO ESPECIAL',
+        )
+        evento = solicitacao.eventos.get()
+        self.assertEqual(evento.tipo, EventoSolicitacaoInsumo.Tipo.CRIADA)
+        self.assertEqual(evento.autor, self.gestor)
+
+        SolicitacaoService.resolver_novo_item(
+            item=itens[3],
+            usuario=self.admin,
+            insumo=self.insumo,
+            observacao='Vinculado ao item autorizado da Base.',
+        )
+
+        SolicitacaoService.aprovar(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+            observacao='Catálogo conferido.',
+        )
+        SolicitacaoService.colocar_em_compra(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+            observacao='Encaminhamento unificado.',
+        )
+        ordem = solicitacao.ordem_servico
+        self.assertEqual(ordem.linhas.count(), 4)
+        self.assertEqual(
+            set(ordem.linhas.values_list('descricao', flat=True)),
+            {
+                'LACRE OPERACIONAL', 'BOTINA R6', 'MONITOR R6',
+                'SUPORTE ERGONÔMICO ESPECIAL',
+            },
+        )
+
+    def test_r6_transicoes_geram_linha_do_tempo_auditavel(self):
+        solicitacao = SolicitacaoService.criar_solicitacao(
+            base=self.base,
+            solicitante=self.gestor,
+            justificativa='Fluxo auditável.',
+            prioridade='ALTA',
+            itens=[{'insumo': self.insumo, 'quantidade': 1}],
+        )
+
+        SolicitacaoService.aprovar(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+            observacao='Aprovada para aquisição.',
+        )
+        SolicitacaoService.colocar_em_compra(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+            observacao='Pedido realizado.',
+        )
+        SolicitacaoService.registrar_recebimento(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+            observacao='Material recebido e conferido.',
+        )
+        SolicitacaoService.finalizar(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+            observacao='Material entregue à Base.',
+        )
+
+        self.assertEqual(
+            list(solicitacao.eventos.values_list('tipo', flat=True)),
+            [
+                'CRIADA', 'RECEBIDA_COMPRAS', 'EM_ANALISE', 'APROVADA',
+                'PEDIDO_REALIZADO', 'RECEBIDA', 'ATENDIDA',
+            ],
+        )
+        self.assertTrue(all(
+            evento.autor_id is not None
+            for evento in solicitacao.eventos.all()
+        ))
+
+    def test_r6_novo_item_exige_vinculo_autorizado_antes_da_aprovacao(self):
+        solicitacao = SolicitacaoService.criar_solicitacao(
+            base=self.base,
+            solicitante=self.gestor,
+            justificativa='Novo item protegido.',
+            prioridade='MEDIA',
+            itens=[{
+                'tipo': ItemSolicitacaoInsumo.Tipo.NOVO_ITEM,
+                'descricao_novo_item': 'Material fora do catálogo',
+                'justificativa_item': 'Necessidade excepcional.',
+                'quantidade': 1,
+            }],
+        )
+
+        with self.assertRaisesMessage(
+            ValueError,
+            'Vincule todos os Novos itens ao catálogo antes de aprovar.',
+        ):
+            SolicitacaoService.aprovar(
+                solicitacao=solicitacao,
+                usuario=self.admin,
+            )
+
+        solicitacao.refresh_from_db()
+        self.assertEqual(solicitacao.status, 'PENDENTE')
+        item = solicitacao.itens.get()
+        SolicitacaoService.resolver_novo_item(
+            item=item,
+            usuario=self.admin,
+            insumo=self.insumo,
+        )
+        SolicitacaoService.aprovar(
+            solicitacao=solicitacao,
+            usuario=self.admin,
+        )
+        solicitacao.refresh_from_db()
+        self.assertEqual(solicitacao.status, 'APROVADA')
+        self.assertEqual(item.solicitacao.eventos.filter(
+            tipo=EventoSolicitacaoInsumo.Tipo.ITEM_VINCULADO,
+        ).count(), 1)
+
+    def test_r6_criar_insumo_autorizado_vincula_catalogo_e_retorna_ao_pedido(self):
+        solicitacao = SolicitacaoService.criar_solicitacao(
+            base=self.base,
+            solicitante=self.gestor,
+            justificativa='Novo insumo autorizado por Compras.',
+            prioridade='MEDIA',
+            itens=[{
+                'tipo': ItemSolicitacaoInsumo.Tipo.NOVO_ITEM,
+                'descricao_novo_item': 'Material autorizado no fluxo',
+                'justificativa_item': 'Necessidade validada pela operação.',
+                'quantidade': 2,
+            }],
+        )
+        item = solicitacao.itens.get()
+        self.client.force_login(self.admin)
+
+        url = (
+            reverse('insumos:criar_item_insumo')
+            + f'?solicitacao={solicitacao.pk}&item={item.pk}&base={self.base.pk}'
+        )
+        resposta = self.client.post(url, {
+            'descricao': 'Material autorizado no fluxo',
+            'categoria': self.categoria.pk,
+            'unidade_medida': 'UN',
+            'natureza': Insumo.Natureza.CONSUMIVEL,
+            'forma_controle': Insumo.FormaControle.QUANTIDADE,
+            'estoque_minimo': '2.00',
+            'base_lote': self.base.pk,
+            'ativo': 'on',
+        })
+
+        item.refresh_from_db()
+        self.assertRedirects(
+            resposta,
+            reverse('insumos:detalhe_solicitacao', args=[solicitacao.pk]),
+        )
+        self.assertIsNotNone(item.resolvido_insumo_id)
+        self.assertTrue(CodigoCatalogo.objects.filter(
+            empresa=self.empresa,
+            insumo_id=item.resolvido_insumo_id,
+            ativo=True,
+        ).exists())
+        self.assertTrue(solicitacao.eventos.filter(
+            tipo=EventoSolicitacaoInsumo.Tipo.ITEM_VINCULADO,
+        ).exists())
+
+    def test_r6_bloqueia_equipamento_fora_do_catalogo_da_empresa(self):
+        produto = Produto.objects.create(
+            codigo='MON-OUTRO-TENANT',
+            descricao='Monitor não autorizado',
+            fabricante='Fabricante teste',
+            modelo='Modelo teste',
+            categoria='MONITOR',
+        )
+
+        with self.assertRaisesMessage(
+            ValueError,
+            'O equipamento não está ativo no catálogo da empresa solicitante.',
+        ):
+            SolicitacaoService.criar_solicitacao(
+                base=self.base,
+                solicitante=self.gestor,
+                justificativa='Tentativa fora do catálogo.',
+                prioridade='MEDIA',
+                itens=[{
+                    'tipo': ItemSolicitacaoInsumo.Tipo.EQUIPAMENTO,
+                    'produto_equipamento': produto,
+                    'quantidade': 1,
+                }],
+            )
+
+        self.assertFalse(
+            SolicitacaoInsumo.objects.filter(
+                justificativa='Tentativa fora do catálogo.',
+            ).exists()
+        )
 
 class EstoqueInsumosDesempenhoTests(TestCase):
     def setUp(self):

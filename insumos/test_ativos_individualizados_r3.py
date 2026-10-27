@@ -6,8 +6,12 @@ from estoque.models import Base, Empresa, Equipamento, Perfil
 from insumos.models import (
     AtivoInsumoIndividualizado,
     CategoriaInsumo,
+    CertificadoEpi,
     Insumo,
+    LoteEpi,
     MovimentacaoInsumo,
+    ProdutoEpi,
+    VarianteEpi,
 )
 
 
@@ -151,7 +155,103 @@ class AtivoInsumoIndividualizadoTests(TestCase):
         self.assertContains(resposta, 'data-detalhe-insumo')
         self.assertContains(resposta, 'modalDetalheInsumo')
         self.assertContains(resposta, 'Unidades reutilizáveis nesta Base')
+        self.assertContains(resposta, 'Patrimônios detalhados')
+        self.assertContains(resposta, '1 unidade')
         self.assertNotContains(resposta, 'Preço')
         self.assertNotContains(resposta, 'Custo')
         self.assertNotContains(resposta, 'Valor médio')
         self.assertNotContains(resposta, 'R$')
+
+
+class EstoqueEpiQuantidadeDetalhadaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa = Empresa.objects.create(nome='Empresa EPI detalhado')
+        cls.base = Base.objects.create(nome='Base EPI detalhado', empresa=cls.empresa)
+        cls.admin = User.objects.create_user('admin.epi.detalhado', password='senha')
+        cls.admin.perfil.empresa = cls.empresa
+        cls.admin.perfil.role = Perfil.Role.ADMIN
+        cls.admin.perfil.save(update_fields=['empresa', 'role'])
+        categoria = CategoriaInsumo.objects.create(nome='EPI detalhado')
+        cls.insumo = Insumo.objects.create(
+            descricao='Capa térmica detalhada',
+            categoria=categoria,
+            unidade_medida='UN',
+            natureza=Insumo.Natureza.EPI,
+            forma_controle=Insumo.FormaControle.LOTE,
+        )
+        produto = ProdutoEpi.objects.create(insumo=cls.insumo)
+        certificado = CertificadoEpi.objects.create(
+            produto_epi=produto,
+            numero_ca='CA-TESTE-123',
+            situacao_oficial='VÁLIDO',
+        )
+        variante_p = VarianteEpi.objects.create(
+            produto_epi=produto, nome='Capa térmica', tamanho='P',
+        )
+        variante_m = VarianteEpi.objects.create(
+            produto_epi=produto, nome='Capa térmica', tamanho='M',
+        )
+        lote_p = LoteEpi.objects.create(
+            base=cls.base,
+            produto_epi=produto,
+            certificado=certificado,
+            variante=variante_p,
+            codigo_lote='LOTE-TESTE',
+        )
+        lote_m = LoteEpi.objects.create(
+            base=cls.base,
+            produto_epi=produto,
+            certificado=certificado,
+            variante=variante_m,
+            codigo_lote='LOTE-TESTE',
+        )
+        MovimentacaoInsumo.objects.create(
+            base=cls.base, insumo=cls.insumo, tipo='ENTRADA', quantidade=2,
+            lote_epi=lote_p, usuario=cls.admin,
+        )
+        MovimentacaoInsumo.objects.create(
+            base=cls.base, insumo=cls.insumo, tipo='ENTRADA', quantidade=5,
+            lote_epi=lote_m, usuario=cls.admin,
+        )
+
+    def test_modal_exibe_total_por_ca_tamanho_quantidade_e_situacao(self):
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(reverse('insumos:estoque_insumos'))
+
+        self.assertEqual(resposta.status_code, 200)
+        item = resposta.context['estoque'][0]
+        self.assertEqual(item['saldo'], 7)
+        self.assertEqual(item['total_lotes_epi'], 7)
+        self.assertEqual(item['saldo_sem_ca'], 0)
+        self.assertEqual(
+            item['resumo_ca_epi'][0]['numero_ca'],
+            'CA-TESTE-123',
+        )
+        self.assertEqual(item['resumo_ca_epi'][0]['quantidade'], 7)
+        self.assertEqual(
+            item['resumo_ca_epi'][0]['tamanhos'],
+            [
+                {'tamanho': 'M', 'quantidade': 5},
+                {'tamanho': 'P', 'quantidade': 2},
+            ],
+        )
+        quantidades_por_tamanho = {
+            lote.variante.tamanho: lote.quantidade_estoque
+            for lote in item['lotes_epi']
+        }
+        self.assertEqual(quantidades_por_tamanho, {'P': 2, 'M': 5})
+        self.assertContains(resposta, 'Quantidade por CA')
+        self.assertContains(resposta, 'CA-TESTE-123')
+        self.assertContains(resposta, '2 unidades')
+        self.assertContains(resposta, '5 unidades')
+        self.assertContains(resposta, 'VÁLIDO')
+        self.assertContains(
+            resposta,
+            'name="validade" value="vigente" checked',
+        )
+        self.assertContains(
+            resposta,
+            'name="validade" value="sem_data" checked',
+        )

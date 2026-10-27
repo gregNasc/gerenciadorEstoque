@@ -9,6 +9,11 @@ app_name = "integracao"
 urlpatterns = [
     path('caepi/', views.caepi_importacoes, name='caepi_importacoes'),
     path('caepi/<int:pk>/', views.caepi_detalhe, name='caepi_detalhe'),
+    path(
+        'caepi/<int:pk>/processar-lote/',
+        views.caepi_processar_lote,
+        name='caepi_processar_lote',
+    ),
     path('caepi/<int:pk>/publicar/', views.caepi_publicar, name='caepi_publicar'),
     path('docusign/webhook/', docusign_webhook, name='docusign_webhook'),
     path(

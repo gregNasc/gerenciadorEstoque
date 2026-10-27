@@ -13,6 +13,7 @@ from insumos.models import (
     CertificadoEpi,
     Insumo,
     LoteEpi,
+    MovimentacaoInsumo,
     ProdutoEpi,
     VarianteEpi,
 )
@@ -62,18 +63,29 @@ class ExportacaoEpiR3GTests(TestCase):
             validade_ca=hoje + timedelta(days=400),
             situacao_oficial='VÁLIDO',
         )
-        LoteEpi.objects.create(
+        lote_vencido = LoteEpi.objects.create(
             base=cls.base, produto_epi=produto, variante=variante,
             certificado=vencido, codigo_lote='VENCIDO-1', ativo=True,
         )
-        LoteEpi.objects.create(
+        lote_proximo = LoteEpi.objects.create(
             base=cls.base, produto_epi=produto, variante=variante,
             certificado=proximo, codigo_lote='PROXIMO-1', ativo=False,
         )
-        LoteEpi.objects.create(
+        lote_vigente = LoteEpi.objects.create(
             base=cls.base, produto_epi=produto, variante=variante,
             certificado=vigente, codigo_lote='VIGENTE-1', ativo=True,
         )
+        for lote, quantidade in (
+            (lote_vencido, 2), (lote_proximo, 3), (lote_vigente, 4),
+        ):
+            MovimentacaoInsumo.objects.create(
+                base=cls.base,
+                insumo=cls.insumo,
+                tipo='ENTRADA',
+                quantidade=quantidade,
+                lote_epi=lote,
+                usuario=cls.admin,
+            )
 
     def test_exporta_filtros_de_validade_e_atividade_sem_precos(self):
         self.client.force_login(self.admin)
@@ -98,6 +110,14 @@ class ExportacaoEpiR3GTests(TestCase):
         self.assertNotIn('PREÇO', cabecalhos)
         self.assertNotIn('CUSTO', cabecalhos)
         self.assertNotIn('VALOR', cabecalhos)
+        self.assertIn('QUANTIDADE', cabecalhos)
+        indice_lote = cabecalhos.index('LOTE')
+        indice_quantidade = cabecalhos.index('QUANTIDADE')
+        quantidades = {
+            linha[indice_lote].value: linha[indice_quantidade].value
+            for linha in planilha.iter_rows(min_row=2)
+        }
+        self.assertEqual(quantidades, {'VENCIDO-1': 2, 'PROXIMO-1': 3})
 
     def test_rejeita_exportacao_de_base_de_outro_tenant(self):
         self.client.force_login(self.admin)
@@ -106,4 +126,20 @@ class ExportacaoEpiR3GTests(TestCase):
             'insumo': self.insumo.pk,
         })
         self.assertEqual(resposta.status_code, 403)
+
+    def test_sem_filtros_explicitos_exporta_todas_as_faixas(self):
+        self.client.force_login(self.admin)
+
+        resposta = self.client.get(reverse('insumos:exportar_dados_epi'), {
+            'base': self.base.pk,
+            'insumo': self.insumo.pk,
+        })
+
+        self.assertEqual(resposta.status_code, 200)
+        planilha = openpyxl.load_workbook(BytesIO(resposta.content)).active
+        lotes = {
+            linha[15].value
+            for linha in planilha.iter_rows(min_row=2)
+        }
+        self.assertEqual(lotes, {'VENCIDO-1', 'PROXIMO-1', 'VIGENTE-1'})
 

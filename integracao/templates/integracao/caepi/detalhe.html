@@ -14,7 +14,14 @@
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Rejeitados</small><div class="h4 text-danger">{{ importacao.rejeitados }}</div></div></div></div>
     <div class="col-6 col-lg-2"><div class="card h-100"><div class="card-body"><small>Status</small><div class="fw-semibold">{{ importacao.status_exibicao }}</div>{% if importacao.status == 'PROCESSANDO' and not importacao.esta_interrompida %}<small>{{ importacao.processados }} linhas processadas</small>{% endif %}</div></div></div></div>
   </div>
-  {% if importacao.esta_interrompida %}<div class="alert alert-danger"><strong>Importação interrompida.</strong> Reenvie o mesmo arquivo para reiniciar a carga com segurança. Os registros parciais desta tentativa serão substituídos e a base anteriormente publicada continuará preservada.</div>{% endif %}
+  {% if importacao.esta_interrompida and pode_processar %}<div class="alert alert-warning"><strong>Processamento pausado.</strong> O arquivo permanece preservado e a carga será retomada a partir do último lote confirmado, sem afetar a base publicada.</div>{% elif importacao.esta_interrompida %}<div class="alert alert-danger"><strong>Importação interrompida.</strong> O arquivo-fonte não está mais disponível; reenvie o mesmo arquivo. A base anteriormente publicada continua preservada.</div>{% endif %}
+  {% if pode_processar %}
+  <div id="caepi-processing" class="alert alert-info d-flex align-items-center justify-content-between gap-3 flex-wrap">
+    <div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><div><strong>Processamento retomável em lotes.</strong> Mantenha esta página aberta até a prévia ficar pronta. Linhas confirmadas: <span id="caepi-progress-count">{{ importacao.processados }}</span>.</div></div>
+    <button id="caepi-retry" class="btn btn-sm btn-outline-primary d-none" type="button">Tentar novamente</button>
+  </div>
+  <form id="caepi-batch-form" class="d-none" method="post" action="{% url 'integracao:caepi_processar_lote' importacao.pk %}">{% csrf_token %}</form>
+  {% endif %}
   {% if importacao.advertencias %}<div class="alert alert-warning"><strong>Advertências:</strong><ul class="mb-0">{% for warning in importacao.advertencias %}<li>{{ warning }}</li>{% endfor %}</ul></div>{% endif %}
   {% if importacao.erro %}<div class="alert alert-danger">{{ importacao.erro }}</div>{% endif %}
   {% if importacao.status == 'PREVIA' %}
@@ -22,4 +29,48 @@
   {% endif %}
   <div class="card shadow-sm border-0"><div class="card-header bg-light fw-semibold">Amostra validada</div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>CA</th><th>Situação</th><th>Validade</th><th>Natureza</th><th>Equipamento</th><th>Marca/Referência</th><th>Norma</th></tr></thead><tbody>{% for item in amostra %}<tr><td class="fw-semibold">{{ item.numero_ca }}</td><td>{{ item.situacao }}</td><td>{{ item.validade_ca|date:"d/m/Y"|default:"-" }}</td><td>{{ item.natureza|default:"-" }}</td><td>{{ item.equipamento }}{% if item.descricao_equipamento %}<div class="small text-secondary">{{ item.descricao_equipamento|truncatechars:120 }}</div>{% endif %}</td><td>{{ item.marca|default:"-" }}{% if item.referencia %}<div class="small">{{ item.referencia }}</div>{% endif %}</td><td>{{ item.norma|default:"-" }}</td></tr>{% empty %}<tr><td colspan="7" class="text-center py-4">Sem registros válidos.</td></tr>{% endfor %}</tbody></table></div></div>
 </div>
+{% if pode_processar %}
+<script>
+(() => {
+  const form = document.getElementById('caepi-batch-form');
+  const panel = document.getElementById('caepi-processing');
+  const count = document.getElementById('caepi-progress-count');
+  const retry = document.getElementById('caepi-retry');
+  let running = false;
+
+  async function processBatch() {
+    if (running) return;
+    running = true;
+    retry.classList.add('d-none');
+    panel.classList.remove('alert-danger');
+    panel.classList.add('alert-info');
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: {'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value},
+        credentials: 'same-origin',
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.erro || 'Não foi possível processar o lote.');
+      count.textContent = payload.processados;
+      if (payload.concluida) {
+        window.location.reload();
+        return;
+      }
+      window.setTimeout(processBatch, 250);
+    } catch (error) {
+      panel.classList.remove('alert-info');
+      panel.classList.add('alert-danger');
+      panel.querySelector('div div').innerHTML = `<strong>Processamento pausado.</strong> ${error.message} O arquivo e os lotes confirmados permanecem preservados.`;
+      retry.classList.remove('d-none');
+    } finally {
+      running = false;
+    }
+  }
+
+  retry.addEventListener('click', processBatch);
+  processBatch();
+})();
+</script>
+{% endif %}
 {% endblock %}
