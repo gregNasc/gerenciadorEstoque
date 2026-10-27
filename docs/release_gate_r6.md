@@ -44,7 +44,7 @@ Todas as mudanças de schema são aditivas. A migration de linha do tempo conté
 - `git diff --check`: sem erro de whitespace;
 - suíte completa de `insumos`: **121 testes aprovados**;
 - conjunto integrado R6 + Compras + Ordens de Serviço + CAEPI: **27 testes aprovados**;
-- suíte dirigida da importação CAEPI retomável: **9 testes aprovados**;
+- suíte dirigida da importação CAEPI retomável: **10 testes aprovados**;
 - teste específico de criação autorizada e vínculo ao pedido: **1 teste aprovado**.
 
 Os testes foram executados em SQLite isolado porque o PostgreSQL local não estava disponível. Isso não substitui o smoke test pós-migration no PostgreSQL do ambiente de deploy.

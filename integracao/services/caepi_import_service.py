@@ -189,7 +189,6 @@ class CaepiImportService:
             with transaction.atomic():
                 importacao = (
                     CaepiImportacao.objects.select_for_update()
-                    .select_related('criado_por')
                     .get(pk=importacao_id)
                 )
                 if importacao.status in {

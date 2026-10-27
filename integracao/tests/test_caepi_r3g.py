@@ -201,3 +201,20 @@ class CaepiR3GTests(TestCase):
         self.assertEqual(importacao.total_registros, 1)
         self.assertTrue(importacao.arquivo_fonte.name)
         importacao.arquivo_fonte.delete(save=False)
+
+    def test_lote_nao_exige_join_com_criador_anulavel(self):
+        payload = gzip.compress(('﻿' + HEADER + ROW).encode('utf-8'), mtime=0)
+        importacao, _ = CaepiImportService.enfileirar_previa(
+            uploaded_file=SimpleUploadedFile('sem-criador.csv.gz', payload),
+            user=self.superuser,
+        )
+        CaepiImportacao.objects.filter(pk=importacao.pk).update(
+            criado_por=None,
+            status=CaepiImportacao.Status.INTERROMPIDA,
+        )
+
+        resultado = CaepiImportService.processar_upload_salvo(importacao.pk)
+
+        self.assertEqual(resultado.status, CaepiImportacao.Status.PREVIA)
+        self.assertEqual(resultado.total_registros, 1)
+        resultado.arquivo_fonte.delete(save=False)
