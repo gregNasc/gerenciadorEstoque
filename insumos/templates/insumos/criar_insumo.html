@@ -5,8 +5,18 @@
 <div class="container py-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div><h1 class="h3 mb-1">{% trans "Novo Insumo" %}</h1><p class="text-secondary mb-0">{% trans "Cadastre o item e, se for EPI, informe somente os dados complementares disponíveis." %}</p></div>
-    <a class="btn btn-outline-secondary" href="{% url 'insumos:lista_insumos' %}">{% trans "Voltar" %}</a>
+    <a class="btn btn-outline-secondary" href="{% if item_nfe_origem %}{% url 'compras:aquisicao_detalhe' item_nfe_origem.nota_fiscal.aquisicao_id %}{% else %}{% url 'insumos:lista_insumos' %}{% endif %}">{% trans "Voltar" %}</a>
   </div>
+  {% if item_nfe_origem %}
+    <div class="alert alert-info d-flex gap-2 align-items-start">
+      <i class="bi bi-file-earmark-code mt-1"></i>
+      <div>
+        <strong>{% trans "Cadastro assistido pela NF-e" %}</strong>
+        <div class="small mt-1">{% trans "Revise os dados sugeridos e selecione a Base. O insumo só será criado ao confirmar o formulário." %}</div>
+        <div class="small mt-1"><strong>{% trans "Descrição fiscal:" %}</strong> {{ item_nfe_origem.descricao }}</div>
+      </div>
+    </div>
+  {% endif %}
   {% include 'insumos/partials/form_insumo.html' with acao="Cadastrar Insumo" %}
 </div>
 {% endblock %}

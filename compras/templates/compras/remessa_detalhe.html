@@ -1,1 +1,126 @@
-{% extends 'estoque/base.html' %}{% block title %}{{ remessa.protocolo }}{% endblock %}{% block content %}<div class="d-flex justify-content-between"><div><h1 class="h3">{{ remessa.protocolo }}</h1><p>{{ remessa.get_fluxo_display }} · {{ remessa.base_origem|default:'Fornecedor' }} → {{ remessa.base_destino }} · <b>{{ remessa.get_status_display }}</b></p></div>{% if pode_enviar and remessa.status == 'PREPARADA' %}<form method="post" action="{% url 'compras:remessa_enviar' remessa.pk %}">{% csrf_token %}<input name="codigo_rastreio" class="form-control mb-2" placeholder="Rastreio opcional"><button class="btn btn-primary">Enviar</button></form>{% endif %}</div><div class="card mb-3"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Item</th><th>Previsto</th><th>Recebido</th><th>Avariado</th><th>Faltante</th></tr></thead><tbody>{% for item in remessa.itens.all %}<tr><td>{{ item.insumo|default:item.equipamento }}</td><td>{{ item.quantidade_prevista }}</td><td>{{ item.quantidade_recebida }}</td><td>{{ item.quantidade_avariada }}</td><td>{{ item.quantidade_faltante }}</td></tr>{% endfor %}</tbody></table></div></div>{% if pode_confirmar and remessa.status != 'PREPARADA' and remessa.status != 'RECEBIDA' and remessa.status != 'CANCELADA' %}<form method="post" action="{% url 'compras:remessa_confirmar' remessa.pk %}" class="card card-body">{% csrf_token %}<input type="hidden" name="idempotency_key" value="{{ idempotency_key }}"><h2 class="h5">Conferência desta etapa</h2>{% for item in remessa.itens.all %}<fieldset class="border rounded p-3 mb-2"><legend class="float-none w-auto px-2 fs-6">{{ item.insumo|default:item.equipamento }}</legend><div class="row g-2"><div class="col-md-3"><label>Recebida agora</label><input class="form-control" type="number" min="0" step="0.01" name="recebida_{{ item.pk }}" value="0"></div><div class="col-md-3"><label>Avariada</label><input class="form-control" type="number" min="0" step="0.01" name="avariada_{{ item.pk }}" value="0"></div><div class="col-md-3"><label>Faltante</label><input class="form-control" type="number" min="0" step="0.01" name="faltante_{{ item.pk }}" value="0"></div><div class="col-md-3"><label>Observação</label><input class="form-control" name="observacao_{{ item.pk }}"></div></div></fieldset>{% endfor %}<label><input type="checkbox" name="finalizar" value="1"> Finalizar conferência</label><button class="btn btn-success align-self-start mt-3">Confirmar com idempotência</button></form>{% endif %}{% endblock %}
+{% extends 'estoque/base.html' %}
+{% block title %}{{ remessa.protocolo }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Recebimento {{ remessa.protocolo }}</h1>
+    <p class="text-muted mb-0">
+      {{ remessa.get_fluxo_display }} · {{ remessa.base_origem|default:'Fornecedor' }} → {{ remessa.base_destino }}
+      <span class="badge text-bg-secondary ms-1">{{ remessa.get_status_display }}</span>
+    </p>
+  </div>
+  {% if pode_enviar and remessa.status == 'PREPARADA' %}
+    <form method="post" action="{% url 'compras:remessa_enviar' remessa.pk %}" class="d-flex gap-2">
+      {% csrf_token %}
+      <input name="codigo_rastreio" class="form-control" placeholder="Rastreio opcional">
+      <button class="btn btn-primary">Enviar</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="alert alert-info" role="status">
+  Compare o que foi comprado, o que consta na NF-e e o que chegou fisicamente. Registre avarias,
+  faltas ou itens inesperados antes de finalizar.
+</div>
+
+<section class="card mb-4" aria-labelledby="titulo-comparacao">
+  <div class="card-header"><h2 id="titulo-comparacao" class="h5 mb-0">Comparação do recebimento</h2></div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Item</th><th>Compra</th><th>NF-e</th><th>Nesta remessa</th><th>Recebido</th><th>Avariado</th><th>Faltante</th></tr></thead>
+      <tbody>
+        {% for item in remessa.itens.all %}
+          <tr>
+            <td>
+              <strong>{{ item.descricao_exibicao }}</strong>
+              {% if item.item_nfe %}<div class="small text-muted">NF-e: item {{ item.item_nfe.numero_item }}</div>{% endif %}
+              {% if item.produto %}
+                <div class="small text-muted">
+                  Individualizadas: {{ item.equipamentos_individualizados.count }} de {{ item.quantidade_recebida|floatformat:0 }} recebida(s)
+                </div>
+                {% if pode_individualizar and item.quantidade_pendente_individualizacao > 0 %}
+                  <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'compras:remessa_individualizar_item' remessa.pk item.pk %}">Identificar próxima unidade</a>
+                {% endif %}
+              {% endif %}
+            </td>
+            <td>{% if item.item_aquisicao %}{{ item.item_aquisicao.quantidade }}{% else %}—{% endif %}</td>
+            <td>{% if item.item_nfe %}{{ item.item_nfe.quantidade }}{% else %}<span class="text-warning">Não conciliado</span>{% endif %}</td>
+            <td>{{ item.quantidade_prevista }}</td><td>{{ item.quantidade_recebida }}</td>
+            <td>{{ item.quantidade_avariada }}</td><td>{{ item.quantidade_faltante }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-4">Nenhum item nesta remessa.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if remessa.recebimentos.all %}
+<section class="card mb-4" aria-labelledby="titulo-historico">
+  <div class="card-header"><h2 id="titulo-historico" class="h5 mb-0">Histórico de conferências</h2></div>
+  <div class="card-body">
+    {% for recebimento in remessa.recebimentos.all %}
+      <article class="border rounded p-3 {% if not forloop.last %}mb-3{% endif %}">
+        <div class="d-flex flex-wrap justify-content-between gap-2">
+          <strong>{{ recebimento.recebido_em|date:'d/m/Y H:i' }} · {{ recebimento.recebido_por.get_full_name|default:recebimento.recebido_por.username }}</strong>
+          {% if recebimento.finaliza_conferencia %}<span class="badge text-bg-secondary">Conferência final</span>{% endif %}
+        </div>
+        {% if recebimento.observacao %}<p class="mb-2 mt-2">{{ recebimento.observacao }}</p>{% endif %}
+        {% if recebimento.divergencias.all %}
+          <div class="mt-2">
+            {% for divergencia in recebimento.divergencias.all %}
+              <div class="alert alert-warning py-2 mb-2">
+                <strong>{{ divergencia.get_tipo_display }}</strong>
+                {% if divergencia.item %} · {{ divergencia.item.descricao_exibicao }}{% endif %}
+                {% if divergencia.descricao %}<div>{{ divergencia.descricao }}</div>{% endif %}
+                {% if divergencia.quantidade_esperada != None or divergencia.quantidade_informada != None %}
+                  <div class="small">Esperado: {{ divergencia.quantidade_esperada|default:'—' }} · Informado: {{ divergencia.quantidade_informada|default:'—' }}</div>
+                {% endif %}
+                {% if divergencia.observacao %}<div class="small">{{ divergencia.observacao }}</div>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-success small mt-2">Nenhuma divergência registrada nesta etapa.</div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if pode_confirmar and remessa.status == 'EM_TRANSITO' or pode_confirmar and remessa.status == 'AGUARDANDO_CONFERENCIA' or pode_confirmar and remessa.status == 'RECEBIDA_PARCIAL' %}
+<form method="post" action="{% url 'compras:remessa_confirmar' remessa.pk %}" class="card mb-4">
+  {% csrf_token %}
+  <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+  <div class="card-header"><h2 class="h5 mb-0">Conferir itens que chegaram agora</h2></div>
+  <div class="card-body">
+    {% for item in remessa.itens.all %}
+      <fieldset class="border rounded p-3 mb-3">
+        <legend class="float-none w-auto px-2 fs-6">{{ item.descricao_exibicao }}</legend>
+        <div class="row g-3">
+          <div class="col-md-3"><label class="form-label">Recebida sem avaria</label><input class="form-control" type="number" min="0" step="0.01" name="recebida_{{ item.pk }}" value="0"></div>
+          <div class="col-md-3"><label class="form-label">Avariada</label><input class="form-control" type="number" min="0" step="0.01" name="avariada_{{ item.pk }}" value="0"></div>
+          <div class="col-md-3"><label class="form-label">Faltante</label><input class="form-control" type="number" min="0" step="0.01" name="faltante_{{ item.pk }}" value="0"></div>
+          <div class="col-md-3"><label class="form-label">Observação</label><input class="form-control" name="observacao_{{ item.pk }}"></div>
+        </div>
+      </fieldset>
+    {% endfor %}
+
+    <details class="border rounded p-3 mb-3">
+      <summary class="fw-semibold">Chegou um item que não estava previsto?</summary>
+      <p class="text-muted small mt-2">Preencha somente quando houver um item físico não listado na compra/remessa.</p>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Descrição do item inesperado</label><input class="form-control" name="inesperado_descricao"></div>
+        <div class="col-md-2"><label class="form-label">Quantidade</label><input class="form-control" type="number" min="0" step="0.01" name="inesperado_quantidade" value="0"></div>
+        <div class="col-md-4"><label class="form-label">Observação</label><input class="form-control" name="inesperado_observacao"></div>
+      </div>
+    </details>
+    <div class="mb-3"><label class="form-label">Observação geral desta conferência</label><textarea class="form-control" rows="2" name="observacao"></textarea></div>
+    <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="finalizar" name="finalizar" value="1"><label class="form-check-label" for="finalizar">Finalizar a conferência desta remessa</label></div>
+    <button class="btn btn-success">Registrar conferência</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

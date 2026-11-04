@@ -52,13 +52,20 @@ class AquisicaoAccessPolicy:
             )
         ).distinct()
 
+    @classmethod
+    def documentos(cls, user):
+        if not ComprasAccessPolicy.pode_exportar_documentos_aquisicao(user):
+            return Aquisicao.objects.none()
+        return Aquisicao.objects.filter(
+            empresa__in=ComprasAccessPolicy.empresas(
+                user,
+                action=ComprasAccessPolicy.EXPORT,
+            ),
+        )
+
     @staticmethod
     def pode_gerenciar(user):
-        return ComprasAccessPolicy.pode_gerenciar_catalogo(user) or (
-            user.is_authenticated
-            and not ComprasAccessPolicy.restrito(user)
-            and user.has_perm('compras.gerenciar_aquisicoes')
-        )
+        return ComprasAccessPolicy.pode_gerenciar_aquisicoes(user)
 
     @classmethod
     def pode_confirmar(cls, user, remessa):

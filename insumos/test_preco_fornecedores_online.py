@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from estoque.models import Base, Empresa, Perfil
@@ -24,6 +24,21 @@ from insumos.services.preco_online_service import (
 
 
 class CatalogosFornecedoresTests(SimpleTestCase):
+    @override_settings(
+        GIMBA_PRICE_SEARCH_ENABLED=True,
+        FIDELITY_PRICE_SEARCH_ENABLED=True,
+    )
+    def test_lista_de_fontes_nao_exibe_comparativo_legado(self):
+        fontes = PrecoOnlineService.fontes_disponiveis()
+        self.assertNotIn(
+            PrecoOnlineService.FONTE_COMPARATIVO,
+            {item['codigo'] for item in fontes},
+        )
+        self.assertNotIn(
+            'Comparar Gimba e Fidelity',
+            {item['nome'] for item in fontes},
+        )
+
     def test_termo_amplo_preserva_conectivo(self):
         self.assertEqual(
             FidelityProvider._termos_busca('cabo de rede RJ45 CAT6'),
@@ -249,3 +264,31 @@ class UsarOfertaComoPrecoTests(TestCase):
 
         self.assertEqual(pesquisa.fonte, 'COMPARATIVO')
         self.assertEqual(pesquisa.avisos, ['Gimba indisponível.'])
+
+    @override_settings(
+        GIMBA_PRICE_SEARCH_ENABLED=True,
+        FIDELITY_PRICE_SEARCH_ENABLED=True,
+    )
+    @patch.object(FidelityProvider, 'buscar', return_value=[])
+    @patch.object(GimbaProvider, 'buscar', return_value=[])
+    def test_modo_moderno_compara_fontes_selecionadas(
+        self,
+        buscar_gimba,
+        buscar_fidelity,
+    ):
+        resposta = self.client.post(reverse('insumos:pesquisa_precos_online'), {
+            'empresa': self.empresa.pk,
+            'insumo': self.insumo.pk,
+            'termo': 'papel sulfite a4',
+            'quantidade': '2',
+            'modo_pesquisa': 'comparar',
+            'fontes': ['GIMBA', 'FIDELITY'],
+        })
+
+        self.assertEqual(resposta.status_code, 302)
+        pesquisa = PesquisaPrecoOnline.objects.latest('pk')
+        self.assertEqual(pesquisa.fonte, PrecoOnlineService.FONTE_COMPARATIVO)
+        buscar_gimba.assert_called_once_with('papel sulfite a4')
+        buscar_fidelity.assert_called_once_with('papel sulfite a4')
+        pagina = self.client.get(reverse('insumos:pesquisa_precos_online'))
+        self.assertNotContains(pagina, 'Comparar Gimba e Fidelity')

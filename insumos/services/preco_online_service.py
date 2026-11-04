@@ -325,14 +325,7 @@ class PrecoOnlineService:
 
     @classmethod
     def fontes_disponiveis(cls):
-        fornecedores_habilitados = any(
-            provider.configurado() for provider in cls.FORNECEDORES_COMPARAVEIS
-        )
-        return [{
-            'codigo': cls.FONTE_COMPARATIVO,
-            'nome': 'Comparar Gimba e Fidelity',
-            'habilitada': fornecedores_habilitados,
-        }] + [
+        return [
             {
                 'codigo': provider.NOME,
                 'nome': provider.ROTULO,
@@ -340,6 +333,98 @@ class PrecoOnlineService:
             }
             for provider in cls.PROVIDERS
         ]
+
+    @classmethod
+    def _validar_contexto(cls, *, insumo, termo, usuario, empresa):
+        if empresa is None:
+            raise PrecoOnlineErro(
+                'A empresa da pesquisa deve ser informada explicitamente.'
+            )
+        from insumos.policies import InsumosTenantPolicy
+        if not InsumosTenantPolicy.empresas(
+            usuario,
+            action=InsumosTenantPolicy.EDIT,
+        ).filter(pk=empresa.pk).exists():
+            raise PrecoOnlineErro(
+                'A empresa da pesquisa está fora do escopo autorizado.'
+            )
+        termo = (
+            termo or insumo.termo_pesquisa_online or insumo.descricao
+        ).strip()
+        if len(termo) < 3:
+            raise PrecoOnlineErro('Informe ao menos três caracteres para pesquisar.')
+        return termo
+
+    @classmethod
+    def _executar_comparativo(
+        cls, *, insumo, termo, usuario, empresa, providers,
+    ):
+        resultados = []
+        avisos = []
+        consultas_bem_sucedidas = 0
+        with ThreadPoolExecutor(max_workers=len(providers)) as executor:
+            consultas = {
+                executor.submit(provider.buscar, termo): provider
+                for provider in providers
+            }
+            for consulta in as_completed(consultas):
+                try:
+                    resultados.extend(consulta.result())
+                    consultas_bem_sucedidas += 1
+                except PrecoOnlineErro as erro:
+                    avisos.append(str(erro))
+        if not consultas_bem_sucedidas:
+            raise PrecoOnlineErro(
+                ' '.join(avisos) or 'Nenhum fornecedor respondeu à comparação.'
+            )
+        pesquisa = cls._salvar_pesquisa(
+            insumo=insumo,
+            termo=termo,
+            usuario=usuario,
+            empresa=empresa,
+            fonte=cls.FONTE_COMPARATIVO,
+            resultados=resultados,
+        )
+        pesquisa.avisos = avisos
+        return pesquisa
+
+    @classmethod
+    def pesquisar_multiplas(
+        cls, *, insumo, termo, usuario, fontes, empresa=None,
+    ):
+        termo = cls._validar_contexto(
+            insumo=insumo,
+            termo=termo,
+            usuario=usuario,
+            empresa=empresa,
+        )
+        codigos = list(dict.fromkeys(
+            str(fonte or '').strip().upper() for fonte in fontes if fonte
+        ))
+        if len(codigos) < 2:
+            raise PrecoOnlineErro(
+                'Selecione pelo menos dois fornecedores para comparar.'
+            )
+        providers = []
+        for codigo in codigos:
+            provider = next(
+                (item for item in cls.PROVIDERS if item.NOME == codigo),
+                None,
+            )
+            if provider is None:
+                raise PrecoOnlineErro('Uma fonte selecionada é inválida.')
+            if not provider.configurado():
+                raise PrecoOnlineErro(
+                    f'{provider.ROTULO}: integração desabilitada.'
+                )
+            providers.append(provider)
+        return cls._executar_comparativo(
+            insumo=insumo,
+            termo=termo,
+            usuario=usuario,
+            empresa=empresa,
+            providers=providers,
+        )
 
     @classmethod
     def configurado(cls):
@@ -357,54 +442,35 @@ class PrecoOnlineService:
 
     @classmethod
     def pesquisar(cls, *, insumo, termo, usuario, fonte=None, empresa=None):
-        if empresa is None:
-            raise PrecoOnlineErro(
-                'A empresa da pesquisa deve ser informada explicitamente.'
-            )
-        from insumos.policies import InsumosTenantPolicy
-        if not InsumosTenantPolicy.empresas(
-            usuario,
-            action=InsumosTenantPolicy.EDIT,
-        ).filter(pk=empresa.pk).exists():
-            raise PrecoOnlineErro(
-                'A empresa da pesquisa está fora do escopo autorizado.'
-            )
-        termo = (
-            termo
-            or insumo.termo_pesquisa_online
-            or insumo.descricao
-        ).strip()
-        if len(termo) < 3:
-            raise PrecoOnlineErro('Informe ao menos três caracteres para pesquisar.')
+        termo = cls._validar_contexto(
+            insumo=insumo,
+            termo=termo,
+            usuario=usuario,
+            empresa=empresa,
+        )
 
         fonte = (fonte or '').strip().upper()
         avisos = []
         if fonte == cls.FONTE_COMPARATIVO:
-            resultados = []
-            consultas_bem_sucedidas = 0
             providers_habilitados = []
             for provider in cls.FORNECEDORES_COMPARAVEIS:
                 if provider.configurado():
                     providers_habilitados.append(provider)
                 else:
                     avisos.append(f'{provider.ROTULO}: integração desabilitada.')
-            with ThreadPoolExecutor(max_workers=len(providers_habilitados) or 1) as executor:
-                consultas = {
-                    executor.submit(provider.buscar, termo): provider
-                    for provider in providers_habilitados
-                }
-                for consulta in as_completed(consultas):
-                    try:
-                        resultados.extend(consulta.result())
-                        consultas_bem_sucedidas += 1
-                    except PrecoOnlineErro as erro:
-                        avisos.append(str(erro))
-            if not consultas_bem_sucedidas:
-                detalhe = ' '.join(avisos)
+            if not providers_habilitados:
                 raise PrecoOnlineErro(
-                    detalhe or 'Nenhum fornecedor está disponível para comparação.'
+                    ' '.join(avisos) or 'Nenhum fornecedor está disponível para comparação.'
                 )
-            fonte_pesquisa = cls.FONTE_COMPARATIVO
+            pesquisa = cls._executar_comparativo(
+                insumo=insumo,
+                termo=termo,
+                usuario=usuario,
+                empresa=empresa,
+                providers=providers_habilitados,
+            )
+            pesquisa.avisos = avisos + pesquisa.avisos
+            return pesquisa
         else:
             provider = cls._provider(fonte)
             if provider is None:

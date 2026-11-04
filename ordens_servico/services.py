@@ -336,7 +336,7 @@ class OrdemServicoService:
         existentes = set(
             ordem.linhas.values_list('dados_snapshot__item_remessa_id', flat=True)
         )
-        for item in remessa.itens.select_related('insumo', 'equipamento__produto'):
+        for item in remessa.itens.select_related('insumo', 'equipamento__produto', 'produto'):
             if item.pk in existentes:
                 continue
             if item.equipamento_id:
@@ -344,6 +344,25 @@ class OrdemServicoService:
                 linha.destino = remessa.base_destino.nome
                 linha.dados_snapshot.update({'item_remessa_id': item.pk})
                 linha.save(update_fields=['destino', 'dados_snapshot'])
+            elif item.produto_id:
+                OrdemServicoLinha.objects.create(
+                    ordem=ordem,
+                    natureza=OrdemServicoLinha.Natureza.EQUIPAMENTO,
+                    descricao=item.produto.descricao,
+                    fabricante=item.produto.fabricante,
+                    modelo=item.produto.modelo,
+                    codigo=item.produto.codigo,
+                    unidade='UN',
+                    quantidade=item.quantidade_prevista,
+                    origem='Fornecedor',
+                    destino=remessa.base_destino.nome,
+                    dados_snapshot={
+                        'item_remessa_id': item.pk,
+                        'remessa_id': remessa.pk,
+                        'produto_id': item.produto_id,
+                        'aguarda_individualizacao': True,
+                    },
+                )
             else:
                 OrdemServicoLinha.objects.create(
                     ordem=ordem,

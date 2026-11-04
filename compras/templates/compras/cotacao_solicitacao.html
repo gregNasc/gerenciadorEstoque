@@ -1,0 +1,311 @@
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Cotação" %} · {{ solicitacao.protocolo }}{% endblock %}
+
+{% block content %}
+<main class="container-fluid px-3 px-lg-4 py-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+        <div>
+            <a href="{% url 'insumos:detalhe_solicitacao' solicitacao.pk %}"
+               class="text-decoration-none text-secondary d-inline-flex align-items-center gap-1 mb-2">
+                <i class="bi bi-arrow-left"></i> {% trans "Voltar para a solicitação" %}
+            </a>
+            <h1 class="h3 fw-bold mb-1">{% trans "Cotação de compra" %}</h1>
+            <p class="text-secondary mb-0">
+                {{ solicitacao.protocolo }} · {{ solicitacao.base.nome }} · {{ solicitacao.base.empresa.nome }}
+            </p>
+        </div>
+        {% if processo %}
+            <span class="badge rounded-pill px-3 py-2 fs-6 {% if processo.status == 'DECIDIDO' %}text-bg-success{% elif processo.status == 'CANCELADO' %}text-bg-secondary{% else %}text-bg-primary{% endif %}">
+                {{ processo.get_status_display }}
+            </span>
+        {% endif %}
+    </div>
+
+    <div class="alert alert-info d-flex gap-2 align-items-start" role="alert">
+        <i class="bi bi-info-circle mt-1"></i>
+        <div>
+            <strong>{% trans "A decisão é sempre humana." %}</strong>
+            {% trans "O menor valor é apenas destacado para facilitar a leitura. Prazo, qualidade, homologação e demais condições também devem ser considerados e a escolha exige justificativa." %}
+        </div>
+    </div>
+
+    {% if not processo %}
+        <section class="card border-0 shadow-sm">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                <div>
+                    <h2 class="h5 mb-1">{% trans "Iniciar processo de cotação" %}</h2>
+                    <p class="text-secondary mb-0">
+                        {% trans "A cotação ficará vinculada a esta solicitação e à empresa atual." %}
+                    </p>
+                </div>
+                {% if pode_abrir %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="abrir">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-play-circle me-1"></i> {% trans "Iniciar cotação" %}
+                        </button>
+                    </form>
+                {% else %}
+                    <span class="text-secondary small">
+                        {% trans "A solicitação ainda não está em uma etapa que permita cotação." %}
+                    </span>
+                {% endif %}
+            </div>
+        </section>
+    {% else %}
+        <section class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-body py-3">
+                <h2 class="h6 fw-semibold mb-0">
+                    <i class="bi bi-list-check me-2"></i>{% trans "Itens solicitados" %}
+                </h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">{% trans "Item" %}</th>
+                            <th>{% trans "Tipo" %}</th>
+                            <th class="text-end pe-4">{% trans "Quantidade solicitada" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in solicitacao.itens.all %}
+                            <tr>
+                                <td class="ps-4 fw-semibold">{{ item.descricao_exibicao }}</td>
+                                <td>{{ item.get_tipo_display }}</td>
+                                <td class="text-end pe-4">{{ item.quantidade|floatformat:2 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <div class="d-flex justify-content-between align-items-end gap-3 flex-wrap mb-3">
+                <div>
+                    <h2 class="h5 mb-1">{% trans "Propostas recebidas" %}</h2>
+                    <p class="text-secondary small mb-0">
+                        {% blocktrans count total=propostas|length %}{{ total }} proposta registrada.{% plural %}{{ total }} propostas registradas.{% endblocktrans %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                {% for proposta in propostas %}
+                    <div class="col-12 col-xl-6">
+                        <article class="card h-100 shadow-sm {% if proposta.status == 'ESCOLHIDA' %}border-success{% elif proposta.valor_total == menor_valor and processo.status != 'DECIDIDO' %}border-primary{% else %}border-0{% endif %}">
+                            <div class="card-header bg-body d-flex justify-content-between align-items-start gap-2 flex-wrap py-3">
+                                <div>
+                                    <h3 class="h6 fw-bold mb-1">{{ proposta.fornecedor_empresa.fornecedor.nome }}</h3>
+                                    <div class="small text-secondary">
+                                        {% if proposta.numero_proposta %}{% trans "Proposta" %} {{ proposta.numero_proposta }}{% else %}{% trans "Sem número informado" %}{% endif %}
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    {% if proposta.status == 'ESCOLHIDA' %}
+                                        <span class="badge text-bg-success">{% trans "Escolhida" %}</span>
+                                    {% elif proposta.valor_total == menor_valor and processo.status != 'DECIDIDO' %}
+                                        <span class="badge text-bg-primary">{% trans "Menor valor informado" %}</span>
+                                    {% endif %}
+                                    <span class="badge text-bg-light border">{{ proposta.get_status_display }}</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>{% trans "Item" %}</th>
+                                                <th class="text-end">{% trans "Qtd." %}</th>
+                                                <th class="text-end">{% trans "Unitário" %}</th>
+                                                <th class="text-end">{% trans "Total" %}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in proposta.itens.all %}
+                                                <tr>
+                                                    <td>
+                                                        {{ item.item_solicitacao.descricao_exibicao }}
+                                                        {% if item.numero_ca %}<div class="small text-secondary">CA {{ item.numero_ca }}</div>{% endif %}
+                                                    </td>
+                                                    <td class="text-end">{{ item.quantidade|floatformat:2 }}</td>
+                                                    <td class="text-end">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+                                                    <td class="text-end">R$ {{ item.valor_total|floatformat:2 }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <dl class="row small mb-3">
+                                    <dt class="col-7">{% trans "Subtotal" %}</dt><dd class="col-5 text-end">R$ {{ proposta.subtotal|floatformat:2 }}</dd>
+                                    <dt class="col-7">{% trans "Frete" %}</dt><dd class="col-5 text-end">R$ {{ proposta.frete|floatformat:2 }}</dd>
+                                    <dt class="col-7">{% trans "Impostos" %}</dt><dd class="col-5 text-end">R$ {{ proposta.impostos|floatformat:2 }}</dd>
+                                    <dt class="col-7">{% trans "Desconto" %}</dt><dd class="col-5 text-end">− R$ {{ proposta.desconto|floatformat:2 }}</dd>
+                                    <dt class="col-7 fs-6">{% trans "Valor total" %}</dt><dd class="col-5 text-end fs-6 fw-bold">R$ {{ proposta.valor_total|floatformat:2 }}</dd>
+                                </dl>
+                                <div class="row g-2 small text-secondary">
+                                    <div class="col-sm-6"><strong>{% trans "Prazo:" %}</strong> {% if proposta.prazo_entrega_dias is not None %}{{ proposta.prazo_entrega_dias }} {% trans "dia(s)" %}{% else %}-{% endif %}</div>
+                                    <div class="col-sm-6"><strong>{% trans "Pagamento:" %}</strong> {{ proposta.condicao_pagamento|default:'-' }}</div>
+                                    <div class="col-sm-6"><strong>{% trans "Validade:" %}</strong> {{ proposta.validade_proposta|date:'d/m/Y'|default:'-' }}</div>
+                                </div>
+                            </div>
+                            {% if processo.status != 'DECIDIDO' and proposta.status == 'RECEBIDA' %}
+                                <div class="card-footer bg-body border-top p-3">
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="acao" value="decidir">
+                                        <input type="hidden" name="proposta_id" value="{{ proposta.pk }}">
+                                        <label class="form-label fw-semibold" for="justificativa-{{ proposta.pk }}">{% trans "Justificativa da escolha" %}</label>
+                                        <textarea class="form-control mb-2" id="justificativa-{{ proposta.pk }}" name="justificativa" rows="2" minlength="10" required placeholder="{% trans 'Explique por que esta proposta atende melhor à necessidade...' %}"></textarea>
+                                        <button class="btn btn-outline-success w-100" type="submit">
+                                            <i class="bi bi-check2-circle me-1"></i>{% trans "Escolher esta proposta" %}
+                                        </button>
+                                    </form>
+                                </div>
+                            {% endif %}
+                        </article>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="border rounded-3 bg-body-tertiary text-center text-secondary p-5">
+                            <i class="bi bi-receipt fs-2 d-block mb-2"></i>
+                            {% trans "Nenhuma proposta registrada ainda." %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if processo.status == 'DECIDIDO' %}
+            <section class="alert alert-success mb-4">
+                <h2 class="h6 fw-bold mb-2"><i class="bi bi-check-circle me-1"></i>{% trans "Decisão registrada" %}</h2>
+                <div>{{ processo.justificativa_decisao|linebreaksbr }}</div>
+                <div class="small mt-2">
+                    {{ processo.decidido_por.get_full_name|default:processo.decidido_por.username }} · {{ processo.decidido_em|date:'d/m/Y H:i' }}
+                </div>
+            </section>
+            {% if aquisicao_gerada %}
+                <section class="card border-success shadow-sm mb-4">
+                    <div class="card-body p-4 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                        <div>
+                            <h2 class="h6 fw-bold mb-1">
+                                <i class="bi bi-cart-check me-1 text-success"></i>
+                                {% trans "Aquisição vinculada" %}
+                            </h2>
+                            <p class="text-secondary small mb-0">
+                                {% trans "A aquisição já foi gerada a partir desta proposta." %}
+                                {{ aquisicao_gerada }} · {{ aquisicao_gerada.get_status_display }}
+                            </p>
+                        </div>
+                        <a class="btn btn-success" href="{% url 'compras:aquisicao_detalhe' aquisicao_gerada.pk %}">
+                            <i class="bi bi-arrow-right-circle me-1"></i>{% trans "Abrir aquisição" %}
+                        </a>
+                    </div>
+                </section>
+            {% elif solicitacao.status == 'APROVADA' %}
+                <section class="card border-primary shadow-sm mb-4">
+                    <div class="card-header bg-primary-subtle py-3">
+                        <h2 class="h5 mb-1">{% trans "Gerar aquisição em rascunho" %}</h2>
+                        <p class="small text-secondary mb-0">
+                            {% trans "Confirme a geração. A compra ainda precisará ser revisada e aprovada na tela da aquisição." %}
+                        </p>
+                    </div>
+                    <form method="post" class="card-body p-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="gerar_aquisicao">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="numero-pedido-compra">{% trans "Número do pedido de compra" %}</label>
+                                <input class="form-control" id="numero-pedido-compra" name="numero_pedido_compra" maxlength="80">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="centro-custo">{% trans "Centro de custo" %}</label>
+                                <input class="form-control" id="centro-custo" name="centro_custo" maxlength="100">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="observacao-aquisicao">{% trans "Observação para a aquisição" %}</label>
+                                <textarea class="form-control" id="observacao-aquisicao" name="observacao_aquisicao" rows="3"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check border rounded-3 p-3 ps-5 bg-body-tertiary">
+                                    <input class="form-check-input" id="confirmar-geracao" name="confirmar_geracao" value="1" type="checkbox" required>
+                                    <label class="form-check-label" for="confirmar-geracao">
+                                        {% trans "Confirmo que revisei a proposta escolhida e desejo gerar a aquisição em rascunho." %}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bi bi-cart-plus me-1"></i>{% trans "Gerar aquisição" %}
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            {% else %}
+                <section class="alert alert-warning mb-4">
+                    <h2 class="h6 fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>{% trans "Aguardando aprovação da solicitação" %}</h2>
+                    <p class="mb-2">{% trans "A proposta foi escolhida, mas a aquisição só pode ser gerada depois que a solicitação for aprovada." %}</p>
+                    <a class="alert-link" href="{% url 'insumos:detalhe_solicitacao' solicitacao.pk %}">{% trans "Voltar para a solicitação" %}</a>
+                </section>
+            {% endif %}
+        {% else %}
+            <section class="card border-0 shadow-sm">
+                <div class="card-header bg-body py-3">
+                    <h2 class="h5 mb-1">{% trans "Registrar proposta" %}</h2>
+                    <p class="small text-secondary mb-0">{% trans "Somente fornecedores ativos e homologados para esta empresa podem ser selecionados." %}</p>
+                </div>
+                <form method="post" class="card-body p-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="adicionar_proposta">
+                    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                    <div class="row g-3 mb-4">
+                        {% for field in form %}
+                            <div class="{% if field.name == 'observacao' %}col-12{% else %}col-md-6 col-xl-4{% endif %}">
+                                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|striptags }}</div>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <h3 class="h6 fw-bold mb-3">{% trans "Valores por item" %}</h3>
+                    <div class="vstack gap-3">
+                        {% for item in solicitacao.itens.all %}
+                            <fieldset class="border rounded-3 p-3">
+                                <legend class="float-none w-auto px-2 h6 fw-semibold mb-2">{{ item.descricao_exibicao }}</legend>
+                                <div class="row g-3">
+                                    <div class="col-sm-6 col-lg-3">
+                                        <label class="form-label" for="quantidade-{{ item.pk }}">{% trans "Quantidade" %}</label>
+                                        <input class="form-control" id="quantidade-{{ item.pk }}" name="quantidade_{{ item.pk }}" type="number" min="0.01" step="0.01" value="{{ item.quantidade|stringformat:'s' }}" required>
+                                    </div>
+                                    <div class="col-sm-6 col-lg-3">
+                                        <label class="form-label" for="valor-{{ item.pk }}">{% trans "Valor unitário" %}</label>
+                                        <input class="form-control" id="valor-{{ item.pk }}" name="valor_unitario_{{ item.pk }}" type="number" min="0" step="0.0001" required>
+                                    </div>
+                                    <div class="col-sm-6 col-lg-2">
+                                        <label class="form-label" for="ca-{{ item.pk }}">{% trans "CA (se aplicável)" %}</label>
+                                        <input class="form-control" id="ca-{{ item.pk }}" name="numero_ca_{{ item.pk }}" maxlength="30">
+                                    </div>
+                                    <div class="col-sm-6 col-lg-4">
+                                        <label class="form-label" for="obs-{{ item.pk }}">{% trans "Observação do item" %}</label>
+                                        <input class="form-control" id="obs-{{ item.pk }}" name="observacao_item_{{ item.pk }}">
+                                    </div>
+                                </div>
+                            </fieldset>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex justify-content-end mt-4">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-plus-circle me-1"></i>{% trans "Adicionar proposta" %}
+                        </button>
+                    </div>
+                </form>
+            </section>
+        {% endif %}
+    {% endif %}
+</main>
+{% endblock %}

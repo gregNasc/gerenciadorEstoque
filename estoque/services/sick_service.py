@@ -272,7 +272,7 @@ class SickService:
 
     @classmethod
     def _carregar_sick(cls, sick_id, usuario=None):
-        queryset = Sick.objects.select_for_update().select_related(
+        queryset = Sick.objects.select_for_update(of=('self',)).select_related(
             'equipamento__produto',
             'equipamento__regional__empresa',
             'ativo_insumo__insumo',

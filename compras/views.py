@@ -20,7 +20,10 @@ from auditorias.services.visibilidade_estoque_service import VisibilidadeEstoque
 from compras.forms import (
     AquisicaoForm,
     CatalogoEmpresaForm,
+    CotacaoFornecedorForm,
+    FornecedorEmpresaForm,
     ImportacaoPrecificacaoForm,
+    IndividualizacaoEquipamentoForm,
     ItemAquisicaoForm,
     RemessaForm,
 )
@@ -29,15 +32,35 @@ from compras.models import (
     CapacidadeCatalogoProdutoEmpresa,
     CatalogoProdutoEmpresa,
     CodigoCatalogo,
+    CotacaoFornecedor,
+    FornecedorEmpresa,
+    ItemNotaFiscalAquisicao,
+    ProcessoCotacao,
     ItemRemessaCompra,
     RemessaCompra,
 )
 from compras.policies import AquisicaoAccessPolicy
-from compras.services import AquisicaoService, ProdutoPrecoService, RemessaCompraService
+from compras.nfe import CatalogoNFeService, NFeAquisicaoService
+from compras.services import (
+    AquisicaoService,
+    CotacaoService,
+    FornecedorEmpresaService,
+    IndividualizacaoRecebimentoService,
+    ProdutoPrecoService,
+    RemessaCompraService,
+)
 from estoque.forms import ProdutoForm
 from estoque.models import Base, Equipamento, Produto
 from estoque.policies.compras import ComprasAccessPolicy
-from insumos.models import CategoriaInsumo, FornecedorInsumo, Insumo, SaldoInsumoBase
+from insumos.models import (
+    CategoriaInsumo,
+    FornecedorInsumo,
+    Insumo,
+    ItemSolicitacaoInsumo,
+    SaldoInsumoBase,
+    SolicitacaoInsumo,
+)
+from insumos.policies import InsumosTenantPolicy
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
@@ -49,6 +72,9 @@ def lista_aquisicoes(request):
             'empresa', 'fornecedor', 'cadastrado_por'
         ).prefetch_related('itens')[:250],
         'pode_gerenciar': AquisicaoAccessPolicy.pode_gerenciar(request.user),
+        'pode_homologar_fornecedores': (
+            ComprasAccessPolicy.pode_homologar_fornecedores(request.user)
+        ),
     })
 
 
@@ -56,12 +82,12 @@ def lista_aquisicoes(request):
 def criar_aquisicao(request):
     if not AquisicaoAccessPolicy.pode_gerenciar(request.user):
         raise PermissionDenied
-    form = AquisicaoForm(request.POST or None, request.FILES or None)
-    item_form = ItemAquisicaoForm(request.POST or None, user=request.user)
-    form.fields['empresa'].queryset = ComprasAccessPolicy.empresas(
-        request.user,
-        action=ComprasAccessPolicy.CREATE,
+    form = AquisicaoForm(
+        request.POST or None,
+        request.FILES or None,
+        user=request.user,
     )
+    item_form = ItemAquisicaoForm(request.POST or None, user=request.user)
     if request.method == 'POST' and form.is_valid() and item_form.is_valid():
         dados = form.cleaned_data.copy()
         empresa = dados.pop('empresa')
@@ -81,11 +107,297 @@ def criar_aquisicao(request):
 
 
 @login_required
+def fornecedores_empresa(request):
+    if not ComprasAccessPolicy.pode_homologar_fornecedores(request.user):
+        raise PermissionDenied
+
+    acao = request.POST.get('acao', '').strip()
+    form = FornecedorEmpresaForm(
+        request.POST if request.method == 'POST' and acao == 'registrar' else None,
+        user=request.user,
+    )
+    if request.method == 'POST' and acao == 'registrar' and form.is_valid():
+        empresa = form.cleaned_data['empresa']
+        try:
+            relacionamento, criado = FornecedorEmpresaService.registrar(
+                empresa=empresa,
+                fornecedor=form.fornecedor_resolvido,
+                usuario=request.user,
+                codigo_interno=form.cleaned_data['codigo_interno'],
+                observacao=form.cleaned_data['observacao'],
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            form.add_error(None, exc)
+        else:
+            if criado:
+                messages.success(
+                    request,
+                    'Fornecedor vinculado como pendente. Revise e homologue quando estiver correto.',
+                )
+            else:
+                messages.info(request, 'Este fornecedor já está vinculado à empresa.')
+            return redirect(
+                f"{reverse('compras:fornecedores_empresa')}?empresa={empresa.pk}"
+            )
+    elif request.method == 'POST' and acao == 'alterar_status':
+        relacionamento_id = request.POST.get('relacionamento_id', '').strip()
+        if not relacionamento_id.isdigit():
+            raise PermissionDenied
+        relacionamento = get_object_or_404(
+            FornecedorEmpresaService.queryset(
+                request.user,
+                action=ComprasAccessPolicy.EDIT,
+            ),
+            pk=relacionamento_id,
+        )
+        try:
+            FornecedorEmpresaService.alterar_status(
+                relacionamento,
+                status=request.POST.get('status', ''),
+                usuario=request.user,
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, 'Status do fornecedor atualizado.')
+        return redirect(
+            f"{reverse('compras:fornecedores_empresa')}?empresa={relacionamento.empresa_id}"
+        )
+
+    empresas = form.fields['empresa'].queryset
+    empresa_id = request.GET.get('empresa', '').strip()
+    empresa = empresas.filter(pk=empresa_id).first() if empresa_id.isdigit() else empresas.first()
+    relacionamentos = FornecedorEmpresaService.queryset(request.user)
+    if empresa is not None:
+        relacionamentos = relacionamentos.filter(empresa=empresa)
+        if not form.is_bound:
+            form.initial['empresa'] = empresa.pk
+    else:
+        relacionamentos = relacionamentos.none()
+    return render(request, 'compras/fornecedores_empresa.html', {
+        'form': form,
+        'empresa_selecionada': empresa,
+        'relacionamentos': relacionamentos,
+        'status_choices': FornecedorEmpresa.Status.choices,
+    })
+
+
+@login_required
+def api_fornecedores_homologados(request):
+    if not AquisicaoAccessPolicy.pode_gerenciar(request.user):
+        raise PermissionDenied
+    empresa_id = request.GET.get('empresa', '').strip()
+    if not empresa_id.isdigit():
+        raise PermissionDenied
+    empresa = get_object_or_404(
+        ComprasAccessPolicy.empresas(
+            request.user,
+            action=ComprasAccessPolicy.CREATE,
+        ),
+        pk=empresa_id,
+    )
+    relacionamentos = FornecedorEmpresa.objects.filter(
+        empresa=empresa,
+        status=FornecedorEmpresa.Status.HOMOLOGADO,
+        fornecedor__ativo=True,
+    ).select_related('fornecedor').order_by('fornecedor__nome')
+    return JsonResponse({'fornecedores': [
+        {
+            'id': relacionamento.fornecedor_id,
+            'nome': relacionamento.fornecedor.nome,
+            'documento': relacionamento.fornecedor.cnpj_formatado,
+        }
+        for relacionamento in relacionamentos
+    ]})
+
+
+@login_required
+def cotacao_solicitacao(request, solicitacao_id):
+    if not ComprasAccessPolicy.pode_gerenciar_aquisicoes(request.user):
+        raise PermissionDenied
+    solicitacao = get_object_or_404(
+        InsumosTenantPolicy.requests(
+            request.user,
+            SolicitacaoInsumo.objects.select_related('base__empresa').prefetch_related(
+                'itens__insumo', 'itens__produto_equipamento',
+            ),
+            action=InsumosTenantPolicy.EDIT,
+        ),
+        pk=solicitacao_id,
+    )
+    processo = CotacaoService.queryset(request.user).filter(
+        solicitacao=solicitacao,
+    ).first()
+    acao = request.POST.get('acao', '').strip()
+    form = CotacaoFornecedorForm(
+        request.POST if request.method == 'POST' and acao == 'adicionar_proposta' else None,
+        usuario=request.user,
+        empresa=solicitacao.base.empresa,
+    )
+
+    if request.method == 'POST' and acao == 'abrir':
+        try:
+            processo, criado = CotacaoService.abrir(
+                solicitacao=solicitacao,
+                usuario=request.user,
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(
+                request,
+                'Processo de cotação aberto.' if criado else 'A cotação já estava aberta.',
+            )
+        return redirect('compras:cotacao_solicitacao', solicitacao_id=solicitacao.pk)
+
+    if request.method == 'POST' and acao == 'adicionar_proposta':
+        if processo is None:
+            raise PermissionDenied('Abra a cotação antes de registrar propostas.')
+        itens = []
+        erros_itens = []
+        for item_solicitado in solicitacao.itens.all():
+            quantidade_texto = request.POST.get(
+                f'quantidade_{item_solicitado.pk}', ''
+            ).strip().replace(',', '.')
+            valor_texto = request.POST.get(
+                f'valor_unitario_{item_solicitado.pk}', ''
+            ).strip().replace(',', '.')
+            try:
+                quantidade = Decimal(quantidade_texto)
+                valor_unitario = Decimal(valor_texto)
+            except (InvalidOperation, ValueError):
+                erros_itens.append(
+                    f'Informe quantidade e valor válidos para {item_solicitado.descricao_exibicao}.'
+                )
+                continue
+            itens.append({
+                'item_solicitacao': item_solicitado,
+                'quantidade': quantidade,
+                'valor_unitario': valor_unitario,
+                'numero_ca': request.POST.get(
+                    f'numero_ca_{item_solicitado.pk}', ''
+                ).strip(),
+                'observacao': request.POST.get(
+                    f'observacao_item_{item_solicitado.pk}', ''
+                ).strip(),
+            })
+        for erro in erros_itens:
+            form.add_error(None, erro)
+        if form.is_valid() and not erros_itens:
+            dados = form.cleaned_data.copy()
+            fornecedor_empresa = dados.pop('fornecedor_empresa')
+            try:
+                CotacaoService.adicionar_proposta(
+                    processo=processo,
+                    fornecedor_empresa=fornecedor_empresa,
+                    usuario=request.user,
+                    itens=itens,
+                    **dados,
+                )
+            except (ValidationError, PermissionDenied) as exc:
+                form.add_error(None, exc)
+            else:
+                messages.success(request, 'Proposta registrada para comparação.')
+                return redirect(
+                    'compras:cotacao_solicitacao',
+                    solicitacao_id=solicitacao.pk,
+                )
+
+    if request.method == 'POST' and acao == 'decidir':
+        if processo is None:
+            raise PermissionDenied
+        proposta_id = request.POST.get('proposta_id', '').strip()
+        proposta = get_object_or_404(
+            CotacaoFornecedor.objects.filter(processo=processo),
+            pk=proposta_id if proposta_id.isdigit() else None,
+        )
+        try:
+            CotacaoService.decidir(
+                processo=processo,
+                proposta=proposta,
+                usuario=request.user,
+                justificativa=request.POST.get('justificativa', ''),
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, 'Decisão da cotação registrada.')
+        return redirect('compras:cotacao_solicitacao', solicitacao_id=solicitacao.pk)
+
+    if request.method == 'POST' and acao == 'gerar_aquisicao':
+        if processo is None:
+            raise PermissionDenied
+        if request.POST.get('confirmar_geracao') != '1':
+            messages.error(
+                request,
+                'Confirme que deseja gerar a aquisição em rascunho.',
+            )
+            return redirect(
+                'compras:cotacao_solicitacao',
+                solicitacao_id=solicitacao.pk,
+            )
+        try:
+            aquisicao, criada = AquisicaoService.criar_da_cotacao(
+                processo=processo,
+                usuario=request.user,
+                numero_pedido_compra=request.POST.get('numero_pedido_compra', ''),
+                centro_custo=request.POST.get('centro_custo', ''),
+                observacao=request.POST.get('observacao_aquisicao', ''),
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, str(exc))
+            return redirect(
+                'compras:cotacao_solicitacao',
+                solicitacao_id=solicitacao.pk,
+            )
+        if criada:
+            messages.success(
+                request,
+                'Aquisição criada em rascunho. Revise antes de aprovar.',
+            )
+        else:
+            messages.info(request, 'A aquisição desta cotação já havia sido criada.')
+        return redirect('compras:aquisicao_detalhe', pk=aquisicao.pk)
+
+    if processo is not None:
+        processo = CotacaoService.queryset(request.user).get(pk=processo.pk)
+        propostas = sorted(
+            processo.propostas.all(),
+            key=lambda proposta: (proposta.valor_total, proposta.pk),
+        )
+        menor_valor = propostas[0].valor_total if propostas else None
+    else:
+        propostas = []
+        menor_valor = None
+    aquisicao_gerada = (
+        AquisicaoAccessPolicy.queryset(request.user).filter(
+            processo_cotacao=processo,
+        ).first()
+        if processo is not None else None
+    )
+    return render(request, 'compras/cotacao_solicitacao.html', {
+        'solicitacao': solicitacao,
+        'processo': processo,
+        'propostas': propostas,
+        'menor_valor': menor_valor,
+        'form': form,
+        'aquisicao_gerada': aquisicao_gerada,
+        'pode_abrir': solicitacao.status in CotacaoService.STATUS_SOLICITACAO_PERMITIDOS,
+    })
+
+
+@login_required
 def detalhe_aquisicao(request, pk):
     aquisicao = get_object_or_404(
         AquisicaoAccessPolicy.queryset(request.user).select_related(
-            'empresa', 'fornecedor', 'cadastrado_por', 'aprovado_por'
-        ).prefetch_related('itens__produto', 'itens__insumo', 'eventos'),
+            'empresa', 'base_destino', 'fornecedor', 'cadastrado_por',
+            'aprovado_por', 'processo_cotacao__solicitacao',
+            'proposta_origem__fornecedor_empresa__fornecedor',
+            'nota_fiscal',
+        ).prefetch_related(
+            'itens__produto', 'itens__insumo', 'itens__item_cotacao_origem',
+            'eventos', 'nota_fiscal__itens',
+        ),
         pk=pk,
     )
     return render(request, 'compras/aquisicao_detalhe.html', {
@@ -94,7 +406,63 @@ def detalhe_aquisicao(request, pk):
             request.user,
             action=ComprasAccessPolicy.APPROVE,
         ).filter(pk=aquisicao.pk).exists(),
+        'pode_baixar_documentos': AquisicaoAccessPolicy.documentos(
+            request.user,
+        ).filter(pk=aquisicao.pk).exists(),
     })
+
+
+@login_required
+@require_POST
+def processar_xml_nfe(request, pk):
+    aquisicao = get_object_or_404(
+        AquisicaoAccessPolicy.documentos(request.user),
+        pk=pk,
+    )
+    try:
+        nota, alterado = NFeAquisicaoService.processar(
+            aquisicao=aquisicao,
+            usuario=request.user,
+        )
+    except (ValidationError, PermissionDenied) as exc:
+        messages.error(request, str(exc))
+    else:
+        if alterado:
+            messages.success(
+                request,
+                f'XML processado com {nota.itens.count()} item(ns).',
+            )
+        else:
+            messages.info(request, 'Este XML já estava processado e foi conferido novamente.')
+    return redirect('compras:aquisicao_detalhe', pk=pk)
+
+
+@login_required
+@require_POST
+def confirmar_item_nfe_catalogo(request, pk, item_id):
+    aquisicao = get_object_or_404(
+        AquisicaoAccessPolicy.documentos(request.user),
+        pk=pk,
+    )
+    item = get_object_or_404(
+        ItemNotaFiscalAquisicao.objects.filter(
+            nota_fiscal__aquisicao=aquisicao,
+        ),
+        pk=item_id,
+    )
+    try:
+        _, alterado = CatalogoNFeService.confirmar(
+            item=item,
+            usuario=request.user,
+        )
+    except (ValidationError, PermissionDenied) as exc:
+        messages.error(request, str(exc))
+    else:
+        if alterado:
+            messages.success(request, 'Correspondência com o catálogo confirmada.')
+        else:
+            messages.info(request, 'A correspondência deste item já estava confirmada.')
+    return redirect('compras:aquisicao_detalhe', pk=pk)
 
 
 @login_required
@@ -118,10 +486,7 @@ def aprovar_aquisicao(request, pk):
 @login_required
 def documento_aquisicao(request, pk, tipo):
     aquisicao = get_object_or_404(
-        AquisicaoAccessPolicy.queryset(
-            request.user,
-            action=ComprasAccessPolicy.EXPORT,
-        ),
+        AquisicaoAccessPolicy.documentos(request.user),
         pk=pk,
     )
     campo = {'danfe': aquisicao.arquivo_danfe_pdf, 'xml': aquisicao.arquivo_xml_nfe}.get(tipo)
@@ -157,7 +522,9 @@ def criar_remessa(request):
         dados = form.cleaned_data
         item = {
             'insumo': dados['insumo'], 'equipamento': dados['equipamento'],
+            'produto': dados['produto'],
             'item_aquisicao': dados['item_aquisicao'],
+            'item_nfe': dados['item_nfe'],
             'quantidade_prevista': dados['quantidade'],
             'custo_unitario_snapshot': dados['custo_unitario'],
         }
@@ -181,8 +548,14 @@ def criar_remessa(request):
 def detalhe_remessa(request, pk):
     remessa = get_object_or_404(
         AquisicaoAccessPolicy.remessas(request.user).select_related(
-            'empresa', 'base_origem', 'base_destino', 'aquisicao', 'criada_por'
-        ).prefetch_related('itens__insumo', 'itens__equipamento__produto', 'recebimentos__linhas'),
+            'empresa', 'base_origem', 'base_destino', 'aquisicao', 'criada_por',
+            'aquisicao__nota_fiscal',
+        ).prefetch_related(
+            'itens__insumo', 'itens__equipamento__produto', 'itens__produto',
+            'itens__item_aquisicao', 'itens__item_nfe',
+            'recebimentos__linhas', 'recebimentos__divergencias__item',
+            'itens__equipamentos_individualizados__equipamento',
+        ),
         pk=pk,
     )
     return render(request, 'compras/remessa_detalhe.html', {
@@ -195,6 +568,17 @@ def detalhe_remessa(request, pk):
             ).filter(pk=remessa.pk).exists()
         ),
         'pode_confirmar': AquisicaoAccessPolicy.pode_confirmar(request.user, remessa),
+        'pode_individualizar': (
+            ComprasAccessPolicy.pode_gerenciar_catalogo(request.user)
+            and any(
+                IndividualizacaoRecebimentoService.pode_individualizar(
+                    item_remessa=item,
+                    usuario=request.user,
+                )
+                for item in remessa.itens.all()
+                if item.produto_id
+            )
+        ),
         'idempotency_key': uuid.uuid4(),
     })
 
@@ -242,11 +626,116 @@ def confirmar_remessa(request, pk):
             idempotency_key=request.POST.get('idempotency_key'), linhas=linhas,
             finalizar=request.POST.get('finalizar') == '1',
             observacao=request.POST.get('observacao', ''),
+            item_inesperado={
+                'descricao': request.POST.get('inesperado_descricao', ''),
+                'quantidade': request.POST.get('inesperado_quantidade', 0),
+                'observacao': request.POST.get('inesperado_observacao', ''),
+            },
         )
         messages.success(request, 'Conferência registrada sem duplicar entradas.')
     except (ValidationError, PermissionDenied, ValueError) as exc:
         messages.error(request, str(exc))
     return redirect('compras:remessa_detalhe', pk=pk)
+
+
+@login_required
+def individualizar_item_remessa(request, pk, item_id):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissão para individualizar equipamentos.')
+    from estoque.security import secure_base_queryset
+
+    bases = secure_base_queryset(
+        Base.objects.all(),
+        request.user,
+        action='CRIAR',
+    )
+    item = get_object_or_404(
+        ItemRemessaCompra.objects.select_related(
+            'produto', 'remessa__empresa', 'remessa__base_destino',
+            'item_aquisicao__aquisicao',
+        ).prefetch_related('equipamentos_individualizados__equipamento'),
+        pk=item_id,
+        remessa_id=pk,
+        remessa__base_destino__in=bases,
+        produto__isnull=False,
+    )
+    if not IndividualizacaoRecebimentoService.pode_individualizar(
+        item_remessa=item,
+        usuario=request.user,
+    ):
+        raise PermissionDenied('Sem permissão para individualizar itens nesta Base.')
+    if item.quantidade_pendente_individualizacao <= 0:
+        messages.info(request, 'Todas as unidades recebidas já foram individualizadas.')
+        return redirect('compras:remessa_detalhe', pk=pk)
+
+    if request.method == 'POST':
+        form = IndividualizacaoEquipamentoForm(
+            request.POST,
+            request.FILES,
+            item_remessa=item,
+        )
+        if form.is_valid():
+            try:
+                equipamento = IndividualizacaoRecebimentoService.criar_unidade(
+                    item_remessa=item,
+                    usuario=request.user,
+                    dados=form.cleaned_data,
+                )
+            except (ValidationError, PermissionDenied) as exc:
+                form.add_error(None, '; '.join(getattr(exc, 'messages', [str(exc)])))
+            else:
+                item.refresh_from_db()
+                messages.success(
+                    request,
+                    f'Unidade {equipamento.codigo} individualizada com sucesso.',
+                )
+                if item.quantidade_pendente_individualizacao > 0:
+                    return redirect(
+                        'compras:remessa_individualizar_item',
+                        pk=pk,
+                        item_id=item.pk,
+                    )
+                return redirect('compras:individualizacao_pendentes')
+    else:
+        form = IndividualizacaoEquipamentoForm(item_remessa=item)
+
+    return render(request, 'compras/remessa_individualizar.html', {
+        'item': item,
+        'remessa': item.remessa,
+        'form': form,
+        'regras': form.regras,
+    })
+
+
+@login_required
+def individualizacoes_pendentes(request):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+        raise PermissionDenied('Sem permissão para individualizar equipamentos.')
+    from estoque.security import secure_base_queryset
+
+    bases = secure_base_queryset(
+        Base.objects.all(),
+        request.user,
+        action='CRIAR',
+    )
+    candidatos = (
+        ItemRemessaCompra.objects
+        .filter(
+            remessa__base_destino__in=bases,
+            produto__isnull=False,
+            quantidade_recebida__gt=0,
+        )
+        .select_related('produto', 'remessa__base_destino', 'remessa__empresa')
+        .prefetch_related('equipamentos_individualizados__equipamento')
+        .order_by('-remessa__atualizada_em', 'pk')[:250]
+    )
+    itens = [
+        item for item in candidatos
+        if item.quantidade_pendente_individualizacao > 0
+    ]
+    return render(request, 'compras/individualizacao_pendentes.html', {
+        'itens': itens,
+    })
 
 
 @login_required
@@ -867,13 +1356,60 @@ def importar_precificacao_equipamentos(request):
     return redirect('compras:valores_equipamentos')
 
 
+def _item_nfe_para_cadastro(request):
+    aquisicao_id = request.GET.get('aquisicao', '').strip()
+    item_id = request.GET.get('item_nfe', '').strip()
+    if not aquisicao_id and not item_id:
+        return None
+    if not aquisicao_id.isdigit() or not item_id.isdigit():
+        raise PermissionDenied('Referência de NF-e inválida.')
+    return get_object_or_404(
+        ItemNotaFiscalAquisicao.objects.select_related(
+            'nota_fiscal__aquisicao__empresa',
+        ).filter(
+            nota_fiscal__aquisicao__in=AquisicaoAccessPolicy.documentos(
+                request.user,
+            ),
+        ),
+        pk=item_id,
+        nota_fiscal__aquisicao_id=aquisicao_id,
+    )
+
+
 @login_required
 def criar_produto_catalogo(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied
-    form = ProdutoForm(request.POST or None, user=request.user)
+    item_nfe_origem = _item_nfe_para_cadastro(request)
+    initial = None
+    if item_nfe_origem is not None:
+        initial = {
+            'empresa_catalogo': item_nfe_origem.nota_fiscal.aquisicao.empresa_id,
+            'codigo': (
+                item_nfe_origem.codigo_fornecedor
+                or f'NFE-{item_nfe_origem.nota_fiscal.numero}-{item_nfe_origem.numero_item}'
+            )[:50],
+            'descricao': item_nfe_origem.descricao,
+            'nome_resumido': item_nfe_origem.descricao[:100],
+            'sku_fabricante': item_nfe_origem.codigo_fornecedor,
+            'unidade_medida': item_nfe_origem.unidade or 'UN',
+            'quantidade_embalagem': 1,
+            'ativo': True,
+        }
+    form = ProdutoForm(
+        request.POST or None,
+        user=request.user,
+        initial=initial,
+    )
+    if item_nfe_origem is not None:
+        empresa_origem = item_nfe_origem.nota_fiscal.aquisicao.empresa
+        form.fields['empresa_catalogo'].queryset = form.fields[
+            'empresa_catalogo'
+        ].queryset.filter(pk=empresa_origem.pk)
+        form.fields['empresa_catalogo'].initial = empresa_origem.pk
+        form.fields['empresa_catalogo'].disabled = True
     empresa_id_retorno = request.GET.get('empresa', '').strip()
-    if empresa_id_retorno.isdigit() and not request.POST:
+    if item_nfe_origem is None and empresa_id_retorno.isdigit() and not request.POST:
         empresa_permitida = ComprasAccessPolicy.empresas(
             request.user,
             action=ComprasAccessPolicy.CREATE,
@@ -910,6 +1446,14 @@ def criar_produto_catalogo(request):
                     produto=produto,
                     defaults={'ativo': True, 'configurado_por': request.user},
                 )
+
+                if item_nfe_origem is not None:
+                    CatalogoNFeService.confirmar_cadastro_assistido(
+                        item=item_nfe_origem,
+                        usuario=request.user,
+                        produto=produto,
+                        empresa=empresa_catalogo,
+                    )
 
                 solicitacao_id = request.GET.get('solicitacao', '').strip()
                 item_id = request.GET.get('item', '').strip()
@@ -965,6 +1509,11 @@ def criar_produto_catalogo(request):
                 request,
                 _('Novo item incluído no catálogo e disponibilizado nos filtros.'),
             )
+            if item_nfe_origem is not None:
+                return redirect(
+                    'compras:aquisicao_detalhe',
+                    pk=item_nfe_origem.nota_fiscal.aquisicao_id,
+                )
             if request.GET.get('solicitacao', '').isdigit():
                 return redirect(
                     'insumos:detalhe_solicitacao',
@@ -976,7 +1525,10 @@ def criar_produto_catalogo(request):
                 else 'estoque:cadastrar_equipamento'
             )
             return redirect(destino)
-    return render(request, 'compras/produto_form.html', {'form': form})
+    return render(request, 'compras/produto_form.html', {
+        'form': form,
+        'item_nfe_origem': item_nfe_origem,
+    })
 
 
 @login_required

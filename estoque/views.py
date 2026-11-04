@@ -487,11 +487,17 @@ def index(request):
     estoque_oculto_auditoria = bool(
         regional_id and regional_id.isdigit() and _base_em_auditoria(regional_id)
     )
+    inventory_informado = 'inventory' in request.GET
     inventory_id = request.GET.get('inventory')
     finalidade = request.GET.get('finalidade', '').strip().upper()
 
     if not perfil.is_admin and not request.user.is_superuser:
         inventory_id = str(perfil.empresa_id) if perfil.empresa_id else ''
+    elif not inventory_informado and perfil.empresa_id:
+        # A primeira carga deve consultar somente a empresa principal do Admin.
+        # O valor vazio continua significando "Todos" quando enviado
+        # explicitamente pelo formulário.
+        inventory_id = str(perfil.empresa_id)
 
     empresa_contexto = None
     if inventory_id and inventory_id.isdigit():

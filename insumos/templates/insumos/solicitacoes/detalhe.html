@@ -319,6 +319,30 @@
     </section>
 
 
+    {% if pode_gerenciar_cotacao %}
+        <section class="card border-primary shadow-sm mb-4">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                <div>
+                    <h2 class="h6 fw-semibold mb-1">
+                        <i class="bi bi-receipt-cutoff me-2 text-primary"></i>
+                        {% trans "Cotação com fornecedores" %}
+                    </h2>
+                    <p class="small text-secondary mb-0">
+                        {% trans "Registre propostas homologadas, compare condições e documente a decisão de compra." %}
+                    </p>
+                </div>
+                <a
+                    class="btn btn-primary"
+                    href="{% url 'compras:cotacao_solicitacao' solicitacao.pk %}"
+                >
+                    <i class="bi bi-arrow-right-circle me-1"></i>
+                    {% trans "Abrir cotação" %}
+                </a>
+            </div>
+        </section>
+    {% endif %}
+
+
     <!-- LINHA DO TEMPO AUDITÁVEL -->
     <section class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-body border-bottom py-3">
@@ -485,27 +509,21 @@
                         </p>
                     </div>
 
-                    <form
-                        method="post"
-                        action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}"
-                    >
-                        {% csrf_token %}
-
-                        <input
-                            type="hidden"
-                            name="acao"
-                            value="comprar"
-                        >
-
-                        <button
-                            class="btn btn-primary px-4"
-                            type="submit"
-                        >
-                            <i class="bi bi-cart-check me-1"></i>
-                            {% trans "Encaminhar para compra" %}
-                        </button>
-
-                    </form>
+                    {% if tem_processo_cotacao %}
+                        <a class="btn btn-primary px-4" href="{% url 'compras:cotacao_solicitacao' solicitacao.pk %}">
+                            <i class="bi bi-receipt-cutoff me-1"></i>
+                            {% trans "Continuar na cotação" %}
+                        </a>
+                    {% else %}
+                        <form method="post" action="{% url 'insumos:decidir_solicitacao' solicitacao.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="acao" value="comprar">
+                            <button class="btn btn-primary px-4" type="submit">
+                                <i class="bi bi-cart-check me-1"></i>
+                                {% trans "Encaminhar para compra" %}
+                            </button>
+                        </form>
+                    {% endif %}
 
                 </div>
 

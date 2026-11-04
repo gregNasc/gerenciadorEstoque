@@ -806,6 +806,9 @@ class EventoSolicitacaoInsumo(models.Model):
         RECEBIDA = 'RECEBIDA', _('Recebida')
         ATENDIDA = 'ATENDIDA', _('Atendida')
         ITEM_VINCULADO = 'ITEM_VINCULADO', _('Novo item vinculado ao catálogo')
+        COTACAO_ABERTA = 'COTACAO_ABERTA', _('Cotação aberta')
+        PROPOSTA_RECEBIDA = 'PROPOSTA_RECEBIDA', _('Proposta recebida')
+        COTACAO_DECIDIDA = 'COTACAO_DECIDIDA', _('Cotação decidida')
 
     solicitacao = models.ForeignKey(
         SolicitacaoInsumo,

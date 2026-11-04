@@ -1,0 +1,34 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Identificar recebimentos{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <h1 class="h3 mb-1">Equipamentos aguardando identificação</h1>
+  <p class="text-muted mb-0">Informe patrimônio, série e outros identificadores de cada unidade física recebida.</p>
+</div>
+
+<div class="alert alert-info">
+  Esta fila apresenta somente quantidades já conferidas nas Bases às quais você possui acesso. Dados financeiros não são exibidos.
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Modelo</th><th>Base</th><th>Recebidas</th><th>Identificadas</th><th>Pendentes</th><th class="text-end">Ação</th></tr></thead>
+      <tbody>
+        {% for item in itens %}
+          <tr>
+            <td><strong>{{ item.produto.descricao }}</strong><div class="small text-muted">{{ item.remessa.protocolo }}</div></td>
+            <td>{{ item.remessa.base_destino }}</td>
+            <td>{{ item.quantidade_recebida|floatformat:0 }}</td>
+            <td>{{ item.equipamentos_individualizados.count }}</td>
+            <td><span class="badge text-bg-warning">{{ item.quantidade_pendente_individualizacao|floatformat:0 }}</span></td>
+            <td class="text-end"><a class="btn btn-sm btn-primary" href="{% url 'compras:remessa_individualizar_item' item.remessa_id item.pk %}">Identificar unidade</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-5">Nenhum equipamento recebido aguarda identificação.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

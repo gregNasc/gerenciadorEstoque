@@ -1,1 +1,180 @@
-{% extends 'estoque/base.html' %}{% block title %}Aquisição {{ aquisicao }}{% endblock %}{% block content %}<div class="d-flex justify-content-between"><div><h1 class="h3">{{ aquisicao }}</h1><p>{{ aquisicao.empresa }} · {{ aquisicao.fornecedor }} · {{ aquisicao.get_status_display }}</p></div>{% if pode_gerenciar and aquisicao.status == 'RASCUNHO' %}<form method="post" action="{% url 'compras:aquisicao_aprovar' aquisicao.pk %}">{% csrf_token %}<button class="btn btn-success">Aprovar</button></form>{% endif %}</div><div class="row g-3 mb-3"><div class="col-md-4"><div class="card card-body"><small>DATA</small><b>{{ aquisicao.data_compra|date:'d/m/Y' }}</b></div></div><div class="col-md-4"><div class="card card-body"><small>PEDIDO / CENTRO DE CUSTO</small><b>{{ aquisicao.numero_pedido_compra|default:'-' }} / {{ aquisicao.centro_custo|default:'-' }}</b></div></div><div class="col-md-4"><div class="card card-body"><small>VALOR TOTAL</small><b>R$ {{ aquisicao.valor_total|floatformat:2 }}</b></div></div></div><div class="card mb-3"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Tipo</th><th>Item</th><th>Quantidade</th><th>Unitário</th><th>Total</th></tr></thead><tbody>{% for item in aquisicao.itens.all %}<tr><td>{{ item.get_tipo_item_display }}</td><td>{{ item.produto|default:item.insumo }}</td><td>{{ item.quantidade }}</td><td>R$ {{ item.valor_unitario|floatformat:2 }}</td><td>R$ {{ item.valor_total|floatformat:2 }}</td></tr>{% endfor %}</tbody></table></div></div><p>{% if aquisicao.arquivo_danfe_pdf %}<a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_documento' aquisicao.pk 'danfe' %}">Baixar DANFE</a>{% endif %} {% if aquisicao.arquivo_xml_nfe %}<a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_documento' aquisicao.pk 'xml' %}">Baixar XML</a>{% endif %}</p>{% endblock %}
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Aquisição" %} {{ aquisicao }}{% endblock %}
+
+{% block content %}
+<main class="container-fluid px-3 px-lg-4 py-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+        <div>
+            <a class="text-decoration-none text-secondary d-inline-flex align-items-center gap-1 mb-2" href="{% url 'compras:aquisicao_lista' %}">
+                <i class="bi bi-arrow-left"></i>{% trans "Voltar para aquisições" %}
+            </a>
+            <h1 class="h3 fw-bold mb-1">{{ aquisicao }}</h1>
+            <p class="text-secondary mb-0">
+                {{ aquisicao.empresa }} · {{ aquisicao.fornecedor }}
+                {% if aquisicao.base_destino %} · {{ aquisicao.base_destino.nome }}{% endif %}
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge rounded-pill px-3 py-2 fs-6 {% if aquisicao.status == 'APROVADA' or aquisicao.status == 'RECEBIDA' %}text-bg-success{% elif aquisicao.status == 'CANCELADA' %}text-bg-secondary{% else %}text-bg-primary{% endif %}">
+                {{ aquisicao.get_status_display }}
+            </span>
+            {% if pode_gerenciar and aquisicao.status == 'RASCUNHO' %}
+                <form method="post" action="{% url 'compras:aquisicao_aprovar' aquisicao.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-success" type="submit">
+                        <i class="bi bi-check2-circle me-1"></i>{% trans "Aprovar aquisição" %}
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if aquisicao.processo_cotacao %}
+        <section class="alert alert-info d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div>
+                <strong><i class="bi bi-link-45deg me-1"></i>{% trans "Origem rastreável" %}</strong>
+                <div class="small mt-1">
+                    {% trans "Gerada a partir da proposta escolhida na solicitação" %}
+                    {{ aquisicao.processo_cotacao.solicitacao.protocolo }}.
+                </div>
+            </div>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'compras:cotacao_solicitacao' aquisicao.processo_cotacao.solicitacao_id %}">
+                {% trans "Ver cotação" %}
+            </a>
+        </section>
+    {% endif %}
+
+    <section class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary mb-1">{% trans "Data" %}</div><div class="fw-bold">{{ aquisicao.data_compra|date:'d/m/Y' }}</div></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary mb-1">{% trans "Pedido de compra" %}</div><div class="fw-bold">{{ aquisicao.numero_pedido_compra|default:'-' }}</div></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary mb-1">{% trans "Centro de custo" %}</div><div class="fw-bold">{{ aquisicao.centro_custo|default:'-' }}</div></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="card border-primary shadow-sm h-100"><div class="card-body"><div class="small text-secondary mb-1">{% trans "Valor total" %}</div><div class="fs-5 fw-bold text-primary">R$ {{ aquisicao.valor_total|floatformat:2 }}</div></div></div></div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-body py-3"><h2 class="h5 mb-0">{% trans "Itens da aquisição" %}</h2></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th class="ps-4">{% trans "Tipo" %}</th><th>{% trans "Item" %}</th><th class="text-end">{% trans "Quantidade" %}</th><th class="text-end">{% trans "Valor unitário" %}</th><th class="text-end pe-4">{% trans "Total" %}</th></tr></thead>
+                <tbody>
+                    {% for item in aquisicao.itens.all %}
+                        <tr>
+                            <td class="ps-4">{{ item.get_tipo_item_display }}</td>
+                            <td><strong>{{ item.produto|default:item.insumo }}</strong>{% if item.observacao %}<div class="small text-secondary">{{ item.observacao }}</div>{% endif %}</td>
+                            <td class="text-end">{{ item.quantidade|floatformat:2 }}</td>
+                            <td class="text-end">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+                            <td class="text-end pe-4">R$ {{ item.valor_total|floatformat:2 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td class="text-center text-secondary py-5" colspan="5">{% trans "Nenhum item registrado." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+                {% if aquisicao.proposta_origem %}
+                    <tfoot class="table-light">
+                        <tr><th colspan="4" class="text-end">{% trans "Frete da proposta" %}</th><td class="text-end pe-4">R$ {{ aquisicao.frete_cotacao|floatformat:2 }}</td></tr>
+                        <tr><th colspan="4" class="text-end">{% trans "Impostos da proposta" %}</th><td class="text-end pe-4">R$ {{ aquisicao.impostos_cotacao|floatformat:2 }}</td></tr>
+                        <tr><th colspan="4" class="text-end">{% trans "Desconto da proposta" %}</th><td class="text-end pe-4">− R$ {{ aquisicao.desconto_cotacao|floatformat:2 }}</td></tr>
+                        <tr><th colspan="4" class="text-end fs-6">{% trans "Total final" %}</th><td class="text-end pe-4 fs-6 fw-bold">R$ {{ aquisicao.valor_total|floatformat:2 }}</td></tr>
+                    </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </section>
+
+    {% if aquisicao.observacao %}
+        <section class="card border-0 shadow-sm mb-4"><div class="card-body"><h2 class="h6 fw-semibold">{% trans "Observação" %}</h2><div>{{ aquisicao.observacao|linebreaksbr }}</div></div></section>
+    {% endif %}
+
+    {% if pode_baixar_documentos %}
+        <div class="d-flex gap-2 flex-wrap mb-4">
+            {% if aquisicao.arquivo_danfe_pdf %}<a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_documento' aquisicao.pk 'danfe' %}"><i class="bi bi-file-earmark-pdf me-1"></i>{% trans "Baixar DANFE" %}</a>{% endif %}
+            {% if aquisicao.arquivo_xml_nfe %}<a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_documento' aquisicao.pk 'xml' %}"><i class="bi bi-filetype-xml me-1"></i>{% trans "Baixar XML" %}</a>{% endif %}
+            {% if aquisicao.arquivo_xml_nfe %}
+                <form method="post" action="{% url 'compras:aquisicao_processar_xml' aquisicao.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-primary" type="submit">
+                        <i class="bi bi-file-earmark-code me-1"></i>
+                        {% if aquisicao.nota_fiscal %}{% trans "Conferir XML novamente" %}{% else %}{% trans "Ler dados do XML" %}{% endif %}
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+
+        {% if aquisicao.nota_fiscal %}
+            {% with nota=aquisicao.nota_fiscal %}
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-body py-3 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                        <div>
+                            <h2 class="h5 mb-1">{% trans "Dados lidos da NF-e" %}</h2>
+                            <p class="small text-secondary mb-0">{% trans "Informações extraídas diretamente do XML, sem cadastro automático de produtos." %}</p>
+                        </div>
+                        <span class="badge rounded-pill {% if nota.situacao == 'PROCESSADA' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                            {{ nota.get_situacao_display }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        {% if nota.divergencias %}
+                            <div class="alert alert-warning">
+                                <strong>{% trans "Confira antes de receber:" %}</strong>
+                                <ul class="mb-0 mt-2">
+                                    {% for divergencia in nota.divergencias %}<li>{{ divergencia }}</li>{% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4"><div class="small text-secondary">{% trans "NF-e / série" %}</div><strong>{{ nota.numero }} / {{ nota.serie|default:'-' }}</strong></div>
+                            <div class="col-md-4"><div class="small text-secondary">{% trans "Emissão" %}</div><strong>{{ nota.data_emissao|date:'d/m/Y H:i'|default:'-' }}</strong></div>
+                            <div class="col-md-4"><div class="small text-secondary">{% trans "Emitente" %}</div><strong>{{ nota.emitente_nome|default:'-' }}</strong><div class="small">{{ nota.emitente_cnpj|default:'-' }}</div></div>
+                            <div class="col-12"><div class="small text-secondary">{% trans "Chave de acesso" %}</div><code class="text-break">{{ nota.chave_acesso }}</code></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead class="table-light"><tr><th>#</th><th>{% trans "Código" %}</th><th>{% trans "Descrição" %}</th><th>{% trans "EAN/GTIN" %}</th><th>{% trans "NCM" %}</th><th>{% trans "CFOP" %}</th><th>{% trans "Unidade" %}</th><th class="text-end">{% trans "Quantidade" %}</th><th class="text-end">{% trans "Valor unitário" %}</th><th class="text-end">{% trans "Total" %}</th><th>{% trans "Catálogo" %}</th></tr></thead>
+                                <tbody>
+                                    {% for item in nota.itens.all %}
+                                        <tr>
+                                            <td>{{ item.numero_item }}</td><td>{{ item.codigo_fornecedor|default:'-' }}</td><td>{{ item.descricao }}</td><td>{{ item.ean_gtin|default:'-' }}</td><td>{{ item.ncm|default:'-' }}</td><td>{{ item.cfop|default:'-' }}</td><td>{{ item.unidade|default:'-' }}</td><td class="text-end">{{ item.quantidade|floatformat:4 }}</td><td class="text-end">R$ {{ item.valor_unitario|floatformat:4 }}</td><td class="text-end">R$ {{ item.valor_total|floatformat:2 }}</td>
+                                            <td style="min-width: 230px;">
+                                                {% if item.status_catalogo == 'CONFIRMADO' %}
+                                                    <span class="badge text-bg-success">{% trans "Confirmado" %}</span>
+                                                    <div class="small mt-1">{{ item.produto_catalogo|default:item.insumo_catalogo }}</div>
+                                                {% elif item.status_catalogo == 'SUGERIDO' %}
+                                                    <span class="badge text-bg-warning">{% trans "Sugestão" %}</span>
+                                                    <div class="small mt-1">{{ item.produto_catalogo|default:item.insumo_catalogo }}</div>
+                                                    <div class="small text-secondary">{% trans "Critério:" %} {{ item.criterio_catalogo }}</div>
+                                                    <form class="mt-2" method="post" action="{% url 'compras:aquisicao_confirmar_item_nfe_catalogo' aquisicao.pk item.pk %}">
+                                                        {% csrf_token %}
+                                                        <button class="btn btn-sm btn-outline-success" type="submit">{% trans "Confirmar correspondência" %}</button>
+                                                    </form>
+                                                {% else %}
+                                                    <span class="badge text-bg-secondary">{% trans "Não encontrado" %}</span>
+                                                    <div class="small text-secondary mt-1">
+                                                        {% if item.criterio_catalogo %}{{ item.criterio_catalogo }}. {% endif %}{% trans "Nenhum cadastro foi criado." %}
+                                                    </div>
+                                                    <div class="d-flex flex-wrap gap-1 mt-2">
+                                                        <a class="btn btn-sm btn-outline-primary" href="{% url 'compras:criar_produto_catalogo' %}?aquisicao={{ aquisicao.pk }}&amp;item_nfe={{ item.pk }}">{% trans "Cadastrar equipamento" %}</a>
+                                                        <a class="btn btn-sm btn-outline-primary" href="{% url 'insumos:criar_item_insumo' %}?aquisicao={{ aquisicao.pk }}&amp;item_nfe={{ item.pk }}">{% trans "Cadastrar insumo" %}</a>
+                                                    </div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr><th colspan="9" class="text-end">{% trans "Produtos" %}</th><td class="text-end">R$ {{ nota.valor_produtos|floatformat:2 }}</td><td></td></tr>
+                                    <tr><th colspan="9" class="text-end">{% trans "Frete" %}</th><td class="text-end">R$ {{ nota.valor_frete|floatformat:2 }}</td><td></td></tr>
+                                    <tr><th colspan="9" class="text-end">{% trans "Desconto" %}</th><td class="text-end">− R$ {{ nota.valor_desconto|floatformat:2 }}</td><td></td></tr>
+                                    <tr><th colspan="9" class="text-end">{% trans "Tributos destacados" %}</th><td class="text-end">R$ {{ nota.valor_impostos|floatformat:2 }}</td><td></td></tr>
+                                    <tr><th colspan="9" class="text-end">{% trans "Total da NF-e" %}</th><td class="text-end fw-bold">R$ {{ nota.valor_nota|floatformat:2 }}</td><td></td></tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            {% endwith %}
+        {% endif %}
+    {% endif %}
+</main>
+{% endblock %}

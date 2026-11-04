@@ -299,17 +299,28 @@
 
                         <i class="bi bi-clipboard-check"></i>
                         {% trans "Solicitações" %}
+                        {% if solicitacoes_pendentes > 0 %}
+                            <span class="badge rounded-pill text-bg-warning text-dark ms-1 badge-notificacao">
+                                {{ solicitacoes_pendentes }}
+                            </span>
+                        {% endif %}
                     </a>
 
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
 
                         {% if 'insumos' in tenant_features %}
                         <li>
-                            <a class="dropdown-item {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' %}active{% endif %}"
+                            <a class="dropdown-item d-flex justify-content-between align-items-center {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'criar_solicitacao_insumo' or url_name == 'detalhe_solicitacao' %}active{% endif %}"
                                href="{% url 'insumos:lista_solicitacoes_insumo' %}">
-
-                                <i class="bi bi-box-seam me-2"></i>
-                                {% trans "Solicitações de insumos" %}
+                                <span>
+                                    <i class="bi bi-box-seam me-2"></i>
+                                    {% trans "Solicitações de insumos" %}
+                                </span>
+                                {% if solicitacoes_pendentes > 0 %}
+                                    <span class="badge rounded-pill text-bg-danger">
+                                        {{ solicitacoes_pendentes }}
+                                    </span>
+                                {% endif %}
                             </a>
                         </li>
                         {% endif %}
@@ -486,12 +497,6 @@
                                     {% trans "Pedidos" %}
                                 </span>
 
-                                {% if solicitacoes_pendentes > 0 %}
-                                    <span class="badge rounded-pill text-bg-danger">
-                                        {{ solicitacoes_pendentes }}
-                                    </span>
-                                {% endif %}
-
                             </a>
 
                         </li>
@@ -661,7 +666,7 @@
                 {% if perfil.role == 'admin' or perfil.role == 'gestor' %}
                 <li class="nav-item dropdown">
 
-                    <a class="nav-link dropdown-toggle {% if url_name == 'cadastrar_equipamento' or url_name == 'lista_insumos' or url_name == 'cadastrar_insumo' or url_name == 'editar_insumo' or url_name == 'lista_linhas_moveis' or url_name == 'criar_linha_movel' or url_name == 'editar_linha_movel' or url_name == 'operadoras_moveis' or url_name == 'editar_operadora_movel' or url_name == 'credenciais_linha_movel' %}active{% endif %}"
+                    <a class="nav-link dropdown-toggle {% if url_name == 'cadastrar_equipamento' or url_name == 'individualizacao_pendentes' or url_name == 'remessa_individualizar_item' or url_name == 'lista_insumos' or url_name == 'cadastrar_insumo' or url_name == 'editar_insumo' or url_name == 'lista_linhas_moveis' or url_name == 'criar_linha_movel' or url_name == 'editar_linha_movel' or url_name == 'operadoras_moveis' or url_name == 'editar_operadora_movel' or url_name == 'credenciais_linha_movel' %}active{% endif %}"
                        href="#"
                        id="cadastrosDropdown"
                        role="button"
@@ -684,6 +689,14 @@
                                 {{ tenant_labels.equipamento.plural }}
                             </a>
                         </li>
+                        {% if pode_gerenciar_catalogo %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'compras:individualizacao_pendentes' %}">
+                                <i class="bi bi-upc-scan"></i>
+                                {% trans "Identificar recebimentos" %}
+                            </a>
+                        </li>
+                        {% endif %}
                         {% if pode_acessar_linhas_moveis %}
                         <li>
                             <a class="dropdown-item"

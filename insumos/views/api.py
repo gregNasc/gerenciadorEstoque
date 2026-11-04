@@ -762,20 +762,65 @@ def criar_item_insumo(request):
     if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
         raise PermissionDenied('Sem permissao para cadastrar insumos.')
 
+    item_nfe_origem = None
+    aquisicao_id = request.GET.get('aquisicao', '').strip()
+    item_nfe_id = request.GET.get('item_nfe', '').strip()
+    if aquisicao_id or item_nfe_id:
+        if not aquisicao_id.isdigit() or not item_nfe_id.isdigit():
+            raise PermissionDenied('Referência de NF-e inválida.')
+        from compras.models import ItemNotaFiscalAquisicao
+        from compras.policies import AquisicaoAccessPolicy
+
+        item_nfe_origem = get_object_or_404(
+            ItemNotaFiscalAquisicao.objects.select_related(
+                'nota_fiscal__aquisicao__empresa',
+                'nota_fiscal__aquisicao__base_destino',
+            ).filter(
+                nota_fiscal__aquisicao__in=AquisicaoAccessPolicy.documentos(
+                    request.user,
+                ),
+            ),
+            pk=item_nfe_id,
+            nota_fiscal__aquisicao_id=aquisicao_id,
+        )
+
     base_inicial = None
-    base_id = request.GET.get('base', '').strip()
+    base_id = (
+        str(item_nfe_origem.nota_fiscal.aquisicao.base_destino_id or '')
+        if item_nfe_origem is not None
+        else request.GET.get('base', '').strip()
+    )
     if base_id.isdigit():
         base_inicial = InsumosTenantPolicy.bases(
             request.user,
             resource=InsumosTenantPolicy.SUPPLIES,
             action=InsumosTenantPolicy.EDIT,
         ).filter(pk=base_id).select_related('empresa').first()
+    initial = {'base_lote': base_inicial} if base_inicial else {}
+    if item_nfe_origem is not None:
+        initial.update({
+            'descricao': item_nfe_origem.descricao,
+            'termo_pesquisa_online': item_nfe_origem.descricao,
+            'unidade_medida': item_nfe_origem.unidade or 'UN',
+            'ativo': True,
+        })
     form = InsumoForm(
         request.POST or None,
         request.FILES or None,
         user=request.user,
-        initial={'base_lote': base_inicial} if base_inicial else None,
+        initial=initial or None,
     )
+    if item_nfe_origem is not None:
+        empresa_origem = item_nfe_origem.nota_fiscal.aquisicao.empresa
+        form.fields['base_lote'].queryset = form.fields['base_lote'].queryset.filter(
+            empresa=empresa_origem,
+        )
+        form.fields['base_lote'].required = True
+        form.fields['base_lote'].help_text = (
+            'Selecione a Base desta empresa. O insumo só será criado após salvar.'
+        )
+        if base_inicial:
+            form.fields['base_lote'].initial = base_inicial.pk
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
             insumo = form.save()
@@ -799,6 +844,18 @@ def criar_item_insumo(request):
                         codigo=f'INS-{base_catalogo.empresa_id}-{insumo.pk}',
                         criado_por=request.user,
                     )
+
+            if item_nfe_origem is not None:
+                if not base_catalogo:
+                    raise ValidationError('Selecione a Base para vincular o insumo à empresa.')
+                from compras.nfe import CatalogoNFeService
+
+                CatalogoNFeService.confirmar_cadastro_assistido(
+                    item=item_nfe_origem,
+                    usuario=request.user,
+                    insumo=insumo,
+                    empresa=base_catalogo.empresa,
+                )
 
             solicitacao_id = request.GET.get('solicitacao', '').strip()
             item_id = request.GET.get('item', '').strip()
@@ -832,6 +889,11 @@ def criar_item_insumo(request):
                     observacao='Item autorizado e criado a partir da solicitação.',
                 )
         messages.success(request, 'Insumo cadastrado com sucesso.')
+        if item_nfe_origem is not None:
+            return redirect(
+                'compras:aquisicao_detalhe',
+                pk=item_nfe_origem.nota_fiscal.aquisicao_id,
+            )
         if request.GET.get('solicitacao', '').isdigit():
             return redirect(
                 'insumos:detalhe_solicitacao',
@@ -839,7 +901,10 @@ def criar_item_insumo(request):
             )
         return redirect('insumos:editar_insumos', pk=insumo.pk)
 
-    return render(request, 'insumos/criar_insumo.html', {'form': form})
+    return render(request, 'insumos/criar_insumo.html', {
+        'form': form,
+        'item_nfe_origem': item_nfe_origem,
+    })
 
 
 @login_required

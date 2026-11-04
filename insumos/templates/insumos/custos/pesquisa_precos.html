@@ -87,7 +87,7 @@
         <label class="form-label" for="fonte-pesquisa">{% trans "Fornecedor" %}</label>
         <select class="form-select" id="fonte-pesquisa" name="fonte">
           <option value="">{% trans "Selecione" %}</option>
-          {% for item in fontes %}{% if item.habilitada and item.codigo != 'comparar' and item.codigo != 'comparar_gimba_fidelity' and item.codigo != 'gimba_fidelity' %}
+          {% for item in fontes %}{% if item.habilitada %}
           <option value="{{ item.codigo }}" {% if fonte == item.codigo %}selected{% endif %}>{{ item.nome }}</option>
           {% endif %}{% endfor %}
         </select>
@@ -101,12 +101,12 @@
           <div id="buy-provider-dropdown" class="buy-provider-dropdown" hidden>
             <input class="form-control form-control-sm" id="buy-provider-filter" type="search" placeholder="{% trans 'Buscar fornecedor...' %}" aria-label="{% trans 'Filtrar fornecedores' %}">
             <div class="buy-provider-list" id="buy-provider-list">
-              {% for item in fontes %}{% if item.codigo != 'comparar' and item.codigo != 'comparar_gimba_fidelity' and item.codigo != 'gimba_fidelity' %}
+              {% for item in fontes %}
               <label class="buy-provider-option {% if not item.habilitada %}is-disabled{% endif %}">
                 <input class="buy-provider-check" type="checkbox" name="fontes" value="{{ item.codigo }}" data-name="{{ item.nome }}" {% if not item.habilitada %}disabled{% endif %} {% if item.codigo in fontes_selecionadas %}checked{% endif %}>
                 <span>{{ item.nome }}{% if not item.habilitada %} ({% trans "indisponível" %}){% endif %}</span>
               </label>
-              {% endif %}{% endfor %}
+              {% endfor %}
             </div>
             <div class="buy-provider-actions"><button type="button" class="btn btn-link btn-sm p-0" id="buy-select-all">{% trans "Selecionar todos" %}</button><button type="button" class="btn btn-link btn-sm p-0" id="buy-clear-all">{% trans "Limpar" %}</button><button type="button" class="btn btn-primary btn-sm" id="buy-provider-done">{% trans "Concluir" %}</button></div>
           </div>
@@ -150,7 +150,6 @@
   'use strict';
 
   // Interface para pesquisa individual ou múltipla.
-  // No modo comparar, a view deve ler request.POST.getlist('fontes').
   const searchForm = document.getElementById('buy-search-form');
   const modeSingle = document.getElementById('buy-mode-single');
   const modeCompare = document.getElementById('buy-mode-compare');

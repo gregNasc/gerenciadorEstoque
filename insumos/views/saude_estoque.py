@@ -20,7 +20,14 @@ def pode_visualizar_saude_estoque(user):
     perfil = getattr(user, 'perfil', None)
     return bool(
         user.is_superuser
-        or (perfil and (perfil.is_admin or perfil.is_executivo_insumos))
+        or (
+            perfil
+            and (
+                perfil.is_admin
+                or perfil.is_compras_insumos
+                or perfil.is_executivo_insumos
+            )
+        )
     )
 
 

@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from compras.models import (
     Aquisicao,
     CatalogoProdutoEmpresa,
+    FornecedorEmpresa,
     HistoricoPrecoProduto,
     HistoricoValorEquipamento,
     ItemAquisicao,
@@ -39,6 +40,13 @@ class ComprasRemessasTests(TestCase):
         self.gestor = self._usuario('gestor_destino', Perfil.Role.GESTOR, self.base)
         self.fornecedor = FornecedorInsumo.objects.create(
             nome='Fornecedor Compras', documento='12345678000190'
+        )
+        FornecedorEmpresa.objects.create(
+            empresa=self.empresa,
+            fornecedor=self.fornecedor,
+            status=FornecedorEmpresa.Status.HOMOLOGADO,
+            cadastrado_por=self.admin,
+            homologado_por=self.admin,
         )
         categoria = CategoriaInsumo.objects.create(nome='Categoria Compras')
         self.insumo = Insumo.objects.create(

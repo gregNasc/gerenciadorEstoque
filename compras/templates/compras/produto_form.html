@@ -10,7 +10,7 @@
 
         <!-- Navegação -->
         <div class="mb-3">
-            <a href="{% url 'compras:valores_equipamentos' %}"
+            <a href="{% if item_nfe_origem %}{% url 'compras:aquisicao_detalhe' item_nfe_origem.nota_fiscal.aquisicao_id %}{% else %}{% url 'compras:valores_equipamentos' %}{% endif %}"
                class="text-decoration-none text-secondary small">
                 <i class="bi bi-arrow-left me-1"></i>
                 {% trans "Voltar para valores de equipamentos" %}
@@ -38,6 +38,17 @@
 
             </div>
         </div>
+
+        {% if item_nfe_origem %}
+            <div class="alert alert-info d-flex gap-2 align-items-start">
+                <i class="bi bi-file-earmark-code mt-1"></i>
+                <div>
+                    <strong>{% trans "Cadastro assistido pela NF-e" %}</strong>
+                    <div class="small mt-1">{% trans "Revise os dados sugeridos. O equipamento só será criado ao selecionar Salvar item." %}</div>
+                    <div class="small mt-1"><strong>{% trans "Descrição fiscal:" %}</strong> {{ item_nfe_origem.descricao }}</div>
+                </div>
+            </div>
+        {% endif %}
 
         <!-- Formulário -->
         <form method="post" novalidate>
@@ -162,7 +173,7 @@
                     <div class="d-flex flex-column-reverse flex-sm-row justify-content-end gap-2">
 
                         <a class="btn btn-outline-secondary px-4"
-                           href="{% url 'compras:valores_equipamentos' %}">
+                           href="{% if item_nfe_origem %}{% url 'compras:aquisicao_detalhe' item_nfe_origem.nota_fiscal.aquisicao_id %}{% else %}{% url 'compras:valores_equipamentos' %}{% endif %}">
                             {% trans "Cancelar" %}
                         </a>
 

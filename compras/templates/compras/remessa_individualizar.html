@@ -1,0 +1,57 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Individualizar unidade{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="h3 mb-1">Identificar unidade recebida</h1>
+    <p class="text-muted mb-0">{{ item.produto.descricao }} · {{ remessa.base_destino }}</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'compras:remessa_detalhe' remessa.pk %}">Voltar ao recebimento</a>
+</div>
+
+<div class="alert alert-info">
+  <strong>{{ item.quantidade_pendente_individualizacao|floatformat:0 }} unidade(s) pendente(s).</strong>
+  Cadastre uma unidade física por vez. O sistema não cria patrimônio, série ou IMEI automaticamente.
+</div>
+
+{% if item.equipamentos_individualizados.all %}
+<section class="card mb-4">
+  <div class="card-header"><h2 class="h5 mb-0">Unidades já identificadas</h2></div>
+  <ul class="list-group list-group-flush">
+    {% for vinculo in item.equipamentos_individualizados.all %}
+      <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
+        <strong>{{ vinculo.equipamento.codigo }}</strong>
+        <span>
+          {% if vinculo.equipamento.patrimonio %}Patrimônio: {{ vinculo.equipamento.patrimonio }}{% endif %}
+          {% if vinculo.equipamento.numero_serie %} · Série: {{ vinculo.equipamento.numero_serie }}{% endif %}
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="card">
+  {% csrf_token %}
+  <div class="card-header"><h2 class="h5 mb-0">Dados da próxima unidade</h2></div>
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="row g-3">
+      {% if regras.possui_patrimonio %}<div class="col-md-6"><label class="form-label" for="{{ form.patrimonio.id_for_label }}">{{ form.patrimonio.label }}</label>{{ form.patrimonio }}{{ form.patrimonio.errors }}</div>{% endif %}
+      {% if regras.possui_serie %}<div class="col-md-6"><label class="form-label" for="{{ form.numero_serie.id_for_label }}">{{ form.numero_serie.label }}</label>{{ form.numero_serie }}{{ form.numero_serie.errors }}</div>{% endif %}
+      {% if regras.possui_imei %}
+        <div class="col-md-6"><label class="form-label" for="{{ form.imei_1.id_for_label }}">{{ form.imei_1.label }}</label>{{ form.imei_1 }}{{ form.imei_1.errors }}</div>
+        <div class="col-md-6"><label class="form-label" for="{{ form.imei_2.id_for_label }}">{{ form.imei_2.label }}</label>{{ form.imei_2 }}{{ form.imei_2.errors }}</div>
+      {% endif %}
+      <div class="col-md-6"><label class="form-label" for="{{ form.finalidade.id_for_label }}">{{ form.finalidade.label }}</label>{{ form.finalidade }}{{ form.finalidade.errors }}</div>
+      <div class="col-md-6"><label class="form-label" for="{{ form.responsavel.id_for_label }}">{{ form.responsavel.label }}</label>{{ form.responsavel }}{{ form.responsavel.errors }}</div>
+      <div class="col-12"><label class="form-label" for="{{ form.observacao_operacional.id_for_label }}">{{ form.observacao_operacional.label }}</label>{{ form.observacao_operacional }}{{ form.observacao_operacional.errors }}</div>
+      <div class="col-12"><label class="form-label" for="{{ form.foto.id_for_label }}">{{ form.foto.label }}</label>{{ form.foto }}{{ form.foto.errors }}</div>
+    </div>
+  </div>
+  <div class="card-footer d-flex justify-content-end gap-2">
+    <a class="btn btn-light" href="{% url 'compras:remessa_detalhe' remessa.pk %}">Cancelar</a>
+    <button class="btn btn-primary">Salvar esta unidade</button>
+  </div>
+</form>
+{% endblock %}

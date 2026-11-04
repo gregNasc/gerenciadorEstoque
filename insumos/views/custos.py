@@ -386,9 +386,25 @@ def pesquisa_precos_online(request):
     insumo = Insumo.objects.filter(pk=insumo_id, ativo=True).first()
     termo = (request.POST.get('termo') or request.GET.get('termo') or '').strip()
     fonte = (request.POST.get('fonte') or request.GET.get('fonte') or '').strip().upper()
+    modo_pesquisa = (
+        request.POST.get('modo_pesquisa')
+        or request.GET.get('modo_pesquisa')
+        or ('comparar' if fonte == PrecoOnlineService.FONTE_COMPARATIVO else 'individual')
+    ).strip().lower()
+    if modo_pesquisa not in {'individual', 'comparar'}:
+        modo_pesquisa = 'individual'
+    fontes_selecionadas = [
+        str(codigo).strip().upper()
+        for codigo in (
+            request.POST.getlist('fontes')
+            if request.method == 'POST'
+            else request.GET.getlist('fontes')
+        )
+        if codigo
+    ]
     fontes = PrecoOnlineService.fontes_disponiveis()
     fontes_habilitadas = [item for item in fontes if item['habilitada']]
-    if not fonte and fontes_habilitadas:
+    if modo_pesquisa == 'individual' and not fonte and fontes_habilitadas:
         fonte = fontes_habilitadas[0]['codigo']
     try:
         quantidade = Decimal(request.POST.get('quantidade') or request.GET.get('quantidade') or '1')
@@ -404,23 +420,34 @@ def pesquisa_precos_online(request):
             messages.error(request, _('Selecione um insumo para pesquisar.'))
         else:
             try:
-                nova_pesquisa = PrecoOnlineService.pesquisar(
-                    insumo=insumo,
-                    termo=termo or insumo.termo_pesquisa_online or insumo.descricao,
-                    usuario=request.user,
-                    empresa=empresa,
-                    fonte=fonte,
-                )
+                argumentos = {
+                    'insumo': insumo,
+                    'termo': termo or insumo.termo_pesquisa_online or insumo.descricao,
+                    'usuario': request.user,
+                    'empresa': empresa,
+                }
+                if modo_pesquisa == 'comparar':
+                    nova_pesquisa = PrecoOnlineService.pesquisar_multiplas(
+                        fontes=fontes_selecionadas,
+                        **argumentos,
+                    )
+                else:
+                    nova_pesquisa = PrecoOnlineService.pesquisar(
+                        fonte=fonte,
+                        **argumentos,
+                    )
                 for aviso in getattr(nova_pesquisa, 'avisos', []):
                     messages.warning(request, aviso)
                 messages.success(request, _('Pesquisa de preços atualizada.'))
-                parametros = urlencode({
-                    'insumo': insumo.id,
-                    'quantidade': quantidade,
-                    'termo': nova_pesquisa.termo,
-                    'fonte': nova_pesquisa.fonte,
-                    'empresa': empresa.pk,
-                })
+                parametros = urlencode([
+                    ('insumo', insumo.id),
+                    ('quantidade', quantidade),
+                    ('termo', nova_pesquisa.termo),
+                    ('fonte', nova_pesquisa.fonte),
+                    ('empresa', empresa.pk),
+                    ('modo_pesquisa', modo_pesquisa),
+                    *[('fontes', codigo) for codigo in fontes_selecionadas],
+                ])
                 return redirect(
                     f"{reverse('insumos:pesquisa_precos_online')}?{parametros}"
                 )
@@ -434,8 +461,13 @@ def pesquisa_precos_online(request):
             request.user,
             PesquisaPrecoOnline.objects.filter(insumo=insumo),
         ).filter(empresa=empresa)
-        if fonte:
-            pesquisas = pesquisas.filter(fonte=fonte)
+        fonte_consulta = (
+            PrecoOnlineService.FONTE_COMPARATIVO
+            if modo_pesquisa == 'comparar'
+            else fonte
+        )
+        if fonte_consulta:
+            pesquisas = pesquisas.filter(fonte=fonte_consulta)
         pesquisa = pesquisas.first()
         if pesquisa:
             ofertas = pesquisa.ofertas.select_related('insumo').order_by('preco_total', 'titulo')
@@ -454,6 +486,7 @@ def pesquisa_precos_online(request):
     for oferta in ofertas_lista:
         melhores_por_fonte.setdefault(oferta.fonte, oferta)
     fontes_por_codigo = {item['codigo']: item for item in fontes}
+    codigos_comparados = fontes_selecionadas or sorted(melhores_por_fonte)
     comparacao_fornecedores = [
         {
             'codigo': codigo,
@@ -461,7 +494,8 @@ def pesquisa_precos_online(request):
             'habilitada': fontes_por_codigo[codigo]['habilitada'],
             'oferta': melhores_por_fonte.get(codigo),
         }
-        for codigo in ('GIMBA', 'FIDELITY')
+        for codigo in codigos_comparados
+        if codigo in fontes_por_codigo
     ] if pesquisa and pesquisa.fonte == PrecoOnlineService.FONTE_COMPARATIVO else []
     menor = ofertas_lista[0].preco_total if ofertas_lista else Decimal('0')
     maior = max((oferta.preco_total for oferta in ofertas_lista), default=Decimal('0'))
@@ -487,6 +521,8 @@ def pesquisa_precos_online(request):
         ),
         'fonte': fonte,
         'fontes': fontes,
+        'modo_pesquisa': modo_pesquisa,
+        'fontes_selecionadas': fontes_selecionadas,
         'quantidade': quantidade,
         'pesquisa': pesquisa,
         'ofertas': ofertas_lista,

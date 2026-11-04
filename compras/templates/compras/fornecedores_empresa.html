@@ -1,0 +1,31 @@
+{% extends 'estoque/base.html' %}
+{% block title %}Fornecedores homologados{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div><h1 class="h3 mb-1">Fornecedores homologados</h1><p class="text-secondary mb-0">Defina quais fornecedores sua empresa pode usar em novas aquisições.</p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_lista' %}">Voltar às aquisições</a>
+</div>
+<div class="alert alert-info"><strong>Privacidade por empresa:</strong> informe o CNPJ exato. O diretório global não é exibido e nenhuma homologação é compartilhada automaticamente.</div>
+<div class="row g-3 align-items-start">
+    <section class="col-xl-4"><div class="card"><div class="card-header"><strong>Vincular fornecedor</strong></div><div class="card-body">
+        <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="acao" value="registrar">
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+            {% for field in form %}<div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+            <button class="btn btn-primary w-100" type="submit">Localizar e vincular</button>
+        </form>
+    </div></div></section>
+    <section class="col-xl-8"><div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap"><strong>Fornecedores desta empresa</strong><form method="get" class="d-flex gap-2 align-items-center"><label for="empresa-filtro" class="visually-hidden">Empresa</label><select id="empresa-filtro" name="empresa" class="form-select" onchange="this.form.submit()">{% for empresa in form.fields.empresa.queryset %}<option value="{{ empresa.pk }}" {% if empresa_selecionada.pk == empresa.pk %}selected{% endif %}>{{ empresa.nome }}</option>{% endfor %}</select><noscript><button class="btn btn-outline-primary">Carregar</button></noscript></form></div>
+        <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Fornecedor</th><th>CNPJ</th><th>Status</th><th>Homologação</th><th class="text-end">Alterar status</th></tr></thead>
+            <tbody>{% for relacionamento in relacionamentos %}<tr>
+                <td><strong>{{ relacionamento.fornecedor.nome }}</strong>{% if relacionamento.codigo_interno %}<div class="small text-secondary">Código: {{ relacionamento.codigo_interno }}</div>{% endif %}</td>
+                <td>{{ relacionamento.fornecedor.cnpj_formatado }}</td>
+                <td><span class="badge {% if relacionamento.status == 'HOMOLOGADO' %}text-bg-success{% elif relacionamento.status == 'SUSPENSO' %}text-bg-warning{% elif relacionamento.status == 'INATIVO' %}text-bg-secondary{% else %}text-bg-info{% endif %}">{{ relacionamento.get_status_display }}</span></td>
+                <td>{% if relacionamento.homologado_em %}{{ relacionamento.homologado_em|date:'d/m/Y H:i' }}<div class="small text-secondary">por {{ relacionamento.homologado_por.get_username }}</div>{% else %}Ainda não homologado{% endif %}</td>
+                <td class="text-end"><form method="post" class="d-flex gap-2 justify-content-end">{% csrf_token %}<input type="hidden" name="acao" value="alterar_status"><input type="hidden" name="relacionamento_id" value="{{ relacionamento.pk }}"><select name="status" class="form-select form-select-sm" aria-label="Novo status de {{ relacionamento.fornecedor.nome }}">{% for valor, rotulo in status_choices %}<option value="{{ valor }}" {% if relacionamento.status == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select><button class="btn btn-sm btn-outline-primary" type="submit">Salvar</button></form></td>
+            </tr>{% empty %}<tr><td colspan="5" class="text-center text-secondary py-5">Nenhum fornecedor vinculado a esta empresa.</td></tr>{% endfor %}</tbody>
+        </table></div>
+    </div></section>
+</div>
+{% endblock %}

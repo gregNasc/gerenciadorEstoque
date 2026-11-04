@@ -2,14 +2,12 @@ from django.db.models import Count, Exists, OuterRef, Q, Window
 from django.utils import timezone
 from estoque.permissions import pode_gerenciar_sick, pode_realizar_manutencao_sick
 from estoque.policies.compras import ComprasAccessPolicy
-from estoque.services.comunicado_service import ComunicadoService
 from estoque.services.tenant_terminology_service import TenantTerminologyService
 from estoque.tenant_features import TenantFeatureService
 from .models import (
     Comunicado,
     ComunicadoLeitura,
     Modulo,
-    Solicitacao,
     Transferencia,
     Emprestimo,
 )
@@ -19,9 +17,6 @@ def notificacoes_context(request):
 
     if not request.user.is_authenticated:
         return {}
-
-    ComunicadoService.notificar_manutencoes_previstas()
-    ComunicadoService.excluir_expirados()
 
     perfil = request.user.perfil
     tenant = getattr(request, 'tenant', None)
@@ -38,6 +33,11 @@ def notificacoes_context(request):
     chamados_habilitados = TenantFeatureService.user_has_feature(
         request.user,
         Modulo.Codigo.CHAMADOS,
+        tenant=tenant,
+    )
+    insumos_habilitados = TenantFeatureService.user_has_feature(
+        request.user,
+        Modulo.Codigo.INSUMOS,
         tenant=tenant,
     )
 
@@ -96,12 +96,11 @@ def notificacoes_context(request):
 
     solicitacoes_pendentes = 0
 
-    if transferencias_habilitadas and perfil.role == 'admin':
+    from insumos.services.solicitacao_service import SolicitacaoConsultaService
 
+    if insumos_habilitados:
         solicitacoes_pendentes = (
-            Solicitacao.objects
-            .filter(status='PENDENTE')
-            .count()
+            SolicitacaoConsultaService.contar_pendencias_acionaveis(request.user)
         )
 
     # ---------------- SEPARAÇÃO ----------------
@@ -188,7 +187,6 @@ def notificacoes_context(request):
     # ---------------- TOTAL MENU ----------------
 
     notificacoes_pendentes = (
-            solicitacoes_pendentes +
             separacoes_pendentes +
             transferencias_pendentes +
             emprestimos_pendentes +
@@ -257,6 +255,7 @@ def permissoes_especiais(request):
                 and (
                     request.user.is_superuser
                     or perfil.is_admin
+                    or perfil.is_compras_insumos
                     or perfil.is_executivo_insumos
                 )
             ),

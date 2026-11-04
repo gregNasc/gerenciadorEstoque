@@ -34,6 +34,7 @@ class ComprasAccessPolicy:
         'estoque.alterar_preco_produto',
         'estoque.importar_preco_produto',
         'estoque.cadastrar_equipamentos',
+        'compras.exportar_documentos_aquisicao',
     )
 
     @staticmethod
@@ -188,6 +189,33 @@ class ComprasAccessPolicy:
         # Condições e preços operacionais são tenant-specific; o cadastro
         # canônico só pode ser alterado pelo Superuser.
         return bool(cls._autenticado(user) and user.is_superuser)
+
+    @classmethod
+    def pode_homologar_fornecedores(cls, user):
+        """Admin/Compras gerenciam somente a relação do próprio tenant."""
+        return cls._admin_ou_compras(user)
+
+    @classmethod
+    def pode_gerenciar_aquisicoes(cls, user):
+        return bool(
+            cls._admin_ou_compras(user)
+            or (
+                cls._autenticado(user)
+                and not cls.restrito(user)
+                and user.has_perm('compras.gerenciar_aquisicoes')
+            )
+        )
+
+    @classmethod
+    def pode_exportar_documentos_aquisicao(cls, user):
+        return bool(
+            cls._admin_ou_compras(user)
+            or (
+                cls._autenticado(user)
+                and not cls.restrito(user)
+                and user.has_perm('compras.exportar_documentos_aquisicao')
+            )
+        )
 
     @classmethod
     def pode_criar_remessa(cls, user):

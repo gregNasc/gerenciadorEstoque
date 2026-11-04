@@ -1,1 +1,56 @@
-{% extends 'estoque/base.html' %}{% block title %}Nova aquisição{% endblock %}{% block content %}<h1 class="h3">Nova aquisição</h1><div class="alert alert-info">O custo informado será preservado como histórico da compra; preços de referência não o substituem.</div><form method="post" enctype="multipart/form-data" class="card card-body">{% csrf_token %}<h2 class="h5">Documento e fornecedor</h2>{{ form.as_p }}<hr><h2 class="h5">Primeiro item</h2>{{ item_form.as_p }}<button class="btn btn-primary align-self-start">Cadastrar aquisição</button></form>{% endblock %}
+{% extends 'estoque/base.html' %}
+{% block title %}Nova aquisição{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div><h1 class="h3 mb-1">Nova aquisição</h1><p class="text-secondary mb-0">Registre o documento e o primeiro item recebido do fornecedor.</p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_lista' %}">Voltar</a>
+</div>
+<div class="alert alert-info">O custo informado será preservado no histórico. Somente fornecedores homologados para a empresa podem ser usados. <a class="alert-link" href="{% url 'compras:fornecedores_empresa' %}">Gerenciar homologações</a>.</div>
+<form method="post" enctype="multipart/form-data" class="card card-body" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <h2 class="h5">Documento e fornecedor</h2>
+    {{ form.as_p }}
+    <hr>
+    {% if item_form.non_field_errors %}<div class="alert alert-danger">{{ item_form.non_field_errors }}</div>{% endif %}
+    <h2 class="h5">Primeiro item</h2>
+    {{ item_form.as_p }}
+    <button class="btn btn-primary align-self-start">Cadastrar aquisição</button>
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const empresa = document.getElementById('id_empresa');
+    const fornecedor = document.getElementById('id_fornecedor');
+    if (!empresa || !fornecedor) return;
+    const endpoint = "{% url 'compras:api_fornecedores_homologados' %}";
+    async function carregarFornecedores() {
+        const selecionado = fornecedor.value;
+        fornecedor.disabled = true;
+        fornecedor.replaceChildren(new Option('Carregando fornecedores...', ''));
+        if (!empresa.value) {
+            fornecedor.replaceChildren(new Option('Selecione primeiro a empresa', ''));
+            fornecedor.disabled = false;
+            return;
+        }
+        try {
+            const resposta = await fetch(`${endpoint}?empresa=${encodeURIComponent(empresa.value)}`, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+            if (!resposta.ok) throw new Error('Falha ao carregar fornecedores');
+            const dados = await resposta.json();
+            fornecedor.replaceChildren(new Option('Selecione', ''));
+            dados.fornecedores.forEach((item) => {
+                const opcao = new Option(`${item.nome} — ${item.documento}`, item.id);
+                opcao.selected = String(item.id) === selecionado;
+                fornecedor.add(opcao);
+            });
+            if (!dados.fornecedores.length) fornecedor.replaceChildren(new Option('Nenhum fornecedor homologado', ''));
+        } catch (erro) {
+            fornecedor.replaceChildren(new Option('Não foi possível carregar. Tente novamente.', ''));
+        } finally {
+            fornecedor.disabled = false;
+        }
+    }
+    empresa.addEventListener('change', carregarFornecedores);
+    carregarFornecedores();
+});
+</script>
+{% endblock %}

@@ -9,6 +9,7 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
+from estoque.policies.compras import ComprasAccessPolicy
 from insumos.forms import SolicitacaoInsumoForm
 from insumos.models import (
     Insumo,
@@ -18,12 +19,14 @@ from insumos.models import (
     SolicitacaoInsumo,
 )
 from insumos.policies import InsumosTenantPolicy
-from insumos.services.solicitacao_service import SolicitacaoService
+from insumos.services.solicitacao_service import (
+    SolicitacaoConsultaService,
+    SolicitacaoService,
+)
 
 
 def _pode_decidir(user):
-    perfil = getattr(user, 'perfil', None)
-    return bool(perfil and (perfil.is_admin or perfil.is_compras_insumos))
+    return SolicitacaoConsultaService.pode_decidir(user)
 
 
 def _pode_acompanhar(user):
@@ -213,7 +216,8 @@ def _pode_ver_detalhes_administrativos(user):
 
 def _queryset_visivel(user, *, action=InsumosTenantPolicy.VIEW):
     qs = SolicitacaoInsumo.objects.select_related(
-        'base', 'solicitante', 'aprovado_por', 'em_compra_por'
+        'base', 'solicitante', 'aprovado_por', 'em_compra_por',
+        'processo_cotacao',
     ).prefetch_related(
         'itens__insumo__categoria',
         'itens__produto_equipamento',
@@ -307,9 +311,15 @@ def detalhe_solicitacao(request, pk):
         raise PermissionDenied
     solicitacao = get_object_or_404(_queryset_visivel(request.user), pk=pk)
     pode_decidir = _pode_decidir(request.user)
+    pode_gerenciar_cotacao = ComprasAccessPolicy.pode_gerenciar_aquisicoes(
+        request.user,
+    )
+    tem_processo_cotacao = hasattr(solicitacao, 'processo_cotacao')
     return render(request, 'insumos/solicitacoes/detalhe.html', {
         'solicitacao': solicitacao,
         'pode_decidir': pode_decidir,
+        'pode_gerenciar_cotacao': pode_gerenciar_cotacao,
+        'tem_processo_cotacao': tem_processo_cotacao,
         'catalogo_resolucao': (
             _catalogo_solicitacao(solicitacao.base) if pode_decidir else {}
         ),

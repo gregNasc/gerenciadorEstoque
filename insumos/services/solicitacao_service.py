@@ -11,6 +11,50 @@ from insumos.models import (
     ItemSolicitacaoInsumo,
     SolicitacaoInsumo,
 )
+from insumos.policies import InsumosTenantPolicy
+
+
+class SolicitacaoConsultaService:
+    """Consultas leves e tenant-aware para o fluxo unificado da R6."""
+
+    STATUS_ACIONAVEIS = (
+        'PENDENTE',
+        'RECEBIDA_COMPRAS',
+        'EM_ANALISE',
+        'APROVADA',
+        'EM_COMPRA',
+        'PEDIDO_REALIZADO',
+        'RECEBIDA',
+    )
+
+    @staticmethod
+    def pode_decidir(user):
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        perfil = getattr(user, 'perfil', None)
+        return bool(
+            perfil
+            and (perfil.is_admin or perfil.is_compras_insumos)
+        )
+
+    @classmethod
+    def pendencias_acionaveis(cls, user):
+        queryset = SolicitacaoInsumo.objects.filter(
+            status__in=cls.STATUS_ACIONAVEIS,
+        )
+        if not cls.pode_decidir(user):
+            return queryset.none()
+        return InsumosTenantPolicy.requests(
+            user,
+            queryset,
+            action=InsumosTenantPolicy.APPROVE,
+        )
+
+    @classmethod
+    def contar_pendencias_acionaveis(cls, user):
+        return cls.pendencias_acionaveis(user).count()
 
 
 class SolicitacaoService:
