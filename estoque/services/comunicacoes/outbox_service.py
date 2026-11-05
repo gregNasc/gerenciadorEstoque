@@ -1,6 +1,9 @@
 from datetime import timedelta
+from urllib.parse import urljoin
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -8,17 +11,27 @@ from django.utils import timezone
 from estoque.models import ComunicadoEntrega
 from integracao.scopes import IntegrationExecutionScope, IntegrationScopeError
 
+from .phone import normalizar_whatsapp
 from .providers import DisabledWhatsAppProvider, obter_provedor
 from .providers.base import ProviderResult
+from .providers.email import DisabledEmailProvider, obter_provedor_email
 from .templates import TemplatePayloadError, construir_payload
 
 
 class OutboxService:
     @classmethod
     def processar(cls, *, canal=ComunicadoEntrega.Canal.WHATSAPP, limit=100):
+        if canal not in (
+            ComunicadoEntrega.Canal.EMAIL,
+            ComunicadoEntrega.Canal.WHATSAPP,
+        ):
+            raise ValueError('Somente canais externos podem ser processados pela outbox.')
         agora = timezone.now()
+        configuracao = cls._configuracao(canal)
         with transaction.atomic():
-            limite_travado = agora - timedelta(seconds=settings.WHATSAPP_PROCESSING_TIMEOUT_SECONDS)
+            limite_travado = agora - timedelta(
+                seconds=configuracao['processing_timeout']
+            )
             ComunicadoEntrega.objects.filter(
                 canal=canal,
                 status=ComunicadoEntrega.Status.PROCESSANDO,
@@ -30,7 +43,7 @@ class OutboxService:
             )
             entregas = list(
                 ComunicadoEntrega.objects.select_related(
-                    'comunicado__criado_por'
+                    'comunicado__criado_por', 'usuario__perfil'
                 ).select_for_update(skip_locked=True).filter(
                     canal=canal,
                     status__in=[ComunicadoEntrega.Status.PENDENTE, ComunicadoEntrega.Status.FALHA],
@@ -43,20 +56,26 @@ class OutboxService:
                 entrega.processada_em = agora
             ComunicadoEntrega.objects.bulk_update(entregas, ['status', 'processada_em'])
 
-        provedor = obter_provedor()
+        provedor = cls._obter_provedor(canal)
         processadas = []
         for entrega in entregas:
-            if isinstance(provedor, DisabledWhatsAppProvider):
-                cls._marcar_ignorada(entrega.pk, 'Provedor WhatsApp desabilitado.')
+            motivo_bloqueio = cls._validar_destinatario(entrega)
+            if motivo_bloqueio:
+                cls._marcar_ignorada(entrega.pk, motivo_bloqueio)
+                processadas.append(entrega.pk)
+                continue
+            if isinstance(
+                provedor, (DisabledWhatsAppProvider, DisabledEmailProvider)
+            ):
+                cls._marcar_ignorada(
+                    entrega.pk,
+                    f'Provedor de {canal.lower()} desabilitado.',
+                )
                 processadas.append(entrega.pk)
                 continue
             try:
                 integration_scope = cls._integration_scope(entrega)
-                payload = construir_payload(
-                    template_codigo=entrega.template_codigo,
-                    idioma=entrega.parametros.get('idioma'),
-                    parametros=entrega.parametros,
-                )
+                payload = cls._construir_payload(entrega)
                 resultado = provedor.enviar_payload(
                     destino=entrega.destino,
                     payload=payload,
@@ -71,15 +90,105 @@ class OutboxService:
                     erro='ERRO INTERNO ISOLADO AO PROCESSAR A ENTREGA.',
                     repetivel=True,
                 )
-            cls._persistir_resultado(entrega.pk, resultado)
+            cls._persistir_resultado(
+                entrega.pk,
+                resultado,
+                max_retries=configuracao['max_retries'],
+                retry_base=configuracao['retry_base'],
+            )
             processadas.append(entrega.pk)
         return processadas
+
+    @staticmethod
+    def _configuracao(canal):
+        if canal == ComunicadoEntrega.Canal.EMAIL:
+            return {
+                'max_retries': settings.NOTIFICACOES_EMAIL_MAX_RETRIES,
+                'retry_base': settings.NOTIFICACOES_EMAIL_RETRY_BASE_SECONDS,
+                'processing_timeout': (
+                    settings.NOTIFICACOES_EMAIL_PROCESSING_TIMEOUT_SECONDS
+                ),
+            }
+        return {
+            'max_retries': settings.WHATSAPP_MAX_RETRIES,
+            'retry_base': settings.WHATSAPP_RETRY_BASE_SECONDS,
+            'processing_timeout': settings.WHATSAPP_PROCESSING_TIMEOUT_SECONDS,
+        }
+
+    @staticmethod
+    def _obter_provedor(canal):
+        if canal == ComunicadoEntrega.Canal.EMAIL:
+            return obter_provedor_email()
+        return obter_provedor()
+
+    @staticmethod
+    def _construir_payload(entrega):
+        if entrega.canal == ComunicadoEntrega.Canal.EMAIL:
+            parametros = entrega.parametros
+            corpo = (parametros.get('mensagem') or '').strip()
+            caminho = (parametros.get('url') or '').strip()
+            if caminho:
+                url = urljoin(
+                    f"{settings.APP_BASE_URL.rstrip('/')}/",
+                    caminho.lstrip('/'),
+                )
+                corpo = f'{corpo}\n\nAcessar no sistema: {url}'.strip()
+            return {
+                'assunto': (parametros.get('titulo') or 'Notificação').strip(),
+                'corpo': corpo or 'Há uma nova notificação no sistema.',
+            }
+        return construir_payload(
+            template_codigo=entrega.template_codigo,
+            idioma=entrega.parametros.get('idioma'),
+            parametros=entrega.parametros,
+        )
+
+    @staticmethod
+    def _validar_destinatario(entrega):
+        usuario = entrega.usuario
+        if not usuario.is_active:
+            return 'DESTINATÁRIO INATIVO; ENTREGA CANCELADA.'
+
+        dados = entrega.comunicado.dados or {}
+        if dados.get('conteudo_financeiro'):
+            from estoque.policies.compras import ComprasAccessPolicy
+
+            if not ComprasAccessPolicy.pode_visualizar_valores(usuario):
+                return 'CONTEÚDO FINANCEIRO NÃO AUTORIZADO PARA O DESTINATÁRIO.'
+
+        if entrega.canal == ComunicadoEntrega.Canal.EMAIL:
+            email_atual = (usuario.email or '').strip().lower()
+            try:
+                validate_email(email_atual)
+            except ValidationError:
+                return 'ENDEREÇO DE E-MAIL INVÁLIDO OU AUSENTE.'
+            if email_atual != (entrega.destino or '').strip().lower():
+                return 'ENDEREÇO DE E-MAIL ALTERADO; GERE UMA NOVA ENTREGA.'
+            return ''
+
+        try:
+            perfil = usuario.perfil
+        except ObjectDoesNotExist:
+            return 'PERFIL DO DESTINATÁRIO NÃO ENCONTRADO.'
+        if (
+            not perfil.whatsapp_ativo
+            or not perfil.whatsapp_consentimento_em
+            or perfil.whatsapp_revogado_em
+        ):
+            return 'CONSENTIMENTO DE WHATSAPP AUSENTE OU REVOGADO.'
+        if normalizar_whatsapp(perfil.whatsapp_numero) != entrega.destino:
+            return 'NÚMERO DE WHATSAPP ALTERADO; GERE UMA NOVA ENTREGA.'
+        return ''
 
     @staticmethod
     def _integration_scope(entrega):
         declared = entrega.parametros.get('_integration_scope') or {}
         kind = declared.get('kind')
-        source = declared.get('source') or 'WHATSAPP_COMUNICADOS'
+        source = declared.get('source') or (
+            'EMAIL_COMUNICADOS'
+            if entrega.canal == ComunicadoEntrega.Canal.EMAIL
+            else 'WHATSAPP_COMUNICADOS'
+        )
         company_id = declared.get('company_id')
         if kind:
             return IntegrationExecutionScope(
@@ -106,7 +215,9 @@ class OutboxService:
 
     @staticmethod
     @transaction.atomic
-    def _persistir_resultado(entrega_id, resultado):
+    def _persistir_resultado(
+        entrega_id, resultado, *, max_retries=None, retry_base=None,
+    ):
         entrega = ComunicadoEntrega.objects.select_for_update().get(pk=entrega_id)
         if entrega.status in (
             ComunicadoEntrega.Status.ENVIADA,
@@ -127,10 +238,11 @@ class OutboxService:
         else:
             entrega.ultimo_erro = resultado.erro[:4000]
             entrega.provider_resposta = resultado.resposta
-            limite = settings.WHATSAPP_MAX_RETRIES
+            limite = max_retries or settings.WHATSAPP_MAX_RETRIES
             if resultado.repetivel and entrega.tentativas < limite:
                 entrega.status = ComunicadoEntrega.Status.FALHA
-                espera = settings.WHATSAPP_RETRY_BASE_SECONDS * (2 ** (entrega.tentativas - 1))
+                base = retry_base or settings.WHATSAPP_RETRY_BASE_SECONDS
+                espera = base * (2 ** (entrega.tentativas - 1))
                 entrega.proxima_tentativa_em = agora + timedelta(seconds=espera)
             else:
                 entrega.status = ComunicadoEntrega.Status.FALHA

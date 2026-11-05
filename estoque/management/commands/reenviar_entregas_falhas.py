@@ -8,11 +8,25 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--limit', type=int, default=100)
+        parser.add_argument(
+            '--canal',
+            default='TODOS',
+            choices=(
+                'TODOS',
+                ComunicadoEntrega.Canal.EMAIL,
+                ComunicadoEntrega.Canal.WHATSAPP,
+            ),
+        )
 
     def handle(self, *args, **options):
+        canais = (
+            (ComunicadoEntrega.Canal.EMAIL, ComunicadoEntrega.Canal.WHATSAPP)
+            if options['canal'] == 'TODOS'
+            else (options['canal'],)
+        )
         ids = list(
             ComunicadoEntrega.objects.filter(
-                canal=ComunicadoEntrega.Canal.WHATSAPP,
+                canal__in=canais,
                 status=ComunicadoEntrega.Status.FALHA,
                 proxima_tentativa_em__isnull=True,
             ).order_by('criada_em').values_list('pk', flat=True)[:max(1, options['limit'])]

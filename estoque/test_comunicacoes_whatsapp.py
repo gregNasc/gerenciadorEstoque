@@ -1,8 +1,13 @@
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
+import requests
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from estoque.models import Comunicado, ComunicadoEntrega, Empresa
@@ -11,7 +16,9 @@ from estoque.services.comunicacoes.dispatcher import ComunicacaoDispatcher
 from estoque.services.comunicacoes.outbox_service import OutboxService
 from estoque.services.comunicacoes.phone import normalizar_whatsapp, whatsapp_valido
 from estoque.services.comunicacoes.providers.base import ProviderResult
+from estoque.services.comunicacoes.providers.meta_whatsapp import MetaWhatsAppProvider
 from estoque.services.comunicacoes.templates import TemplatePayloadError, construir_payload
+from integracao.scopes import IntegrationExecutionScope
 
 
 class WhatsAppComunicacaoTests(TestCase):
@@ -52,6 +59,24 @@ class WhatsAppComunicacaoTests(TestCase):
         self.assertIsNotNone(perfil.whatsapp_revogado_em)
 
     @override_settings(WHATSAPP_ENABLED=True, WHATSAPP_PROVIDER='meta')
+    def test_revogacao_cancela_entrega_pendente(self):
+        perfil = WhatsAppConsentimentoService.ativar(
+            self.user.perfil,
+            numero='14999999999',
+            origem='TESTE',
+        )
+        comunicado = self.comunicado()
+        ComunicacaoDispatcher.criar_entregas(comunicado.pk)
+        entrega = comunicado.entregas.get(canal=ComunicadoEntrega.Canal.WHATSAPP)
+        self.assertEqual(entrega.status, ComunicadoEntrega.Status.PENDENTE)
+
+        WhatsAppConsentimentoService.revogar(perfil)
+
+        entrega.refresh_from_db()
+        self.assertEqual(entrega.status, ComunicadoEntrega.Status.CANCELADA)
+        self.assertIsNone(entrega.proxima_tentativa_em)
+
+    @override_settings(WHATSAPP_ENABLED=True, WHATSAPP_PROVIDER='meta')
     def test_dispatcher_sempre_cria_sistema_e_ignora_template_desconhecido(self):
         WhatsAppConsentimentoService.ativar(
             self.user.perfil, numero='14999999999', origem='TESTE'
@@ -88,6 +113,29 @@ class WhatsAppComunicacaoTests(TestCase):
             )
 
     @override_settings(
+        WHATSAPP_API_BASE_URL='https://graph.example.com',
+        WHATSAPP_ACCESS_TOKEN='token-teste',
+        WHATSAPP_PHONE_NUMBER_ID='numero-1',
+    )
+    @patch(
+        'estoque.services.comunicacoes.providers.meta_whatsapp.requests.post',
+        side_effect=requests.Timeout(),
+    )
+    def test_timeout_ambiguo_meta_nao_e_reenviado_automaticamente(self, _post):
+        resultado = MetaWhatsAppProvider().enviar_payload(
+            destino='5514999999999',
+            payload={'type': 'template', 'template': {}},
+            idempotency_key='chave-teste',
+            execution_scope=IntegrationExecutionScope.tenant(
+                'WHATSAPP_COMUNICADOS', self.empresa.pk,
+            ),
+        )
+
+        self.assertFalse(resultado.sucesso)
+        self.assertFalse(resultado.repetivel)
+        self.assertIn('AMBÍGUO', resultado.erro)
+
+    @override_settings(
         APP_BASE_URL='https://estoque.example.com',
         DEBUG=False,
         WHATSAPP_PROVIDER='meta',
@@ -95,6 +143,11 @@ class WhatsAppComunicacaoTests(TestCase):
     )
     @patch('estoque.services.comunicacoes.outbox_service.obter_provedor')
     def test_outbox_recupera_travada_e_isola_falha_por_entrega(self, obter):
+        WhatsAppConsentimentoService.ativar(
+            self.user.perfil,
+            numero='14999999999',
+            origem='TESTE',
+        )
         provedor = obter.return_value
         provedor.enviar_payload.side_effect = [
             RuntimeError('falha isolada'),
@@ -125,3 +178,61 @@ class WhatsAppComunicacaoTests(TestCase):
         self.client.post('/perfil/comunicacoes/', {'acao': 'revogar'})
         self.user.perfil.refresh_from_db()
         self.assertFalse(self.user.perfil.whatsapp_ativo)
+
+    @override_settings(WHATSAPP_WEBHOOK_APP_SECRET='segredo-de-teste')
+    def test_webhook_assinado_e_idempotente_nao_regride_status(self):
+        comunicado = self.comunicado()
+        entrega = ComunicadoEntrega.objects.create(
+            comunicado=comunicado,
+            usuario=self.user,
+            canal=ComunicadoEntrega.Canal.WHATSAPP,
+            status=ComunicadoEntrega.Status.ENVIADA,
+            destino='5514999999999',
+            provider_message_id='wamid.teste',
+        )
+
+        def payload(status):
+            return json.dumps({
+                'entry': [{
+                    'changes': [{
+                        'value': {
+                            'statuses': [{
+                                'id': 'wamid.teste',
+                                'status': status,
+                            }],
+                        },
+                    }],
+                }],
+            }).encode()
+
+        url = reverse('estoque:whatsapp_webhook')
+        self.assertEqual(
+            self.client.post(url, data=payload('read'), content_type='application/json').status_code,
+            403,
+        )
+        corpo = payload('read')
+        assinatura = 'sha256=' + hmac.new(
+            b'segredo-de-teste', corpo, hashlib.sha256,
+        ).hexdigest()
+        resposta = self.client.post(
+            url,
+            data=corpo,
+            content_type='application/json',
+            HTTP_X_HUB_SIGNATURE_256=assinatura,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        entrega.refresh_from_db()
+        self.assertEqual(entrega.status, ComunicadoEntrega.Status.LIDA)
+
+        corpo_atrasado = payload('delivered')
+        assinatura_atrasada = 'sha256=' + hmac.new(
+            b'segredo-de-teste', corpo_atrasado, hashlib.sha256,
+        ).hexdigest()
+        self.client.post(
+            url,
+            data=corpo_atrasado,
+            content_type='application/json',
+            HTTP_X_HUB_SIGNATURE_256=assinatura_atrasada,
+        )
+        entrega.refresh_from_db()
+        self.assertEqual(entrega.status, ComunicadoEntrega.Status.LIDA)

@@ -216,6 +216,64 @@ class TenantDashboardCategoryTests(TestCase):
         response = self.client.get(reverse('estoque:api_kpis_json'), {'inventory': self.company_b.pk})
         self.assertEqual(response.status_code, 404)
 
+    def test_group_admin_dashboard_defaults_to_primary_company(self):
+        relationship = RelacionamentoEmpresa.objects.create(
+            empresa_origem=self.company_a,
+            empresa_destino=self.company_b,
+        )
+        for resource, action in [
+            ('OPERACAO', 'ADMINISTRAR'),
+            ('EQUIPAMENTOS', 'VISUALIZAR'),
+        ]:
+            CapacidadeRelacionamentoEmpresa.objects.create(
+                relacionamento=relationship,
+                recurso=resource,
+                acao=action,
+            )
+        self.admin_a.perfil.empresas_acesso_adicional.add(self.company_b)
+
+        response = self.client.get(reverse('estoque:index'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            set(response.context['empresas']),
+            {self.company_a, self.company_b},
+        )
+        self.assertEqual(
+            response.context['filtro_inventory_id'],
+            str(self.company_a.pk),
+        )
+        self.assertEqual(response.context['kpis_totais']['total'], 1)
+        self.assertContains(response, self.product_a.descricao)
+        self.assertNotContains(response, self.product_b.descricao)
+
+    def test_group_admin_can_explicitly_select_all_companies(self):
+        relationship = RelacionamentoEmpresa.objects.create(
+            empresa_origem=self.company_a,
+            empresa_destino=self.company_b,
+        )
+        for resource, action in [
+            ('OPERACAO', 'ADMINISTRAR'),
+            ('EQUIPAMENTOS', 'VISUALIZAR'),
+        ]:
+            CapacidadeRelacionamentoEmpresa.objects.create(
+                relacionamento=relationship,
+                recurso=resource,
+                acao=action,
+            )
+        self.admin_a.perfil.empresas_acesso_adicional.add(self.company_b)
+
+        response = self.client.get(
+            reverse('estoque:index'),
+            {'inventory': ''},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['filtro_inventory_id'], '')
+        self.assertEqual(response.context['kpis_totais']['total'], 2)
+        self.assertContains(response, self.product_a.descricao)
+        self.assertContains(response, self.product_b.descricao)
+
     def test_inactive_company_is_absent_from_selector_and_rejected_as_filter(self):
         relationship = RelacionamentoEmpresa.objects.create(
             empresa_origem=self.company_a,

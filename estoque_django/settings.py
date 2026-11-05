@@ -568,6 +568,19 @@ DEFAULT_FROM_EMAIL = os.getenv(
     EMAIL_HOST_USER or 'nao-responda@inventory.local',
 )
 
+# Entregas genéricas de Comunicados por e-mail. A ativação é independente do
+# backend SMTP para impedir envio externo acidental em novos ambientes.
+NOTIFICACOES_EMAIL_ENABLED = env_bool('NOTIFICACOES_EMAIL_ENABLED', False)
+NOTIFICACOES_EMAIL_MAX_RETRIES = int(
+    os.getenv('NOTIFICACOES_EMAIL_MAX_RETRIES', '5')
+)
+NOTIFICACOES_EMAIL_RETRY_BASE_SECONDS = int(
+    os.getenv('NOTIFICACOES_EMAIL_RETRY_BASE_SECONDS', '60')
+)
+NOTIFICACOES_EMAIL_PROCESSING_TIMEOUT_SECONDS = int(
+    os.getenv('NOTIFICACOES_EMAIL_PROCESSING_TIMEOUT_SECONDS', '900')
+)
+
 # Canais auxiliares dos eventos de Custódia. O estado oficial permanece no
 # banco do Gerenciador; a entrega externa é processada por outbox.
 CUSTODIA_EMAIL_ENABLED = env_bool('CUSTODIA_EMAIL_ENABLED', False)

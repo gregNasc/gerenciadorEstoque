@@ -6,6 +6,7 @@ class EstoqueConfig(AppConfig):
     name = 'estoque'
 
     def ready(self):
+        import estoque.checks  # noqa: F401
         import estoque.signals
         from estoque.text_normalization import instalar_normalizacao_caixa_alta
 

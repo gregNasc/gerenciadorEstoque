@@ -63,8 +63,21 @@ class MetaWhatsAppProvider:
                 dados = resposta.json() if resposta.content else {}
             except ValueError:
                 dados = {}
-        except (requests.Timeout, requests.ConnectionError) as exc:
-            return ProviderResult(sucesso=False, erro=_sanitizar_texto(exc), repetivel=True)
+        except requests.Timeout:
+            # O provedor pode ter aceitado a mensagem antes do timeout. Não
+            # reenviar automaticamente: a reconciliação deve ocorrer pelo
+            # webhook/provider_message_id para evitar mensagem duplicada.
+            return ProviderResult(
+                sucesso=False,
+                erro='TIMEOUT COM RESULTADO AMBÍGUO; RECONCILIAÇÃO NECESSÁRIA.',
+                repetivel=False,
+            )
+        except requests.ConnectionError as exc:
+            return ProviderResult(
+                sucesso=False,
+                erro=_sanitizar_texto(exc),
+                repetivel=True,
+            )
         except requests.RequestException as exc:
             return ProviderResult(sucesso=False, erro=_sanitizar_texto(exc), repetivel=False)
         seguro = _resposta_segura(dados)

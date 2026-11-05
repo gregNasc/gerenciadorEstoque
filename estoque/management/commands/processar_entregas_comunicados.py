@@ -8,10 +8,30 @@ class Command(BaseCommand):
     help = 'Processa entregas externas pendentes dos comunicados.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--canal', default='WHATSAPP', choices=ComunicadoEntrega.Canal.values)
+        parser.add_argument(
+            '--canal',
+            default='TODOS',
+            choices=(
+                'TODOS',
+                ComunicadoEntrega.Canal.EMAIL,
+                ComunicadoEntrega.Canal.WHATSAPP,
+            ),
+        )
         parser.add_argument('--limit', type=int, default=100)
 
     def handle(self, *args, **options):
-        ids = OutboxService.processar(canal=options['canal'], limit=max(1, options['limit']))
-        self.stdout.write(self.style.SUCCESS(f'{len(ids)} entrega(s) processada(s).'))
+        canais = (
+            (ComunicadoEntrega.Canal.EMAIL, ComunicadoEntrega.Canal.WHATSAPP)
+            if options['canal'] == 'TODOS'
+            else (options['canal'],)
+        )
+        total = 0
+        for canal in canais:
+            ids = OutboxService.processar(
+                canal=canal,
+                limit=max(1, options['limit']),
+            )
+            total += len(ids)
+            self.stdout.write(f'{canal}: {len(ids)} entrega(s).')
+        self.stdout.write(self.style.SUCCESS(f'{total} entrega(s) processada(s).'))
 

@@ -2,7 +2,9 @@
 
 **Documento analisado:** `04.ADICIONAL_NOTIFICAÇÕES_EMAIL_WHATSAPP.md`  
 **Data da análise:** 27/10/2026  
-**Estado:** análise documental concluída; implementação não iniciada.
+**Estado histórico:** análise documental concluída em 27/10/2026. A execução
+posterior está registrada em `relatorio_k1_badge_solicitacoes.md`,
+`relatorio_k2_eventos_compras.md` e `relatorio_k3_k5_comunicacoes.md`.
 
 ## Conclusão
 
