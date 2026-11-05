@@ -1,7 +1,10 @@
 from django.urls import path
 from django.shortcuts import redirect
 from insumos.views.dashboard_base import dashboard_base
-from insumos.views.dashboard_planejamento import dashboard_planejamento
+from insumos.views.dashboard_planejamento import (
+    dashboard_planejamento,
+    exportar_planejamento,
+)
 from insumos.views.dashboard_financeiro import dashboard_financeiro
 from insumos.views import api
 from insumos.views.api import importar_excel
@@ -17,6 +20,11 @@ urlpatterns = [
     path('', lambda request: redirect('insumos:dashboard_base')),
     path('dashboard/base/', dashboard_base, name='dashboard_base'),
     path('dashboard/planejamento/', dashboard_planejamento, name='dashboard_planejamento'),
+    path(
+        'dashboard/planejamento/exportar/',
+        exportar_planejamento,
+        name='exportar_planejamento',
+    ),
     path('dashboard/financeiro/', dashboard_financeiro, name='dashboard_financeiro'),
     path('dashboard/saude-insumos/', dashboard_saude_insumos, name='dashboard_saude_insumos'),
     path('dashboard/saude-equipamentos/', dashboard_saude_equipamentos, name='dashboard_saude_equipamentos'),

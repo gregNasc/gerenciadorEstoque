@@ -1,54 +1,164 @@
 {% extends 'estoque/base.html' %}
+{% load i18n %}
 
 {% block content %}
-
-<h3 class="mb-4">Dashboard Planejamento</h3>
-
-<div class="row g-3">
-
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3 text-center">
-            <h6 class="text-muted">Solicitações pendentes</h6>
-            <h3>{{ solicitacoes_pendentes }}</h3>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3 text-center">
-            <h6 class="text-muted">Em compra</h6>
-            <h3>{{ solicitacoes_em_compra }}</h3>
-        </div>
-    </div>
-
-</div>
-
-<hr class="my-4">
-
-<div class="card shadow-sm p-3">
-    <h6 class="mb-3">Fluxo de Planejamento</h6>
-    <canvas id="chartPlanejamento" height="100"></canvas>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-const ctxPlan = document.getElementById('chartPlanejamento');
-
-new Chart(ctxPlan, {
-    type: 'doughnut',
-    data: {
-        labels: ['Pendentes', 'Em compra'],
-        datasets: [{
-            data: [
-                {{ solicitacoes_pendentes }},
-                {{ solicitacoes_em_compra }}
-            ]
-        }]
-    },
-    options: {
-        responsive: true
+<style>
+    .r8-shell { max-width: 1500px; margin: 0 auto; }
+    .r8-title { font-weight: 750; margin-bottom: .2rem; }
+    .r8-subtitle { color: #667085; margin-bottom: 1.25rem; }
+    .r8-panel { background: #fff; border: 1px solid #d9e0e8; border-radius: 12px; padding: 1rem; }
+    .r8-filters { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: .8rem; align-items: end; }
+    .r8-filters label { display: block; font-size: .78rem; font-weight: 700; margin-bottom: .25rem; }
+    .r8-filters .wide { grid-column: span 2; }
+    .r8-actions { display: flex; gap: .5rem; }
+    .r8-help { margin-top: 1rem; padding: .85rem 1rem; border-left: 4px solid #22447c; background: #eef4fc; border-radius: 7px; color: #26364d; }
+    .r8-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; margin: 1rem 0; }
+    .r8-card { background: #fff; border: 1px solid #d9e0e8; border-left: 4px solid #22447c; border-radius: 10px; padding: .85rem 1rem; }
+    .r8-card span { display: block; color: #667085; font-size: .75rem; text-transform: uppercase; }
+    .r8-card strong { display: block; color: #16386e; font-size: 1.65rem; margin-top: .2rem; }
+    .r8-table-wrap { overflow-x: auto; }
+    .r8-table { width: 100%; border-collapse: collapse; min-width: 1180px; }
+    .r8-table th { background: #f2f5f8; color: #344054; font-size: .72rem; text-transform: uppercase; padding: .72rem; text-align: left; border-bottom: 1px solid #d9e0e8; }
+    .r8-table td { padding: .75rem; border-bottom: 1px solid #e7ebf0; vertical-align: top; }
+    .r8-item { font-weight: 700; color: #183b70; }
+    .r8-muted { color: #667085; font-size: .78rem; }
+    .r8-number { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .r8-status { display: inline-block; border-radius: 999px; padding: .18rem .55rem; font-size: .7rem; font-weight: 750; }
+    .r8-status.critico { background: #fde8e7; color: #a32020; }
+    .r8-status.atencao { background: #fff1d7; color: #8a5100; }
+    .r8-status.ok { background: #e3f5e9; color: #196b37; }
+    .r8-status.neutro { background: #edf0f3; color: #59636e; }
+    .r8-empty { padding: 3rem 1rem; text-align: center; color: #667085; }
+    @media (max-width: 1100px) {
+        .r8-filters { grid-template-columns: repeat(2, 1fr); }
+        .r8-cards { grid-template-columns: repeat(2, 1fr); }
     }
-});
-</script>
+    @media (max-width: 600px) {
+        .r8-filters, .r8-cards { grid-template-columns: 1fr; }
+        .r8-filters .wide { grid-column: span 1; }
+    }
+</style>
 
+<div class="r8-shell">
+    <h1 class="h3 r8-title">{% trans "Planejamento de consumo" %}</h1>
+    <p class="r8-subtitle">{% trans "Histórico operacional para apoiar reposições, sem criar pedidos automaticamente." %}</p>
+
+    <form method="get" class="r8-panel" aria-label="{% trans 'Filtros do planejamento' %}">
+        <div class="r8-filters">
+            <div>
+                <label for="r8-empresa">{% trans "Empresa" %}</label>
+                <select id="r8-empresa" name="empresa" class="form-select">
+                    <option value="">{% trans "Todas permitidas" %}</option>
+                    {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}" {% if filtro_empresa == empresa.id|stringformat:'s' %}selected{% endif %}>{{ empresa.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="r8-base">{% trans "Base" %}</label>
+                <select id="r8-base" name="base" class="form-select">
+                    <option value="">{% trans "Todas as Bases" %}</option>
+                    {% for base in bases %}
+                        <option value="{{ base.id }}" {% if filtro_base == base.id|stringformat:'s' %}selected{% endif %}>{{ base.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="r8-inicio">{% trans "De" %}</label>
+                <input id="r8-inicio" type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}" class="form-control">
+            </div>
+            <div>
+                <label for="r8-fim">{% trans "Até" %}</label>
+                <input id="r8-fim" type="date" name="fim" value="{{ fim|date:'Y-m-d' }}" class="form-control">
+            </div>
+            <div>
+                <label for="r8-categoria">{% trans "Categoria" %}</label>
+                <select id="r8-categoria" name="categoria" class="form-select">
+                    <option value="">{% trans "Todas" %}</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria }}" {% if filtro_categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="wide">
+                <label for="r8-busca">{% trans "Localizar item" %}</label>
+                <input id="r8-busca" type="search" name="busca" value="{{ filtro_busca }}" class="form-control" placeholder="{% trans 'Nome ou categoria' %}">
+            </div>
+            <div class="r8-actions">
+                <button type="submit" class="btn btn-primary">{% trans "Aplicar" %}</button>
+                <a href="{% url 'insumos:dashboard_planejamento' %}" class="btn btn-outline-secondary">{% trans "Limpar" %}</a>
+            </div>
+        </div>
+        <div class="r8-help">
+            <strong>{% trans "Como ler:" %}</strong>
+            {% trans "Solicitado é o que foi pedido; Atendido é o que foi entregue pela solicitação; Consumido é o uso registrado em checklists. As sugestões são estimativas e sempre exigem decisão humana." %}
+        </div>
+    </form>
+
+    <div class="r8-cards">
+        <div class="r8-card"><span>{% trans "Itens monitorados" %}</span><strong>{{ resultado.totais.itens_monitorados }}</strong></div>
+        <div class="r8-card"><span>{% trans "Solicitações abertas" %}</span><strong>{{ resultado.totais.solicitacoes_abertas }}</strong></div>
+        <div class="r8-card"><span>{% trans "Itens críticos" %}</span><strong>{{ resultado.totais.itens_criticos }}</strong></div>
+        <div class="r8-card"><span>{% trans "Avaliar reposição" %}</span><strong>{{ resultado.totais.itens_para_avaliar }}</strong></div>
+    </div>
+
+    <section class="r8-panel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="h5 mb-1">{% trans "Indicadores por item" %}</h2>
+                <div class="r8-muted">{{ inicio|date:'d/m/Y' }} — {{ fim|date:'d/m/Y' }} · {{ itens|length }} {% trans "item(ns) exibido(s)" %}</div>
+            </div>
+            <a class="btn btn-outline-primary" href="{% url 'insumos:exportar_planejamento' %}?{{ request.GET.urlencode }}">
+                <i class="bi bi-file-earmark-excel"></i> {% trans "Exportar indicadores" %}
+            </a>
+        </div>
+        <div class="r8-table-wrap">
+            <table class="r8-table">
+                <thead>
+                    <tr>
+                        <th>{% trans "Item" %}</th>
+                        <th>{% trans "Solicitado" %}</th>
+                        <th>{% trans "Atendido" %}</th>
+                        <th>{% trans "Consumido" %}</th>
+                        <th>{% trans "Estoque disponível" %}</th>
+                        <th>{% trans "Padrão histórico" %}</th>
+                        <th>{% trans "Tendência" %}</th>
+                        <th>{% trans "Orientação" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>
+                            <div class="r8-item">{{ item.insumo }}</div>
+                            <div class="r8-muted">{{ item.categoria }} · {{ item.unidade }}</div>
+                        </td>
+                        <td class="r8-number">{{ item.quantidade_solicitada|floatformat:2 }} {{ item.unidade }}<div class="r8-muted">{{ item.total_solicitacoes }} solicitação(ões)</div></td>
+                        <td class="r8-number">{{ item.quantidade_atendida|floatformat:2 }} {{ item.unidade }}</td>
+                        <td class="r8-number">{{ item.quantidade_consumida|floatformat:2 }} {{ item.unidade }}</td>
+                        <td class="r8-number">
+                            {{ item.estoque_disponivel|floatformat:2 }} {{ item.unidade }}
+                            {% if item.cobertura_dias is not None %}<div class="r8-muted">≈ {{ item.cobertura_dias|floatformat:0 }} dias</div>{% endif %}
+                        </td>
+                        <td>
+                            <div class="r8-number">{% trans "Usual:" %} {{ item.quantidade_usual|floatformat:2 }} {{ item.unidade }}</div>
+                            <div class="r8-muted">{% if item.intervalo_tipico_dias is not None %}{% trans "A cada" %} {{ item.intervalo_tipico_dias }} {% trans "dias" %}{% else %}{% trans "Sem intervalo suficiente" %}{% endif %}</div>
+                        </td>
+                        <td><span class="r8-status {{ item.tendencia_classe }}">{{ item.tendencia }}</span><div class="r8-muted">{{ item.fonte_demanda }}</div></td>
+                        <td>
+                            <span class="r8-status {{ item.nivel|lower }}">
+                                {% if item.nivel == 'CRITICO' %}{% trans "Crítico" %}{% elif item.nivel == 'ATENCAO' %}{% trans "Atenção" %}{% elif item.nivel == 'OK' %}OK{% else %}{% trans "Sem histórico" %}{% endif %}
+                            </span>
+                            <div class="mt-1">{{ item.sugestao }}</div>
+                            {% if item.sugestao_quantidade > 0 %}<div class="r8-muted">{% trans "Referência para 30 dias:" %} {{ item.sugestao_quantidade|floatformat:2 }} {{ item.unidade }}</div>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="r8-empty">{% trans "Nenhum dado encontrado para os filtros selecionados." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
 {% endblock %}

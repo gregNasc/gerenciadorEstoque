@@ -10331,3 +10331,78 @@ msgstr "Acción no válida."
 
 #~ msgid "Cadastrar Insumo"
 #~ msgstr "Registrar Insumo"
+
+msgid "A cada"
+msgstr "Cada"
+
+msgid "Atendido"
+msgstr "Atendido"
+
+msgid "Avaliar reposição"
+msgstr "Evaluar reposición"
+
+msgid "Como ler:"
+msgstr "Cómo interpretar:"
+
+msgid "Consumido"
+msgstr "Consumido"
+
+msgid "Estoque disponível"
+msgstr "Stock disponible"
+
+msgid "Exportar indicadores"
+msgstr "Exportar indicadores"
+
+msgid "Histórico operacional para apoiar reposições, sem criar pedidos automaticamente."
+msgstr "Historial operativo para apoyar reposiciones, sin crear pedidos automáticamente."
+
+msgid "Indicadores por item"
+msgstr "Indicadores por artículo"
+
+msgid "item(ns) exibido(s)"
+msgstr "artículo(s) mostrado(s)"
+
+msgid "Itens monitorados"
+msgstr "Artículos monitoreados"
+
+msgid "Localizar item"
+msgstr "Buscar artículo"
+
+msgid "Nenhum dado encontrado para os filtros selecionados."
+msgstr "No se encontraron datos para los filtros seleccionados."
+
+msgid "Orientação"
+msgstr "Orientación"
+
+msgid "Padrão histórico"
+msgstr "Patrón histórico"
+
+msgid "Planejamento de consumo"
+msgstr "Planificación de consumo"
+
+msgid "Referência para 30 dias:"
+msgstr "Referencia para 30 días:"
+
+msgid "Sem histórico"
+msgstr "Sin historial"
+
+msgid "Sem intervalo suficiente"
+msgstr "Sin intervalo suficiente"
+
+msgid "Solicitações abertas"
+msgstr "Solicitudes abiertas"
+
+msgid "Solicitado"
+msgstr "Solicitado"
+
+msgid "Solicitado é o que foi pedido; Atendido é o que foi entregue pela solicitação; Consumido é o uso registrado em checklists. As sugestões são estimativas e sempre exigem decisão humana."
+msgstr "Solicitado es lo que se pidió; Atendido es lo que se entregó mediante la solicitud; Consumido es el uso registrado en los checklists. Las sugerencias son estimaciones y siempre requieren una decisión humana."
+
+msgid "Tendência"
+msgstr "Tendencia"
+
+msgid "Todas permitidas"
+msgstr "Todas las permitidas"
+
+msgid "Usual:"
+msgstr "Habitual:"

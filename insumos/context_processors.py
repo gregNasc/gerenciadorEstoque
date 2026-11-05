@@ -14,7 +14,12 @@ def menu_insumos(request):
         {
             "label": "Dashboard Planejamento",
             "url": "/insumos/dashboard/planejamento/",
-            "show": perfil.is_planejamento_insumos or perfil.is_admin
+            "show": (
+                perfil.is_admin
+                or perfil.is_compras_insumos
+                or perfil.is_planejamento_insumos
+                or perfil.is_executivo_insumos
+            ),
         },
         {
             "label": "Dashboard Financeiro",

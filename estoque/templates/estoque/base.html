@@ -222,15 +222,13 @@
                         </li>
                         {% endif %}
                         {% endif %}
-                        {% if perfil.role == 'admin' or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
-                        <!--
+                        {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
-                                <i class="bi bi-calendar-range"></i>
-                                Planejamento
+                                <i class="bi bi-graph-up-arrow"></i>
+                                {% trans "Planejamento de consumo" %}
                             </a>
                         </li>
-                        -->
                         {% endif %}
                         {% if pode_visualizar_valores and perfil.role == 'admin' or pode_visualizar_valores and perfil.is_financeiro_insumos or pode_visualizar_valores and perfil.is_executivo_insumos %}
                         <!--
