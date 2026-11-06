@@ -1,8 +1,13 @@
 # Release gate R9 — descoberta da integração TOTVS
 
-Status: **FUNDAÇÃO PRONTA; CONECTOR ESPECÍFICO BLOQUEADO**
-Motivo do bloqueio restante: produto, versão, módulos, contrato de API e ambiente
-de homologação ainda não foram informados.
+Status: **PAUSADA POR DEPENDÊNCIA EXTERNA; FUNDAÇÃO PRONTA E DESATIVADA**
+Motivo da pausa: a equipe Financeira ainda precisa informar produto, versão,
+módulos, contrato de API e ambiente de homologação.
+
+Decisão registrada em 06/11/2026: a R9 poderá ser retomada sem refazer sua
+fundação. Enquanto as informações externas não chegam, o roadmap segue somente
+com a auditoria não destrutiva da R10. Nenhum conector, credencial ou envio TOTVS
+será ativado, e as flags permanecem desligadas.
 
 Este gate evita assumir Protheus ou qualquer outro produto TOTVS e impede que
 campos, identificadores ou regras específicas do ERP vazem para o domínio do
