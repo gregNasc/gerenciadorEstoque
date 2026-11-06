@@ -77,6 +77,11 @@ class Empresa(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def exige_idioma_espanhol(self):
+        """Indica a regra organizacional de idioma da Inventory LATAM."""
+        return self.slug == 'inventory-latam'
+
     def save(self, *args, **kwargs):
         normalized_slug = slugify(self.slug or '')
         if not normalized_slug:
@@ -1747,6 +1752,7 @@ class Perfil(models.Model):
 
     def clean(self):
         super().clean()
+        self._aplicar_idioma_obrigatorio()
         if not self.user_id:
             return
         user = self.user
@@ -1840,7 +1846,28 @@ class Perfil(models.Model):
         return self.role == self.Role.OPERADOR
 
     # -------- SAVE --------
+    def _aplicar_idioma_obrigatorio(self):
+        if not self.empresa_id:
+            return False
+
+        empresa = self._state.fields_cache.get('empresa')
+        exige_espanhol = (
+            empresa.exige_idioma_espanhol
+            if empresa is not None
+            else Empresa.objects.filter(
+                pk=self.empresa_id,
+                slug='inventory-latam',
+            ).exists()
+        )
+        if exige_espanhol:
+            self.idioma = self.Idioma.ES
+        return exige_espanhol
+
     def save(self, *args, **kwargs):
+        idioma_foi_imposto = self._aplicar_idioma_obrigatorio()
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and idioma_foi_imposto:
+            kwargs['update_fields'] = tuple(set(update_fields) | {'idioma'})
         super().save(*args, **kwargs)
 
         # Admin opera a empresa inteira e não usa Bases como limitador. O

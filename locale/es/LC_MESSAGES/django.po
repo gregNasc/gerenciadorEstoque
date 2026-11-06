@@ -10406,3 +10406,6 @@ msgstr "Todas las permitidas"
 
 msgid "Usual:"
 msgstr "Habitual:"
+
+msgid "O idioma deste usuário será definido automaticamente como Espanhol."
+msgstr "El idioma de este usuario se establecerá automáticamente en Español."

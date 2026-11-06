@@ -173,9 +173,14 @@
                                     <select name="empresa" id="empresa" class="form-select form-select-sm">
                                         <option value="">{% trans "Selecione a empresa" %}</option>
                                         {% for empresa in empresas_usuario %}
-                                            <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
+                                            <option value="{{ empresa.id }}"
+                                                    data-idioma-obrigatorio="{% if empresa.exige_idioma_espanhol %}es{% endif %}">{{ empresa.nome }}</option>
                                         {% endfor %}
                                     </select>
+                                    <div class="form-text text-primary d-none" id="idiomaAutomaticoAviso">
+                                        <i class="bi bi-translate me-1"></i>
+                                        {% trans "O idioma deste usuário será definido automaticamente como Espanhol." %}
+                                    </div>
                                 </div>
                                 <div class="col-12 d-none" id="escopoEmpresasAdicionais">
                                     <label class="form-label">{% trans "Empresas adicionais do Admin" %}</label>
@@ -456,6 +461,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const empresasAdicionaisOptions = Array.from(document.querySelectorAll('.empresa-adicional-option'));
     const empresasAdicionaisCheckboxes = Array.from(document.querySelectorAll('input[name="empresas_acesso_adicional"]'));
     const empresasAdicionaisResumo = document.getElementById('empresasAdicionaisResumo');
+    const idiomaAutomaticoAviso = document.getElementById('idiomaAutomaticoAviso');
+
+    function updateIdiomaAutomaticoAviso() {
+        const idiomaObrigatorio = empresa.selectedOptions[0]?.dataset.idiomaObrigatorio || '';
+        idiomaAutomaticoAviso.classList.toggle('d-none', idiomaObrigatorio !== 'es');
+    }
 
     function visibleBaseOptions() {
         return bases.filter(base => base.style.display !== 'none');
@@ -587,6 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
         filterBases(global || !exigeBases);
         filterChecklistBases(global || !exigeBases);
         filterEmpresasAdicionais(!adminTenant);
+        updateIdiomaAutomaticoAviso();
     }
 
     function setModoEdicao(editando) {
@@ -665,6 +677,7 @@ document.addEventListener('DOMContentLoaded', function () {
         filterBases(true);
         filterChecklistBases(true);
         filterEmpresasAdicionais(true);
+        updateIdiomaAutomaticoAviso();
     });
     empresasAdicionaisCheckboxes.forEach(cb => cb.addEventListener('change', updateEmpresasAdicionaisResumo));
     buscaBase.addEventListener('input', () => filterBases(false));
