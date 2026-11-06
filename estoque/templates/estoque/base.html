@@ -222,7 +222,7 @@
                         </li>
                         {% endif %}
                         {% endif %}
-                        {% if perfil.role == 'admin' or perfil.is_compras_insumos or perfil.is_planejamento_insumos or perfil.is_executivo_insumos %}
+                        {% if pode_visualizar_planejamento %}
                         <li>
                             <a class="dropdown-item" href="{% url 'insumos:dashboard_planejamento' %}">
                                 <i class="bi bi-graph-up-arrow"></i>
@@ -687,7 +687,7 @@
                                 {{ tenant_labels.equipamento.plural }}
                             </a>
                         </li>
-                        {% if pode_gerenciar_catalogo %}
+                        {% if pode_identificar_recebimentos %}
                         <li>
                             <a class="dropdown-item" href="{% url 'compras:individualizacao_pendentes' %}">
                                 <i class="bi bi-upc-scan"></i>

@@ -184,6 +184,13 @@ class ComprasAccessPolicy:
         )
 
     @classmethod
+    def pode_identificar_recebimentos(cls, user):
+        return bool(
+            cls.pode_gerenciar_catalogo(user)
+            and user.get_username().strip().lower() != 'jose.barboza'
+        )
+
+    @classmethod
     def pode_gerenciar_fornecedores(cls, user):
         # FornecedorInsumo é o diretório jurídico global da plataforma.
         # Condições e preços operacionais são tenant-specific; o cadastro

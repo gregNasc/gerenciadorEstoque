@@ -124,36 +124,16 @@ class IndividualizacaoPosNFeR7GTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         return form
 
-    def test_jose_individualiza_sem_imei_e_sem_exposicao_financeira(self):
+    def test_jose_nao_acessa_identificacao_de_recebimentos(self):
         self.client.force_login(self.jose)
         fila = self.client.get(reverse('compras:individualizacao_pendentes'))
-        self.assertEqual(fila.status_code, 200)
-        self.assertContains(fila, self.item.produto.descricao)
-        self.assertNotContains(fila, 'name="custo_aquisicao"')
-        self.assertNotContains(fila, 'name="valor_unitario"')
+        self.assertEqual(fila.status_code, 403)
         url = reverse(
             'compras:remessa_individualizar_item',
             args=[self.remessa.pk, self.item.pk],
         )
         tela = self.client.get(url)
-        self.assertEqual(tela.status_code, 200)
-        self.assertContains(tela, 'IMEI 1 (opcional)')
-        self.assertNotContains(tela, 'name="custo_aquisicao"')
-        self.assertNotContains(tela, 'name="valor_unitario"')
-        resposta = self.client.post(url, self._dados(
-            serie='SERIE-R7G-1', patrimonio='PAT-R7G-1',
-        ))
-        self.assertEqual(resposta.status_code, 302)
-
-        equipamento = Equipamento.objects.get(numero_serie='SERIE-R7G-1')
-        self.assertIsNone(equipamento.imei_1)
-        self.assertEqual(equipamento.regional, self.base)
-        self.assertEqual(equipamento.produto, self.produto)
-        self.assertEqual(equipamento.custo_aquisicao, Decimal('1500'))
-        self.assertTrue(VinculoEquipamentoAquisicao.objects.filter(
-            item_remessa=self.item,
-            equipamento=equipamento,
-        ).exists())
+        self.assertEqual(tela.status_code, 403)
 
     def test_limite_fisico_e_evento_auditavel(self):
         for indice in (1, 2):

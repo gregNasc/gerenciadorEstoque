@@ -640,7 +640,7 @@ def confirmar_remessa(request, pk):
 
 @login_required
 def individualizar_item_remessa(request, pk, item_id):
-    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+    if not ComprasAccessPolicy.pode_identificar_recebimentos(request.user):
         raise PermissionDenied('Sem permissão para individualizar equipamentos.')
     from estoque.security import secure_base_queryset
 
@@ -709,7 +709,7 @@ def individualizar_item_remessa(request, pk, item_id):
 
 @login_required
 def individualizacoes_pendentes(request):
-    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+    if not ComprasAccessPolicy.pode_identificar_recebimentos(request.user):
         raise PermissionDenied('Sem permissão para individualizar equipamentos.')
     from estoque.security import secure_base_queryset
 

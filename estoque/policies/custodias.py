@@ -7,11 +7,13 @@ from estoque.tenant_scope import TenantScope
 class CustodiaAccessPolicy:
     VIEW = 'visualizar'
     MANAGE = 'gerenciar'
-    USUARIOS_SEM_GESTAO = frozenset({'jose.barboza'})
+    USUARIOS_SEM_ACESSO = frozenset({'jose.barboza'})
 
     @classmethod
     def permite(cls, user, action=VIEW):
         if not user or not user.is_authenticated:
+            return False
+        if user.get_username().strip().lower() in cls.USUARIOS_SEM_ACESSO:
             return False
         if user.is_superuser:
             return True
@@ -23,7 +25,7 @@ class CustodiaAccessPolicy:
         if action == cls.VIEW:
             return True
         if action == cls.MANAGE:
-            return user.get_username().strip().lower() not in cls.USUARIOS_SEM_GESTAO
+            return True
         return False
 
     @classmethod

@@ -38,6 +38,8 @@ class IndicadoresPlanejamentoService:
     def pode_visualizar(user):
         if not user or not user.is_authenticated:
             return False
+        if user.get_username().strip().lower() == 'jose.barboza':
+            return False
         if user.is_superuser:
             return True
         perfil = getattr(user, 'perfil', None)

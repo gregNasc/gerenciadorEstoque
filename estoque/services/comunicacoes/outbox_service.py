@@ -149,6 +149,14 @@ class OutboxService:
         if not usuario.is_active:
             return 'DESTINATÁRIO INATIVO; ENTREGA CANCELADA.'
 
+        from estoque.policies.comunicacoes import (
+            RestricaoComunicacaoUsuarioPolicy,
+        )
+        if not RestricaoComunicacaoUsuarioPolicy.pode_receber(
+            entrega.comunicado, usuario,
+        ):
+            return 'ASSUNTO NÃO AUTORIZADO PARA O DESTINATÁRIO.'
+
         dados = entrega.comunicado.dados or {}
         if dados.get('conteudo_financeiro'):
             from estoque.policies.compras import ComprasAccessPolicy

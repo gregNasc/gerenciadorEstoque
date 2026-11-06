@@ -36,6 +36,14 @@ class ComunicacaoDispatcher:
 
     @staticmethod
     def _pode_receber_conteudo(comunicado, usuario):
+        from estoque.policies.comunicacoes import (
+            RestricaoComunicacaoUsuarioPolicy,
+        )
+
+        if not RestricaoComunicacaoUsuarioPolicy.pode_receber(
+            comunicado, usuario,
+        ):
+            return False
         dados = comunicado.dados or {}
         if not dados.get('conteudo_financeiro'):
             return True

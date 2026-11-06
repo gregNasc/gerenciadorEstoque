@@ -134,6 +134,11 @@ class CustodiaNotificacaoService:
         user = collaborator.usuario
         if not user or not user.is_active:
             return
+        from estoque.policies.comunicacoes import (
+            RestricaoComunicacaoUsuarioPolicy,
+        )
+        if RestricaoComunicacaoUsuarioPolicy.usuario_restrito(user):
+            return
         if not notification.comunicado_id:
             communication = Comunicado.objects.create(
                 titulo=notification.titulo,
@@ -176,7 +181,12 @@ class CustodiaNotificacaoService:
     @classmethod
     def _ensure_external(cls, notification, *, template_code):
         collaborator = notification.custodia.colaborador
-        if collaborator.email:
+        user = collaborator.usuario
+        from estoque.policies.comunicacoes import (
+            RestricaoComunicacaoUsuarioPolicy,
+        )
+        usuario_bloqueado = RestricaoComunicacaoUsuarioPolicy.usuario_restrito(user)
+        if collaborator.email and not usuario_bloqueado:
             cls._delivery(
                 notification=notification,
                 channel=EntregaNotificacaoCustodia.Canal.EMAIL,
@@ -232,6 +242,11 @@ class CustodiaNotificacaoService:
     def _ensure_whatsapp(cls, notification, *, collaborator, template_code):
         user = collaborator.usuario
         if not user or not user.is_active:
+            return
+        from estoque.policies.comunicacoes import (
+            RestricaoComunicacaoUsuarioPolicy,
+        )
+        if RestricaoComunicacaoUsuarioPolicy.usuario_restrito(user):
             return
         try:
             profile = user.perfil

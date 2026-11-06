@@ -102,8 +102,8 @@ class CustodiaInterfaceR2MTests(TestCase):
                 403,
             )
 
-    def test_jose_pode_consultar_mas_nunca_gerenciar(self):
-        self.assertTrue(CustodiaAccessPolicy.permite(
+    def test_jose_nao_acessa_custodia(self):
+        self.assertFalse(CustodiaAccessPolicy.permite(
             self.jose,
             CustodiaAccessPolicy.VIEW,
         ))
@@ -112,7 +112,7 @@ class CustodiaInterfaceR2MTests(TestCase):
             CustodiaAccessPolicy.MANAGE,
         ))
         self.client.force_login(self.jose)
-        self.assertEqual(self.client.get(reverse('estoque:lista_custodias')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('estoque:lista_custodias')).status_code, 403)
         self.assertEqual(self.client.get(reverse('estoque:criar_custodia')).status_code, 403)
         self.assertEqual(self.client.get(reverse('estoque:criar_colaborador')).status_code, 403)
 

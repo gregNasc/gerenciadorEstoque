@@ -213,6 +213,9 @@ def permissoes_especiais(request):
         from chamados.policies import ChamadoAccessPolicy
         from estoque.policies.custodias import CustodiaAccessPolicy
         from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
+        from insumos.services.indicadores_planejamento_service import (
+            IndicadoresPlanejamentoService,
+        )
         compras_restrito = ComprasAccessPolicy.restrito(request.user)
         perfil = request.user.perfil
         username = request.user.get_username().strip().lower()
@@ -247,6 +250,10 @@ def permissoes_especiais(request):
                 ComprasAccessPolicy.pode_gerenciar_fornecedores(request.user),
             'pode_gerenciar_catalogo':
                 ComprasAccessPolicy.pode_gerenciar_catalogo(request.user),
+            'pode_identificar_recebimentos':
+                ComprasAccessPolicy.pode_identificar_recebimentos(request.user),
+            'pode_visualizar_planejamento':
+                IndicadoresPlanejamentoService.pode_visualizar(request.user),
             'pode_criar_remessa_compra':
                 ComprasAccessPolicy.pode_criar_remessa(request.user),
             'compras_restrito': compras_restrito,
@@ -304,6 +311,8 @@ def permissoes_especiais(request):
         'pode_editar_precos': False,
         'pode_gerenciar_fornecedores': False,
         'pode_gerenciar_catalogo': False,
+        'pode_identificar_recebimentos': False,
+        'pode_visualizar_planejamento': False,
         'pode_criar_remessa_compra': False,
         'compras_restrito': False,
         'pode_visualizar_saude_estoque': False,

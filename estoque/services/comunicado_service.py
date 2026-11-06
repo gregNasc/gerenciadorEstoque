@@ -174,6 +174,13 @@ class ComunicadoService:
                 User.objects.filter(is_active=True, pk__in=destinatarios_ids)
             )
 
+        from estoque.policies.comunicacoes import (
+            RestricaoComunicacaoUsuarioPolicy,
+        )
+        RestricaoComunicacaoUsuarioPolicy.remover_destinatarios_bloqueados(
+            comunicado,
+        )
+
         transaction.on_commit(
             lambda comunicado_id=comunicado.id: __import__(
                 'estoque.services.comunicacoes.dispatcher',

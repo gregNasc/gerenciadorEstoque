@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from estoque.models import EntregaNotificacaoCustodia
+from estoque.policies.comunicacoes import RestricaoComunicacaoUsuarioPolicy
 from estoque.services.comunicacoes.providers import (
     DisabledWhatsAppProvider,
     obter_provedor,
@@ -39,6 +40,8 @@ class CustodiaNotificacaoOutbox:
             deliveries = list(
                 EntregaNotificacaoCustodia.objects.select_related(
                     'notificacao__empresa',
+                    'usuario',
+                    'colaborador__usuario',
                 ).select_for_update(skip_locked=True).filter(
                     canal__in=channels,
                     status__in=(
@@ -58,6 +61,16 @@ class CustodiaNotificacaoOutbox:
             )
         processed = []
         for delivery in deliveries:
+            usuario = delivery.usuario or getattr(
+                delivery.colaborador, 'usuario', None,
+            )
+            if RestricaoComunicacaoUsuarioPolicy.usuario_restrito(usuario):
+                cls._persist_ignored(
+                    delivery.pk,
+                    'Assunto não autorizado para este destinatário.',
+                )
+                processed.append(delivery.pk)
+                continue
             try:
                 if delivery.canal == EntregaNotificacaoCustodia.Canal.EMAIL:
                     cls._send_email(delivery, sender=email_sender)
@@ -77,6 +90,26 @@ class CustodiaNotificacaoOutbox:
             cls._persist_result(delivery.pk, *result)
             processed.append(delivery.pk)
         return processed
+
+    @staticmethod
+    @transaction.atomic
+    def _persist_ignored(delivery_id, reason):
+        delivery = EntregaNotificacaoCustodia.objects.select_for_update().get(
+            pk=delivery_id,
+        )
+        if delivery.status in {
+            EntregaNotificacaoCustodia.Status.ENVIADA,
+            EntregaNotificacaoCustodia.Status.ENTREGUE,
+        }:
+            return delivery
+        delivery.status = EntregaNotificacaoCustodia.Status.IGNORADA
+        delivery.processada_em = timezone.now()
+        delivery.proxima_tentativa_em = None
+        delivery.ultimo_erro = reason[:4000]
+        delivery.save(update_fields=(
+            'status', 'processada_em', 'proxima_tentativa_em', 'ultimo_erro',
+        ))
+        return delivery
 
     @staticmethod
     def _send_email(delivery, *, sender=None):

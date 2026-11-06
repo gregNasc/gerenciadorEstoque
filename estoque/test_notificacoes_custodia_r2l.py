@@ -186,6 +186,30 @@ class CustodiaNotificacaoR2LTests(TestCase):
         self.assertIsNotNone(delivery.enviada_em)
 
     @override_settings(CUSTODIA_EMAIL_ENABLED=True)
+    def test_outbox_revalida_restricao_antes_de_enviar_custodia(self):
+        term = TermoEntregaCustodiaService.gerar(
+            custodia=self.custodia,
+            usuario=self.usuario,
+        )
+        delivery = EntregaNotificacaoCustodia.objects.get(
+            notificacao__termo_entrega=term,
+            canal=EntregaNotificacaoCustodia.Canal.EMAIL,
+        )
+        self.usuario.username = 'jose.barboza'
+        self.usuario.save(update_fields=('username',))
+        sent = []
+
+        CustodiaNotificacaoOutbox.processar(
+            canal=EntregaNotificacaoCustodia.Canal.EMAIL,
+            email_sender=lambda message: sent.append(message) or 1,
+        )
+
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.status, EntregaNotificacaoCustodia.Status.IGNORADA)
+        self.assertEqual(sent, [])
+        self.assertIn('não autorizado', delivery.ultimo_erro.lower())
+
+    @override_settings(CUSTODIA_EMAIL_ENABLED=True)
     def test_falha_de_email_e_reagendada_sem_alterar_custodia(self):
         term = TermoEntregaCustodiaService.gerar(
             custodia=self.custodia,
