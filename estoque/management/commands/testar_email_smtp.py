@@ -1,3 +1,5 @@
+import smtplib
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand, CommandError
@@ -57,7 +59,26 @@ class Command(BaseCommand):
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[destino],
         )
-        if mensagem.send() != 1:
+        try:
+            enviados = mensagem.send()
+        except smtplib.SMTPAuthenticationError as exc:
+            raise CommandError(
+                'O servidor SMTP recusou a autenticação. Para Gmail, use uma '
+                'senha de app de 16 dígitos em EMAIL_HOST_PASSWORD; não use a '
+                'senha comum da conta.',
+            ) from exc
+        except smtplib.SMTPServerDisconnected as exc:
+            raise CommandError(
+                'O servidor SMTP encerrou a conexão durante o login. Confirme '
+                'host, porta e TLS. Para Gmail, substitua a senha comum por uma '
+                'senha de app de 16 dígitos.',
+            ) from exc
+        except (smtplib.SMTPConnectError, TimeoutError, OSError) as exc:
+            raise CommandError(
+                'Não foi possível concluir a conexão SMTP. Confira host, porta, '
+                'TLS, firewall e a disponibilidade do provedor.',
+            ) from exc
+        if enviados != 1:
             raise CommandError('O provedor não confirmou o envio do e-mail de teste.')
         self.stdout.write(self.style.SUCCESS('E-mail de teste enviado com sucesso.'))
 

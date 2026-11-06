@@ -14,6 +14,10 @@ Solicite ao responsável pelo e-mail corporativo:
 
 Senhas comuns da caixa postal podem ser recusadas quando a conta usa autenticação em dois fatores. Nesse caso, use a senha de aplicativo ou o método indicado pelo provedor.
 
+No Gmail, ative a verificação em duas etapas e gere uma senha de app. O código
+gerado tem 16 dígitos; grave-o em `EMAIL_HOST_PASSWORD` sem espaços. A senha
+comum da conta não deve ser usada para SMTP.
+
 ## 2. Cadastre as variáveis no Render
 
 No serviço web, abra **Environment** e configure:
