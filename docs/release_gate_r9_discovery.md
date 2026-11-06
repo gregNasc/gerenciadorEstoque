@@ -1,7 +1,8 @@
 # Release gate R9 — descoberta da integração TOTVS
 
-Status: **BLOQUEADO PARA IMPLEMENTAÇÃO DO CONECTOR**  
-Motivo: produto, versão, módulos, contrato de API e ambiente de homologação ainda não foram informados.
+Status: **FUNDAÇÃO PRONTA; CONECTOR ESPECÍFICO BLOQUEADO**
+Motivo do bloqueio restante: produto, versão, módulos, contrato de API e ambiente
+de homologação ainda não foram informados.
 
 Este gate evita assumir Protheus ou qualquer outro produto TOTVS e impede que
 campos, identificadores ou regras específicas do ERP vazem para o domínio do
@@ -18,6 +19,31 @@ Gerenciador de Estoque.
 - O Gerenciador deve continuar sendo a fonte do fluxo operacional interno até
   que a responsabilidade de cada sistema seja formalmente definida.
 - Nenhum código deve escrever diretamente no banco de dados do ERP.
+
+## Fundação implementada sem assumir produto
+
+- Configuração independente por empresa, desativada por padrão.
+- Chave geral `TOTVS_ENABLED=False` e bloqueio separado para produção.
+- Contrato de adaptador e registro por produto TOTVS.
+- Fila auditável com chave de idempotência determinística.
+- Histórico de tentativas sem persistir payloads, preços ou credenciais.
+- Estados para envio, confirmação, nova tentativa, falha e reconciliação.
+- Backoff exponencial limitado e timeout configurável para o futuro cliente.
+- Resultado ambíguo nunca é reenviado automaticamente.
+- Comando `python manage.py check_totvs_readiness` sem acesso à rede.
+
+Variáveis já aceitas, todas seguras e desativadas por padrão:
+
+```text
+TOTVS_ENABLED=False
+TOTVS_ALLOW_PRODUCTION=False
+TOTVS_TIMEOUT=20
+TOTVS_MAX_RETRIES=3
+TOTVS_RETRY_BASE_SECONDS=60
+```
+
+Nenhuma variável de credencial foi inventada. Elas dependerão do método oficial
+de autenticação do produto e da versão que forem confirmados.
 
 ## Informações obrigatórias antes do conector
 

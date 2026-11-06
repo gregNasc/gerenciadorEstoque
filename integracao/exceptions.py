@@ -54,3 +54,33 @@ class DocusignTransportError(DocusignError):
 
 class DocusignWebhookError(DocusignError):
     pass
+
+
+class TotvsError(Exception):
+    """Erro base seguro para a integração TOTVS."""
+
+
+class TotvsConfigurationError(TotvsError):
+    pass
+
+
+class TotvsUnsupportedProductError(TotvsConfigurationError):
+    pass
+
+
+class TotvsAuthenticationError(TotvsError):
+    pass
+
+
+class TotvsResponseError(TotvsError):
+    pass
+
+
+class TotvsRetryableError(TotvsError):
+    def __init__(self, message='Falha temporária na integração.', *, retry_after_seconds=None):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+class TotvsAmbiguousResultError(TotvsError):
+    """A API pode ter aceitado a operação; exige reconciliação antes de repetir."""

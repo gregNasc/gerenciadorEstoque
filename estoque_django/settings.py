@@ -451,6 +451,21 @@ DOCUSIGN_TIMEOUT = float(os.getenv('DOCUSIGN_TIMEOUT', '20'))
 DOCUSIGN_MAX_RETRIES = int(os.getenv('DOCUSIGN_MAX_RETRIES', '3'))
 DOCUSIGN_BACKOFF_BASE = float(os.getenv('DOCUSIGN_BACKOFF_BASE', '1'))
 
+# Fundação da integração TOTVS. Permanece desligada até que produto, versão,
+# módulos, API oficial e ambiente de homologação sejam confirmados. Credenciais
+# específicas serão adicionadas somente após a definição do método de autenticação.
+TOTVS_ENABLED = env_bool('TOTVS_ENABLED', False)
+TOTVS_ALLOW_PRODUCTION = env_bool('TOTVS_ALLOW_PRODUCTION', False)
+TOTVS_TIMEOUT = float(os.getenv('TOTVS_TIMEOUT', '20'))
+TOTVS_MAX_RETRIES = int(os.getenv('TOTVS_MAX_RETRIES', '3'))
+TOTVS_RETRY_BASE_SECONDS = int(os.getenv('TOTVS_RETRY_BASE_SECONDS', '60'))
+if TOTVS_TIMEOUT <= 0:
+    raise ImproperlyConfigured('TOTVS_TIMEOUT deve ser maior que zero.')
+if TOTVS_MAX_RETRIES < 1:
+    raise ImproperlyConfigured('TOTVS_MAX_RETRIES deve ser pelo menos 1.')
+if TOTVS_RETRY_BASE_SECONDS < 1:
+    raise ImproperlyConfigured('TOTVS_RETRY_BASE_SECONDS deve ser pelo menos 1.')
+
 # Interpretação opcional de linguagem natural. O LLM não acessa ferramentas nem
 # dados do Portal; ele retorna apenas filtros estruturados validados pelo Django.
 TORY_LLM_ENABLED = os.getenv('TORY_LLM_ENABLED', 'False').lower() == 'true'
@@ -527,6 +542,11 @@ LOGGING = {
         'integracao.tory_llm': {
             'handlers': ['console'],
             'level': os.getenv('TORY_LLM_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'integracao.totvs': {
+            'handlers': ['console'],
+            'level': os.getenv('TOTVS_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
     },

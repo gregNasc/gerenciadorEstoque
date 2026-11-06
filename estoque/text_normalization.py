@@ -39,6 +39,7 @@ TECHNICAL_NAME_PARTS = {
     'provider_message_id',
     'senha',
     'secret',
+    'sha256',
     'token',
     'url',
     'user_agent',
@@ -91,6 +92,20 @@ TECHNICAL_MODEL_FIELDS = {
     ('integracao.DocusignEvent', 'event_type'),
     ('integracao.DocusignEvent', 'payload_sha256'),
     ('integracao.CaepiImportacao', 'sha256'),
+    ('integracao.TotvsIntegrationConfig', 'produto_descricao'),
+    ('integracao.TotvsIntegrationConfig', 'versao'),
+    ('integracao.TotvsIntegrationConfig', 'api_versao'),
+    ('integracao.TotvsIntegrationConfig', 'codigo_empresa'),
+    ('integracao.TotvsIntegrationConfig', 'codigo_filial'),
+    ('integracao.TotvsOperation', 'operacao'),
+    ('integracao.TotvsOperation', 'recurso_tipo'),
+    ('integracao.TotvsOperation', 'recurso_id'),
+    ('integracao.TotvsOperation', 'referencia_remota'),
+    ('integracao.TotvsOperation', 'status_remoto'),
+    ('integracao.TotvsOperation', 'ultimo_erro_codigo'),
+    ('integracao.TotvsOperation', 'ultimo_erro_mensagem'),
+    ('integracao.TotvsOperationAttempt', 'resultado'),
+    ('integracao.TotvsOperationAttempt', 'erro_codigo'),
 }
 
 

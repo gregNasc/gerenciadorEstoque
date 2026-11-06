@@ -813,3 +813,197 @@ class CaepiRegistro(models.Model):
 
     def __str__(self):
         return f'CA {self.numero_ca} — {self.equipamento or self.descricao_equipamento}'
+
+
+class TotvsIntegrationConfig(models.Model):
+    class Produto(models.TextChoices):
+        NAO_DEFINIDO = 'NAO_DEFINIDO', 'Não definido'
+        PROTHEUS = 'PROTHEUS', 'Protheus'
+        DATASUL = 'DATASUL', 'Datasul'
+        RM = 'RM', 'RM'
+        OUTRO = 'OUTRO', 'Outro produto TOTVS'
+
+    class Ambiente(models.TextChoices):
+        HOMOLOGACAO = 'HOMOLOGACAO', 'Homologação'
+        PRODUCAO = 'PRODUCAO', 'Produção'
+
+    empresa = models.OneToOneField(
+        'estoque.Empresa',
+        on_delete=models.CASCADE,
+        related_name='configuracao_totvs',
+    )
+    habilitada = models.BooleanField(default=False, db_index=True)
+    produto = models.CharField(
+        max_length=20,
+        choices=Produto.choices,
+        default=Produto.NAO_DEFINIDO,
+    )
+    produto_descricao = models.CharField(max_length=120, blank=True, default='')
+    versao = models.CharField(max_length=100, blank=True, default='')
+    modulos = models.JSONField(default=list, blank=True)
+    ambiente = models.CharField(
+        max_length=20,
+        choices=Ambiente.choices,
+        default=Ambiente.HOMOLOGACAO,
+    )
+    api_base_url = models.URLField(max_length=500, blank=True, default='')
+    api_versao = models.CharField(max_length=80, blank=True, default='')
+    codigo_empresa = models.CharField(max_length=80, blank=True, default='')
+    codigo_filial = models.CharField(max_length=80, blank=True, default='')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração TOTVS por empresa'
+        verbose_name_plural = 'Configurações TOTVS por empresa'
+        ordering = ('empresa__nome',)
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if not isinstance(self.modulos, list) or not all(
+            isinstance(item, str) and item.strip() for item in self.modulos
+        ):
+            errors['modulos'] = 'Informe os módulos como uma lista de nomes.'
+        if self.produto == self.Produto.OUTRO and not self.produto_descricao:
+            errors['produto_descricao'] = 'Informe o nome exato do produto TOTVS.'
+        if self.habilitada:
+            if self.produto == self.Produto.NAO_DEFINIDO:
+                errors['produto'] = 'Confirme o produto TOTVS antes de habilitar.'
+            if not self.versao:
+                errors['versao'] = 'Confirme a versão do produto antes de habilitar.'
+            if not self.modulos:
+                errors['modulos'] = 'Confirme ao menos um módulo antes de habilitar.'
+            if not self.api_base_url:
+                errors['api_base_url'] = 'Informe a URL oficial da API.'
+            elif not self.api_base_url.lower().startswith('https://'):
+                errors['api_base_url'] = 'A API habilitada deve utilizar HTTPS.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.produto_descricao = (self.produto_descricao or '').strip()
+        self.versao = (self.versao or '').strip()
+        self.modulos = [item.strip() for item in (self.modulos or []) if item.strip()]
+        self.api_base_url = (self.api_base_url or '').strip().rstrip('/')
+        self.api_versao = (self.api_versao or '').strip()
+        self.codigo_empresa = (self.codigo_empresa or '').strip()
+        self.codigo_filial = (self.codigo_filial or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'TOTVS — {self.empresa}'
+
+
+class TotvsOperation(models.Model):
+    class Status(models.TextChoices):
+        AGUARDANDO = 'AGUARDANDO', 'Aguardando'
+        PROCESSANDO = 'PROCESSANDO', 'Processando'
+        NOVA_TENTATIVA = 'NOVA_TENTATIVA', 'Nova tentativa agendada'
+        ENVIADA = 'ENVIADA', 'Enviada'
+        CONFIRMADA = 'CONFIRMADA', 'Confirmada'
+        RECONCILIAR = 'RECONCILIAR', 'Requer reconciliação'
+        FALHOU = 'FALHOU', 'Falhou'
+        CANCELADA = 'CANCELADA', 'Cancelada'
+
+    empresa = models.ForeignKey(
+        'estoque.Empresa',
+        on_delete=models.PROTECT,
+        related_name='operacoes_totvs',
+    )
+    operacao = models.CharField(max_length=80, db_index=True)
+    recurso_tipo = models.CharField(max_length=80)
+    recurso_id = models.CharField(max_length=100)
+    versao_payload = models.PositiveSmallIntegerField(default=1)
+    idempotency_key = models.CharField(max_length=64, unique=True, editable=False)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.AGUARDANDO,
+        db_index=True,
+    )
+    referencia_remota = models.CharField(max_length=160, blank=True, default='', db_index=True)
+    status_remoto = models.CharField(max_length=100, blank=True, default='')
+    tentativas = models.PositiveIntegerField(default=0)
+    proxima_tentativa_em = models.DateTimeField(null=True, blank=True, db_index=True)
+    iniciada_em = models.DateTimeField(null=True, blank=True)
+    finalizada_em = models.DateTimeField(null=True, blank=True)
+    ultimo_erro_codigo = models.CharField(max_length=100, blank=True, default='')
+    ultimo_erro_mensagem = models.CharField(max_length=255, blank=True, default='')
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='operacoes_totvs_criadas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Operação TOTVS'
+        verbose_name_plural = 'Operações TOTVS'
+        ordering = ('-criado_em', '-id')
+        indexes = [
+            models.Index(fields=('empresa', 'status'), name='totvs_op_empresa_status_idx'),
+            models.Index(fields=('status', 'proxima_tentativa_em'), name='totvs_op_retry_idx'),
+        ]
+
+    def clean(self):
+        super().clean()
+        normalized = (self.operacao or '').strip().upper()
+        if not normalized or not normalized.replace('_', '').isalnum():
+            raise ValidationError({'operacao': 'Use somente letras, números e sublinhado.'})
+        if not (self.recurso_tipo or '').strip() or not (self.recurso_id or '').strip():
+            raise ValidationError('Informe o recurso local da operação.')
+
+    def save(self, *args, **kwargs):
+        self.operacao = (self.operacao or '').strip().upper()
+        self.recurso_tipo = (self.recurso_tipo or '').strip().lower()
+        self.recurso_id = (self.recurso_id or '').strip()
+        self.referencia_remota = (self.referencia_remota or '').strip()
+        self.status_remoto = (self.status_remoto or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.operacao} {self.recurso_tipo}:{self.recurso_id} — {self.status}'
+
+
+class TotvsOperationAttempt(models.Model):
+    operacao = models.ForeignKey(
+        TotvsOperation,
+        on_delete=models.CASCADE,
+        related_name='historico_tentativas',
+    )
+    numero = models.PositiveIntegerField()
+    resultado = models.CharField(max_length=30, blank=True, default='')
+    http_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    requisicao_sha256 = models.CharField(max_length=64, blank=True, default='')
+    resposta_sha256 = models.CharField(max_length=64, blank=True, default='')
+    erro_codigo = models.CharField(max_length=100, blank=True, default='')
+    iniciada_em = models.DateTimeField(auto_now_add=True)
+    finalizada_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Tentativa de operação TOTVS'
+        verbose_name_plural = 'Tentativas de operações TOTVS'
+        ordering = ('operacao_id', 'numero')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('operacao', 'numero'),
+                name='totvs_tentativa_numero_uq',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=('operacao', 'iniciada_em'), name='totvs_try_op_inicio_idx'),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError('Tentativas TOTVS são registros imutáveis.')
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.operacao_id} — tentativa {self.numero}'

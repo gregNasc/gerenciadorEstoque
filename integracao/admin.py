@@ -16,6 +16,9 @@ from integracao.models import (
     PlanningRegion,
     PlanningRegionBinding,
     PlanningStore,
+    TotvsIntegrationConfig,
+    TotvsOperation,
+    TotvsOperationAttempt,
 )
 
 
@@ -148,3 +151,37 @@ class SyncRunAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "endpoint")
     readonly_fields = [field.name for field in InventoryPlanningSyncRun._meta.fields]
+
+
+@admin.register(TotvsIntegrationConfig)
+class TotvsIntegrationConfigAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'produto', 'versao', 'ambiente', 'habilitada', 'atualizado_em')
+    list_filter = ('habilitada', 'produto', 'ambiente')
+    search_fields = ('empresa__nome', 'produto_descricao', 'versao')
+
+
+@admin.register(TotvsOperation)
+class TotvsOperationAdmin(admin.ModelAdmin):
+    list_display = ('operacao', 'empresa', 'recurso_tipo', 'recurso_id', 'status', 'tentativas', 'criado_em')
+    list_filter = ('status', 'operacao', 'empresa')
+    search_fields = ('idempotency_key', 'referencia_remota', 'recurso_id')
+    readonly_fields = [field.name for field in TotvsOperation._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(TotvsOperationAttempt)
+class TotvsOperationAttemptAdmin(admin.ModelAdmin):
+    list_display = ('operacao', 'numero', 'resultado', 'http_status', 'erro_codigo', 'iniciada_em')
+    list_filter = ('resultado', 'erro_codigo')
+    readonly_fields = [field.name for field in TotvsOperationAttempt._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
