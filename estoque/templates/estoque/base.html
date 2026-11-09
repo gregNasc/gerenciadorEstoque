@@ -318,6 +318,13 @@
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end"
                         aria-labelledby="comprasDropdown">
                         {% if pode_gerenciar_aquisicoes %}
+                        <li>
+                            <a class="dropdown-item {% if url_name == 'painel' %}active{% endif %}"
+                               href="{% url 'compras:painel' %}">
+                                <i class="bi bi-grid-1x2 me-2"></i>{% trans "Visão geral" %}
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">{% trans "Processo de compra" %}</h6></li>
                         <li>
                             <a class="dropdown-item {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'detalhe_solicitacao' or url_name == 'cotacao_solicitacao' %}active{% endif %}"

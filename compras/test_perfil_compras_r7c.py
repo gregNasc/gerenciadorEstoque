@@ -37,6 +37,7 @@ class PerfilComprasR7CTests(TestCase):
             reverse('insumos:dashboard_custos'),
             reverse('insumos:precos_insumos'),
             reverse('insumos:pesquisa_precos_online'),
+            reverse('compras:painel'),
             reverse('compras:aquisicao_lista'),
             reverse('compras:fornecedores_empresa'),
         )
@@ -52,8 +53,25 @@ class PerfilComprasR7CTests(TestCase):
             reverse('insumos:dashboard_custos'),
             reverse('insumos:precos_insumos'),
             reverse('insumos:pesquisa_precos_online'),
+            reverse('compras:painel'),
             reverse('compras:aquisicao_lista'),
             reverse('compras:fornecedores_empresa'),
         ):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_painel_orienta_o_perfil_compras_sem_expor_catalogo(self):
+        self.client.force_login(self.compras)
+
+        resposta = self.client.get(reverse('compras:painel'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'Painel de Compras')
+        self.assertContains(resposta, 'Solicitações para tratar')
+        self.assertContains(resposta, 'Cotações em andamento')
+        self.assertContains(resposta, 'Aquisições em rascunho')
+        self.assertContains(resposta, 'Remessas pendentes')
+        self.assertNotContains(
+            resposta,
+            reverse('compras:catalogo_empresa'),
+        )

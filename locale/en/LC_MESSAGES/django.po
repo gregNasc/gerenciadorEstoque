@@ -4303,3 +4303,51 @@ msgstr "Supplier-to-Base deliveries do not create a fictitious origin. For movem
 
 msgid "Preparar remessa"
 msgstr "Prepare shipment"
+
+msgid "Painel de Compras"
+msgstr "Purchasing Dashboard"
+
+msgid "Veja primeiro o que precisa de atenção e abra diretamente a próxima ação."
+msgstr "See what needs attention first and open the next action directly."
+
+msgid "Resumo das pendências"
+msgstr "Pending work summary"
+
+msgid "Solicitações para tratar"
+msgstr "Requests to handle"
+
+msgid "Cotações em andamento"
+msgstr "Quotations in progress"
+
+msgid "Aquisições em rascunho"
+msgstr "Draft acquisitions"
+
+msgid "Remessas pendentes"
+msgstr "Pending shipments"
+
+msgid "Solicitações aguardando Compras"
+msgstr "Requests awaiting Purchasing"
+
+msgid "Ver todas"
+msgstr "View all"
+
+msgid "Nenhuma solicitação exige ação agora."
+msgstr "No request requires action right now."
+
+msgid "proposta(s)"
+msgstr "proposal(s)"
+
+msgid "Nenhuma cotação está em andamento."
+msgstr "No quotation is currently in progress."
+
+msgid "Aquisições para revisar"
+msgstr "Acquisitions to review"
+
+msgid "Nenhuma aquisição aguarda revisão."
+msgstr "No acquisition is awaiting review."
+
+msgid "Remessas para acompanhar"
+msgstr "Shipments to track"
+
+msgid "Nenhuma remessa exige acompanhamento agora."
+msgstr "No shipment requires tracking right now."

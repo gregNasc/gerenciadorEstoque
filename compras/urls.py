@@ -6,6 +6,7 @@ from compras import views
 app_name = 'compras'
 
 urlpatterns = [
+    path('painel/', views.painel_compras, name='painel'),
     path('', views.lista_aquisicoes, name='aquisicao_lista'),
     path('catalogo/configurar/', views.configurar_catalogo_empresa, name='catalogo_empresa'),
     path('fornecedores/', views.fornecedores_empresa, name='fornecedores_empresa'),

@@ -10474,3 +10474,51 @@ msgstr "En entregas de proveedor a Base no se crea un origen ficticio. En movimi
 
 msgid "Preparar remessa"
 msgstr "Preparar envío"
+
+msgid "Painel de Compras"
+msgstr "Panel de Compras"
+
+msgid "Veja primeiro o que precisa de atenção e abra diretamente a próxima ação."
+msgstr "Vea primero lo que requiere atención y abra directamente la siguiente acción."
+
+msgid "Resumo das pendências"
+msgstr "Resumen de pendientes"
+
+msgid "Solicitações para tratar"
+msgstr "Solicitudes por atender"
+
+msgid "Cotações em andamento"
+msgstr "Cotizaciones en curso"
+
+msgid "Aquisições em rascunho"
+msgstr "Adquisiciones en borrador"
+
+msgid "Remessas pendentes"
+msgstr "Envíos pendientes"
+
+msgid "Solicitações aguardando Compras"
+msgstr "Solicitudes en espera de Compras"
+
+msgid "Ver todas"
+msgstr "Ver todas"
+
+msgid "Nenhuma solicitação exige ação agora."
+msgstr "Ninguna solicitud requiere acción en este momento."
+
+msgid "proposta(s)"
+msgstr "propuesta(s)"
+
+msgid "Nenhuma cotação está em andamento."
+msgstr "No hay cotizaciones en curso."
+
+msgid "Aquisições para revisar"
+msgstr "Adquisiciones por revisar"
+
+msgid "Nenhuma aquisição aguarda revisão."
+msgstr "Ninguna adquisición está pendiente de revisión."
+
+msgid "Remessas para acompanhar"
+msgstr "Envíos por acompañar"
+
+msgid "Nenhuma remessa exige acompanhamento agora."
+msgstr "Ningún envío requiere seguimiento en este momento."

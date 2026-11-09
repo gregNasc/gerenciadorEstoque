@@ -12,6 +12,10 @@
         </div>
         <nav class="nav nav-pills flex-nowrap gap-2 overflow-x-auto pb-1">
             {% if pode_gerenciar_aquisicoes %}
+            <a class="nav-link text-nowrap {% if url_name == 'painel' %}active{% endif %}"
+               href="{% url 'compras:painel' %}">
+                <i class="bi bi-grid-1x2 me-1"></i>{% trans "Visão geral" %}
+            </a>
             <a class="nav-link text-nowrap {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'detalhe_solicitacao' or url_name == 'cotacao_solicitacao' %}active{% endif %}"
                href="{% url 'insumos:lista_solicitacoes_insumo' %}">
                 <i class="bi bi-clipboard-check me-1"></i>{% trans "Solicitações e cotações" %}

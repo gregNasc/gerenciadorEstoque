@@ -66,6 +66,55 @@ from openpyxl.utils.exceptions import InvalidFileException
 
 
 @login_required
+def painel_compras(request):
+    if not ComprasAccessPolicy.pode_gerenciar_aquisicoes(request.user):
+        raise PermissionDenied
+
+    solicitacoes = InsumosTenantPolicy.requests(
+        request.user,
+        SolicitacaoInsumo.objects.select_related(
+            'base__empresa', 'solicitante',
+        ),
+        action=InsumosTenantPolicy.APPROVE,
+    ).filter(status__in=(
+        'PENDENTE', 'RECEBIDA_COMPRAS', 'EM_ANALISE', 'APROVADA',
+    )).order_by('criado_em', 'id')
+    cotacoes = ProcessoCotacao.objects.filter(
+        empresa__in=ComprasAccessPolicy.empresas(request.user),
+        status__in=(
+            ProcessoCotacao.Status.ABERTO,
+            ProcessoCotacao.Status.EM_ANALISE,
+        ),
+    ).select_related(
+        'solicitacao__base',
+    ).annotate(total_propostas=Count('propostas')).order_by('criado_em', 'id')
+    aquisicoes = AquisicaoAccessPolicy.queryset(request.user).filter(
+        status=Aquisicao.Status.RASCUNHO,
+    ).select_related('empresa', 'fornecedor').order_by('criado_em', 'id')
+    remessas = AquisicaoAccessPolicy.remessas(request.user).filter(
+        status__in=(
+            RemessaCompra.Status.PREPARADA,
+            RemessaCompra.Status.EM_TRANSITO,
+            RemessaCompra.Status.AGUARDANDO_CONFERENCIA,
+            RemessaCompra.Status.RECEBIDA_PARCIAL,
+        ),
+    ).select_related('base_origem', 'base_destino').order_by(
+        'previsao_chegada', 'criada_em', 'id',
+    )
+
+    return render(request, 'compras/painel.html', {
+        'solicitacoes': solicitacoes[:6],
+        'cotacoes': cotacoes[:6],
+        'aquisicoes': aquisicoes[:6],
+        'remessas': remessas[:6],
+        'total_solicitacoes': solicitacoes.count(),
+        'total_cotacoes': cotacoes.count(),
+        'total_aquisicoes': aquisicoes.count(),
+        'total_remessas': remessas.count(),
+    })
+
+
+@login_required
 def lista_aquisicoes(request):
     return render(request, 'compras/aquisicao_lista.html', {
         'aquisicoes': AquisicaoAccessPolicy.queryset(request.user).select_related(
