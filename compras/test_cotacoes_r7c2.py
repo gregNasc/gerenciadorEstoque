@@ -185,6 +185,50 @@ class CotacoesPersistentesR7C2Tests(TestCase):
             tipo=EventoSolicitacaoInsumo.Tipo.COTACAO_ABERTA,
         ).exists())
 
+    def test_abertura_recebe_solicitacao_pendente_e_inicia_analise(self):
+        solicitacao = self._solicitacao(
+            self.base_a, self.admin_a, 'INS-COT-PENDENTE', self.insumo,
+        )
+        solicitacao.status = 'PENDENTE'
+        solicitacao.save(update_fields=['status'])
+
+        processo, criado = CotacaoService.abrir(
+            solicitacao=solicitacao,
+            usuario=self.admin_a,
+        )
+
+        solicitacao.refresh_from_db()
+        self.assertTrue(criado)
+        self.assertEqual(processo.solicitacao, solicitacao)
+        self.assertEqual(solicitacao.status, 'EM_ANALISE')
+        self.assertEqual(
+            list(solicitacao.eventos.values_list('tipo', flat=True)),
+            [
+                EventoSolicitacaoInsumo.Tipo.RECEBIDA_COMPRAS,
+                EventoSolicitacaoInsumo.Tipo.EM_ANALISE,
+                EventoSolicitacaoInsumo.Tipo.COTACAO_ABERTA,
+            ],
+        )
+
+    def test_abertura_bloqueia_solicitacao_que_ja_seguiu_para_compra(self):
+        solicitacao = self._solicitacao(
+            self.base_a, self.admin_a, 'INS-COT-COMPRADA', self.insumo,
+        )
+        solicitacao.status = 'PEDIDO_REALIZADO'
+        solicitacao.save(update_fields=['status'])
+
+        with self.assertRaisesMessage(
+            ValidationError, 'já foi encerrada ou seguiu para a etapa de compra',
+        ):
+            CotacaoService.abrir(
+                solicitacao=solicitacao,
+                usuario=self.admin_a,
+            )
+
+        self.assertFalse(ProcessoCotacao.objects.filter(
+            solicitacao=solicitacao,
+        ).exists())
+
     def test_proposta_exige_fornecedor_homologado(self):
         processo, _ = CotacaoService.abrir(
             solicitacao=self.solicitacao_a,
@@ -305,6 +349,35 @@ class CotacoesPersistentesR7C2Tests(TestCase):
         self.assertTrue(ProcessoCotacao.objects.filter(
             solicitacao=self.solicitacao_a,
             criado_por=self.compras_a,
+        ).exists())
+        pagina = self.client.get(reverse(
+            'compras:cotacao_solicitacao', args=[self.solicitacao_a.pk],
+        ))
+        self.assertContains(pagina, 'Solicitações e cotações')
+        self.assertContains(pagina, 'Aquisições')
+
+    def test_tela_permite_iniciar_cotacao_de_solicitacao_pendente(self):
+        solicitacao = self._solicitacao(
+            self.base_a, self.admin_a, 'INS-COT-TELA-PEND', self.insumo,
+        )
+        solicitacao.status = 'PENDENTE'
+        solicitacao.save(update_fields=['status'])
+        url = reverse('compras:cotacao_solicitacao', args=[solicitacao.pk])
+        self.client.force_login(self.admin_a)
+
+        pagina = self.client.get(url)
+        self.assertContains(pagina, 'Iniciar cotação')
+        self.assertNotContains(
+            pagina,
+            'A solicitação ainda não está em uma etapa que permita cotação.',
+        )
+
+        resposta = self.client.post(url, {'acao': 'abrir'})
+        self.assertRedirects(resposta, url)
+        solicitacao.refresh_from_db()
+        self.assertEqual(solicitacao.status, 'EM_ANALISE')
+        self.assertTrue(ProcessoCotacao.objects.filter(
+            solicitacao=solicitacao,
         ).exists())
 
     def test_interface_so_expoe_cotacao_a_usuario_financeiro_autorizado(self):

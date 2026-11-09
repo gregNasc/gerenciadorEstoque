@@ -4238,3 +4238,32 @@ msgstr ""
 #: .\insumos\views\solicitacoes.py:196
 msgid "Ação inválida."
 msgstr ""
+
+msgid "Solicitação:"
+msgstr "Request:"
+
+msgid "A cotação ficará vinculada a esta solicitação e à empresa atual. Ao iniciar, a solicitação entrará automaticamente em análise por Compras."
+msgstr "The quotation will be linked to this request and the current company. When started, the request will automatically move to Purchasing review."
+
+msgid "Cotação indisponível."
+msgstr "Quotation unavailable."
+
+#, python-format
+msgid "Esta solicitação está como “%(status)s” e já foi encerrada ou seguiu para a etapa de compra."
+msgstr "This request is marked as \"%(status)s\" and has already been closed or moved to the purchasing stage."
+
+msgid "Processo de compra"
+msgstr "Purchasing process"
+
+msgid "Solicitações e cotações"
+msgstr "Requests and quotations"
+
+msgid "Remessas e recebimentos"
+msgstr "Shipments and receipts"
+
+msgid "Valores de insumos"
+msgstr "Supply values"
+
+#, python-format
+msgid "Valores de %(equipamentos)s"
+msgstr "%(equipamentos)s values"

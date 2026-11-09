@@ -10409,3 +10409,32 @@ msgstr "Habitual:"
 
 msgid "O idioma deste usuário será definido automaticamente como Espanhol."
 msgstr "El idioma de este usuario se establecerá automáticamente en Español."
+
+msgid "Solicitação:"
+msgstr "Solicitud:"
+
+msgid "A cotação ficará vinculada a esta solicitação e à empresa atual. Ao iniciar, a solicitação entrará automaticamente em análise por Compras."
+msgstr "La cotización quedará vinculada a esta solicitud y a la empresa actual. Al iniciarla, la solicitud pasará automáticamente al análisis de Compras."
+
+msgid "Cotação indisponível."
+msgstr "Cotización no disponible."
+
+#, python-format
+msgid "Esta solicitação está como “%(status)s” e já foi encerrada ou seguiu para a etapa de compra."
+msgstr "Esta solicitud figura como «%(status)s» y ya fue cerrada o avanzó a la etapa de compra."
+
+msgid "Processo de compra"
+msgstr "Proceso de compra"
+
+msgid "Solicitações e cotações"
+msgstr "Solicitudes y cotizaciones"
+
+msgid "Remessas e recebimentos"
+msgstr "Envíos y recepciones"
+
+msgid "Valores de insumos"
+msgstr "Valores de insumos"
+
+#, python-format
+msgid "Valores de %(equipamentos)s"
+msgstr "Valores de %(equipamentos)s"

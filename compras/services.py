@@ -214,7 +214,7 @@ class FornecedorEmpresaService:
         relacionamento = cls.queryset(
             usuario,
             action=ComprasAccessPolicy.EDIT,
-        ).select_for_update().filter(pk=relacionamento.pk).first()
+        ).select_for_update(of=('self',)).filter(pk=relacionamento.pk).first()
         if relacionamento is None:
             raise PermissionDenied('Fornecedor fora do escopo da empresa.')
         if status not in FornecedorEmpresa.Status.values:
@@ -246,7 +246,7 @@ class FornecedorEmpresaService:
 
 class CotacaoService:
     STATUS_SOLICITACAO_PERMITIDOS = {
-        'RECEBIDA_COMPRAS', 'EM_ANALISE', 'APROVADA',
+        'PENDENTE', 'RECEBIDA_COMPRAS', 'EM_ANALISE', 'APROVADA',
     }
 
     @classmethod
@@ -289,13 +289,32 @@ class CotacaoService:
         ).get(pk=solicitacao.pk)
         if solicitacao.status not in cls.STATUS_SOLICITACAO_PERMITIDOS:
             raise ValidationError(
-                'A cotação só pode ser aberta durante a análise ou após aprovação.'
+                'A cotação não pode ser aberta porque esta solicitação '
+                'já foi encerrada ou seguiu para a etapa de compra.'
             )
         existente = ProcessoCotacao.objects.select_for_update().filter(
             solicitacao=solicitacao,
         ).first()
         if existente:
             return existente, False
+
+        # Iniciar a cotação é a primeira ação de Compras para muitas
+        # solicitações. Avançamos as etapas administrativas automaticamente,
+        # preservando cada transição na linha do tempo auditável.
+        if solicitacao.status in {'PENDENTE', 'RECEBIDA_COMPRAS'}:
+            from insumos.services.solicitacao_service import SolicitacaoService
+
+            if solicitacao.status == 'PENDENTE':
+                SolicitacaoService.receber_compras(
+                    solicitacao=solicitacao,
+                    usuario=usuario,
+                    observacao='Recebida automaticamente ao iniciar a cotação.',
+                )
+            SolicitacaoService.iniciar_analise(
+                solicitacao=solicitacao,
+                usuario=usuario,
+                observacao='Análise iniciada automaticamente com a cotação.',
+            )
         processo = ProcessoCotacao(
             solicitacao=solicitacao,
             empresa=solicitacao.base.empresa,
@@ -320,7 +339,7 @@ class CotacaoService:
         processo = cls.queryset(
             usuario,
             action=ComprasAccessPolicy.EDIT,
-        ).select_for_update().filter(pk=processo.pk).first()
+        ).select_for_update(of=('self',)).filter(pk=processo.pk).first()
         if processo is None:
             raise PermissionDenied('Cotação fora do escopo de Compras.')
         if processo.status in {
@@ -388,7 +407,7 @@ class CotacaoService:
         processo = cls.queryset(
             usuario,
             action=ComprasAccessPolicy.APPROVE,
-        ).select_for_update().filter(pk=processo.pk).first()
+        ).select_for_update(of=('self',)).filter(pk=processo.pk).first()
         if processo is None:
             raise PermissionDenied('Cotação fora do escopo de decisão.')
         if processo.status == ProcessoCotacao.Status.DECIDIDO:
@@ -482,7 +501,7 @@ class AquisicaoService:
         processo = CotacaoService.queryset(
             usuario,
             action=ComprasAccessPolicy.CREATE,
-        ).select_for_update().filter(pk=processo.pk).first()
+        ).select_for_update(of=('self',)).filter(pk=processo.pk).first()
         if processo is None:
             raise PermissionDenied('Cotação fora do escopo de Compras.')
         existente = Aquisicao.objects.select_for_update().filter(
@@ -632,7 +651,7 @@ class AquisicaoService:
             action=ComprasAccessPolicy.APPROVE,
         ).filter(pk=aquisicao.pk).exists():
             raise PermissionDenied('Sem permissão para aprovar a aquisição.')
-        aquisicao = Aquisicao.objects.select_for_update().select_related(
+        aquisicao = Aquisicao.objects.select_for_update(of=('self',)).select_related(
             'processo_cotacao__solicitacao',
         ).get(pk=aquisicao.pk)
         if aquisicao.status != Aquisicao.Status.RASCUNHO:
