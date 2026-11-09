@@ -1,0 +1,45 @@
+{% load i18n %}
+{% with url_name=request.resolver_match.url_name %}
+<section class="card border-0 shadow-sm mb-4" aria-label="{% trans 'Navegação de Compras' %}">
+    <div class="card-body py-3 px-3 px-lg-4">
+        <div class="mb-3">
+            <div class="small text-uppercase fw-semibold text-primary mb-1">
+                {% trans "Compras e suprimentos" %}
+            </div>
+            <p class="small text-secondary mb-0">
+                {% trans "Acompanhe o processo desde a solicitação até o recebimento." %}
+            </p>
+        </div>
+        <nav class="nav nav-pills flex-nowrap gap-2 overflow-x-auto pb-1">
+            {% if pode_gerenciar_aquisicoes %}
+            <a class="nav-link text-nowrap {% if url_name == 'lista_solicitacoes_insumo' or url_name == 'detalhe_solicitacao' or url_name == 'cotacao_solicitacao' %}active{% endif %}"
+               href="{% url 'insumos:lista_solicitacoes_insumo' %}">
+                <i class="bi bi-clipboard-check me-1"></i>{% trans "Solicitações e cotações" %}
+            </a>
+            <a class="nav-link text-nowrap {% if url_name == 'aquisicao_lista' or url_name == 'aquisicao_detalhe' or url_name == 'aquisicao_criar' %}active{% endif %}"
+               href="{% url 'compras:aquisicao_lista' %}">
+                <i class="bi bi-receipt me-1"></i>{% trans "Aquisições" %}
+            </a>
+            {% endif %}
+            {% if pode_gerenciar_aquisicoes or pode_criar_remessa_compra %}
+            <a class="nav-link text-nowrap {% if url_name == 'remessa_lista' or url_name == 'remessa_detalhe' or url_name == 'remessa_criar' or url_name == 'remessa_individualizar_item' %}active{% endif %}"
+               href="{% url 'compras:remessa_lista' %}">
+                <i class="bi bi-truck me-1"></i>{% trans "Remessas" %}
+            </a>
+            {% endif %}
+            {% if pode_gerenciar_aquisicoes %}
+            <a class="nav-link text-nowrap {% if url_name == 'fornecedores_empresa' %}active{% endif %}"
+               href="{% url 'compras:fornecedores_empresa' %}">
+                <i class="bi bi-building-check me-1"></i>{% trans "Fornecedores" %}
+            </a>
+            {% endif %}
+            {% if pode_gerenciar_catalogo_compras %}
+            <a class="nav-link text-nowrap {% if url_name == 'catalogo_empresa' or url_name == 'criar_produto_catalogo' %}active{% endif %}"
+               href="{% url 'compras:catalogo_empresa' %}">
+                <i class="bi bi-journal-check me-1"></i>{% trans "Catálogo" %}
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+</section>
+{% endwith %}

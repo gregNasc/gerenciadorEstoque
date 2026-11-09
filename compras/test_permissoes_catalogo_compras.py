@@ -80,3 +80,25 @@ class PermissoesCatalogoComprasTests(TestCase):
                     contexto['pode_gerenciar_catalogo_compras']
                 )
         self.assertTrue(ComprasAccessPolicy.pode_gerenciar_catalogo(self.gestor))
+
+    def test_perfil_compras_recebe_fluxo_unificado_sem_catalogo_administrativo(self):
+        self.client.force_login(self.operador)
+
+        for rota in (
+            reverse('compras:aquisicao_lista'),
+            reverse('compras:remessa_lista'),
+        ):
+            with self.subTest(rota=rota):
+                resposta = self.client.get(rota)
+                self.assertEqual(resposta.status_code, 200)
+                self.assertContains(resposta, 'Compras e suprimentos')
+                self.assertContains(resposta, 'Solicitações e cotações')
+                self.assertContains(resposta, 'Aquisições')
+                self.assertContains(resposta, 'Remessas')
+                self.assertContains(resposta, 'Fornecedores')
+                self.assertNotContains(
+                    resposta,
+                    reverse('compras:catalogo_empresa'),
+                )
+                self.assertNotContains(resposta, 'id="dropdownSolicitacoes"')
+                self.assertContains(resposta, 'id="comprasDropdown"')

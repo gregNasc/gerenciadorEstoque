@@ -1,6 +1,7 @@
 {% extends 'estoque/base.html' %}
 {% block title %}Nova aquisição{% endblock %}
 {% block content %}
+{% include 'compras/partials/navegacao.html' %}
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div><h1 class="h3 mb-1">Nova aquisição</h1><p class="text-secondary mb-0">Registre o documento e o primeiro item recebido do fornecedor.</p></div>
     <a class="btn btn-outline-secondary" href="{% url 'compras:aquisicao_lista' %}">Voltar</a>

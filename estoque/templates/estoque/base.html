@@ -245,6 +245,7 @@
 
                 <!-- SOLICITAÇÕES -->
             {% if 'insumos' in tenant_features or 'transferencias' in tenant_features %}
+            {% if not pode_gerenciar_aquisicoes %}
             {% if perfil.role == 'admin' or perfil.role == 'gestor' or perfil.is_compras_insumos or perfil.is_financeiro_insumos %}
                 <li class="nav-item dropdown">
 
@@ -297,6 +298,7 @@
                     </ul>
 
                 </li>
+            {% endif %}
             {% endif %}
             {% endif %}
                 {% endif %}

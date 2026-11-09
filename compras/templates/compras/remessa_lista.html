@@ -1,1 +1,40 @@
-{% extends 'estoque/base.html' %}{% block title %}Remessas de Compras{% endblock %}{% block content %}<div class="d-flex justify-content-between"><div><h1 class="h3">Remessas de Compras</h1><p class="text-secondary">Fornecedor direto, via matriz ou entre bases.</p></div>{% if pode_criar %}<a class="btn btn-primary" href="{% url 'compras:remessa_criar' %}">Nova remessa</a>{% endif %}</div><div class="card"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Protocolo</th><th>Fluxo</th><th>Origem</th><th>Destino</th><th>Status</th></tr></thead><tbody>{% for r in remessas %}<tr><td><a href="{% url 'compras:remessa_detalhe' r.pk %}">{{ r.protocolo }}</a></td><td>{{ r.get_fluxo_display }}</td><td>{{ r.base_origem|default:'Fornecedor' }}</td><td>{{ r.base_destino }}</td><td>{{ r.get_status_display }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma remessa.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Remessas e recebimentos" %}{% endblock %}
+
+{% block content %}
+<main class="container-fluid px-3 px-lg-4 py-4">
+    {% include 'compras/partials/navegacao.html' %}
+    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">{% trans "Remessas e recebimentos" %}</h1>
+            <p class="text-secondary mb-0">{% trans "Acompanhe entregas de fornecedores, movimentações via matriz e transferências entre Bases." %}</p>
+        </div>
+        {% if pode_criar %}
+        <a class="btn btn-primary" href="{% url 'compras:remessa_criar' %}"><i class="bi bi-plus-lg me-1"></i>{% trans "Nova remessa" %}</a>
+        {% endif %}
+    </header>
+    <section class="card border-0 shadow-sm">
+        <div class="card-header bg-body py-3"><h2 class="h6 fw-semibold mb-0"><i class="bi bi-truck me-2"></i>{% trans "Remessas registradas" %}</h2></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th class="ps-4">{% trans "Protocolo" %}</th><th>{% trans "Fluxo" %}</th><th>{% trans "Origem" %}</th><th>{% trans "Destino" %}</th><th class="pe-4">{% trans "Status" %}</th></tr></thead>
+                <tbody>
+                    {% for remessa in remessas %}
+                    <tr>
+                        <td class="ps-4 fw-semibold"><a href="{% url 'compras:remessa_detalhe' remessa.pk %}">{{ remessa.protocolo }}</a></td>
+                        <td>{{ remessa.get_fluxo_display }}</td>
+                        <td>{% if remessa.base_origem %}{{ remessa.base_origem }}{% else %}{% trans "Fornecedor" %}{% endif %}</td>
+                        <td>{{ remessa.base_destino }}</td>
+                        <td class="pe-4"><span class="badge text-bg-light border">{{ remessa.get_status_display }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-secondary py-5"><i class="bi bi-truck fs-2 d-block mb-2"></i>{% trans "Nenhuma remessa encontrada no seu acesso." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+{% endblock %}

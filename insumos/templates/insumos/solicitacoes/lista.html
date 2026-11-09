@@ -6,6 +6,7 @@
 
 {% block content %}
 <main class="container-fluid p-4">
+    {% if pode_gerenciar_aquisicoes %}{% include 'compras/partials/navegacao.html' %}{% endif %}
     <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3 mb-3">
         <div>
             <h1 class="h3 mb-1">{% trans "Solicitações de insumos" %}</h1>

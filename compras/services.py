@@ -1234,7 +1234,7 @@ class RemessaCompraService:
                 observacao=str(inesperado.get('observacao', '') or '').strip(),
             )
 
-        itens = list(remessa.itens.select_for_update().select_related(
+        itens = list(remessa.itens.select_for_update(of=('self',)).select_related(
             'item_aquisicao', 'item_nfe',
         ))
         if finalizar:

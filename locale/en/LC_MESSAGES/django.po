@@ -4267,3 +4267,39 @@ msgstr "Supply values"
 #, python-format
 msgid "Valores de %(equipamentos)s"
 msgstr "%(equipamentos)s values"
+
+msgid "Navegação de Compras"
+msgstr "Purchasing navigation"
+
+msgid "Acompanhe o processo desde a solicitação até o recebimento."
+msgstr "Follow the process from the request through receipt."
+
+msgid "Remessas"
+msgstr "Shipments"
+
+msgid "Histórico de compras, documentos fiscais e valores efetivamente registrados."
+msgstr "History of purchases, tax documents, and recorded amounts."
+
+msgid "Histórico de aquisições"
+msgstr "Acquisition history"
+
+msgid "Nenhuma aquisição encontrada no seu acesso."
+msgstr "No acquisitions were found within your access."
+
+msgid "Acompanhe entregas de fornecedores, movimentações via matriz e transferências entre Bases."
+msgstr "Track supplier deliveries, movements through headquarters, and transfers between Bases."
+
+msgid "Remessas registradas"
+msgstr "Registered shipments"
+
+msgid "Nenhuma remessa encontrada no seu acesso."
+msgstr "No shipments were found within your access."
+
+msgid "Informe a origem, o destino e o item que será acompanhado até o recebimento."
+msgstr "Enter the origin, destination, and item to track through receipt."
+
+msgid "Em entregas de fornecedor para Base, não é criada uma origem fictícia. Em movimentações entre Bases, o saldo fica reservado até a conferência."
+msgstr "Supplier-to-Base deliveries do not create a fictitious origin. For movements between Bases, stock remains reserved until verification."
+
+msgid "Preparar remessa"
+msgstr "Prepare shipment"

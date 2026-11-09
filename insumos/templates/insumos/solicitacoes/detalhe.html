@@ -5,6 +5,7 @@
 
 {% block content %}
 <main class="container-fluid px-3 px-lg-4 py-4">
+    {% if pode_gerenciar_aquisicoes %}{% include 'compras/partials/navegacao.html' %}{% endif %}
 
     <!-- =========================================================
          CABEÇALHO

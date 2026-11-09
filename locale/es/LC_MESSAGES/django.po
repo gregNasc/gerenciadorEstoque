@@ -10438,3 +10438,39 @@ msgstr "Valores de insumos"
 #, python-format
 msgid "Valores de %(equipamentos)s"
 msgstr "Valores de %(equipamentos)s"
+
+msgid "Navegação de Compras"
+msgstr "Navegación de Compras"
+
+msgid "Acompanhe o processo desde a solicitação até o recebimento."
+msgstr "Acompañe el proceso desde la solicitud hasta la recepción."
+
+msgid "Remessas"
+msgstr "Envíos"
+
+msgid "Histórico de compras, documentos fiscais e valores efetivamente registrados."
+msgstr "Historial de compras, documentos fiscales y valores efectivamente registrados."
+
+msgid "Histórico de aquisições"
+msgstr "Historial de adquisiciones"
+
+msgid "Nenhuma aquisição encontrada no seu acesso."
+msgstr "No se encontraron adquisiciones dentro de su acceso."
+
+msgid "Acompanhe entregas de fornecedores, movimentações via matriz e transferências entre Bases."
+msgstr "Acompañe entregas de proveedores, movimientos a través de la matriz y transferencias entre Bases."
+
+msgid "Remessas registradas"
+msgstr "Envíos registrados"
+
+msgid "Nenhuma remessa encontrada no seu acesso."
+msgstr "No se encontraron envíos dentro de su acceso."
+
+msgid "Informe a origem, o destino e o item que será acompanhado até o recebimento."
+msgstr "Informe el origen, el destino y el artículo que se acompañará hasta su recepción."
+
+msgid "Em entregas de fornecedor para Base, não é criada uma origem fictícia. Em movimentações entre Bases, o saldo fica reservado até a conferência."
+msgstr "En entregas de proveedor a Base no se crea un origen ficticio. En movimientos entre Bases, el saldo queda reservado hasta la verificación."
+
+msgid "Preparar remessa"
+msgstr "Preparar envío"

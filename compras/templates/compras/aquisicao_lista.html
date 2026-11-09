@@ -1,4 +1,43 @@
-{% extends 'estoque/base.html' %}{% block title %}Aquisições{% endblock %}{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h3">Aquisições</h1><p class="text-secondary mb-0">Histórico de compras, documentos e custos efetivamente pagos.</p></div><div class="d-flex gap-2">{% if pode_homologar_fornecedores %}<a class="btn btn-outline-primary" href="{% url 'compras:fornecedores_empresa' %}"><i class="bi bi-building-check"></i> Fornecedores homologados</a>{% endif %}{% if pode_gerenciar %}<a class="btn btn-primary" href="{% url 'compras:aquisicao_criar' %}"><i class="bi bi-plus-lg"></i> Nova aquisição</a>{% endif %}</div></div>
-<div class="card"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Documento</th><th>Empresa</th><th>Fornecedor</th><th>Data</th><th>Status</th><th class="text-end">Valor</th></tr></thead><tbody>{% for a in aquisicoes %}<tr><td><a href="{% url 'compras:aquisicao_detalhe' a.pk %}">{{ a.numero_documento|default:a }}</a></td><td>{{ a.empresa }}</td><td>{{ a.fornecedor }}</td><td>{{ a.data_compra|date:'d/m/Y' }}</td><td>{{ a.get_status_display }}</td><td class="text-end">R$ {{ a.valor_total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="6">Nenhuma aquisição acessível.</td></tr>{% endfor %}</tbody></table></div></div>
+{% extends 'estoque/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Aquisições" %}{% endblock %}
+
+{% block content %}
+<main class="container-fluid px-3 px-lg-4 py-4">
+    {% include 'compras/partials/navegacao.html' %}
+    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">{% trans "Aquisições" %}</h1>
+            <p class="text-secondary mb-0">{% trans "Histórico de compras, documentos fiscais e valores efetivamente registrados." %}</p>
+        </div>
+        {% if pode_gerenciar %}
+        <a class="btn btn-primary" href="{% url 'compras:aquisicao_criar' %}">
+            <i class="bi bi-plus-lg me-1"></i>{% trans "Nova aquisição" %}
+        </a>
+        {% endif %}
+    </header>
+    <section class="card border-0 shadow-sm">
+        <div class="card-header bg-body py-3">
+            <h2 class="h6 fw-semibold mb-0"><i class="bi bi-clock-history me-2"></i>{% trans "Histórico de aquisições" %}</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th class="ps-4">{% trans "Documento" %}</th><th>{% trans "Empresa" %}</th><th>{% trans "Fornecedor" %}</th><th>{% trans "Data" %}</th><th>{% trans "Status" %}</th><th class="text-end pe-4">{% trans "Valor" %}</th></tr></thead>
+                <tbody>
+                    {% for aquisicao in aquisicoes %}
+                    <tr>
+                        <td class="ps-4 fw-semibold"><a href="{% url 'compras:aquisicao_detalhe' aquisicao.pk %}">{{ aquisicao.numero_documento|default:aquisicao }}</a></td>
+                        <td>{{ aquisicao.empresa }}</td><td>{{ aquisicao.fornecedor }}</td><td>{{ aquisicao.data_compra|date:'d/m/Y' }}</td>
+                        <td><span class="badge {% if aquisicao.status == 'APROVADA' or aquisicao.status == 'RECEBIDA' %}text-bg-success{% elif aquisicao.status == 'CANCELADA' %}text-bg-secondary{% else %}text-bg-primary{% endif %}">{{ aquisicao.get_status_display }}</span></td>
+                        <td class="text-end pe-4 fw-semibold">R$ {{ aquisicao.valor_total|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-secondary py-5"><i class="bi bi-receipt fs-2 d-block mb-2"></i>{% trans "Nenhuma aquisição encontrada no seu acesso." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
 {% endblock %}
