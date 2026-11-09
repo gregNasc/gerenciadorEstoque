@@ -409,6 +409,9 @@ def detalhe_aquisicao(request, pk):
         'pode_baixar_documentos': AquisicaoAccessPolicy.documentos(
             request.user,
         ).filter(pk=aquisicao.pk).exists(),
+        'pode_gerenciar_catalogo_compras': (
+            ComprasAccessPolicy.pode_gerenciar_catalogo_compras(request.user)
+        ),
     })
 
 
@@ -440,6 +443,8 @@ def processar_xml_nfe(request, pk):
 @login_required
 @require_POST
 def confirmar_item_nfe_catalogo(request, pk, item_id):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo_compras(request.user):
+        raise PermissionDenied
     aquisicao = get_object_or_404(
         AquisicaoAccessPolicy.documentos(request.user),
         pk=pk,
@@ -824,7 +829,7 @@ def valores_insumos(request):
 
 @login_required
 def configurar_catalogo_empresa(request):
-    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo_compras(request.user):
         raise PermissionDenied
     from estoque.policies.linhas_moveis import LinhasMoveisAccessPolicy
 
@@ -1124,7 +1129,9 @@ def valores_equipamentos(request):
         'pode_editar': ComprasAccessPolicy.pode_editar_precos(request.user),
         'pode_editar_preco_direto': pode_definir_preco or pode_alterar_preco,
         'pode_importar': ComprasAccessPolicy.pode_importar_precos(request.user),
-        'pode_catalogo': ComprasAccessPolicy.pode_gerenciar_catalogo(request.user),
+        'pode_catalogo': (
+            ComprasAccessPolicy.pode_gerenciar_catalogo_compras(request.user)
+        ),
         'categorias': [(item, item) for item in categorias_catalogo],
         'produtos': produtos.order_by('categoria', 'descricao'),
         'filtros': {
@@ -1378,7 +1385,7 @@ def _item_nfe_para_cadastro(request):
 
 @login_required
 def criar_produto_catalogo(request):
-    if not ComprasAccessPolicy.pode_gerenciar_catalogo(request.user):
+    if not ComprasAccessPolicy.pode_gerenciar_catalogo_compras(request.user):
         raise PermissionDenied
     item_nfe_origem = _item_nfe_para_cadastro(request)
     initial = None

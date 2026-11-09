@@ -302,7 +302,7 @@
                 {% endif %}
 
                 <!-- COMPRAS -->
-                {% if pode_gerenciar_aquisicoes or pode_visualizar_valores or pode_gerenciar_catalogo %}
+                {% if pode_gerenciar_aquisicoes or pode_visualizar_valores or pode_gerenciar_catalogo_compras %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {% if request.resolver_match.namespace == 'compras' or url_name == 'dashboard_custos' or url_name == 'pesquisa_precos_online' %}active{% endif %}"
                        href="#"
@@ -344,7 +344,7 @@
                             </a>
                         </li>
                         {% endif %}
-                        {% if pode_gerenciar_catalogo %}
+                        {% if pode_gerenciar_catalogo_compras %}
                         <li>
                             <a class="dropdown-item {% if url_name == 'catalogo_empresa' %}active{% endif %}"
                                href="{% url 'compras:catalogo_empresa' %}">

@@ -173,6 +173,7 @@ class ComprasAccessPolicy:
 
     @classmethod
     def pode_gerenciar_catalogo(cls, user):
+        """Permissão operacional usada no cadastro de ativos e insumos."""
         perfil = getattr(user, 'perfil', None)
         return cls.operacional_sem_financeiro(user) or cls._admin_ou_compras(user) or (
             cls._autenticado(user)
@@ -182,6 +183,18 @@ class ComprasAccessPolicy:
                 or user.has_perm('estoque.cadastrar_equipamentos')
             )
         )
+
+    @classmethod
+    def pode_gerenciar_catalogo_compras(cls, user):
+        """Configuração do Catálogo de Compras: somente Admin/Superuser."""
+        if not cls._autenticado(user):
+            return False
+        if user.get_username().strip().lower() == 'jose.barboza':
+            return False
+        if user.is_superuser:
+            return True
+        perfil = getattr(user, 'perfil', None)
+        return bool(perfil and perfil.is_admin and not cls.restrito(user))
 
     @classmethod
     def pode_identificar_recebimentos(cls, user):

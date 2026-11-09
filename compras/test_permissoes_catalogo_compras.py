@@ -1,0 +1,82 @@
+from django.contrib.auth.models import Group, User
+from django.test import RequestFactory, TestCase
+from django.urls import reverse
+
+from estoque.context_processors import permissoes_especiais
+from estoque.models import Empresa, Perfil
+from estoque.policies.compras import ComprasAccessPolicy
+from insumos.constants import GruposInsumos
+
+
+class PermissoesCatalogoComprasTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.empresa = Empresa.objects.create(nome='Empresa Catálogo Restrito')
+        cls.admin = cls._usuario('admin.catalogo', Perfil.Role.ADMIN)
+        cls.gestor = cls._usuario('gestor.catalogo', Perfil.Role.GESTOR)
+        cls.operador = cls._usuario('operador.catalogo', Perfil.Role.OPERADOR)
+        cls.jose = cls._usuario('jose.barboza', Perfil.Role.ADMIN)
+        cls.superuser = cls._usuario('super.catalogo', Perfil.Role.GESTOR)
+        cls.superuser.is_superuser = True
+        cls.superuser.is_staff = True
+        cls.superuser.save(update_fields=['is_superuser', 'is_staff'])
+        grupo_compras, _ = Group.objects.get_or_create(name=GruposInsumos.COMPRAS)
+        cls.operador.groups.add(grupo_compras)
+
+    @classmethod
+    def _usuario(cls, username, role):
+        usuario = User.objects.create_user(username, password='Teste123!')
+        usuario.perfil.empresa = cls.empresa
+        usuario.perfil.role = role
+        usuario.perfil.save(update_fields=['empresa', 'role'])
+        return usuario
+
+    def test_politica_permite_somente_admin_e_superuser(self):
+        self.assertTrue(
+            ComprasAccessPolicy.pode_gerenciar_catalogo_compras(self.admin)
+        )
+        self.assertTrue(
+            ComprasAccessPolicy.pode_gerenciar_catalogo_compras(self.superuser)
+        )
+        for usuario in (self.gestor, self.operador, self.jose):
+            with self.subTest(usuario=usuario.username):
+                self.assertFalse(
+                    ComprasAccessPolicy.pode_gerenciar_catalogo_compras(usuario)
+                )
+
+    def test_rotas_bloqueiam_gestor_operador_e_jose(self):
+        rotas = (
+            reverse('compras:catalogo_empresa'),
+            reverse('compras:criar_produto_catalogo'),
+        )
+        for usuario in (self.gestor, self.operador, self.jose):
+            self.client.force_login(usuario)
+            for rota in rotas:
+                with self.subTest(usuario=usuario.username, rota=rota):
+                    self.assertEqual(self.client.get(rota).status_code, 403)
+
+    def test_rotas_permanecem_disponiveis_para_admin_e_superuser(self):
+        for usuario in (self.admin, self.superuser):
+            self.client.force_login(usuario)
+            with self.subTest(usuario=usuario.username):
+                self.assertEqual(
+                    self.client.get(reverse('compras:catalogo_empresa')).status_code,
+                    200,
+                )
+                self.assertEqual(
+                    self.client.get(
+                        reverse('compras:criar_produto_catalogo')
+                    ).status_code,
+                    200,
+                )
+
+    def test_contexto_oculta_aba_sem_retirar_cadastro_operacional_do_gestor(self):
+        for usuario in (self.gestor, self.operador, self.jose):
+            requisicao = RequestFactory().get('/')
+            requisicao.user = usuario
+            contexto = permissoes_especiais(requisicao)
+            with self.subTest(usuario=usuario.username):
+                self.assertFalse(
+                    contexto['pode_gerenciar_catalogo_compras']
+                )
+        self.assertTrue(ComprasAccessPolicy.pode_gerenciar_catalogo(self.gestor))

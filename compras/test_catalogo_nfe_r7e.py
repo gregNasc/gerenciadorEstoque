@@ -211,10 +211,17 @@ class CatalogoNFeR7ETests(TestCase):
             args=[aquisicao.pk, item.pk],
         )
 
-        for usuario in (self.gestor, self.jose, self.outro_admin):
+        for usuario, status_esperado in (
+            (self.gestor, 403),
+            (self.jose, 403),
+            (self.outro_admin, 404),
+        ):
             with self.subTest(usuario=usuario.username):
                 self.client.force_login(usuario)
-                self.assertEqual(self.client.post(url).status_code, 404)
+                self.assertEqual(
+                    self.client.post(url).status_code,
+                    status_esperado,
+                )
         item.refresh_from_db()
         self.assertEqual(item.status_catalogo, ItemNotaFiscalAquisicao.StatusCatalogo.SUGERIDO)
 
@@ -310,8 +317,15 @@ class CatalogoNFeR7ETests(TestCase):
         url_insumo = reverse('insumos:criar_item_insumo')
         url_insumo = f'{url_insumo}?aquisicao={aquisicao.pk}&item_nfe={item.pk}'
 
-        for usuario in (self.gestor, self.jose, self.outro_admin):
+        for usuario, status_equipamento in (
+            (self.gestor, 403),
+            (self.jose, 403),
+            (self.outro_admin, 404),
+        ):
             with self.subTest(usuario=usuario.username):
                 self.client.force_login(usuario)
-                self.assertEqual(self.client.get(url_equipamento).status_code, 404)
+                self.assertEqual(
+                    self.client.get(url_equipamento).status_code,
+                    status_equipamento,
+                )
                 self.assertEqual(self.client.get(url_insumo).status_code, 404)

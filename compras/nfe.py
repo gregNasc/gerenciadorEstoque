@@ -19,6 +19,7 @@ from compras.models import (
     NotaFiscalAquisicao,
 )
 from compras.policies import AquisicaoAccessPolicy
+from estoque.policies.compras import ComprasAccessPolicy
 
 
 def _nome_local(elemento):
@@ -445,7 +446,11 @@ class CatalogoNFeService:
     @classmethod
     @transaction.atomic
     def confirmar(cls, *, item, usuario):
-        item = ItemNotaFiscalAquisicao.objects.select_for_update().select_related(
+        if not ComprasAccessPolicy.pode_gerenciar_catalogo_compras(usuario):
+            raise PermissionDenied('Sem permissão para confirmar o catálogo da NF-e.')
+        item = ItemNotaFiscalAquisicao.objects.select_for_update(
+            of=('self',)
+        ).select_related(
             'nota_fiscal__aquisicao__empresa', 'produto_catalogo', 'insumo_catalogo',
         ).get(pk=item.pk)
         aquisicao = item.nota_fiscal.aquisicao

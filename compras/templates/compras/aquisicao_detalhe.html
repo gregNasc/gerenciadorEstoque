@@ -144,17 +144,19 @@
                                                     <span class="badge text-bg-warning">{% trans "Sugestão" %}</span>
                                                     <div class="small mt-1">{{ item.produto_catalogo|default:item.insumo_catalogo }}</div>
                                                     <div class="small text-secondary">{% trans "Critério:" %} {{ item.criterio_catalogo }}</div>
-                                                    <form class="mt-2" method="post" action="{% url 'compras:aquisicao_confirmar_item_nfe_catalogo' aquisicao.pk item.pk %}">
+                                                    {% if pode_gerenciar_catalogo_compras %}<form class="mt-2" method="post" action="{% url 'compras:aquisicao_confirmar_item_nfe_catalogo' aquisicao.pk item.pk %}">
                                                         {% csrf_token %}
                                                         <button class="btn btn-sm btn-outline-success" type="submit">{% trans "Confirmar correspondência" %}</button>
-                                                    </form>
+                                                    </form>{% endif %}
                                                 {% else %}
                                                     <span class="badge text-bg-secondary">{% trans "Não encontrado" %}</span>
                                                     <div class="small text-secondary mt-1">
                                                         {% if item.criterio_catalogo %}{{ item.criterio_catalogo }}. {% endif %}{% trans "Nenhum cadastro foi criado." %}
                                                     </div>
                                                     <div class="d-flex flex-wrap gap-1 mt-2">
+                                                        {% if pode_gerenciar_catalogo_compras %}
                                                         <a class="btn btn-sm btn-outline-primary" href="{% url 'compras:criar_produto_catalogo' %}?aquisicao={{ aquisicao.pk }}&amp;item_nfe={{ item.pk }}">{% trans "Cadastrar equipamento" %}</a>
+                                                        {% endif %}
                                                         <a class="btn btn-sm btn-outline-primary" href="{% url 'insumos:criar_item_insumo' %}?aquisicao={{ aquisicao.pk }}&amp;item_nfe={{ item.pk }}">{% trans "Cadastrar insumo" %}</a>
                                                     </div>
                                                 {% endif %}

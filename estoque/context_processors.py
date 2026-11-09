@@ -250,6 +250,8 @@ def permissoes_especiais(request):
                 ComprasAccessPolicy.pode_gerenciar_fornecedores(request.user),
             'pode_gerenciar_catalogo':
                 ComprasAccessPolicy.pode_gerenciar_catalogo(request.user),
+            'pode_gerenciar_catalogo_compras':
+                ComprasAccessPolicy.pode_gerenciar_catalogo_compras(request.user),
             'pode_gerenciar_aquisicoes':
                 ComprasAccessPolicy.pode_gerenciar_aquisicoes(request.user),
             'pode_identificar_recebimentos':
@@ -313,6 +315,7 @@ def permissoes_especiais(request):
         'pode_editar_precos': False,
         'pode_gerenciar_fornecedores': False,
         'pode_gerenciar_catalogo': False,
+        'pode_gerenciar_catalogo_compras': False,
         'pode_gerenciar_aquisicoes': False,
         'pode_identificar_recebimentos': False,
         'pode_visualizar_planejamento': False,

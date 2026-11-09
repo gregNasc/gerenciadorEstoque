@@ -459,7 +459,7 @@ class LinhaMovelCadastroEquipamentoTests(TestCase):
         self.assertNotContains(gestor_response, self.linha.numero_formatado)
         self.assertNotContains(gestor_response, segunda_linha.numero_formatado)
 
-    def test_gestor_nao_ve_chip_no_cadastro_nem_nas_opcoes_do_catalogo(self):
+    def test_gestor_cadastra_equipamento_mas_nao_acessa_catalogo_compras(self):
         produto_chip = Produto.objects.create(
             codigo='CHIP-OCULTO-GESTOR',
             descricao='CHIP CONFIDENCIAL GESTOR',
@@ -490,17 +490,14 @@ class LinhaMovelCadastroEquipamentoTests(TestCase):
         self.assertNotContains(cadastro, 'Chip / linha móvel')
         self.assertNotContains(cadastro, 'Ir para cadastro de chip')
         self.assertNotContains(cadastro, 'Conectividade móvel opcional')
-        self.assertEqual(catalogo.status_code, 200)
-        self.assertNotContains(catalogo, 'CHIP CONFIDENCIAL GESTOR')
-        self.assertNotContains(catalogo, 'Equipamentos que aceitam chip')
-        self.assertNotContains(catalogo, 'Produtos que representam chip')
+        self.assertEqual(catalogo.status_code, 403)
 
         resposta = self.client.post(reverse('compras:catalogo_empresa'), {
             'empresa': self.empresa.pk,
             'produtos': [self.produto_movel.pk, self.produto_comum.pk],
             'produtos_chip_independente': [produto_chip.pk],
         })
-        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(resposta.status_code, 403)
         catalogo_chip.refresh_from_db()
         self.assertTrue(catalogo_chip.ativo)
         self.assertTrue(catalogo_chip.capacidades.filter(
