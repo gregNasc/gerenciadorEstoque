@@ -10617,3 +10617,26 @@ msgstr "Instrucciones para la recepción"
 
 msgid "Registre informações úteis para quem fará a conferência."
 msgstr "Registre información útil para quien realizará la verificación."
+msgid "Equipamento, Base, responsável ou protocolo"
+msgstr "Equipo, Base, responsable o protocolo"
+
+msgid "Todas as Bases"
+msgstr "Todas las Bases"
+
+msgid "Ordenação"
+msgstr "Ordenación"
+
+msgid "Mais recentes"
+msgstr "Más recientes"
+
+msgid "Mais antigos"
+msgstr "Más antiguos"
+
+msgid "Mais antigos primeiro"
+msgstr "Más antiguos primero"
+
+msgid "Pesquise por equipamento, Base, responsável, protocolo, ação ou período."
+msgstr "Busque por equipo, Base, responsable, protocolo, acción o período."
+
+msgid "exibindo %(inicio)s a %(fim)s"
+msgstr "mostrando del %(inicio)s al %(fim)s"

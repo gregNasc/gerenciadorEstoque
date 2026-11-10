@@ -1208,6 +1208,37 @@ class HistoricoDetalhadoTests(TestCase):
         self.assertContains(response, 'auditor@example.com')
         self.assertNotContains(response, self.usuario.password)
 
+    def test_lista_preserva_historico_e_oferece_pesquisa_guiada(self):
+        response = self.client.get(
+            reverse('estoque:historico'),
+            {
+                'q': 'SP AUDITORIA',
+                'base': self.base.pk,
+                'ordem': 'antigos',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Busca rápida')
+        self.assertContains(response, 'Todas as Bases')
+        self.assertContains(response, 'Mais antigos')
+        self.assertContains(response, self.equipamento.numero_serie)
+        self.assertContains(response, self.base.nome)
+
+    def test_lista_rejeita_base_fora_do_escopo(self):
+        empresa_externa = Empresa.objects.create(nome='Empresa externa histórico')
+        base_externa = Base.objects.create(
+            nome='Base externa histórico',
+            empresa=empresa_externa,
+        )
+
+        response = self.client.get(
+            reverse('estoque:historico'),
+            {'base': base_externa.pk},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
 
 class ToryEquipamentosOperacionaisTests(TestCase):
     def setUp(self):

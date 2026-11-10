@@ -54,6 +54,7 @@ externas ainda precisam de verificação específica.
 | `estoque/transferencia/selecionados.html` | Renderizado pela view ativa `transferencia_selecionados`. Não confundir com o template legado `estoque/selecionados.html`. |
 | Comandos de comunicação, CAEPI, Planning e diagnóstico | Podem ser executados por worker, Shell ou agendamento e não podem ser classificados apenas por ausência de import Python. |
 | Fundação TOTVS | Mantida desativada para retomada após a documentação da API. |
+| `estoque/templates/estoque/historico.html` | MANTER. É a consulta operacional ativa de movimentações e auditoria, ligada às rotas `historico`, `historico_detalhes`, exportações e modais. Em 10/11/2026 recebeu apenas melhorias de visualização e pesquisa; não é candidato à remoção. |
 
 ## Classificação: MIGRAR
 

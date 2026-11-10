@@ -4446,3 +4446,26 @@ msgstr "Receiving instructions"
 
 msgid "Registre informações úteis para quem fará a conferência."
 msgstr "Record useful information for the person who will verify the receipt."
+msgid "Equipamento, Base, responsável ou protocolo"
+msgstr "Equipment, Base, person responsible, or protocol"
+
+msgid "Todas as Bases"
+msgstr "All Bases"
+
+msgid "Ordenação"
+msgstr "Sort order"
+
+msgid "Mais recentes"
+msgstr "Most recent"
+
+msgid "Mais antigos"
+msgstr "Oldest"
+
+msgid "Mais antigos primeiro"
+msgstr "Oldest first"
+
+msgid "Pesquise por equipamento, Base, responsável, protocolo, ação ou período."
+msgstr "Search by equipment, Base, person responsible, protocol, action, or period."
+
+msgid "exibindo %(inicio)s a %(fim)s"
+msgstr "showing %(inicio)s to %(fim)s"

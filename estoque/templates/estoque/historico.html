@@ -167,6 +167,9 @@
         border-bottom: 1px solid var(--bs-border-color);
         white-space: nowrap;
         padding: .85rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
 
     .historico-table td {
@@ -406,7 +409,7 @@
             >
 
                 <div class="card shadow-sm historico-kpi-card
-                    {% if not filtros.tipo_acao %}active{% endif %}">
+                    {% if filtros.tipo_acao == 'todos' %}active{% endif %}">
 
                     <div class="card-body">
 
@@ -500,13 +503,13 @@
                 </strong>
 
                 <div class="historico-filtro-descricao">
-                    {% trans "Pesquise por equipamento, protocolo, tipo de ação ou período." %}
+                    {% trans "Pesquise por equipamento, Base, responsável, protocolo, ação ou período." %}
                 </div>
 
             </div>
 
 
-            {% if filtros.tipo_acao or filtros.equipamento_query or filtros.protocolo_query or filtros.data_inicio or filtros.data_fim %}
+            {% if tem_filtros %}
 
                 <a
                     href="{% url 'estoque:historico' %}"
@@ -528,6 +531,70 @@
             <form method="get">
 
                 <div class="row g-3 align-items-end">
+
+
+                    <!-- BUSCA RÁPIDA -->
+
+                    <div class="col-12 col-xl-5">
+
+                        <label class="form-label" for="historico-busca">
+                            {% trans "Busca rápida" %}
+                        </label>
+
+                        <div class="input-group">
+
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+
+                            <input
+                                id="historico-busca"
+                                type="search"
+                                name="q"
+                                class="form-control"
+                                value="{{ filtros.busca_query }}"
+                                placeholder="{% trans 'Equipamento, Base, responsável ou protocolo' %}"
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- BASE -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
+
+                        <label class="form-label" for="historico-base">
+                            {% trans "Base" %}
+                        </label>
+
+                        <select id="historico-base" name="base" class="form-select">
+                            <option value="">{% trans "Todas as Bases" %}</option>
+                            {% for base in bases_disponiveis %}
+                                <option value="{{ base.pk }}"{% if filtros.base_id == base.pk|stringformat:'s' %} selected{% endif %}>{{ base }}</option>
+                            {% endfor %}
+                        </select>
+
+                    </div>
+
+
+                    <!-- TIPO DE AÇÃO -->
+
+                    <div class="col-12 col-md-6 col-xl-4">
+
+                        <label class="form-label" for="historico-tipo-acao">
+                            {% trans "Tipo de ação" %}
+                        </label>
+
+                        <select id="historico-tipo-acao" name="tipo_acao" class="form-select">
+                            <option value="">{% trans "Todas" %}</option>
+                            {% for codigo, nome in tipos_acao %}
+                                <option value="{{ codigo }}"{% if filtros.tipo_acao == codigo %} selected{% endif %}>{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+
+                    </div>
 
 
                     <!-- EQUIPAMENTO -->
@@ -576,39 +643,6 @@
                     </div>
 
 
-                    <!-- TIPO DE AÇÃO -->
-
-                    <div class="col-12 col-md-4 col-xl-2">
-
-                        <label class="form-label">
-                            {% trans "Tipo de ação" %}
-                        </label>
-
-                        <select
-                            name="tipo_acao"
-                            class="form-select"
-                        >
-
-                            <option value="">
-                                {% trans "Todas" %}
-                            </option>
-
-                            {% for codigo, nome in tipos_acao %}
-
-                                <option
-                                    value="{{ codigo }}"
-                                    {% if filtros.tipo_acao == codigo %}selected{% endif %}
-                                >
-                                    {{ nome }}
-                                </option>
-
-                            {% endfor %}
-
-                        </select>
-
-                    </div>
-
-
                     <!-- DATA INÍCIO -->
 
                     <div class="col-6 col-md-4 col-xl-2">
@@ -645,9 +679,31 @@
                     </div>
 
 
+                    <!-- ORDENAÇÃO -->
+
+                    <div class="col-12 col-md-4 col-xl-2">
+
+                        <label class="form-label" for="historico-ordem">
+                            {% trans "Ordenação" %}
+                        </label>
+
+                        <select id="historico-ordem" name="ordem" class="form-select">
+                            <option value="recentes"{% if filtros.ordenacao == 'recentes' %} selected{% endif %}>{% trans "Mais recentes" %}</option>
+                            <option value="antigos"{% if filtros.ordenacao == 'antigos' %} selected{% endif %}>{% trans "Mais antigos" %}</option>
+                        </select>
+
+                    </div>
+
+
                     <!-- BOTÃO -->
 
-                    <div class="col-12 d-flex justify-content-end">
+                    <div class="col-12 d-flex justify-content-end gap-2">
+
+                        {% if tem_filtros %}
+                            <a href="{% url 'estoque:historico' %}" class="btn btn-outline-secondary">
+                                {% trans "Limpar" %}
+                            </a>
+                        {% endif %}
 
                         <button
                             type="submit"
@@ -668,7 +724,7 @@
 
             <!-- FILTROS ATIVOS -->
 
-            {% if filtros.tipo_acao or filtros.equipamento_query or filtros.protocolo_query or filtros.data_inicio or filtros.data_fim %}
+            {% if tem_filtros %}
 
                 <hr class="my-3">
 
@@ -680,7 +736,27 @@
                     </small>
 
 
-                    {% if filtros.tipo_acao %}
+                    {% if filtros.busca_query %}
+
+                        <span class="filtro-chip">
+                            <i class="bi bi-search"></i>
+                            {{ filtros.busca_query }}
+                        </span>
+
+                    {% endif %}
+
+
+                    {% if filtros.base_id %}
+
+                        <span class="filtro-chip">
+                            <i class="bi bi-geo-alt"></i>
+                            {% for base in bases_disponiveis %}{% if filtros.base_id == base.pk|stringformat:'s' %}{{ base }}{% endif %}{% endfor %}
+                        </span>
+
+                    {% endif %}
+
+
+                    {% if filtros.tipo_acao != 'todos' %}
 
                         <span class="filtro-chip">
 
@@ -746,6 +822,16 @@
 
                     {% endif %}
 
+
+                    {% if filtros.ordenacao == 'antigos' %}
+
+                        <span class="filtro-chip">
+                            <i class="bi bi-sort-down-alt"></i>
+                            {% trans "Mais antigos primeiro" %}
+                        </span>
+
+                    {% endif %}
+
                 </div>
 
             {% endif %}
@@ -783,12 +869,16 @@
 
                     {% endif %}
 
+                    {% if historicos.paginator.count %}
+                        · {% blocktrans with inicio=historicos.start_index fim=historicos.end_index %}exibindo {{ inicio }} a {{ fim }}{% endblocktrans %}
+                    {% endif %}
+
                 </div>
 
             </div>
 
 
-            {% if filtros.tipo_acao or filtros.equipamento_query or filtros.protocolo_query or filtros.data_inicio or filtros.data_fim %}
+            {% if tem_filtros %}
 
                 <span class="badge text-bg-primary">
 
@@ -867,6 +957,14 @@
 
 
                                     <div class="historico-identificadores">
+
+                                        <span class="historico-identificador">
+
+                                            <i class="bi bi-geo-alt"></i>
+
+                                            {{ historico.equipamento.regional.nome }}
+
+                                        </span>
 
                                         <span class="historico-identificador">
 
@@ -1107,7 +1205,7 @@
                                     </strong>
 
 
-                                    {% if filtros.tipo_acao or filtros.equipamento_query or filtros.protocolo_query or filtros.data_inicio or filtros.data_fim %}
+                                    {% if tem_filtros %}
 
                                         <div class="small mt-1">
 

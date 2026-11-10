@@ -3856,11 +3856,14 @@ def _timeline_auditoria(historicos):
 @login_required
 @permission_or_role_required('estoque.visualizar_historico_equipamentos', 'admin', 'gestor')
 def historico_view(request):
-    tipo_acao = request.GET.get('tipo_acao')
-    equipamento_query = request.GET.get('equipamento')
+    busca_query = request.GET.get('q', '').strip()
+    tipo_acao = request.GET.get('tipo_acao', '').strip()
+    base_id = request.GET.get('base', '').strip()
+    equipamento_query = request.GET.get('equipamento', '').strip()
     protocolo_query = request.GET.get('protocolo', '').strip()
-    data_inicio = request.GET.get('data_inicio')
-    data_fim = request.GET.get('data_fim')
+    data_inicio = request.GET.get('data_inicio', '').strip()
+    data_fim = request.GET.get('data_fim', '').strip()
+    ordenacao = request.GET.get('ordem', 'recentes').strip()
 
     historico = (
         Historico.objects
@@ -3871,10 +3874,35 @@ def historico_view(request):
             'usuario'
         )
         .all()
-        .order_by('-data')
     )
     historico = secure_history_queryset(historico, request.user)
     historico = SickService.filtrar_historicos_visiveis(request.user, historico)
+
+    bases_disponiveis = secure_base_queryset(
+        Base.objects.select_related('empresa'),
+        request.user,
+    ).order_by('nome')
+
+    if busca_query:
+        historico = historico.filter(
+            Q(equipamento__numero_serie__icontains=busca_query)
+            | Q(equipamento__patrimonio__icontains=busca_query)
+            | Q(equipamento__codigo__icontains=busca_query)
+            | Q(equipamento__produto__codigo__icontains=busca_query)
+            | Q(equipamento__produto__descricao__icontains=busca_query)
+            | Q(equipamento__produto__modelo__icontains=busca_query)
+            | Q(equipamento__responsavel__icontains=busca_query)
+            | Q(equipamento__regional__nome__icontains=busca_query)
+            | Q(usuario__username__icontains=busca_query)
+            | Q(usuario__first_name__icontains=busca_query)
+            | Q(usuario__last_name__icontains=busca_query)
+            | Q(detalhes__protocolo__icontains=busca_query)
+        )
+
+    if base_id:
+        if not base_id.isdigit() or not bases_disponiveis.filter(pk=base_id).exists():
+            raise Http404
+        historico = historico.filter(equipamento__regional_id=base_id)
 
     if tipo_acao and tipo_acao != 'todos':
         historico = historico.filter(tipo_acao=tipo_acao)
@@ -3891,11 +3919,16 @@ def historico_view(request):
             detalhes__protocolo__icontains=protocolo_query
         )
 
-    if data_inicio:
-        historico = historico.filter(data__date__gte=data_inicio)
+    data_inicio_valida = parse_date(data_inicio) if data_inicio else None
+    data_fim_valida = parse_date(data_fim) if data_fim else None
 
-    if data_fim:
-        historico = historico.filter(data__date__lte=data_fim)
+    if data_inicio_valida:
+        historico = historico.filter(data__date__gte=data_inicio_valida)
+
+    if data_fim_valida:
+        historico = historico.filter(data__date__lte=data_fim_valida)
+
+    historico = historico.order_by('data' if ordenacao == 'antigos' else '-data')
 
     total_registros = historico.count()
 
@@ -3923,12 +3956,21 @@ def historico_view(request):
         'total_registros': total_registros,
         'acoes_agrupadas': acoes_agrupadas,
         'tipos_acao': Historico.TIPO_ACOES,
+        'bases_disponiveis': bases_disponiveis,
+        'tem_filtros': any((
+            busca_query, tipo_acao and tipo_acao != 'todos', base_id,
+            equipamento_query, protocolo_query, data_inicio_valida,
+            data_fim_valida, ordenacao == 'antigos',
+        )),
         'filtros': {
+            'busca_query': busca_query,
             'tipo_acao': tipo_acao or 'todos',
-            'equipamento_query': equipamento_query or '',
+            'base_id': base_id,
+            'equipamento_query': equipamento_query,
             'protocolo_query': protocolo_query,
-            'data_inicio': data_inicio or '',
-            'data_fim': data_fim or '',
+            'data_inicio': data_inicio if data_inicio_valida else '',
+            'data_fim': data_fim if data_fim_valida else '',
+            'ordenacao': ordenacao if ordenacao in {'recentes', 'antigos'} else 'recentes',
         }
     })
 
