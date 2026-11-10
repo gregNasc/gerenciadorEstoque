@@ -40,6 +40,8 @@ staticfiles/
 # OS / lixo
 .DS_Store
 Thumbs.db
+.idea/
+.test-tmp-*/
 
 *.log
 __pycache__/
