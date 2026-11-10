@@ -52,6 +52,10 @@
 
     --bs-primary: var(--primary);
     --bs-primary-rgb: 30, 60, 114;
+    --bs-link-color: var(--primary);
+    --bs-link-color-rgb: 30, 60, 114;
+    --bs-link-hover-color: var(--primary-dark);
+    --bs-link-hover-color-rgb: 24, 50, 95;
     --bs-secondary: var(--secondary);
     --bs-secondary-rgb: 52, 58, 64;
     --bs-success: var(--success);
@@ -909,6 +913,24 @@ form[method="get"] :is(.btn-primary, .btn-success, .btn-info):hover {
     border-bottom-color: var(--primary);
     background: #fff;
     color: var(--primary);
+}
+
+/* Abas em formato de botão devem seguir o azul institucional, não o azul
+   padrão do Bootstrap. */
+.nav-pills {
+    --bs-nav-link-color: var(--primary);
+    --bs-nav-link-hover-color: var(--primary-dark);
+    --bs-nav-pills-link-active-bg: var(--primary);
+}
+
+.nav-pills .nav-link:not(.active):hover,
+.nav-pills .nav-link:not(.active):focus-visible {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.text-primary {
+    color: var(--primary) !important;
 }
 
 .pagination {
