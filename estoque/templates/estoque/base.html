@@ -354,12 +354,14 @@
                         </li>
                         {% endif %}
                         {% if pode_gerenciar_catalogo_compras %}
+                        <!--
                         <li>
                             <a class="dropdown-item {% if url_name == 'catalogo_empresa' %}active{% endif %}"
                                href="{% url 'compras:catalogo_empresa' %}">
                                 <i class="bi bi-journal-check me-2"></i>{% trans "Catálogo da empresa" %}
                             </a>
                         </li>
+                        -->
                         {% endif %}
                         {% if pode_visualizar_valores %}
                         <li><hr class="dropdown-divider"></li>
