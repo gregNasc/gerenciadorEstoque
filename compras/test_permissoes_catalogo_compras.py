@@ -31,44 +31,37 @@ class PermissoesCatalogoComprasTests(TestCase):
         usuario.perfil.save(update_fields=['empresa', 'role'])
         return usuario
 
-    def test_politica_permite_somente_admin_e_superuser(self):
-        self.assertTrue(
-            ComprasAccessPolicy.pode_gerenciar_catalogo_compras(self.admin)
-        )
+    def test_politica_permite_somente_superuser(self):
         self.assertTrue(
             ComprasAccessPolicy.pode_gerenciar_catalogo_compras(self.superuser)
         )
-        for usuario in (self.gestor, self.operador, self.jose):
+        for usuario in (self.admin, self.gestor, self.operador, self.jose):
             with self.subTest(usuario=usuario.username):
                 self.assertFalse(
                     ComprasAccessPolicy.pode_gerenciar_catalogo_compras(usuario)
                 )
 
-    def test_rotas_bloqueiam_gestor_operador_e_jose(self):
+    def test_rotas_bloqueiam_admin_gestor_operador_e_jose(self):
         rotas = (
             reverse('compras:catalogo_empresa'),
             reverse('compras:criar_produto_catalogo'),
         )
-        for usuario in (self.gestor, self.operador, self.jose):
+        for usuario in (self.admin, self.gestor, self.operador, self.jose):
             self.client.force_login(usuario)
             for rota in rotas:
                 with self.subTest(usuario=usuario.username, rota=rota):
                     self.assertEqual(self.client.get(rota).status_code, 403)
 
-    def test_rotas_permanecem_disponiveis_para_admin_e_superuser(self):
-        for usuario in (self.admin, self.superuser):
-            self.client.force_login(usuario)
-            with self.subTest(usuario=usuario.username):
-                self.assertEqual(
-                    self.client.get(reverse('compras:catalogo_empresa')).status_code,
-                    200,
-                )
-                self.assertEqual(
-                    self.client.get(
-                        reverse('compras:criar_produto_catalogo')
-                    ).status_code,
-                    200,
-                )
+    def test_rotas_permanecem_disponiveis_para_superuser(self):
+        self.client.force_login(self.superuser)
+        self.assertEqual(
+            self.client.get(reverse('compras:catalogo_empresa')).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get(reverse('compras:criar_produto_catalogo')).status_code,
+            200,
+        )
 
     def test_contexto_oculta_aba_sem_retirar_cadastro_operacional_do_gestor(self):
         for usuario in (self.gestor, self.operador, self.jose):
@@ -80,6 +73,12 @@ class PermissoesCatalogoComprasTests(TestCase):
                     contexto['pode_gerenciar_catalogo_compras']
                 )
         self.assertTrue(ComprasAccessPolicy.pode_gerenciar_catalogo(self.gestor))
+
+        requisicao = RequestFactory().get('/')
+        requisicao.user = self.admin
+        self.assertFalse(
+            permissoes_especiais(requisicao)['pode_gerenciar_catalogo_compras']
+        )
 
     def test_perfil_compras_recebe_fluxo_unificado_sem_catalogo_administrativo(self):
         self.client.force_login(self.operador)

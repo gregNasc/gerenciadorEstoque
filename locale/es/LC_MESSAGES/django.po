@@ -10522,3 +10522,98 @@ msgstr "Envíos por acompañar"
 
 msgid "Nenhuma remessa exige acompanhamento agora."
 msgstr "Ningún envío requiere seguimiento en este momento."
+msgid "Número da nota fiscal, recibo ou documento do fornecedor."
+msgstr "Número de la factura, recibo o documento del proveedor."
+
+msgid "Opcional. Informe a chave de 44 dígitos quando houver NF-e."
+msgstr "Opcional. Informe la clave de 44 dígitos cuando haya factura electrónica."
+
+msgid "Opcional. Referência do pedido aprovado que originou a compra."
+msgstr "Opcional. Referencia del pedido aprobado que originó la compra."
+
+msgid "Valor total do desconto deste item."
+msgstr "Importe total del descuento de este artículo."
+
+msgid "Valor total do frete atribuído a este item."
+msgstr "Importe total del flete asignado a este artículo."
+
+msgid "Valor total dos impostos deste item."
+msgstr "Importe total de los impuestos de este artículo."
+
+msgid "Tipo de movimentação"
+msgstr "Tipo de movimiento"
+
+msgid "Aquisição de origem"
+msgstr "Adquisición de origen"
+
+msgid "Observação logística"
+msgstr "Observación logística"
+
+msgid "Escolha se a entrega vem de um fornecedor ou se ocorre entre Bases."
+msgstr "Elija si la entrega viene de un proveedor o si se realiza entre Bases."
+
+msgid "Use quando a remessa estiver ligada a uma compra já registrada."
+msgstr "Úselo cuando el envío esté vinculado a una compra ya registrada."
+
+msgid "Obrigatória somente para movimentação entre Bases."
+msgstr "Obligatoria solamente para movimientos entre Bases."
+
+msgid "Registre o documento da compra e o primeiro item recebido."
+msgstr "Registre el documento de compra y el primer artículo recibido."
+
+msgid "Os valores ficam preservados no histórico da compra. Somente fornecedores homologados para a empresa selecionada serão aceitos."
+msgstr "Los importes se conservan en el historial de la compra. Solo se aceptarán proveedores homologados para la empresa seleccionada."
+
+msgid "Revisar fornecedores"
+msgstr "Revisar proveedores"
+
+msgid "Empresa e fornecedor"
+msgstr "Empresa y proveedor"
+
+msgid "Defina quem comprou e de quem o material foi adquirido."
+msgstr "Defina quién compró y a quién se adquirió el material."
+
+msgid "Documento da compra"
+msgstr "Documento de la compra"
+
+msgid "Informe as referências disponíveis. Campos opcionais podem ficar em branco."
+msgstr "Informe las referencias disponibles. Los campos opcionales pueden quedar en blanco."
+
+msgid "Escolha equipamento ou insumo e informe quantidade e composição do valor."
+msgstr "Elija equipo o insumo e informe la cantidad y la composición del importe."
+
+msgid "Prepare o acompanhamento do item até a confirmação do recebimento."
+msgstr "Prepare el seguimiento del artículo hasta la confirmación de la recepción."
+
+msgid "Como funciona:"
+msgstr "Cómo funciona:"
+
+msgid "entregas de fornecedor são vinculadas à aquisição e não usam uma origem fictícia. Em movimentações entre Bases, informe a origem e o saldo ficará reservado até a conferência."
+msgstr "las entregas del proveedor se vinculan a la adquisición y no utilizan un origen ficticio. En movimientos entre Bases, informe el origen y el saldo quedará reservado hasta la verificación."
+
+msgid "Rota da remessa"
+msgstr "Ruta del envío"
+
+msgid "Escolha o tipo de movimentação e a Base que receberá o material."
+msgstr "Elija el tipo de movimiento y la Base que recibirá el material."
+
+msgid "Vínculo com a compra"
+msgstr "Vínculo con la compra"
+
+msgid "Selecione a aquisição e, quando disponível, o item correspondente."
+msgstr "Seleccione la adquisición y, cuando esté disponible, el artículo correspondiente."
+
+msgid "Material transportado"
+msgstr "Material transportado"
+
+msgid "Preencha apenas uma opção: insumo, ativo já individualizado ou modelo de equipamento."
+msgstr "Complete solo una opción: insumo, activo ya individualizado o modelo de equipo."
+
+msgid "Ao selecionar uma opção, as outras serão desmarcadas automaticamente."
+msgstr "Al seleccionar una opción, las demás se desmarcarán automáticamente."
+
+msgid "Orientações para o recebimento"
+msgstr "Instrucciones para la recepción"
+
+msgid "Registre informações úteis para quem fará a conferência."
+msgstr "Registre información útil para quien realizará la verificación."

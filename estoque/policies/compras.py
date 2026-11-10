@@ -186,15 +186,8 @@ class ComprasAccessPolicy:
 
     @classmethod
     def pode_gerenciar_catalogo_compras(cls, user):
-        """Configuração do Catálogo de Compras: somente Admin/Superuser."""
-        if not cls._autenticado(user):
-            return False
-        if user.get_username().strip().lower() == 'jose.barboza':
-            return False
-        if user.is_superuser:
-            return True
-        perfil = getattr(user, 'perfil', None)
-        return bool(perfil and perfil.is_admin and not cls.restrito(user))
+        """Configuração técnica global: visível somente ao Superuser."""
+        return bool(cls._autenticado(user) and user.is_superuser)
 
     @classmethod
     def pode_identificar_recebimentos(cls, user):

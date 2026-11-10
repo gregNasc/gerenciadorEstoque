@@ -6,34 +6,102 @@
 {% block content %}
 <main class="container-fluid px-3 px-lg-4 py-4">
     {% include 'compras/partials/navegacao.html' %}
-    <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
-        <div>
-            <h1 class="h3 fw-bold mb-1">{% trans "Nova remessa" %}</h1>
-            <p class="text-secondary mb-0">{% trans "Informe a origem, o destino e o item que será acompanhado até o recebimento." %}</p>
-        </div>
-        <a class="btn btn-outline-secondary" href="{% url 'compras:remessa_lista' %}"><i class="bi bi-arrow-left me-1"></i>{% trans "Voltar" %}</a>
-    </header>
-    <div class="alert alert-info d-flex gap-2 align-items-start" role="alert">
-        <i class="bi bi-info-circle mt-1"></i>
-        <div>{% trans "Em entregas de fornecedor para Base, não é criada uma origem fictícia. Em movimentações entre Bases, o saldo fica reservado até a conferência." %}</div>
-    </div>
-    <form method="post" class="card border-0 shadow-sm" novalidate>
-        {% csrf_token %}
-        <div class="card-body p-4">
-            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-            {% for field in form %}
-            <div class="mb-3">
-                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    <div class="mx-auto" style="max-width: 1180px;">
+        <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+            <div>
+                <div class="small text-uppercase fw-semibold text-primary mb-1">{% trans "Compras e suprimentos" %}</div>
+                <h1 class="h3 fw-bold mb-1">{% trans "Nova remessa" %}</h1>
+                <p class="text-secondary mb-0">{% trans "Prepare o acompanhamento do item até a confirmação do recebimento." %}</p>
             </div>
-            {% endfor %}
+            <a class="btn btn-outline-secondary" href="{% url 'compras:remessa_lista' %}"><i class="bi bi-arrow-left me-1"></i>{% trans "Voltar" %}</a>
+        </header>
+        <div class="alert alert-info d-flex gap-2 align-items-start" role="alert">
+            <i class="bi bi-info-circle mt-1"></i>
+            <div><strong>{% trans "Como funciona:" %}</strong> {% trans "entregas de fornecedor são vinculadas à aquisição e não usam uma origem fictícia. Em movimentações entre Bases, informe a origem e o saldo ficará reservado até a conferência." %}</div>
         </div>
-        <div class="card-footer bg-body d-flex justify-content-end gap-2 p-3">
-            <a class="btn btn-outline-secondary" href="{% url 'compras:remessa_lista' %}">{% trans "Cancelar" %}</a>
-            <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>{% trans "Preparar remessa" %}</button>
-        </div>
-    </form>
+        <form method="post" class="card border-0 shadow-sm" novalidate>
+            {% csrf_token %}
+            <div class="card-body p-3 p-lg-4">
+                {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+                <section class="form-step mb-4" aria-labelledby="etapa-rota">
+                    <div class="step-heading"><span>1</span><div><h2 id="etapa-rota" class="h5 mb-1">{% trans "Rota da remessa" %}</h2><p class="text-secondary small mb-0">{% trans "Escolha o tipo de movimentação e a Base que receberá o material." %}</p></div></div>
+                    <div class="row g-3 mt-1">
+                        {% include 'compras/partials/campo_form.html' with field=form.empresa col='col-md-6' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.fluxo col='col-md-6' %}
+                        <div id="grupo-base-origem" class="col-md-6">{% include 'compras/partials/campo_form.html' with field=form.base_origem col='' %}</div>
+                        {% include 'compras/partials/campo_form.html' with field=form.base_destino col='col-md-6' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.previsao_chegada col='col-md-6' %}
+                    </div>
+                </section>
+
+                <section id="grupo-aquisicao" class="form-step mb-4" aria-labelledby="etapa-aquisicao">
+                    <div class="step-heading"><span>2</span><div><h2 id="etapa-aquisicao" class="h5 mb-1">{% trans "Vínculo com a compra" %}</h2><p class="text-secondary small mb-0">{% trans "Selecione a aquisição e, quando disponível, o item correspondente." %}</p></div></div>
+                    <div class="row g-3 mt-1">
+                        {% include 'compras/partials/campo_form.html' with field=form.aquisicao col='col-12' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.item_aquisicao col='col-md-6' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.item_nfe col='col-md-6' %}
+                    </div>
+                </section>
+
+                <section class="form-step mb-4" aria-labelledby="etapa-material">
+                    <div class="step-heading"><span>3</span><div><h2 id="etapa-material" class="h5 mb-1">{% trans "Material transportado" %}</h2><p class="text-secondary small mb-0">{% trans "Preencha apenas uma opção: insumo, ativo já individualizado ou modelo de equipamento." %}</p></div></div>
+                    <div class="alert alert-light border small mt-3 mb-0"><i class="bi bi-cursor me-1"></i>{% trans "Ao selecionar uma opção, as outras serão desmarcadas automaticamente." %}</div>
+                    <div class="row g-3 mt-1">
+                        {% include 'compras/partials/campo_form.html' with field=form.insumo col='col-lg-4' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.equipamento col='col-lg-4' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.produto col='col-lg-4' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.quantidade col='col-md-6' %}
+                        {% include 'compras/partials/campo_form.html' with field=form.custo_unitario col='col-md-6' %}
+                    </div>
+                </section>
+
+                <section class="form-step" aria-labelledby="etapa-observacao">
+                    <div class="step-heading"><span>4</span><div><h2 id="etapa-observacao" class="h5 mb-1">{% trans "Orientações para o recebimento" %}</h2><p class="text-secondary small mb-0">{% trans "Registre informações úteis para quem fará a conferência." %}</p></div></div>
+                    <div class="row g-3 mt-1">{% include 'compras/partials/campo_form.html' with field=form.observacao col='col-12' %}</div>
+                </section>
+            </div>
+            <div class="card-footer bg-body d-flex justify-content-end gap-2 p-3">
+                <a class="btn btn-outline-secondary" href="{% url 'compras:remessa_lista' %}">{% trans "Cancelar" %}</a>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>{% trans "Preparar remessa" %}</button>
+            </div>
+        </form>
+    </div>
 </main>
+<style>
+.form-step { border: 1px solid var(--bs-border-color); border-radius: .85rem; padding: 1rem; }
+.step-heading { display: flex; gap: .75rem; align-items: flex-start; }
+.step-heading > span { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; flex: 0 0 auto; border-radius: 50%; background: var(--bs-primary); color: #fff; font-weight: 700; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const fluxo = document.getElementById('id_fluxo');
+    const grupoOrigem = document.getElementById('grupo-base-origem');
+    const grupoAquisicao = document.getElementById('grupo-aquisicao');
+    const baseOrigem = document.getElementById('id_base_origem');
+    const aquisicao = document.getElementById('id_aquisicao');
+    const itemAquisicao = document.getElementById('id_item_aquisicao');
+    const itemNfe = document.getElementById('id_item_nfe');
+    function atualizarFluxo() {
+        const entreBases = fluxo?.value === 'ENTRE_BASES';
+        if (grupoOrigem) grupoOrigem.hidden = !entreBases;
+        if (grupoAquisicao) grupoAquisicao.hidden = entreBases;
+        if (!entreBases && baseOrigem) baseOrigem.value = '';
+        if (entreBases) {
+            if (aquisicao) aquisicao.value = '';
+            if (itemAquisicao) itemAquisicao.value = '';
+            if (itemNfe) itemNfe.value = '';
+        }
+    }
+    fluxo?.addEventListener('change', atualizarFluxo);
+    atualizarFluxo();
+
+    const referencias = ['id_insumo', 'id_equipamento', 'id_produto']
+        .map((id) => document.getElementById(id)).filter(Boolean);
+    referencias.forEach((campo) => campo.addEventListener('change', () => {
+        if (!campo.value) return;
+        referencias.filter((outro) => outro !== campo).forEach((outro) => { outro.value = ''; });
+    }));
+});
+</script>
 {% endblock %}

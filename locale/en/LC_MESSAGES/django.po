@@ -4351,3 +4351,98 @@ msgstr "Shipments to track"
 
 msgid "Nenhuma remessa exige acompanhamento agora."
 msgstr "No shipment requires tracking right now."
+msgid "Número da nota fiscal, recibo ou documento do fornecedor."
+msgstr "Supplier invoice, receipt, or document number."
+
+msgid "Opcional. Informe a chave de 44 dígitos quando houver NF-e."
+msgstr "Optional. Enter the 44-digit key when an electronic invoice is available."
+
+msgid "Opcional. Referência do pedido aprovado que originou a compra."
+msgstr "Optional. Reference of the approved request that originated the purchase."
+
+msgid "Valor total do desconto deste item."
+msgstr "Total discount amount for this item."
+
+msgid "Valor total do frete atribuído a este item."
+msgstr "Total shipping amount assigned to this item."
+
+msgid "Valor total dos impostos deste item."
+msgstr "Total tax amount for this item."
+
+msgid "Tipo de movimentação"
+msgstr "Movement type"
+
+msgid "Aquisição de origem"
+msgstr "Source acquisition"
+
+msgid "Observação logística"
+msgstr "Logistics note"
+
+msgid "Escolha se a entrega vem de um fornecedor ou se ocorre entre Bases."
+msgstr "Choose whether the delivery comes from a supplier or moves between Bases."
+
+msgid "Use quando a remessa estiver ligada a uma compra já registrada."
+msgstr "Use this when the shipment is linked to a previously registered purchase."
+
+msgid "Obrigatória somente para movimentação entre Bases."
+msgstr "Required only for movements between Bases."
+
+msgid "Registre o documento da compra e o primeiro item recebido."
+msgstr "Register the purchase document and the first received item."
+
+msgid "Os valores ficam preservados no histórico da compra. Somente fornecedores homologados para a empresa selecionada serão aceitos."
+msgstr "Amounts are preserved in the purchase history. Only approved suppliers for the selected company will be accepted."
+
+msgid "Revisar fornecedores"
+msgstr "Review suppliers"
+
+msgid "Empresa e fornecedor"
+msgstr "Company and supplier"
+
+msgid "Defina quem comprou e de quem o material foi adquirido."
+msgstr "Define who purchased and which supplier provided the material."
+
+msgid "Documento da compra"
+msgstr "Purchase document"
+
+msgid "Informe as referências disponíveis. Campos opcionais podem ficar em branco."
+msgstr "Enter the available references. Optional fields may be left blank."
+
+msgid "Escolha equipamento ou insumo e informe quantidade e composição do valor."
+msgstr "Choose equipment or supply and enter the quantity and amount breakdown."
+
+msgid "Prepare o acompanhamento do item até a confirmação do recebimento."
+msgstr "Prepare item tracking through receipt confirmation."
+
+msgid "Como funciona:"
+msgstr "How it works:"
+
+msgid "entregas de fornecedor são vinculadas à aquisição e não usam uma origem fictícia. Em movimentações entre Bases, informe a origem e o saldo ficará reservado até a conferência."
+msgstr "supplier deliveries are linked to the acquisition and do not use a fictitious origin. For movements between Bases, enter the origin and the balance will remain reserved until verification."
+
+msgid "Rota da remessa"
+msgstr "Shipment route"
+
+msgid "Escolha o tipo de movimentação e a Base que receberá o material."
+msgstr "Choose the movement type and the Base that will receive the material."
+
+msgid "Vínculo com a compra"
+msgstr "Purchase link"
+
+msgid "Selecione a aquisição e, quando disponível, o item correspondente."
+msgstr "Select the acquisition and, when available, the corresponding item."
+
+msgid "Material transportado"
+msgstr "Material being shipped"
+
+msgid "Preencha apenas uma opção: insumo, ativo já individualizado ou modelo de equipamento."
+msgstr "Fill in only one option: supply, individually tracked asset, or equipment model."
+
+msgid "Ao selecionar uma opção, as outras serão desmarcadas automaticamente."
+msgstr "When one option is selected, the others will be cleared automatically."
+
+msgid "Orientações para o recebimento"
+msgstr "Receiving instructions"
+
+msgid "Registre informações úteis para quem fará a conferência."
+msgstr "Record useful information for the person who will verify the receipt."

@@ -62,6 +62,18 @@ class AquisicaoForm(forms.ModelForm):
         self.fields['arquivo_xml_nfe'].widget.attrs['accept'] = (
             'application/xml,text/xml,.xml'
         )
+        for nome, campo in self.fields.items():
+            classe = 'form-select' if isinstance(campo.widget, forms.Select) else 'form-control'
+            campo.widget.attrs['class'] = classe
+        self.fields['numero_documento'].help_text = _(
+            'Número da nota fiscal, recibo ou documento do fornecedor.'
+        )
+        self.fields['chave_nfe'].help_text = _(
+            'Opcional. Informe a chave de 44 dígitos quando houver NF-e.'
+        )
+        self.fields['numero_pedido_compra'].help_text = _(
+            'Opcional. Referência do pedido aprovado que originou a compra.'
+        )
 
 
 class FornecedorEmpresaForm(forms.Form):
@@ -203,6 +215,18 @@ class ItemAquisicaoForm(forms.Form):
             user,
             empresa=empresa,
         )
+        self.fields['tipo_item'].widget.attrs['class'] = 'form-select'
+        self.fields['produto'].widget.attrs['class'] = 'form-select'
+        self.fields['insumo'].widget.attrs['class'] = 'form-select'
+        for nome in ('quantidade', 'valor_unitario', 'desconto', 'frete', 'impostos'):
+            self.fields[nome].widget.attrs['class'] = 'form-control'
+        self.fields['tipo_item'].label = _('Tipo de item')
+        self.fields['produto'].label = _('Modelo de equipamento')
+        self.fields['insumo'].label = _('Insumo')
+        self.fields['valor_unitario'].label = _('Valor unitário')
+        self.fields['desconto'].help_text = _('Valor total do desconto deste item.')
+        self.fields['frete'].help_text = _('Valor total do frete atribuído a este item.')
+        self.fields['impostos'].help_text = _('Valor total dos impostos deste item.')
 
 
 class ImportacaoPrecificacaoForm(forms.Form):
@@ -458,6 +482,29 @@ class RemessaForm(forms.Form):
             nota_fiscal__aquisicao__empresa__in=empresas,
             status_catalogo=ItemNotaFiscalAquisicao.StatusCatalogo.CONFIRMADO,
         ).select_related('nota_fiscal', 'produto_catalogo', 'insumo_catalogo')
+        for campo in self.fields.values():
+            classe = 'form-select' if isinstance(campo.widget, forms.Select) else 'form-control'
+            campo.widget.attrs['class'] = classe
+        self.fields['empresa'].label = _('Empresa responsável')
+        self.fields['fluxo'].label = _('Tipo de movimentação')
+        self.fields['aquisicao'].label = _('Aquisição de origem')
+        self.fields['base_origem'].label = _('Base de origem')
+        self.fields['base_destino'].label = _('Base de destino')
+        self.fields['produto'].label = _('Modelo de equipamento')
+        self.fields['item_aquisicao'].label = _('Item da aquisição')
+        self.fields['quantidade'].label = _('Quantidade prevista')
+        self.fields['custo_unitario'].label = _('Custo unitário')
+        self.fields['previsao_chegada'].label = _('Previsão de chegada')
+        self.fields['observacao'].label = _('Observação logística')
+        self.fields['fluxo'].help_text = _(
+            'Escolha se a entrega vem de um fornecedor ou se ocorre entre Bases.'
+        )
+        self.fields['aquisicao'].help_text = _(
+            'Use quando a remessa estiver ligada a uma compra já registrada.'
+        )
+        self.fields['base_origem'].help_text = _(
+            'Obrigatória somente para movimentação entre Bases.'
+        )
 
     def clean(self):
         dados = super().clean()
