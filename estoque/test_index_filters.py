@@ -65,6 +65,16 @@ class IndexFinalidadeFilterTests(TestCase):
         self.assertEqual(response.context['kpis_totais']['administrativos'], 0)
         self.assertContains(response, 'value="OPERACIONAL" selected')
 
+    def test_dashboard_inicial_exibe_somente_operacionais(self):
+        response = self.client.get(reverse('estoque:index'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['filtro_finalidade'], 'OPERACIONAL')
+        self.assertEqual(response.context['kpis_totais']['total'], 1)
+        self.assertEqual(response.context['kpis_totais']['ativos'], 1)
+        self.assertEqual(response.context['kpis_totais']['administrativos'], 0)
+        self.assertContains(response, 'value="OPERACIONAL" selected')
+
     def test_filtra_equipamentos_administrativos(self):
         response = self.client.get(
             reverse('estoque:index'),
@@ -87,4 +97,41 @@ class IndexFinalidadeFilterTests(TestCase):
         self.assertEqual(
             set(payload['kpis_regionais'][0]['produtos']),
             {self.categoria.nome},
+        )
+        self.assertEqual(payload['finalidade'], 'OPERACIONAL')
+        self.assertEqual(payload['kpis']['total'], 1)
+
+    def test_api_kpis_permite_pesquisar_administrativos(self):
+        response = self.client.get(
+            reverse('estoque:api_kpis_json'),
+            {'finalidade': Equipamento.Finalidade.ADMINISTRATIVO},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['finalidade'], 'ADMINISTRATIVO')
+        self.assertEqual(response.json()['kpis']['total'], 1)
+
+    def test_detalhes_regional_inicia_com_equipamentos_operacionais(self):
+        response = self.client.get(
+            reverse('estoque:detalhes_regional_api', args=[self.regional.pk]),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['finalidade'], 'OPERACIONAL')
+        self.assertEqual(payload['total_regional'], 1)
+        self.assertEqual(payload['categorias'][0]['produtos'][0]['ativos'], 1)
+
+    def test_detalhes_regional_permite_pesquisar_administrativos(self):
+        response = self.client.get(
+            reverse('estoque:detalhes_regional_api', args=[self.regional.pk]),
+            {'finalidade': Equipamento.Finalidade.ADMINISTRATIVO},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['finalidade'], 'ADMINISTRATIVO')
+        self.assertEqual(payload['total_regional'], 1)
+        self.assertEqual(
+            payload['categorias'][0]['produtos'][0]['administrativos'], 1,
         )

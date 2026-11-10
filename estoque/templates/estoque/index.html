@@ -86,7 +86,6 @@
                 <div class="col-12 col-md">
                     <label class="form-label small text-secondary fw-semibold mb-1">{% trans "Finalidade" %}</label>
                     <select name="finalidade" class="form-select form-select-sm bg-white">
-                        <option value="">{% trans "Todos" %}</option>
                         {% for valor, nome in finalidade_choices %}
                             <option value="{{ valor }}" {% if filtro_finalidade == valor %}selected{% endif %}>
                                 {{ nome }}
@@ -139,14 +138,17 @@
                     </div>
                 </div>
                 <hr class="my-2">
-                <div class="d-flex justify-content-between small">
-                    <span class="text-secondary">{% trans "Ativos" %}</span>
-                    <strong class="text-success">{{ item.ativos }}</strong>
-                </div>
-                <div class="d-flex justify-content-between small">
-                    <span class="text-secondary">{% trans "Administrativos" %}</span>
-                    <strong class="text-info">{{ item.administrativos }}</strong>
-                </div>
+                {% if filtro_finalidade == 'ADMINISTRATIVO' %}
+                    <div class="d-flex justify-content-between small">
+                        <span class="text-secondary">{% trans "Administrativos" %}</span>
+                        <strong class="text-info">{{ item.administrativos }}</strong>
+                    </div>
+                {% else %}
+                    <div class="d-flex justify-content-between small">
+                        <span class="text-secondary">{% trans "Ativos" %}</span>
+                        <strong class="text-success">{{ item.ativos }}</strong>
+                    </div>
+                {% endif %}
                 <div class="d-flex justify-content-between small">
                     <span class="text-secondary">{{ tenant_module_labels.sick }}</span>
                     <strong class="text-danger">{{ item.sick }}</strong>
@@ -194,7 +196,11 @@
                                 {{ produto.produto__descricao }}
                             </span>
                             <div>
+                                {% if filtro_finalidade == 'ADMINISTRATIVO' %}
+                                <span class="text-info me-2">{{ produto.administrativos }}</span>
+                                {% else %}
                                 <span class="text-success me-2">{{ produto.ativos }}</span>
+                                {% endif %}
                                 <span class="text-danger">{{ produto.sick }}</span>
                             </div>
                         </div>
@@ -215,7 +221,11 @@
 
                             </span>
                             <div>
+                                {% if filtro_finalidade == 'ADMINISTRATIVO' %}
+                                <span class="text-info me-2">{{ dados.administrativos }}</span>
+                                {% else %}
                                 <span class="text-success me-2">{{ dados.ativos }}</span>
+                                {% endif %}
                                 <span class="text-danger">{{ dados.sick }}</span>
                             </div>
                         </div>
@@ -227,10 +237,17 @@
                         <span class="text-secondary">{% trans "Total" %}</span>
                         <strong>{{ r.total }}</strong>
                     </div>
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span class="text-secondary">{% trans "Ativos" %}</span>
-                        <strong class="text-success">{{ r.ativos }}</strong>
-                    </div>
+                    {% if filtro_finalidade == 'ADMINISTRATIVO' %}
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-secondary">{% trans "Administrativos" %}</span>
+                            <strong class="text-info">{{ r.administrativos }}</strong>
+                        </div>
+                    {% else %}
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-secondary">{% trans "Ativos" %}</span>
+                            <strong class="text-success">{{ r.ativos }}</strong>
+                        </div>
+                    {% endif %}
                     <div class="d-flex justify-content-between small mb-2">
                         <span class="text-secondary">{% trans "Sick" %}</span>
                         <strong class="text-danger">{{ r.sick }}</strong>
@@ -239,12 +256,9 @@
                         <span class="text-secondary">{% trans "Inativos" %}</span>
                         <strong class="text-secondary">{{ r.inativos }}</strong>
                     </div>
-                    <div class="d-flex justify-content-between small mb-2">
-                        <span class="text-secondary">{% trans "Administrativos" %}</span>
-                        <strong class="text-info">{{ r.administrativos }}</strong>
-                    </div>
 
                     <!-- Barra de disponibilidade -->
+                    {% if filtro_finalidade != 'ADMINISTRATIVO' %}
                     <div class="small text-secondary mb-1">{% trans "Disponibilidade:" %} {{ r.disponibilidade }}%</div>
                     <div class="progress" style="height: 3px;">
                         <div class="progress-bar
@@ -256,6 +270,7 @@
                             aria-valuenow="{{ r.disponibilidade }}" aria-valuemin="0" aria-valuemax="100">
                         </div>
                     </div>
+                    {% endif %}
 
                     <div class="text-center mt-3">
                         <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none p-2 regional-details-button">
@@ -294,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         total: "{% trans 'Total'|escapejs %}",
         disponibilidade: "{% trans 'Disponibilidade'|escapejs %}",
         ativos: "{% trans 'Ativos'|escapejs %}",
+        administrativos: "{% trans 'Administrativos'|escapejs %}",
         sick: "{% trans 'Sick'|escapejs %}"
     };
     const DOM = {
@@ -342,12 +358,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const exibindoAdministrativos = data.finalidade === 'ADMINISTRATIVO';
         let html = `
             <div class="mb-4 p-3 bg-light rounded">
                 <div class="row small g-2">
                     <div class="col-md-4"><span class="text-secondary">${textos.regional}:</span> <strong>${currentRegionalNome}</strong></div>
                     <div class="col-md-4"><span class="text-secondary">${textos.total}:</span> <strong>${data.total_regional}</strong></div>
-                    <div class="col-md-4"><span class="text-secondary">${textos.disponibilidade}:</span> <strong>${data.disponibilidade_regional}%</strong></div>
+                    <div class="col-md-4"><span class="text-secondary">${exibindoAdministrativos ? textos.administrativos : textos.disponibilidade}:</span> <strong>${exibindoAdministrativos ? data.total_regional : `${data.disponibilidade_regional}%`}</strong></div>
                 </div>
             </div>
             <div class="produtos-grid">
@@ -374,20 +391,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="stat-value">${produto.total}</span>
                             </div>
                             <div class="stat">
-                                <span class="stat-label text-success">${textos.ativos}</span>
-                                <span class="stat-value text-success">${produto.ativos}</span>
+                                <span class="stat-label ${exibindoAdministrativos ? 'text-info' : 'text-success'}">${exibindoAdministrativos ? textos.administrativos : textos.ativos}</span>
+                                <span class="stat-value ${exibindoAdministrativos ? 'text-info' : 'text-success'}">${exibindoAdministrativos ? produto.administrativos : produto.ativos}</span>
                             </div>
                             <div class="stat">
                                 <span class="stat-label text-danger">${textos.sick}</span>
                                 <span class="stat-value text-danger">${produto.sick}</span>
                             </div>
                         </div>
-                        <div class="produto-progress">
+                        ${exibindoAdministrativos ? '' : `<div class="produto-progress">
                             <div class="progress-label">${textos.disponibilidade}: ${percentAtivo}%</div>
                             <div class="progress-bar-bg">
                                 <div class="progress-fill ${progressClass}" style="width: ${percentAtivo}%;"></div>
                             </div>
-                        </div>
+                        </div>`}
                     </div>
                 `;
             });
@@ -407,7 +424,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoading();
 
         try {
-            const response = await fetch(`/estoque/detalhes-regional/${id}/`);
+            const finalidade = encodeURIComponent("{{ filtro_finalidade|escapejs }}");
+            const response = await fetch(`/estoque/detalhes-regional/${id}/?finalidade=${finalidade}`);
             if (!response.ok) throw new Error();
             const data = await response.json();
             renderDetalhes(data);

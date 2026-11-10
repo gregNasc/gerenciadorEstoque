@@ -489,7 +489,9 @@ def index(request):
     )
     inventory_informado = 'inventory' in request.GET
     inventory_id = request.GET.get('inventory')
-    finalidade = request.GET.get('finalidade', '').strip().upper()
+    finalidade = request.GET.get(
+        'finalidade', Equipamento.Finalidade.OPERACIONAL,
+    ).strip().upper()
 
     if not perfil.is_admin and not request.user.is_superuser:
         inventory_id = str(perfil.empresa_id) if perfil.empresa_id else ''
@@ -538,10 +540,9 @@ def index(request):
         get_object_or_404(produtos_catalogo, pk=produto_id)
         equipamentos = equipamentos.filter(produto_id=produto_id)
 
-    if finalidade in Equipamento.Finalidade.values:
-        equipamentos = equipamentos.filter(finalidade=finalidade)
-    else:
-        finalidade = ''
+    if finalidade not in Equipamento.Finalidade.values:
+        finalidade = Equipamento.Finalidade.OPERACIONAL
+    equipamentos = equipamentos.filter(finalidade=finalidade)
 
     if regional_id and regional_id.isdigit():
         equipamentos = equipamentos.filter(regional_id=regional_id)
@@ -1439,7 +1440,9 @@ def api_kpis_json(request):
     regional_id = request.GET.get('regional')
     inventory_id = request.GET.get('inventory')
     categoria = request.GET.get('categoria', '').strip()
-    finalidade = request.GET.get('finalidade', '').strip().upper()
+    finalidade = request.GET.get(
+        'finalidade', Equipamento.Finalidade.OPERACIONAL,
+    ).strip().upper()
     empresa_contexto = None
 
     if regional_id and regional_id.isdigit():
@@ -1484,8 +1487,9 @@ def api_kpis_json(request):
         if categoria is None:
             raise Http404
         equipamentos = equipamentos.filter(produto__categoria__iexact=categoria)
-    if finalidade in Equipamento.Finalidade.values:
-        equipamentos = equipamentos.filter(finalidade=finalidade)
+    if finalidade not in Equipamento.Finalidade.values:
+        finalidade = Equipamento.Finalidade.OPERACIONAL
+    equipamentos = equipamentos.filter(finalidade=finalidade)
 
     kpis = EstoqueService.get_kpis_gerais(equipamentos)
     disponibilidade = EstoqueService.get_disponibilidade(equipamentos)
@@ -1507,12 +1511,18 @@ def api_kpis_json(request):
         'kpis': kpis,
         'disponibilidade': disponibilidade,
         'kpis_regionais': kpis_regionais,
+        'finalidade': finalidade,
     })
 
 @login_required
 @role_required('admin', 'gestor')
 def detalhes_regional_api(request, regional_id):
     regional = _base_estoque_or_404(request, regional_id)
+    finalidade = request.GET.get(
+        'finalidade', Equipamento.Finalidade.OPERACIONAL,
+    ).strip().upper()
+    if finalidade not in Equipamento.Finalidade.values:
+        finalidade = Equipamento.Finalidade.OPERACIONAL
 
     if _base_em_auditoria(regional_id):
         return _resposta_base_em_auditoria()
@@ -1525,7 +1535,7 @@ def detalhes_regional_api(request, regional_id):
         equipamentos,
         request.user,
         company=regional.empresa,
-    )
+    ).filter(finalidade=finalidade)
 
     produtos_agrupados = (
         equipamentos
@@ -1539,6 +1549,9 @@ def detalhes_regional_api(request, regional_id):
             ativos=Count('id', filter=Q(
                 status='ATIVO', finalidade=Equipamento.Finalidade.OPERACIONAL
             )),
+            administrativos=Count('id', filter=Q(
+                finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+            ) & ~Q(status='BAIXA')),
             sick=Count('id', filter=Q(status='SICK')),
             inativos=Count('id', filter=Q(status='INATIVO')),
             manutencao=Count('id', filter=Q(status='MANUTENCAO')),
@@ -1554,6 +1567,7 @@ def detalhes_regional_api(request, regional_id):
             'nome': p['produto__descricao'],
             'total': p['total'],
             'ativos': p['ativos'],
+            'administrativos': p['administrativos'],
             'sick': p['sick'],
             'inativos': p['inativos'],
             'manutencao': p['manutencao'],
@@ -1581,6 +1595,7 @@ def detalhes_regional_api(request, regional_id):
         'regional_nome': regional.nome,
         'total_regional': total,
         'disponibilidade_regional': disponibilidade,
+        'finalidade': finalidade,
     })
 
 @login_required
