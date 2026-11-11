@@ -42,8 +42,16 @@
     <section class="card border-0 shadow-sm">
       <div class="card-header bg-white"><h2 class="h5 mb-1">3. {% trans "Ativos e informações complementares" %}</h2><p class="small text-secondary mb-0">{% trans "Selecione os itens e informe acessórios, marcas ou detalhes que precisam constar no termo." %}</p></div>
       <div class="card-body"><div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="custodia-filtro-categoria">{% trans "Categoria" %}</label>
+          <select class="form-select" id="custodia-filtro-categoria"><option value="">{% trans "Todas as categorias" %}</option></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="custodia-filtro-equipamento">{% trans "Equipamento" %}</label>
+          <input class="form-control" type="search" id="custodia-filtro-equipamento" placeholder="{% trans 'Nome, modelo, patrimônio ou número de série' %}">
+        </div>
         {% for field in form %}{% if field.name == 'equipamentos' or field.name == 'linhas_moveis' %}<div class="col-lg-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endif %}{% endfor %}
-        <div id="custodia-sem-equipamentos" class="col-12 alert alert-warning d-none mb-0">{% trans "Nenhum equipamento elegível está disponível nesta Base." %}</div>
+        <div id="custodia-sem-equipamentos" class="col-12 alert alert-warning d-none mb-0">{% trans "Nenhum equipamento disponível foi encontrado nesta Base. Equipamentos vinculados a outra Custódia não aparecem." %}</div>
         <div class="col-12"><div id="complementos-itens" class="vstack gap-2"></div></div>
         <div class="col-12"><label class="form-label" for="{{ form.observacao.id_for_label }}">{{ form.observacao.label }}</label>{{ form.observacao }}{% for error in form.observacao.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
       </div></div>
@@ -69,17 +77,45 @@ document.addEventListener('DOMContentLoaded', function () {
   const modalidade = document.getElementById('id_modalidade_custodiante');
   const equipamentos = document.getElementById('id_equipamentos');
   const linhas = document.getElementById('id_linhas_moveis');
+  const filtroCategoria = document.getElementById('custodia-filtro-categoria');
+  const filtroEquipamento = document.getElementById('custodia-filtro-equipamento');
   const aviso = document.getElementById('custodia-sem-equipamentos');
   const complementos = document.getElementById('complementos-itens');
   const complementosPost = JSON.parse(document.getElementById('complementos-itens-post')?.textContent || '{}');
+  function normalizar(valor) { return (valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(); }
+  function pertenceAoEscopo(option) {
+    const baseId = base ? base.value : ''; const empresaId = empresa ? empresa.value : '';
+    return Boolean(baseId) && option.dataset.baseId === baseId && (!empresaId || option.dataset.empresaId === empresaId);
+  }
   function filtrar(select, mostrarAviso) {
     if (!select) return 0;
-    const baseId = base ? base.value : ''; const empresaId = empresa ? empresa.value : ''; let visiveis = 0;
+    const baseId = base ? base.value : ''; let visiveis = 0;
     Array.from(select.options).forEach(function (option) {
-      const compativel = Boolean(baseId) && option.dataset.baseId === baseId && (!empresaId || option.dataset.empresaId === empresaId);
+      const compativel = pertenceAoEscopo(option);
       option.hidden = !compativel; option.disabled = !compativel; if (!compativel) option.selected = false; if (compativel) visiveis += 1;
     });
     if (mostrarAviso && aviso) aviso.classList.toggle('d-none', !baseId || visiveis > 0); return visiveis;
+  }
+  function atualizarCategorias() {
+    if (!filtroCategoria || !equipamentos) return;
+    const valorAtual = filtroCategoria.value; const categorias = new Set();
+    Array.from(equipamentos.options).forEach(option => { if (pertenceAoEscopo(option) && option.dataset.categoria) categorias.add(option.dataset.categoria); });
+    filtroCategoria.innerHTML = '<option value="">{% trans "Todas as categorias" %}</option>';
+    Array.from(categorias).sort((a,b) => a.localeCompare(b)).forEach(categoria => {
+      const option = document.createElement('option'); option.value = categoria; option.textContent = categoria; filtroCategoria.appendChild(option);
+    });
+    filtroCategoria.value = categorias.has(valorAtual) ? valorAtual : '';
+  }
+  function filtrarEquipamentos() {
+    if (!equipamentos) return 0;
+    const categoria = filtroCategoria?.value || ''; const busca = normalizar(filtroEquipamento?.value); let visiveis = 0;
+    Array.from(equipamentos.options).forEach(function (option) {
+      const noEscopo = pertenceAoEscopo(option);
+      const corresponde = (!categoria || option.dataset.categoria === categoria) && (!busca || normalizar(option.dataset.pesquisa || option.textContent).includes(busca));
+      option.disabled = !noEscopo; if (!noEscopo) option.selected = false;
+      option.hidden = !noEscopo || (!corresponde && !option.selected); if (noEscopo && (corresponde || option.selected)) visiveis += 1;
+    });
+    const baseId = base ? base.value : ''; if (aviso) aviso.classList.toggle('d-none', !baseId || visiveis > 0); return visiveis;
   }
   function atualizarComplementos() {
     if (!complementos) return;
@@ -90,12 +126,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const nome = `acessorios_${tipo}_${option.value}`; const bloco = document.createElement('div'); bloco.className = 'border rounded p-3 bg-light';
         const label = document.createElement('label'); label.className = 'form-label fw-semibold'; label.htmlFor = nome; label.textContent = option.textContent.trim();
         const ajuda = document.createElement('div'); ajuda.className = 'small text-secondary mb-2'; ajuda.textContent = '{% trans "Acessórios e dados complementares deste item" %}';
+        if (tipo === 'equipamento') {
+          const identificacao = document.createElement('div'); identificacao.className = 'small mb-2';
+          identificacao.textContent = `{% trans "Patrimônio" %}: ${option.dataset.patrimonio || '{% trans "Não informado" %}'} · {% trans "Número de série" %}: ${option.dataset.numeroSerie || '{% trans "Não informado" %}'}`;
+          bloco.append(label, identificacao, ajuda);
+        } else { bloco.append(label, ajuda); }
         const input = document.createElement('textarea'); input.className = 'form-control'; input.rows = 2; input.name = nome; input.id = nome; input.value = anteriores[nome] || complementosPost[nome] || '';
-        bloco.append(label, ajuda, input); complementos.appendChild(bloco);
+        bloco.append(input); complementos.appendChild(bloco);
       });
     });
   }
-  function atualizarAtivos() { filtrar(equipamentos, true); filtrar(linhas, false); atualizarComplementos(); }
+  function atualizarAtivos() { atualizarCategorias(); filtrarEquipamentos(); filtrar(linhas, false); atualizarComplementos(); }
   function atualizarModalidade() {
     const prestador = modalidade && modalidade.value === 'PRESTADOR'; document.getElementById('dados-prestador')?.classList.toggle('d-none', !prestador);
     ['id_empresa_contratada', 'id_cnpj_contratada'].forEach(id => { const el = document.getElementById(id); if (el) el.required = prestador; });
@@ -106,6 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   function preencherEmpresa() { const option = empresa?.selectedOptions[0]; const razao = document.getElementById('id_razao_social_responsavel'); if (razao && !razao.value && option?.value) razao.value = option.textContent.trim(); }
   empresa?.addEventListener('change', () => { atualizarAtivos(); preencherEmpresa(); }); base?.addEventListener('change', atualizarAtivos);
+  filtroCategoria?.addEventListener('change', filtrarEquipamentos); filtroEquipamento?.addEventListener('input', filtrarEquipamentos);
   equipamentos?.addEventListener('change', atualizarComplementos); linhas?.addEventListener('change', atualizarComplementos);
   modalidade?.addEventListener('change', atualizarModalidade); colaborador?.addEventListener('change', preencherCustodiante);
   atualizarAtivos(); atualizarModalidade(); preencherCustodiante(); preencherEmpresa();

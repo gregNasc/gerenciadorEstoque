@@ -226,6 +226,17 @@ class CustodiaInterfaceR2MTests(TestCase):
                 codigo=CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL,
             ).exists()
         )
+        resposta_custodia = self.client.get(reverse('estoque:criar_custodia'))
+        self.assertContains(
+            resposta_custodia,
+            f'data-base-id="{self.base.pk}"',
+            html=False,
+        )
+        self.assertContains(
+            resposta_custodia,
+            f'value="{self.equipamento.pk}"',
+            html=False,
+        )
 
     def test_seletor_de_custodia_identifica_a_base_de_cada_equipamento(self):
         self.client.force_login(self.admin)
@@ -237,6 +248,11 @@ class CustodiaInterfaceR2MTests(TestCase):
             f'data-base-id="{self.base.pk}"',
             html=False,
         )
+        self.assertContains(resposta, 'id="custodia-filtro-categoria"', html=False)
+        self.assertContains(resposta, 'id="custodia-filtro-equipamento"', html=False)
+        self.assertContains(resposta, 'data-categoria="Notebook"', html=False)
+        self.assertContains(resposta, 'data-patrimonio="PAT-CUSTODIA-UI"', html=False)
+        self.assertContains(resposta, 'data-numero-serie="SERIE-CUSTODIA-UI"', html=False)
         self.assertContains(resposta, 'custodia-sem-equipamentos')
 
     def test_admin_registra_devolucao_e_libera_equipamento(self):

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from django.db.models import Exists, OuterRef
-
 from compras.models import (
     CapacidadeCatalogoProdutoEmpresa,
     CatalogoProdutoEmpresa,
@@ -10,7 +8,7 @@ from estoque.models import Empresa, Equipamento, LinhaMovel
 
 
 class CustodiaElegibilidadeService:
-    """Resolve ativos individualizados elegíveis sem depender de seus nomes."""
+    """Resolve ativos disponíveis no escopo da empresa para Custódia."""
 
     CAPACIDADE = CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL
 
@@ -29,19 +27,11 @@ class CustodiaElegibilidadeService:
         if not empresa_id:
             return queryset.none()
 
-        capacidade_ativa = CapacidadeCatalogoProdutoEmpresa.objects.filter(
-            catalogo__empresa_id=empresa_id,
-            catalogo__produto_id=OuterRef('produto_id'),
-            catalogo__ativo=True,
-            codigo=cls.CAPACIDADE,
-            ativa=True,
-        )
-        return queryset.filter(
-            regional__empresa_id=empresa_id,
-            produto_id__isnull=False,
-        ).annotate(
-            possui_capacidade_custodia=Exists(capacidade_ativa),
-        ).filter(possui_capacidade_custodia=True)
+        # Todo equipamento cadastrado pertence a uma Base por meio de
+        # ``regional``. A Base selecionada no formulário restringe a lista e
+        # o modelo confirma esse vínculo novamente ao salvar. A elegibilidade
+        # não depende do catálogo técnico da empresa.
+        return queryset.filter(regional__empresa_id=empresa_id)
 
     @classmethod
     def linhas_moveis(cls, *, empresa, queryset=None):

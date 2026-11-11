@@ -55,17 +55,7 @@ class CustodiaElegibilidadeR2CTests(TestCase):
             ativa=ativa,
         )
 
-    def test_equipamento_exige_capacidade_explicita_no_catalogo_da_empresa(self):
-        self.assertFalse(CustodiaElegibilidadeService.permite(
-            empresa=self.empresa_a,
-            ativo=self.equipamento_a,
-        ))
-
-        self.habilitar(
-            self.catalogo_a,
-            CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL,
-        )
-
+    def test_equipamento_da_empresa_e_elegivel_sem_configuracao_de_catalogo(self):
         self.assertTrue(CustodiaElegibilidadeService.permite(
             empresa=self.empresa_a,
             ativo=self.equipamento_a,
@@ -81,28 +71,30 @@ class CustodiaElegibilidadeR2CTests(TestCase):
         elegiveis_b = CustodiaElegibilidadeService.equipamentos(empresa=self.empresa_b)
 
         self.assertQuerySetEqual(elegiveis_a, [self.equipamento_a], ordered=False)
-        self.assertFalse(elegiveis_b.exists())
+        self.assertQuerySetEqual(elegiveis_b, [self.equipamento_b], ordered=False)
         self.assertNotIn(self.equipamento_b, elegiveis_a)
 
-    def test_catalogo_ou_capacidade_inativos_falham_fechados(self):
+    def test_catalogo_ou_capacidade_inativos_nao_bloqueiam_equipamentos(self):
         capacidade = self.habilitar(
             self.catalogo_a,
             CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL,
             ativa=False,
         )
-        self.assertFalse(CustodiaElegibilidadeService.equipamentos(
-            empresa=self.empresa_a,
-        ).exists())
+        self.assertIn(
+            self.equipamento_a,
+            CustodiaElegibilidadeService.equipamentos(empresa=self.empresa_a),
+        )
 
         capacidade.ativa = True
         capacidade.save(update_fields=['ativa'])
         self.catalogo_a.ativo = False
         self.catalogo_a.save(update_fields=['ativo'])
-        self.assertFalse(CustodiaElegibilidadeService.equipamentos(
-            empresa=self.empresa_a,
-        ).exists())
+        self.assertIn(
+            self.equipamento_a,
+            CustodiaElegibilidadeService.equipamentos(empresa=self.empresa_a),
+        )
 
-    def test_produto_sem_capacidade_permanece_inelegivel_independente_do_nome(self):
+    def test_produto_sem_capacidade_tambem_e_elegivel_na_respectiva_base(self):
         balanca = Produto.objects.create(
             codigo='BALANCA-R2C',
             descricao='Balança Toledo',
@@ -123,7 +115,7 @@ class CustodiaElegibilidadeR2CTests(TestCase):
             codigo='EQ-BALANCA-R2C',
         )
 
-        self.assertFalse(CustodiaElegibilidadeService.permite(
+        self.assertTrue(CustodiaElegibilidadeService.permite(
             empresa=self.empresa_a,
             ativo=equipamento,
         ))

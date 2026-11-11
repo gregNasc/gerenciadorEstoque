@@ -42,6 +42,22 @@ class BaseScopedSelectMultiple(forms.SelectMultiple):
             )
             option['attrs']['data-base-id'] = str(base_id or '')
             option['attrs']['data-empresa-id'] = str(empresa_id or '')
+            if isinstance(instance, Equipamento):
+                produto = instance.produto
+                categoria = (getattr(produto, 'categoria', '') or '').strip()
+                patrimonio = (instance.patrimonio or '').strip()
+                numero_serie = (instance.numero_serie or '').strip()
+                termos = (
+                    str(label), categoria, patrimonio, numero_serie,
+                    instance.codigo or '', getattr(produto, 'descricao', '') or '',
+                    getattr(produto, 'modelo', '') or '',
+                )
+                option['attrs'].update({
+                    'data-categoria': categoria,
+                    'data-patrimonio': patrimonio,
+                    'data-numero-serie': numero_serie,
+                    'data-pesquisa': ' '.join(str(valor) for valor in termos if valor),
+                })
         return option
 
 
@@ -130,7 +146,10 @@ class CustodiaForm(forms.ModelForm):
         queryset=Equipamento.objects.none(),
         required=False,
         label='Equipamentos',
-        help_text='Somente ativos elegíveis, disponíveis e da Base selecionada serão aceitos.',
+        help_text=(
+            'Todos os equipamentos disponíveis da Base selecionada podem ser '
+            'vinculados. Equipamentos em outra Custódia vigente não aparecem.'
+        ),
         widget=BaseScopedSelectMultiple(attrs={'size': 8}),
     )
     linhas_moveis = forms.ModelMultipleChoiceField(
