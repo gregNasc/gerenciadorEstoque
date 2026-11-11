@@ -248,8 +248,13 @@ class CustodiaForm(forms.ModelForm):
             'testemunha_2_nome', 'testemunha_2_cpf', 'testemunha_2_email',
         ):
             self.fields[nome].required = True
+        self.fields['empresa'].label = 'Empresa responsável pelos ativos'
+        self.fields['empresa'].help_text = (
+            'Selecione a empresa cadastrada no sistema para localizar a Base e os ativos.'
+        )
         self.fields['empresa_contratada'].help_text = (
-            'Obrigatório somente quando a modalidade for Prestador de serviços.'
+            'Digite livremente a empresa onde a pessoa trabalha, por exemplo AJN. '
+            'Obrigatório somente para prestador de serviços.'
         )
         self.fields['cnpj_contratada'].help_text = (
             'Obrigatório somente quando a modalidade for Prestador de serviços.'
@@ -257,7 +262,7 @@ class CustodiaForm(forms.ModelForm):
         labels = {
             'razao_social_responsavel': 'Razão social responsável',
             'cnpj_responsavel': 'CNPJ da razão social',
-            'empresa_contratada': 'Empresa contratada',
+            'empresa_contratada': 'Empresa do colaborador ou prestador',
             'cnpj_contratada': 'CNPJ da contratada',
             'responsavel_entrega_nome': 'Responsável pela entrega',
             'testemunha_1_nome': 'Nome', 'testemunha_1_cpf': 'CPF',

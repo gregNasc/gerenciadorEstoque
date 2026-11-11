@@ -76,6 +76,28 @@ class TermoEntregaCustodiaR2ITests(TestCase):
         self.assertEqual(primeiro.arquivo_pdf.name, segundo.arquivo_pdf.name)
         self.assertEqual(TermoEntregaCustodia.objects.count(), 1)
 
+    def test_prestador_usa_empresa_digitada_livremente_no_termo(self):
+        self.custodia.modalidade_custodiante = (
+            Custodia.ModalidadeCustodiante.PRESTADOR
+        )
+        self.custodia.empresa_contratada = 'AJN Serviços'
+        self.custodia.cnpj_contratada = '12.345.678/0001-90'
+        self.custodia.save()
+
+        termo = TermoEntregaCustodiaService.gerar(
+            custodia=self.custodia,
+            usuario=self.usuario,
+        )
+
+        self.assertEqual(
+            termo.dados_snapshot['colaborador']['empresa_contratada'],
+            'AJN SERVIÇOS',
+        )
+        self.assertEqual(
+            termo.dados_snapshot['colaborador']['cnpj_contratada'],
+            '12.345.678/0001-90',
+        )
+
     def test_snapshot_nao_muda_apos_edicao_dos_cadastros(self):
         termo = TermoEntregaCustodiaService.gerar(
             custodia=self.custodia,

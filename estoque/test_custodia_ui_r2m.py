@@ -253,6 +253,10 @@ class CustodiaInterfaceR2MTests(TestCase):
         self.assertContains(resposta, 'data-categoria="Notebook"', html=False)
         self.assertContains(resposta, 'data-patrimonio="PAT-CUSTODIA-UI"', html=False)
         self.assertContains(resposta, 'data-numero-serie="SERIE-CUSTODIA-UI"', html=False)
+        self.assertContains(resposta, 'Empresa responsável pelos ativos')
+        self.assertContains(resposta, 'Empresa do colaborador ou prestador')
+        self.assertContains(resposta, 'id="id_empresa_contratada"', html=False)
+        self.assertContains(resposta, 'por exemplo AJN')
         self.assertContains(resposta, 'custodia-sem-equipamentos')
 
     def test_admin_registra_devolucao_e_libera_equipamento(self):
