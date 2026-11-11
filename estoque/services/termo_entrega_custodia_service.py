@@ -117,23 +117,28 @@ class TermoEntregaCustodiaService:
                 'iccid': item.iccid_snapshot,
                 'condicao_entrega': item.get_condicao_entrega_display(),
                 'observacao_entrega': item.observacao,
+                'acessorios_entregues': item.acessorios_entregues,
             })
         colaborador = custodia.colaborador
         registrador = custodia.registrado_por
         codigo = f'CUS-{custodia.data_entrega.year}-{custodia.pk:04d}'
         return {
-            'schema_version': 2,
-            'modelo_documento': 'custodia_responsabilidade_v2',
+            'schema_version': 3,
+            'modelo_documento': 'custodia_responsabilidade_modalidade_v3',
             'gerado_em': instante.isoformat(),
             'custodia': {
                 'id': custodia.pk,
                 'codigo': codigo,
                 'data_entrega': custodia.data_entrega.isoformat(),
                 'status': custodia.get_status_display(),
+                'modalidade': custodia.modalidade_custodiante,
+                'modalidade_nome': custodia.get_modalidade_custodiante_display(),
             },
             'empresa': {
                 'id': custodia.empresa_id,
                 'nome': custodia.empresa.nome,
+                'razao_social': custodia.razao_social_responsavel,
+                'cnpj': custodia.cnpj_responsavel,
             },
             'base': {
                 'id': custodia.base_id,
@@ -145,7 +150,28 @@ class TermoEntregaCustodiaService:
                 'matricula': colaborador.matricula,
                 'cargo_funcao': colaborador.cargo_funcao,
                 'setor': colaborador.setor,
+                'cpf': custodia.custodiante_cpf,
+                'identificacao': custodia.custodiante_identificacao,
+                'funcao_atividade': custodia.custodiante_funcao_atividade,
+                'email': custodia.custodiante_email,
+                'empresa_contratada': custodia.empresa_contratada,
+                'cnpj_contratada': custodia.cnpj_contratada,
             },
+            'responsavel_entrega': {'nome': custodia.responsavel_entrega_nome},
+            'testemunhas': [
+                {
+                    'nome': custodia.testemunha_1_nome,
+                    'cpf': custodia.testemunha_1_cpf,
+                    'email': custodia.testemunha_1_email,
+                    'titulo': 'TESTEMUNHA 1 - DEPARTAMENTO PESSOAL',
+                },
+                {
+                    'nome': custodia.testemunha_2_nome,
+                    'cpf': custodia.testemunha_2_cpf,
+                    'email': custodia.testemunha_2_email,
+                    'titulo': 'TESTEMUNHA 2',
+                },
+            ],
             'responsavel_registro': {
                 'id': registrador.pk,
                 'nome': registrador.get_full_name() or registrador.get_username(),
@@ -240,12 +266,16 @@ class TermoEntregaCustodiaService:
                 'TERMO DE CUSTÓDIA E RESPONSABILIDADE DE<br/>EQUIPAMENTOS',
                 styles['TermoTitulo'],
             ),
+            Paragraph(
+                f'Modalidade: {escape(snapshot["custodia"].get("modalidade_nome", "Colaborador"))}.',
+                styles['TermoNota'],
+            ),
             cls._tabela_identificacao(snapshot, styles),
             Paragraph('1. ITENS ENTREGUES EM CUSTÓDIA', styles['TermoSecao']),
             cls._tabela_itens(snapshot['itens'], styles),
             Paragraph('2. DECLARAÇÃO DE RECEBIMENTO', styles['TermoSecao']),
             Paragraph(
-                'O colaborador declara ter recebido os itens acima identificados em '
+                f'O {cls._pessoa_texto(snapshot)} declara ter recebido os itens acima identificados em '
                 'condições adequadas de uso, comprometendo-se a mantê-los sob sua '
                 'guarda e responsabilidade enquanto permanecerem em sua custódia, '
                 'observando as políticas internas da empresa e a finalidade '
@@ -253,39 +283,20 @@ class TermoEntregaCustodiaService:
                 styles['TermoCorpo'],
             ),
             Paragraph('3. CONDIÇÕES DE USO E RESPONSABILIDADE', styles['TermoSecao']),
-            *cls._condicoes_uso(styles),
+            *cls._condicoes_uso(styles, cls._pessoa_texto(snapshot)),
             cls._aviso_seguranca(styles),
             PageBreak(),
-            Paragraph('4. DEVOLUÇÃO E ENCERRAMENTO DA CUSTÓDIA', styles['TermoSecao']),
+            Paragraph('4. CIÊNCIA E ACEITE', styles['TermoSecao']),
             Paragraph(
-                'A devolução deverá ser formalizada no sistema, com data, condição '
-                'de cada item, observações, eventuais divergências e identificação '
-                'do responsável pelo recebimento. A Custódia permanecerá ativa até '
-                'a confirmação formal da devolução dos itens vinculados.',
-                styles['TermoCorpo'],
-            ),
-            cls._tabela_previsao_devolucao(styles),
-            Paragraph('5. CIÊNCIA E ACEITE', styles['TermoSecao']),
-            Paragraph(
-                'O colaborador declara que conferiu os itens e dados relacionados '
+                f'O {cls._pessoa_texto(snapshot)} declara que conferiu os itens e dados relacionados '
                 'neste termo e está ciente das responsabilidades decorrentes da '
-                'Custódia. A empresa registra a entrega dos ativos descritos e '
+                'Custódia. A pessoa jurídica indicada pela razão social registra a entrega e '
                 'mantém o histórico de movimentações, vínculos e devoluções.',
                 styles['TermoCorpo'],
             ),
             cls._bloco_assinaturas(snapshot, styles),
             Spacer(1, 3 * mm),
-            cls._bloco_testemunha(styles),
-            Spacer(1, 2 * mm),
-            Paragraph(
-                'Assinatura eletrônica: este documento está preparado para o fluxo '
-                'DocuSign, mantendo o colaborador como signatário e o Departamento '
-                'Pessoal como testemunha. O identificador do envelope e o documento '
-                'assinado serão registrados no gerenciadorEstoque em etapa própria.',
-                styles['TermoNota'],
-            ),
-            Paragraph('6. CONTROLE INTERNO', styles['TermoSecao']),
-            cls._tabela_controle_interno(snapshot, styles),
+            *cls._blocos_testemunhas(snapshot, styles),
         ]
 
         def cabecalho_rodape(canvas, documento):
@@ -320,13 +331,29 @@ class TermoEntregaCustodiaService:
         codigo = custodia.get(
             'codigo', f'CUS-{custodia["data_entrega"][:4]}-{custodia["id"]:04d}',
         )
+        rotulo = 'Prestador' if custodia.get('modalidade') == 'PRESTADOR' else 'Colaborador'
         linhas = [
             ['Termo', codigo, 'Data de entrega', data],
-            ['Empresa', snapshot['empresa']['nome'], 'Base / Local', snapshot['base']['nome']],
-            ['Colaborador', colaborador['nome'], 'Setor', colaborador['setor'] or '-'],
-            ['Matrícula', colaborador['matricula'] or '-', 'Função', colaborador['cargo_funcao'] or '-'],
+            ['Empresa no sistema', snapshot['empresa']['nome'], 'Base / Local', snapshot['base']['nome']],
+            ['Razão social responsável', snapshot['empresa'].get('razao_social') or '-', 'CNPJ', snapshot['empresa'].get('cnpj') or '-'],
+            [rotulo, colaborador['nome'], 'CPF', colaborador.get('cpf') or '-'],
+            ['Identificação', colaborador.get('identificacao') or '-', 'Função / Atividade', colaborador.get('funcao_atividade') or '-'],
         ]
-        tabela = Table(linhas, colWidths=[30 * mm, 58 * mm, 33 * mm, 55 * mm])
+        if custodia.get('modalidade') == 'PRESTADOR':
+            linhas.append([
+                'Empresa contratada', colaborador.get('empresa_contratada') or '-',
+                'CNPJ da contratada', colaborador.get('cnpj_contratada') or '-',
+            ])
+        dados = []
+        for linha in linhas:
+            dados.append([
+                Paragraph(
+                    f'<b>{escape(str(valor))}</b>' if indice in (0, 2) else escape(str(valor)),
+                    styles['TermoCelula'],
+                )
+                for indice, valor in enumerate(linha)
+            ])
+        tabela = Table(dados, colWidths=[34 * mm, 54 * mm, 34 * mm, 54 * mm])
         tabela.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), .3, colors.HexColor('#C5CBD2')),
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F0F1F3')),
@@ -371,6 +398,10 @@ class TermoEntregaCustodiaService:
                 complementares.append(f'Operadora: {escape(item["operadora"])}')
             if item.get('observacao_entrega'):
                 complementares.append(escape(item['observacao_entrega']))
+            if item.get('acessorios_entregues'):
+                complementares.append(
+                    f'Acessórios: {escape(item["acessorios_entregues"])}',
+                )
             if item['telefone']:
                 complementares.append('Credenciais móveis mantidas em cadastro restrito.')
 
@@ -400,7 +431,7 @@ class TermoEntregaCustodiaService:
         return tabela
 
     @staticmethod
-    def _condicoes_uso(styles):
+    def _condicoes_uso(styles, pessoa='colaborador'):
         textos = [
             '3.1. Utilizar os equipamentos e a linha móvel prioritariamente para atividades profissionais autorizadas, preservando sua integridade física, lógica e funcional.',
             '3.2. Não ceder, emprestar, transferir ou entregar qualquer item a terceiro sem autorização e registro formal da empresa.',
@@ -408,7 +439,7 @@ class TermoEntregaCustodiaService:
             '3.4. Não remover controles de segurança, perfis corporativos, aplicativos de gestão, etiquetas patrimoniais ou mecanismos de identificação sem autorização.',
             '3.5. Qualquer substituição de chip ou linha móvel deve ser formalmente registrada, preservando o histórico de vínculo com o equipamento.',
             '3.6. Os itens deverão ser devolvidos quando solicitados, em caso de troca de função, transferência, desligamento ou quando cessar a necessidade de uso, consideradas as condições decorrentes do uso normal.',
-            '3.7. O colaborador deverá disponibilizar os ativos para inspeção, inventário, manutenção, atualização ou substituição quando solicitado pela empresa.',
+            f'3.7. O {pessoa} deverá disponibilizar os ativos para inspeção, inventário, manutenção, atualização ou substituição quando solicitado pela empresa.',
         ]
         return [Paragraph(texto, styles['TermoCorpo']) for texto in textos]
 
@@ -460,22 +491,25 @@ class TermoEntregaCustodiaService:
     @classmethod
     def _bloco_assinaturas(cls, snapshot, styles):
         colaborador = escape(snapshot['colaborador']['nome'])
-        responsavel = escape(snapshot.get('responsavel_registro', {}).get('nome') or snapshot['empresa']['nome'])
+        responsavel = escape(snapshot.get('responsavel_entrega', {}).get('nome') or snapshot.get('responsavel_registro', {}).get('nome') or snapshot['empresa']['nome'])
+        cpf = escape(snapshot['colaborador'].get('cpf') or '-')
+        empresa = escape(snapshot['empresa'].get('razao_social') or snapshot['empresa']['nome'])
+        titulo = 'PRESTADOR / CUSTODIANTE' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else 'COLABORADOR / CUSTODIANTE'
         data = timezone.datetime.fromisoformat(
             snapshot['custodia']['data_entrega'],
         ).strftime('%d/%m/%Y')
         assinatura = Table([
             [
-                Paragraph('<b>COLABORADOR / CUSTODIANTE</b>', styles['TermoCelula']),
+                Paragraph(f'<b>{titulo}</b>', styles['TermoCelula']),
                 Paragraph('<b>RESPONSÁVEL PELA ENTREGA</b>', styles['TermoCelula']),
             ],
             [
                 Paragraph(
-                    f'{colaborador}<br/><br/>Assinatura: ___________________________<br/>Data: {data}',
+                    f'Nome: {colaborador}<br/>CPF: {cpf}<br/><br/>Assinatura: ___________________________<br/>Data: {data}',
                     styles['TermoCelula'],
                 ),
                 Paragraph(
-                    f'{responsavel}<br/><br/>Assinatura: ___________________________<br/>Data: {data}',
+                    f'Nome: {responsavel}<br/>Empresa: {empresa}<br/><br/>Assinatura: ___________________________<br/>Data: {data}',
                     styles['TermoCelula'],
                 ),
             ],
@@ -492,28 +526,30 @@ class TermoEntregaCustodiaService:
         return assinatura
 
     @staticmethod
-    def _bloco_testemunha(styles):
-        cabecalho = Paragraph(
-            '<b>TESTEMUNHA - DEPARTAMENTO PESSOAL</b>',
-            styles['TermoCelula'],
-        )
-        corpo = Paragraph(
-            'Nome: ________________________________________________<br/>'
-            'E-mail: _______________________________________________<br/><br/>'
-            'Assinatura: ____________________________________________<br/>'
-            'Data: ____/____/________',
-            styles['TermoCelula'],
-        )
-        tabela = Table([[cabecalho], [corpo]], colWidths=[176 * mm])
-        tabela.setStyle(TableStyle([
-            ('GRID', (0, 0), (-1, -1), .3, colors.HexColor('#C1C7CE')),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F0F1F3')),
-            ('LEFTPADDING', (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ]))
-        return tabela
+    def _blocos_testemunhas(snapshot, styles):
+        blocos = []
+        for testemunha in snapshot.get('testemunhas', []):
+            cabecalho = Paragraph(f'<b>{escape(testemunha["titulo"])}</b>', styles['TermoCelula'])
+            corpo = Paragraph(
+                f'Nome: {escape(testemunha.get("nome") or "-")}<br/>'
+                f'CPF: {escape(testemunha.get("cpf") or "-")}<br/>'
+                f'E-mail: {escape(testemunha.get("email") or "-")}<br/><br/>'
+                'Assinatura: ____________________________________________<br/>'
+                'Data: ____/____/________', styles['TermoCelula'],
+            )
+            tabela = Table([[cabecalho], [corpo]], colWidths=[176 * mm])
+            tabela.setStyle(TableStyle([
+                ('GRID', (0, 0), (-1, -1), .3, colors.HexColor('#C1C7CE')),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F0F1F3')),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6), ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6), ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            blocos.extend([KeepTogether(tabela), Spacer(1, 3 * mm)])
+        return blocos
+
+    @staticmethod
+    def _pessoa_texto(snapshot):
+        return 'prestador' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else 'colaborador'
 
     @staticmethod
     def _tabela_controle_interno(snapshot, styles):

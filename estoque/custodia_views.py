@@ -186,6 +186,12 @@ def criar_custodia(request):
         'form': form,
         'equipamento_inicial': equipamento,
         'tem_colaboradores': form.fields['colaborador'].queryset.exists(),
+        'complementos_itens_post': {
+            chave: valor
+            for chave, valor in request.POST.items()
+            if chave.startswith('acessorios_equipamento_')
+            or chave.startswith('acessorios_linha_')
+        },
     })
 
 
@@ -276,6 +282,9 @@ def devolver_custodia(request, custodia_id):
                 'situacao': situacao,
                 'condicao_devolucao': condicao,
                 'observacao': request.POST.get(f'observacao_{item.pk}', ''),
+                'acessorios_devolvidos': request.POST.get(
+                    f'acessorios_{item.pk}', '',
+                ),
             })
         try:
             devolucao = CustodiaDevolucaoService.registrar(
@@ -286,6 +295,17 @@ def devolver_custodia(request, custodia_id):
                 registrado_por=request.user,
                 data_devolucao=form.cleaned_data['data_devolucao'],
                 observacao=form.cleaned_data['observacao'],
+                resultado_conferencia=form.cleaned_data['resultado_conferencia'],
+                pendencias=form.cleaned_data['pendencias'],
+                responsavel_recebimento_email=(
+                    form.cleaned_data['responsavel_recebimento_email']
+                ),
+                testemunha_1_nome=form.cleaned_data['testemunha_1_nome'],
+                testemunha_1_cpf=form.cleaned_data['testemunha_1_cpf'],
+                testemunha_1_email=form.cleaned_data['testemunha_1_email'],
+                testemunha_2_nome=form.cleaned_data['testemunha_2_nome'],
+                testemunha_2_cpf=form.cleaned_data['testemunha_2_cpf'],
+                testemunha_2_email=form.cleaned_data['testemunha_2_email'],
             )
         except ValidationError as exc:
             form.add_error(None, exc)
@@ -301,6 +321,11 @@ def devolver_custodia(request, custodia_id):
         'form': form,
         'situacao_choices': ItemDevolucaoCustodia.Situacao.choices,
         'condicao_choices': Custodia.CondicaoGeral.choices,
+        'dados_itens_post': {
+            chave: valor
+            for chave, valor in request.POST.items()
+            if chave.startswith(('acessorios_', 'observacao_'))
+        },
     })
 
 

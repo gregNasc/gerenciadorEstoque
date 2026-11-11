@@ -727,6 +727,10 @@ class VinculoBaseLocalFisico(models.Model):
 
 
 class Custodia(models.Model):
+    class ModalidadeCustodiante(models.TextChoices):
+        COLABORADOR = 'COLABORADOR', 'Colaborador'
+        PRESTADOR = 'PRESTADOR', 'Prestador de serviços'
+
     class Status(models.TextChoices):
         RASCUNHO = 'RASCUNHO', 'Rascunho'
         ATIVA = 'ATIVA', 'Ativa'
@@ -779,6 +783,30 @@ class Custodia(models.Model):
         default=CondicaoGeral.NAO_INFORMADA,
     )
     observacao = models.TextField(blank=True)
+    modalidade_custodiante = models.CharField(
+        max_length=20,
+        choices=ModalidadeCustodiante.choices,
+        default=ModalidadeCustodiante.COLABORADOR,
+    )
+    razao_social_responsavel = models.CharField(max_length=200, blank=True, default='')
+    cnpj_responsavel = models.CharField(max_length=20, blank=True, default='')
+    custodiante_cpf = models.CharField('CPF do custodiante', max_length=20, blank=True, default='')
+    custodiante_identificacao = models.CharField(
+        'Identificação do custodiante', max_length=100, blank=True, default='',
+    )
+    custodiante_funcao_atividade = models.CharField(
+        'Função / atividade', max_length=150, blank=True, default='',
+    )
+    custodiante_email = models.EmailField('E-mail do custodiante', blank=True, default='')
+    empresa_contratada = models.CharField(max_length=200, blank=True, default='')
+    cnpj_contratada = models.CharField(max_length=20, blank=True, default='')
+    responsavel_entrega_nome = models.CharField(max_length=200, blank=True, default='')
+    testemunha_1_nome = models.CharField(max_length=200, blank=True, default='')
+    testemunha_1_cpf = models.CharField(max_length=20, blank=True, default='')
+    testemunha_1_email = models.EmailField(blank=True, default='')
+    testemunha_2_nome = models.CharField(max_length=200, blank=True, default='')
+    testemunha_2_cpf = models.CharField(max_length=20, blank=True, default='')
+    testemunha_2_email = models.EmailField(blank=True, default='')
     registrado_por = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
@@ -876,7 +904,19 @@ class Custodia(models.Model):
                 if anterior:
                     responsavel_anterior = anterior['colaborador__nome']
                     status_anterior = anterior['status']
-            self.observacao = (self.observacao or '').strip()
+            for campo in (
+                'observacao', 'razao_social_responsavel', 'cnpj_responsavel',
+                'custodiante_cpf', 'custodiante_identificacao',
+                'custodiante_funcao_atividade', 'custodiante_email',
+                'empresa_contratada', 'cnpj_contratada',
+                'responsavel_entrega_nome', 'testemunha_1_nome',
+                'testemunha_1_cpf', 'testemunha_1_email', 'testemunha_2_nome',
+                'testemunha_2_cpf', 'testemunha_2_email',
+            ):
+                valor = (getattr(self, campo, '') or '').strip()
+                if campo.endswith('_email'):
+                    valor = valor.lower()
+                setattr(self, campo, valor)
             self.full_clean()
             super().save(*args, **kwargs)
             itens = ItemCustodia.objects.filter(custodia_id=self.pk)
@@ -938,6 +978,9 @@ class ItemCustodia(models.Model):
         default=Custodia.CondicaoGeral.NAO_INFORMADA,
     )
     observacao = models.TextField(blank=True)
+    acessorios_entregues = models.TextField(
+        'Acessórios / dados complementares na entrega', blank=True, default='',
+    )
     descricao_snapshot = models.CharField(max_length=255, editable=False)
     categoria_snapshot = models.CharField(max_length=100, blank=True, editable=False)
     modelo_snapshot = models.CharField(max_length=120, blank=True, editable=False)
@@ -1102,6 +1145,7 @@ class ItemCustodia(models.Model):
         if self.custodia_id:
             self.vigente = self.custodia.vigente and self.devolvido_em is None
         self.observacao = (self.observacao or '').strip()
+        self.acessorios_entregues = (self.acessorios_entregues or '').strip()
         self.full_clean()
         super().save(*args, **kwargs)
         from estoque.services.custodia_responsavel_legado_service import (
@@ -1119,6 +1163,11 @@ class ItemCustodia(models.Model):
 
 
 class DevolucaoCustodia(models.Model):
+    class ResultadoConferencia(models.TextChoices):
+        COMPLETA = 'COMPLETA', 'Completa e sem divergências'
+        RESSALVAS = 'RESSALVAS', 'Completa com ressalvas'
+        PARCIAL = 'PARCIAL', 'Parcial'
+
     custodia = models.ForeignKey(
         Custodia,
         on_delete=models.PROTECT,
@@ -1127,6 +1176,19 @@ class DevolucaoCustodia(models.Model):
     data_devolucao = models.DateTimeField(default=timezone.now, db_index=True)
     motivo = models.CharField(max_length=255)
     observacao = models.TextField(blank=True)
+    resultado_conferencia = models.CharField(
+        max_length=20,
+        choices=ResultadoConferencia.choices,
+        default=ResultadoConferencia.COMPLETA,
+    )
+    pendencias = models.TextField(blank=True, default='')
+    responsavel_recebimento_email = models.EmailField(blank=True, default='')
+    testemunha_1_nome = models.CharField(max_length=200, blank=True, default='')
+    testemunha_1_cpf = models.CharField(max_length=20, blank=True, default='')
+    testemunha_1_email = models.EmailField(blank=True, default='')
+    testemunha_2_nome = models.CharField(max_length=200, blank=True, default='')
+    testemunha_2_cpf = models.CharField(max_length=20, blank=True, default='')
+    testemunha_2_email = models.EmailField(blank=True, default='')
     responsavel_recebimento = models.ForeignKey(
         Colaborador,
         on_delete=models.PROTECT,
@@ -1197,8 +1259,16 @@ class DevolucaoCustodia(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        self.motivo = (self.motivo or '').strip()
-        self.observacao = (self.observacao or '').strip()
+        for campo in (
+            'motivo', 'observacao', 'pendencias',
+            'responsavel_recebimento_email', 'testemunha_1_nome',
+            'testemunha_1_cpf', 'testemunha_1_email', 'testemunha_2_nome',
+            'testemunha_2_cpf', 'testemunha_2_email',
+        ):
+            valor = (getattr(self, campo, '') or '').strip()
+            if campo.endswith('_email'):
+                valor = valor.lower()
+            setattr(self, campo, valor)
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -1229,6 +1299,7 @@ class ItemDevolucaoCustodia(models.Model):
         default=Custodia.CondicaoGeral.NAO_INFORMADA,
     )
     observacao = models.TextField(blank=True)
+    acessorios_devolvidos = models.TextField(blank=True, default='')
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1309,6 +1380,7 @@ class ItemDevolucaoCustodia(models.Model):
 
     def save(self, *args, **kwargs):
         self.observacao = (self.observacao or '').strip()
+        self.acessorios_devolvidos = (self.acessorios_devolvidos or '').strip()
         self.full_clean()
         super().save(*args, **kwargs)
 

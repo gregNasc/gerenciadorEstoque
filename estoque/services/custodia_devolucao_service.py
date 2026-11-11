@@ -26,6 +26,15 @@ class CustodiaDevolucaoService:
         registrado_por,
         data_devolucao=None,
         observacao='',
+        resultado_conferencia=DevolucaoCustodia.ResultadoConferencia.COMPLETA,
+        pendencias='',
+        responsavel_recebimento_email='',
+        testemunha_1_nome='',
+        testemunha_1_cpf='',
+        testemunha_1_email='',
+        testemunha_2_nome='',
+        testemunha_2_cpf='',
+        testemunha_2_email='',
     ):
         if not getattr(custodia, 'pk', None):
             raise ValidationError({'custodia': 'Informe uma Custódia persistida.'})
@@ -76,6 +85,15 @@ class CustodiaDevolucaoService:
                 data_devolucao=data_devolucao,
                 motivo=motivo,
                 observacao=observacao,
+                resultado_conferencia=resultado_conferencia,
+                pendencias=pendencias,
+                responsavel_recebimento_email=responsavel_recebimento_email,
+                testemunha_1_nome=testemunha_1_nome,
+                testemunha_1_cpf=testemunha_1_cpf,
+                testemunha_1_email=testemunha_1_email,
+                testemunha_2_nome=testemunha_2_nome,
+                testemunha_2_cpf=testemunha_2_cpf,
+                testemunha_2_email=testemunha_2_email,
                 responsavel_recebimento=responsavel_recebimento,
                 registrado_por=registrado_por,
             )
@@ -91,6 +109,7 @@ class CustodiaDevolucaoService:
                     situacao=dados['situacao'],
                     condicao_devolucao=dados['condicao_devolucao'],
                     observacao=dados['observacao'],
+                    acessorios_devolvidos=dados['acessorios_devolvidos'],
                 )
                 registro.save()
                 if registro.situacao == ItemDevolucaoCustodia.Situacao.DEVOLVIDO:
@@ -153,6 +172,9 @@ class CustodiaDevolucaoService:
                 )
             ).strip().upper()
             observacao = str(dados.get('observacao', '') or '').strip()
+            acessorios_devolvidos = str(
+                dados.get('acessorios_devolvidos', '') or '',
+            ).strip()
 
             if situacao not in ItemDevolucaoCustodia.Situacao.values:
                 raise ValidationError({'itens': f'Situação inválida para o item {item_id}.'})
@@ -163,5 +185,6 @@ class CustodiaDevolucaoService:
                 'situacao': situacao,
                 'condicao_devolucao': condicao,
                 'observacao': observacao,
+                'acessorios_devolvidos': acessorios_devolvidos,
             }
         return classificados

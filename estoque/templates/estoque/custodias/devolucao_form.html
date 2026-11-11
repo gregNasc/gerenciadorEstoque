@@ -3,12 +3,46 @@
 {% block title %}{% trans "Registrar devolução" %}{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4"><div><h1 class="h3 mb-1">{% trans "Registrar devolução" %}</h1><p class="text-secondary mb-0">{% trans "Custódia" %} #{{ custodia.id }} — {{ custodia.colaborador.nome }}</p></div><a class="btn btn-outline-secondary" href="{% url 'estoque:detalhe_custodia' custodia.id %}">{% trans "Voltar" %}</a></div>
-  <form method="post" class="card border-0 shadow-sm"><div class="card-body p-4">
-    {% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-    <div class="row g-3 mb-4">{% for field in form %}<div class="{% if field.name == 'observacao' %}col-12{% else %}col-md-6{% endif %}"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}</div>
-    <h2 class="h5">{% trans "Classificação dos itens" %}</h2><p class="text-secondary">{% trans "Classifique todos os itens pendentes. Um item faltante permanece em Custódia até uma devolução posterior." %}</p>
-    <div class="vstack gap-3">{% for item in itens_pendentes %}<div class="border rounded p-3"><div class="row g-3 align-items-end"><div class="col-lg-4"><div class="small text-secondary">{% if item.equipamento_id %}{% trans "Equipamento" %}{% else %}{% trans "Linha móvel" %}{% endif %}</div><strong>{{ item.descricao_snapshot }}</strong><div>{{ item.patrimonio_snapshot|default:item.telefone_snapshot }}</div></div><div class="col-md-4 col-lg-3"><label class="form-label" for="situacao_{{ item.id }}">{% trans "Situação" %}</label><select class="form-select" name="situacao_{{ item.id }}" id="situacao_{{ item.id }}" required>{% for valor,nome in situacao_choices %}<option value="{{ valor }}">{{ nome }}</option>{% endfor %}</select></div><div class="col-md-4 col-lg-3"><label class="form-label" for="condicao_{{ item.id }}">{% trans "Condição" %}</label><select class="form-select" name="condicao_{{ item.id }}" id="condicao_{{ item.id }}" required>{% for valor,nome in condicao_choices %}<option value="{{ valor }}" {% if valor == 'BOM' %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div><div class="col-md-4 col-lg-2"><label class="form-label" for="observacao_{{ item.id }}">{% trans "Observação" %}</label><input class="form-control" name="observacao_{{ item.id }}" id="observacao_{{ item.id }}"></div></div></div>{% empty %}<div class="alert alert-secondary">{% trans "Não existem itens pendentes." %}</div>{% endfor %}</div>
-  </div><div class="card-footer bg-white d-flex justify-content-end gap-2"><a class="btn btn-light border" href="{% url 'estoque:detalhe_custodia' custodia.id %}">{% trans "Cancelar" %}</a><button class="btn btn-warning" type="submit" {% if not itens_pendentes %}disabled{% endif %}><i class="bi bi-box-arrow-in-left me-1"></i>{% trans "Confirmar devolução" %}</button></div></form>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><div><h1 class="h3 mb-1">{% trans "Registrar devolução" %}</h1><p class="text-secondary mb-0">{% trans "Custódia" %} #{{ custodia.id }} — {{ custodia.colaborador.nome }} · {{ custodia.get_modalidade_custodiante_display }}</p></div><a class="btn btn-outline-secondary" href="{% url 'estoque:detalhe_custodia' custodia.id %}">{% trans "Voltar" %}</a></div>
+  <form method="post" class="vstack gap-3" id="devolucao-form">
+    {% csrf_token %}{% if form.non_field_errors %}<div class="alert alert-danger mb-0">{{ form.non_field_errors }}</div>{% endif %}
+
+    <section class="card border-0 shadow-sm"><div class="card-header bg-white"><h2 class="h5 mb-1">1. {% trans "Recebimento e conferência" %}</h2><p class="small text-secondary mb-0">{% trans "Preencha os dados gerais que aparecerão no termo de devolução." %}</p></div><div class="card-body"><div class="row g-3">
+      {% for field in form %}{% if field.name == 'data_devolucao' or field.name == 'motivo' or field.name == 'responsavel_recebimento' or field.name == 'responsavel_recebimento_email' or field.name == 'resultado_conferencia' %}<div class="col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endif %}{% endfor %}
+      <div class="col-12"><label class="form-label" for="{{ form.pendencias.id_for_label }}">{% trans "Itens ou acessórios pendentes" %}</label>{{ form.pendencias }}{% for error in form.pendencias.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+      <div class="col-12"><label class="form-label" for="{{ form.observacao.id_for_label }}">{% trans "Avarias, divergências e observações" %}</label>{{ form.observacao }}{% for error in form.observacao.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+    </div></div></section>
+
+    <section class="card border-0 shadow-sm"><div class="card-header bg-white"><h2 class="h5 mb-1">2. {% trans "Itens devolvidos" %}</h2><p class="small text-secondary mb-0">{% trans "Classifique todos os itens e informe os acessórios efetivamente recebidos." %}</p></div><div class="card-body"><div class="vstack gap-3">
+      {% for item in itens_pendentes %}<div class="border rounded p-3"><div class="row g-3 align-items-end">
+        <div class="col-lg-4"><div class="small text-secondary">{% if item.equipamento_id %}{% trans "Equipamento" %}{% else %}{% trans "Linha móvel" %}{% endif %}</div><strong>{{ item.descricao_snapshot }}</strong><div>{{ item.patrimonio_snapshot|default:item.telefone_snapshot }}</div>{% if item.acessorios_entregues %}<div class="small text-secondary mt-1">{% trans "Entregue com" %}: {{ item.acessorios_entregues }}</div>{% endif %}</div>
+        <div class="col-md-4 col-lg-2"><label class="form-label" for="situacao_{{ item.id }}">{% trans "Situação" %}</label><select class="form-select" name="situacao_{{ item.id }}" id="situacao_{{ item.id }}" required>{% for valor,nome in situacao_choices %}<option value="{{ valor }}">{{ nome }}</option>{% endfor %}</select></div>
+        <div class="col-md-4 col-lg-2"><label class="form-label" for="condicao_{{ item.id }}">{% trans "Condição" %}</label><select class="form-select" name="condicao_{{ item.id }}" id="condicao_{{ item.id }}" required>{% for valor,nome in condicao_choices %}<option value="{{ valor }}" {% if valor == 'BOM' %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+        <div class="col-md-4 col-lg-4"><label class="form-label" for="acessorios_{{ item.id }}">{% trans "Acessórios devolvidos" %}</label><input class="form-control" name="acessorios_{{ item.id }}" id="acessorios_{{ item.id }}" placeholder="{% trans 'Ex.: carregador, fonte, capa' %}"></div>
+        <div class="col-12"><label class="form-label" for="observacao_{{ item.id }}">{% trans "Observação do item" %}</label><input class="form-control" name="observacao_{{ item.id }}" id="observacao_{{ item.id }}"></div>
+      </div></div>{% empty %}<div class="alert alert-secondary mb-0">{% trans "Não existem itens pendentes." %}</div>{% endfor %}
+    </div></div></section>
+
+    <section class="card border-0 shadow-sm"><div class="card-header bg-white"><h2 class="h5 mb-1">3. {% trans "Testemunhas" %}</h2><p class="small text-secondary mb-0">{% trans "Os dados serão impressos; as assinaturas permanecem para coleta no documento." %}</p></div><div class="card-body"><div class="row g-4">
+      <div class="col-lg-6"><div class="border rounded p-3 h-100"><h3 class="h6">{% trans "Testemunha 1 - Departamento Pessoal" %}</h3><div class="row g-3">{% for field in form %}{% if field.name == 'testemunha_1_nome' or field.name == 'testemunha_1_cpf' or field.name == 'testemunha_1_email' %}<div class="col-12"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endif %}{% endfor %}</div></div></div>
+      <div class="col-lg-6"><div class="border rounded p-3 h-100"><h3 class="h6">{% trans "Testemunha 2" %}</h3><div class="row g-3">{% for field in form %}{% if field.name == 'testemunha_2_nome' or field.name == 'testemunha_2_cpf' or field.name == 'testemunha_2_email' %}<div class="col-12"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endif %}{% endfor %}</div></div></div>
+    </div></div></section>
+
+    <div class="card border-0 shadow-sm"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3"><div class="small text-secondary"><i class="bi bi-printer me-2"></i>{% trans "Revise os campos. O termo será gerado completo e ficará disponível para impressão." %}</div><div class="d-flex gap-2"><a class="btn btn-light border" href="{% url 'estoque:detalhe_custodia' custodia.id %}">{% trans "Cancelar" %}</a><button class="btn btn-warning" type="submit" {% if not itens_pendentes %}disabled{% endif %}><i class="bi bi-box-arrow-in-left me-1"></i>{% trans "Confirmar e gerar termo" %}</button></div></div></div>
+  </form>
 </div>
+{{ dados_itens_post|json_script:"dados-itens-post" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const responsavel = document.getElementById('id_responsavel_recebimento');
+  const email = document.getElementById('id_responsavel_recebimento_email');
+  const resultado = document.getElementById('id_resultado_conferencia');
+  const pendencias = document.getElementById('id_pendencias');
+  const dadosPost = JSON.parse(document.getElementById('dados-itens-post')?.textContent || '{}');
+  function preencherEmail() { const option = responsavel?.selectedOptions[0]; if (email && !email.value && option?.value) email.value = option.dataset.email || ''; }
+  function atualizarPendencias() { if (!resultado || !pendencias) return; const exige = resultado.value === 'RESSALVAS' || resultado.value === 'PARCIAL'; pendencias.required = exige; }
+  Object.entries(dadosPost).forEach(([nome, valor]) => { const el = document.querySelector(`[name="${CSS.escape(nome)}"]`); if (el) el.value = valor; });
+  responsavel?.addEventListener('change', preencherEmail); resultado?.addEventListener('change', atualizarPendencias); preencherEmail(); atualizarPendencias();
+});
+</script>
 {% endblock %}

@@ -45,6 +45,23 @@ class BaseScopedSelectMultiple(forms.SelectMultiple):
         return option
 
 
+class ColaboradorDocumentSelect(forms.Select):
+    """Disponibiliza dados seguros para preencher o termo no navegador."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(
+            name, value, label, selected, index, subindex=subindex, attrs=attrs,
+        )
+        instance = getattr(value, 'instance', None)
+        if instance is not None:
+            option['attrs'].update({
+                'data-email': instance.email or '',
+                'data-identificacao': instance.matricula or '',
+                'data-funcao': instance.cargo_funcao or '',
+            })
+        return option
+
+
 class ColaboradorForm(forms.ModelForm):
     class Meta:
         model = Colaborador
@@ -126,8 +143,16 @@ class CustodiaForm(forms.ModelForm):
     class Meta:
         model = Custodia
         fields = (
-            'empresa', 'base', 'colaborador', 'local_fisico', 'data_entrega',
-            'condicao_geral', 'observacao',
+            'empresa', 'base', 'colaborador', 'modalidade_custodiante',
+            'local_fisico', 'data_entrega', 'condicao_geral',
+            'razao_social_responsavel', 'cnpj_responsavel',
+            'custodiante_cpf', 'custodiante_identificacao',
+            'custodiante_funcao_atividade', 'custodiante_email',
+            'empresa_contratada', 'cnpj_contratada',
+            'responsavel_entrega_nome',
+            'testemunha_1_nome', 'testemunha_1_cpf', 'testemunha_1_email',
+            'testemunha_2_nome', 'testemunha_2_cpf', 'testemunha_2_email',
+            'observacao',
         )
         widgets = {
             'data_entrega': forms.DateInput(attrs={'type': 'date'}),
@@ -151,6 +176,8 @@ class CustodiaForm(forms.ModelForm):
         ).filter(ativo=True).select_related('empresa', 'base').order_by(
             'empresa__nome', 'nome',
         )
+        self.fields['colaborador'].widget = ColaboradorDocumentSelect()
+        self.fields['colaborador'].widget.choices = self.fields['colaborador'].choices
         self.fields['local_fisico'].queryset = self.fields[
             'local_fisico'
         ].queryset.filter(empresa__in=empresas, ativo=True).order_by(
@@ -190,6 +217,36 @@ class CustodiaForm(forms.ModelForm):
             self.initial.setdefault('empresa', equipamento_inicial.regional.empresa_id)
             self.initial.setdefault('base', equipamento_inicial.regional_id)
             self.initial.setdefault('equipamentos', [equipamento_inicial.pk])
+        self.initial.setdefault(
+            'responsavel_entrega_nome',
+            actor.get_full_name().strip() or actor.get_username(),
+        )
+        for nome in (
+            'razao_social_responsavel', 'cnpj_responsavel', 'custodiante_cpf',
+            'custodiante_identificacao', 'custodiante_funcao_atividade',
+            'custodiante_email', 'responsavel_entrega_nome',
+            'testemunha_1_nome', 'testemunha_1_cpf', 'testemunha_1_email',
+            'testemunha_2_nome', 'testemunha_2_cpf', 'testemunha_2_email',
+        ):
+            self.fields[nome].required = True
+        self.fields['empresa_contratada'].help_text = (
+            'Obrigatório somente quando a modalidade for Prestador de serviços.'
+        )
+        self.fields['cnpj_contratada'].help_text = (
+            'Obrigatório somente quando a modalidade for Prestador de serviços.'
+        )
+        labels = {
+            'razao_social_responsavel': 'Razão social responsável',
+            'cnpj_responsavel': 'CNPJ da razão social',
+            'empresa_contratada': 'Empresa contratada',
+            'cnpj_contratada': 'CNPJ da contratada',
+            'responsavel_entrega_nome': 'Responsável pela entrega',
+            'testemunha_1_nome': 'Nome', 'testemunha_1_cpf': 'CPF',
+            'testemunha_1_email': 'E-mail', 'testemunha_2_nome': 'Nome',
+            'testemunha_2_cpf': 'CPF', 'testemunha_2_email': 'E-mail',
+        }
+        for nome, label in labels.items():
+            self.fields[nome].label = label
         _aplicar_bootstrap(self)
 
     def clean(self):
@@ -229,6 +286,11 @@ class CustodiaForm(forms.ModelForm):
             if not base or linha.base_id != base.pk:
                 self.add_error('linhas_moveis', 'Todas as linhas devem pertencer à Base selecionada.')
                 break
+        if cleaned.get('modalidade_custodiante') == Custodia.ModalidadeCustodiante.PRESTADOR:
+            if not (cleaned.get('empresa_contratada') or '').strip():
+                self.add_error('empresa_contratada', 'Informe a empresa contratada.')
+            if not (cleaned.get('cnpj_contratada') or '').strip():
+                self.add_error('cnpj_contratada', 'Informe o CNPJ da empresa contratada.')
         return cleaned
 
     def criar(self):
@@ -241,12 +303,18 @@ class CustodiaForm(forms.ModelForm):
                 custodia=custodia,
                 equipamento=equipamento,
                 condicao_entrega=custodia.condicao_geral,
+                acessorios_entregues=self.data.get(
+                    f'acessorios_equipamento_{equipamento.pk}', '',
+                ),
             )
         for linha in self.cleaned_data['linhas_moveis']:
             ItemCustodia.objects.create(
                 custodia=custodia,
                 linha_movel=linha,
                 condicao_entrega=custodia.condicao_geral,
+                acessorios_entregues=self.data.get(
+                    f'acessorios_linha_{linha.pk}', '',
+                ),
             )
         custodia.status = Custodia.Status.ATIVA
         custodia.save(update_fields=['status', 'atualizado_em'])
@@ -256,13 +324,20 @@ class CustodiaForm(forms.ModelForm):
 class DevolucaoCustodiaForm(forms.ModelForm):
     class Meta:
         model = DevolucaoCustodia
-        fields = ('data_devolucao', 'motivo', 'responsavel_recebimento', 'observacao')
+        fields = (
+            'data_devolucao', 'motivo', 'responsavel_recebimento',
+            'responsavel_recebimento_email', 'resultado_conferencia',
+            'pendencias', 'observacao',
+            'testemunha_1_nome', 'testemunha_1_cpf', 'testemunha_1_email',
+            'testemunha_2_nome', 'testemunha_2_cpf', 'testemunha_2_email',
+        )
         widgets = {
             'data_devolucao': forms.DateTimeInput(
                 attrs={'type': 'datetime-local'},
                 format='%Y-%m-%dT%H:%M',
             ),
             'observacao': forms.Textarea(attrs={'rows': 3}),
+            'pendencias': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, actor, custodia, **kwargs):
@@ -279,4 +354,39 @@ class DevolucaoCustodiaForm(forms.ModelForm):
                 ativo=True,
             ).order_by('nome')
         )
+        self.fields['responsavel_recebimento'].widget = ColaboradorDocumentSelect()
+        self.fields['responsavel_recebimento'].widget.choices = (
+            self.fields['responsavel_recebimento'].choices
+        )
+        for nome in (
+            'responsavel_recebimento_email', 'testemunha_1_nome',
+            'testemunha_1_cpf', 'testemunha_1_email', 'testemunha_2_nome',
+            'testemunha_2_cpf', 'testemunha_2_email',
+        ):
+            self.fields[nome].required = True
+        for nome, label in {
+            'responsavel_recebimento_email': 'E-mail do responsável pelo recebimento',
+            'resultado_conferencia': 'Resultado da conferência',
+            'pendencias': 'Itens ou acessórios pendentes',
+            'testemunha_1_nome': 'Nome', 'testemunha_1_cpf': 'CPF',
+            'testemunha_1_email': 'E-mail', 'testemunha_2_nome': 'Nome',
+            'testemunha_2_cpf': 'CPF', 'testemunha_2_email': 'E-mail',
+        }.items():
+            self.fields[nome].label = label
         _aplicar_bootstrap(self)
+
+    def clean(self):
+        cleaned = super().clean()
+        if (
+            cleaned.get('resultado_conferencia')
+            in (
+                DevolucaoCustodia.ResultadoConferencia.RESSALVAS,
+                DevolucaoCustodia.ResultadoConferencia.PARCIAL,
+            )
+            and not (cleaned.get('pendencias') or '').strip()
+        ):
+            self.add_error(
+                'pendencias',
+                'Descreva os itens, acessórios ou divergências pendentes.',
+            )
+        return cleaned

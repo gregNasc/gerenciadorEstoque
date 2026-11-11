@@ -12,6 +12,7 @@ from estoque.models import (
     Base,
     Colaborador,
     Custodia,
+    DevolucaoCustodia,
     Empresa,
     Equipamento,
     ItemCustodia,
@@ -169,6 +170,22 @@ class CustodiaInterfaceR2MTests(TestCase):
             'local_fisico': '',
             'data_entrega': '2026-10-15',
             'condicao_geral': Custodia.CondicaoGeral.BOM,
+            'modalidade_custodiante': Custodia.ModalidadeCustodiante.COLABORADOR,
+            'razao_social_responsavel': 'Inventory Teste Ltda.',
+            'cnpj_responsavel': '12.345.678/0001-90',
+            'custodiante_cpf': '123.456.789-00',
+            'custodiante_identificacao': 'MAT-SEM-LOGIN',
+            'custodiante_funcao_atividade': 'Operação',
+            'custodiante_email': 'operacional@example.com',
+            'empresa_contratada': '',
+            'cnpj_contratada': '',
+            'responsavel_entrega_nome': 'Admin Custódia',
+            'testemunha_1_nome': 'Testemunha RH',
+            'testemunha_1_cpf': '111.222.333-44',
+            'testemunha_1_email': 'rh@example.com',
+            'testemunha_2_nome': 'Testemunha Operacional',
+            'testemunha_2_cpf': '555.666.777-88',
+            'testemunha_2_email': 'testemunha@example.com',
             'observacao': 'Entrega controlada',
             'equipamentos': [self.equipamento.pk],
             'linhas_moveis': [],
@@ -184,7 +201,7 @@ class CustodiaInterfaceR2MTests(TestCase):
         self.equipamento.refresh_from_db()
         self.assertEqual(self.equipamento.responsavel, self.colaborador_sem_login.nome)
 
-    def test_admin_configura_modelo_para_custodia_no_catalogo(self):
+    def test_admin_nao_configura_catalogo_restrito_ao_superadmin(self):
         capacidade = CapacidadeCatalogoProdutoEmpresa.objects.get(
             catalogo__empresa=self.empresa,
             catalogo__produto=self.produto,
@@ -201,13 +218,14 @@ class CustodiaInterfaceR2MTests(TestCase):
             'produtos_chip_independente': [],
         })
 
-        self.assertEqual(resposta.status_code, 302)
-        capacidade = CapacidadeCatalogoProdutoEmpresa.objects.get(
-            catalogo__empresa=self.empresa,
-            catalogo__produto=self.produto,
-            codigo=CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL,
+        self.assertEqual(resposta.status_code, 403)
+        self.assertFalse(
+            CapacidadeCatalogoProdutoEmpresa.objects.filter(
+                catalogo__empresa=self.empresa,
+                catalogo__produto=self.produto,
+                codigo=CapacidadeCatalogoProdutoEmpresa.CUSTODIA_PESSOAL,
+            ).exists()
         )
-        self.assertTrue(capacidade.ativa)
 
     def test_seletor_de_custodia_identifica_a_base_de_cada_equipamento(self):
         self.client.force_login(self.admin)
@@ -242,10 +260,20 @@ class CustodiaInterfaceR2MTests(TestCase):
             'data_devolucao': '2026-10-15T15:30',
             'motivo': 'Encerramento do vínculo',
             'responsavel_recebimento': self.colaborador_sem_login.pk,
+            'responsavel_recebimento_email': 'operacional@example.com',
+            'resultado_conferencia': DevolucaoCustodia.ResultadoConferencia.COMPLETA,
+            'pendencias': '',
+            'testemunha_1_nome': 'Testemunha RH',
+            'testemunha_1_cpf': '111.222.333-44',
+            'testemunha_1_email': 'rh@example.com',
+            'testemunha_2_nome': 'Testemunha Operacional',
+            'testemunha_2_cpf': '555.666.777-88',
+            'testemunha_2_email': 'testemunha@example.com',
             'observacao': 'Recebido em conferência',
             f'situacao_{item.pk}': ItemDevolucaoCustodia.Situacao.DEVOLVIDO,
             f'condicao_{item.pk}': Custodia.CondicaoGeral.BOM,
             f'observacao_{item.pk}': 'Sem avarias',
+            f'acessorios_{item.pk}': 'Fonte e cabo',
         })
         self.assertRedirects(
             resposta,

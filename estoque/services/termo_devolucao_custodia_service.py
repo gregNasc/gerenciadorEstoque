@@ -14,6 +14,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    KeepTogether,
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -125,10 +127,11 @@ class TermoDevolucaoCustodiaService:
                     else ''
                 ),
                 'observacao': registro.observacao,
+                'acessorios_devolvidos': registro.acessorios_devolvidos,
             })
         return {
-            'schema_version': 1,
-            'modelo_documento': 'devolucao_custodia_v1',
+            'schema_version': 2,
+            'modelo_documento': 'devolucao_custodia_modalidade_v2',
             'gerado_em': instante.isoformat(),
             'devolucao': {
                 'id': devolucao.pk,
@@ -136,14 +139,23 @@ class TermoDevolucaoCustodiaService:
                 'data': devolucao.data_devolucao.isoformat(),
                 'motivo': devolucao.motivo,
                 'observacao': devolucao.observacao,
+                'resultado_conferencia': devolucao.get_resultado_conferencia_display(),
+                'pendencias': devolucao.pendencias,
             },
             'custodia': {
                 'id': custodia.pk,
                 'codigo': codigo_custodia,
                 'data_entrega': custodia.data_entrega.isoformat(),
                 'status': custodia.get_status_display(),
+                'modalidade': custodia.modalidade_custodiante,
+                'modalidade_nome': custodia.get_modalidade_custodiante_display(),
             },
-            'empresa': {'id': custodia.empresa_id, 'nome': custodia.empresa.nome},
+            'empresa': {
+                'id': custodia.empresa_id,
+                'nome': custodia.empresa.nome,
+                'razao_social': custodia.razao_social_responsavel,
+                'cnpj': custodia.cnpj_responsavel,
+            },
             'base': {'id': custodia.base_id, 'nome': custodia.base.nome},
             'colaborador': {
                 'id': colaborador.pk,
@@ -151,11 +163,32 @@ class TermoDevolucaoCustodiaService:
                 'matricula': colaborador.matricula,
                 'setor': colaborador.setor,
                 'cargo_funcao': colaborador.cargo_funcao,
+                'cpf': custodia.custodiante_cpf,
+                'identificacao': custodia.custodiante_identificacao,
+                'funcao_atividade': custodia.custodiante_funcao_atividade,
+                'email': custodia.custodiante_email,
+                'empresa_contratada': custodia.empresa_contratada,
+                'cnpj_contratada': custodia.cnpj_contratada,
             },
             'responsavel_recebimento': {
                 'id': responsavel.pk,
                 'nome': responsavel.nome,
+                'email': devolucao.responsavel_recebimento_email,
             },
+            'testemunhas': [
+                {
+                    'nome': devolucao.testemunha_1_nome,
+                    'cpf': devolucao.testemunha_1_cpf,
+                    'email': devolucao.testemunha_1_email,
+                    'titulo': 'TESTEMUNHA 1 - DEPARTAMENTO PESSOAL',
+                },
+                {
+                    'nome': devolucao.testemunha_2_nome,
+                    'cpf': devolucao.testemunha_2_cpf,
+                    'email': devolucao.testemunha_2_email,
+                    'titulo': 'TESTEMUNHA 2',
+                },
+            ],
             'responsavel_registro': {
                 'id': devolucao.registrado_por_id,
                 'nome': (
@@ -186,26 +219,31 @@ class TermoDevolucaoCustodiaService:
         devolvidos = sum(item['situacao'].casefold() == 'devolvido' for item in itens)
         faltantes = len(itens) - devolvidos
         story = [
-            Paragraph('TERMO DE DEVOLUÇÃO DE ATIVOS EM CUSTÓDIA', styles['Titulo']),
-            cls._tabela_identificacao(snapshot, styles),
-            Paragraph('1. ITENS DA DEVOLUÇÃO', styles['Secao']),
-            cls._tabela_itens(itens, styles),
-            Spacer(1, 3 * mm),
-            cls._tabela_resumo(devolvidos, faltantes, styles),
-            Paragraph('2. MOTIVO E OBSERVAÇÕES', styles['Secao']),
-            cls._tabela_motivo(snapshot, styles),
-            Paragraph('3. DECLARAÇÃO DE DEVOLUÇÃO', styles['Secao']),
+            Paragraph('TERMO DE DEVOLUÇÃO E RECEBIMENTO<br/>DE EQUIPAMENTOS', styles['Titulo']),
             Paragraph(
-                'As partes confirmam que os itens relacionados foram conferidos '
-                'e classificados conforme a situação e a condição registradas '
-                'neste documento. Itens faltantes permanecem vinculados à Custódia '
-                'até sua devolução formal ou tratamento posterior autorizado.',
+                f'Modalidade: {escape(snapshot["custodia"].get("modalidade_nome", "Colaborador"))} | Documento vinculado ao termo de Custódia original.',
+                styles['Nota'],
+            ),
+            cls._tabela_identificacao(snapshot, styles),
+            Paragraph('1. ITENS DEVOLVIDOS', styles['Secao']),
+            cls._tabela_itens(itens, styles),
+            Paragraph('2. CONFERÊNCIA DE RECEBIMENTO', styles['Secao']),
+            cls._tabela_conferencia(snapshot, styles),
+            Paragraph('3. DECLARAÇÃO DE DEVOLUÇÃO E RECEBIMENTO', styles['Secao']),
+            Paragraph(
+                f'O {cls._pessoa_texto(snapshot)} declara ter apresentado os itens identificados neste documento para devolução. '
+                'O representante da pessoa jurídica responsável confirma o recebimento dos itens expressamente relacionados e registra as condições, ressalvas e pendências indicadas acima.',
                 styles['Corpo'],
             ),
+            Paragraph(
+                'Dados sensíveis de acesso, como senhas, PIN, PIN 2, PUK e PUK 2, não devem ser impressos neste termo.',
+                styles['Nota'],
+            ),
+            PageBreak(),
             Paragraph('4. CIÊNCIA E ACEITE', styles['Secao']),
             cls._bloco_assinaturas(snapshot, styles),
             Spacer(1, 3 * mm),
-            cls._bloco_testemunha(styles),
+            *cls._blocos_testemunhas(snapshot, styles),
             Spacer(1, 2 * mm),
             Paragraph(
                 'Assinatura eletrônica: este documento está preparado para o fluxo '
@@ -280,20 +318,36 @@ class TermoDevolucaoCustodiaService:
         data = timezone.datetime.fromisoformat(snapshot['devolucao']['data'])
         if timezone.is_aware(data):
             data = timezone.localtime(data)
+        rotulo = 'Prestador' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else 'Colaborador'
         linhas = [
-            ['Devolução', snapshot['devolucao']['codigo'], 'Data', data.strftime('%d/%m/%Y %H:%M')],
-            ['Custódia', snapshot['custodia']['codigo'], 'Status', snapshot['custodia']['status']],
-            ['Empresa', snapshot['empresa']['nome'], 'Base / Local', snapshot['base']['nome']],
-            ['Colaborador', snapshot['colaborador']['nome'], 'Matrícula', snapshot['colaborador']['matricula'] or '-'],
-            ['Recebido por', snapshot['responsavel_recebimento']['nome'], 'Registrado por', snapshot['responsavel_registro']['nome']],
+            ['Termo de devolução', snapshot['devolucao']['codigo'], 'Data de devolução', data.strftime('%d/%m/%Y %H:%M')],
+            ['Termo de Custódia', snapshot['custodia']['codigo'], 'Base / Local', snapshot['base']['nome']],
+            ['Empresa no sistema', snapshot['empresa']['nome'], 'Grupo / Unidade', snapshot['base']['nome']],
+            ['Razão social responsável', snapshot['empresa'].get('razao_social') or '-', 'CNPJ', snapshot['empresa'].get('cnpj') or '-'],
+            [rotulo, snapshot['colaborador']['nome'], 'CPF', snapshot['colaborador'].get('cpf') or '-'],
+            ['Identificação', snapshot['colaborador'].get('identificacao') or '-', 'Função / Atividade', snapshot['colaborador'].get('funcao_atividade') or '-'],
         ]
-        tabela = Table(linhas, colWidths=[30 * mm, 58 * mm, 33 * mm, 55 * mm])
+        if snapshot['custodia'].get('modalidade') == 'PRESTADOR':
+            linhas.append([
+                'Empresa contratada', snapshot['colaborador'].get('empresa_contratada') or '-',
+                'CNPJ contratada', snapshot['colaborador'].get('cnpj_contratada') or '-',
+            ])
+        dados = []
+        for linha in linhas:
+            dados.append([
+                Paragraph(
+                    f'<b>{escape(str(valor))}</b>' if indice in (0, 2) else escape(str(valor)),
+                    styles['Celula'],
+                )
+                for indice, valor in enumerate(linha)
+            ])
+        tabela = Table(dados, colWidths=[34 * mm, 54 * mm, 34 * mm, 54 * mm])
         tabela.setStyle(cls._estilo_grade(rotulos=(0, 2)))
         return tabela
 
     @classmethod
     def _tabela_itens(cls, itens, styles):
-        cabecalho = ['Item', 'Identificação', 'Registro da devolução', 'Resultado']
+        cabecalho = ['Equipamento / item', 'Identificação / vínculo', 'Acessórios devolvidos', 'Condição no recebimento']
         linhas = [[Paragraph(c, styles['Cabecalho']) for c in cabecalho]]
         for item in itens:
             nome = f'<b>{escape(item["tipo"])}</b>'
@@ -307,11 +361,13 @@ class TermoDevolucaoCustodiaService:
             ):
                 if valor:
                     identificacao.append(f'{rotulo}: {escape(valor)}')
+            acessorios = escape(item.get('acessorios_devolvidos') or '-')
             registro = []
             if item['condicao_devolucao']:
-                registro.append(f'Condição: {escape(item["condicao_devolucao"])}')
+                registro.append(escape(item['condicao_devolucao']))
             if item['observacao']:
                 registro.append(escape(item['observacao']))
+            registro.append(f'Situação: {escape(item["situacao"])}')
             estilo_resultado = (
                 styles['Devolvido']
                 if item['situacao'].casefold() == 'devolvido'
@@ -320,8 +376,8 @@ class TermoDevolucaoCustodiaService:
             linhas.append([
                 Paragraph(nome, styles['Celula']),
                 Paragraph('<br/>'.join(identificacao) or '-', styles['Celula']),
-                Paragraph('<br/>'.join(registro) or '-', styles['Celula']),
-                Paragraph(escape(item['situacao']), estilo_resultado),
+                Paragraph(acessorios, styles['Celula']),
+                Paragraph('<br/>'.join(registro) or '-', estilo_resultado),
             ])
         tabela = Table(
             linhas, repeatRows=1,
@@ -363,10 +419,12 @@ class TermoDevolucaoCustodiaService:
         return tabela
 
     @classmethod
-    def _tabela_motivo(cls, snapshot, styles):
+    def _tabela_conferencia(cls, snapshot, styles):
         linhas = [
+            ['Resultado da conferência', snapshot['devolucao']['resultado_conferencia']],
+            ['Itens ou acessórios pendentes', snapshot['devolucao']['pendencias'] or '-'],
             ['Motivo', snapshot['devolucao']['motivo']],
-            ['Observações', snapshot['devolucao']['observacao'] or '-'],
+            ['Avarias, divergências e observações', snapshot['devolucao']['observacao'] or '-'],
         ]
         dados = [[
             Paragraph(f'<b>{escape(rotulo)}</b>', styles['Celula']),
@@ -384,17 +442,24 @@ class TermoDevolucaoCustodiaService:
         data_texto = data.strftime('%d/%m/%Y')
         linhas = [
             [
-                Paragraph('<b>COLABORADOR / CUSTODIANTE</b>', styles['Celula']),
+                Paragraph(
+                    '<b>PRESTADOR / CUSTODIANTE</b>' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else '<b>COLABORADOR / CUSTODIANTE</b>',
+                    styles['Celula'],
+                ),
                 Paragraph('<b>RESPONSÁVEL PELO RECEBIMENTO</b>', styles['Celula']),
             ],
             [
                 Paragraph(
-                    f'{escape(snapshot["colaborador"]["nome"])}<br/><br/>'
+                    f'Nome: {escape(snapshot["colaborador"]["nome"])}<br/>'
+                    f'CPF: {escape(snapshot["colaborador"].get("cpf") or "-")}<br/>'
+                    f'E-mail: {escape(snapshot["colaborador"].get("email") or "-")}<br/><br/>'
                     f'Assinatura: ___________________________<br/>Data: {data_texto}',
                     styles['Celula'],
                 ),
                 Paragraph(
-                    f'{escape(snapshot["responsavel_recebimento"]["nome"])}<br/><br/>'
+                    f'Nome: {escape(snapshot["responsavel_recebimento"]["nome"])}<br/>'
+                    f'Empresa: {escape(snapshot["empresa"].get("razao_social") or snapshot["empresa"]["nome"])}<br/>'
+                    f'E-mail: {escape(snapshot["responsavel_recebimento"].get("email") or "-")}<br/><br/>'
                     f'Assinatura: ___________________________<br/>Data: {data_texto}',
                     styles['Celula'],
                 ),
@@ -405,21 +470,26 @@ class TermoDevolucaoCustodiaService:
         return tabela
 
     @classmethod
-    def _bloco_testemunha(cls, styles):
-        linhas = [[
-            Paragraph('<b>TESTEMUNHA - DEPARTAMENTO PESSOAL</b>', styles['Celula']),
-        ], [
-            Paragraph(
-                'Nome: ________________________________________________<br/>'
-                'E-mail: _______________________________________________<br/><br/>'
-                'Assinatura: ____________________________________________<br/>'
-                'Data: ____/____/________',
-                styles['Celula'],
-            ),
-        ]]
-        tabela = Table(linhas, colWidths=[176 * mm])
-        tabela.setStyle(cls._estilo_grade(rotulos=(), primeira_linha=True))
-        return tabela
+    def _blocos_testemunhas(cls, snapshot, styles):
+        blocos = []
+        for testemunha in snapshot.get('testemunhas', []):
+            linhas = [[Paragraph(f'<b>{escape(testemunha["titulo"])}</b>', styles['Celula'])], [
+                Paragraph(
+                    f'Nome: {escape(testemunha.get("nome") or "-")}<br/>'
+                    f'CPF: {escape(testemunha.get("cpf") or "-")}<br/>'
+                    f'E-mail: {escape(testemunha.get("email") or "-")}<br/><br/>'
+                    'Assinatura: ____________________________________________<br/>'
+                    'Data: ____/____/________', styles['Celula'],
+                ),
+            ]]
+            tabela = Table(linhas, colWidths=[176 * mm])
+            tabela.setStyle(cls._estilo_grade(rotulos=(), primeira_linha=True))
+            blocos.extend([KeepTogether(tabela), Spacer(1, 3 * mm)])
+        return blocos
+
+    @staticmethod
+    def _pessoa_texto(snapshot):
+        return 'prestador' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else 'colaborador'
 
     @classmethod
     def _tabela_controle(cls, snapshot, styles):

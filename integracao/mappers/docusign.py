@@ -19,9 +19,12 @@ class DocusignEnvelopeMapper:
         colaborador = type(custodia.colaborador).objects.get(
             pk=custodia.colaborador_id,
         )
-        if not colaborador.email:
+        email_custodiante = (
+            getattr(custodia, 'custodiante_email', '') or colaborador.email
+        ).strip().lower()
+        if not email_custodiante:
             raise DocusignConfigurationError(
-                'O colaborador da Custódia precisa ter e-mail para assinar.'
+                'O custodiante precisa ter e-mail para assinar.'
             )
         if not config.email_testemunha_rh:
             raise DocusignConfigurationError(
@@ -52,13 +55,13 @@ class DocusignEnvelopeMapper:
             }],
             'recipients': {
                 'signers': [{
-                    'email': colaborador.email,
+                    'email': email_custodiante,
                     'name': colaborador.nome,
                     'recipientId': '1',
                     'routingOrder': '1',
                     'tabs': {
                         'signHereTabs': [{
-                            'anchorString': 'ASSINATURA DO COLABORADOR',
+                            'anchorString': 'CUSTODIANTE',
                             'anchorUnits': 'pixels',
                             'anchorXOffset': '5',
                             'anchorYOffset': '18',
@@ -73,7 +76,7 @@ class DocusignEnvelopeMapper:
                     'witnessFor': '1',
                     'tabs': {
                         'signHereTabs': [{
-                            'anchorString': 'TESTEMUNHA - DEPARTAMENTO PESSOAL',
+                            'anchorString': 'DEPARTAMENTO PESSOAL',
                             'anchorUnits': 'pixels',
                             'anchorXOffset': '5',
                             'anchorYOffset': '18',
@@ -109,7 +112,7 @@ class DocusignEnvelopeMapper:
             {
                 'role': 'SIGNATARIO',
                 'name': colaborador.nome,
-                'email': colaborador.email,
+                'email': email_custodiante,
                 'routing_order': 1,
             },
             {

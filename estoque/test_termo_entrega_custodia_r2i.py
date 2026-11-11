@@ -47,7 +47,7 @@ class TermoEntregaCustodiaR2ITests(TestCase):
         self.assertTrue(conteudo.startswith(b'%PDF'))
         self.assertEqual(termo.sha256, sha256(conteudo).hexdigest())
         self.assertEqual(len(termo.dados_snapshot['itens']), 2)
-        self.assertEqual(termo.dados_snapshot['schema_version'], 2)
+        self.assertEqual(termo.dados_snapshot['schema_version'], 3)
         self.assertEqual(
             termo.dados_snapshot['custodia']['codigo'],
             f'CUS-{self.custodia.data_entrega.year}-{self.custodia.pk:04d}',
