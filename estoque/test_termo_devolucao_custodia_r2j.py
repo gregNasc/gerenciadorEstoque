@@ -88,7 +88,7 @@ class TermoDevolucaoCustodiaR2JTests(TestCase):
         self.assertTrue(conteudo.startswith(b'%PDF'))
         self.assertEqual(termo.sha256, sha256(conteudo).hexdigest())
         self.assertEqual(len(termo.dados_snapshot['itens']), 2)
-        self.assertEqual(termo.dados_snapshot['schema_version'], 2)
+        self.assertEqual(termo.dados_snapshot['schema_version'], 3)
         self.assertEqual(
             termo.dados_snapshot['itens'][0]['acessorios_devolvidos'],
             'FONTE E CABO',

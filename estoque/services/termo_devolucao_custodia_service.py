@@ -130,8 +130,8 @@ class TermoDevolucaoCustodiaService:
                 'acessorios_devolvidos': registro.acessorios_devolvidos,
             })
         return {
-            'schema_version': 2,
-            'modelo_documento': 'devolucao_custodia_modalidade_v2',
+            'schema_version': 3,
+            'modelo_documento': 'devolucao_custodia_modalidade_v3',
             'gerado_em': instante.isoformat(),
             'devolucao': {
                 'id': devolucao.pk,
@@ -155,8 +155,18 @@ class TermoDevolucaoCustodiaService:
                 'nome': custodia.empresa.nome,
                 'razao_social': custodia.razao_social_responsavel,
                 'cnpj': custodia.cnpj_responsavel,
+                'nome_documento': custodia.nome_empresa_documento,
+                'cnpj_documento': (
+                    custodia.cnpj_contratada
+                    if custodia.empresa_contratada
+                    else custodia.cnpj_responsavel
+                ),
             },
-            'base': {'id': custodia.base_id, 'nome': custodia.base.nome},
+            'base': {
+                'id': custodia.base_id,
+                'nome': custodia.base.nome,
+                'local_fisico': custodia.local_fisico_documento,
+            },
             'colaborador': {
                 'id': colaborador.pk,
                 'nome': colaborador.nome,
@@ -319,19 +329,16 @@ class TermoDevolucaoCustodiaService:
         if timezone.is_aware(data):
             data = timezone.localtime(data)
         rotulo = 'Prestador' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else 'Colaborador'
+        empresa_documento = snapshot['empresa'].get('nome_documento') or snapshot['empresa']['nome']
+        local_fisico = snapshot['base'].get('local_fisico') or snapshot['base']['nome']
         linhas = [
             ['Termo de devolução', snapshot['devolucao']['codigo'], 'Data de devolução', data.strftime('%d/%m/%Y %H:%M')],
-            ['Termo de Custódia', snapshot['custodia']['codigo'], 'Base / Local', snapshot['base']['nome']],
-            ['Empresa no sistema', snapshot['empresa']['nome'], 'Grupo / Unidade', snapshot['base']['nome']],
-            ['Razão social responsável', snapshot['empresa'].get('razao_social') or '-', 'CNPJ', snapshot['empresa'].get('cnpj') or '-'],
+            ['Termo de Custódia', snapshot['custodia']['codigo'], 'Base', snapshot['base']['nome']],
+            ['Empresa', empresa_documento, 'CNPJ', snapshot['empresa'].get('cnpj_documento') or '-'],
+            ['Grupo / Unidade', snapshot['base']['nome'], 'Local físico', local_fisico],
             [rotulo, snapshot['colaborador']['nome'], 'CPF', snapshot['colaborador'].get('cpf') or '-'],
             ['Identificação', snapshot['colaborador'].get('identificacao') or '-', 'Função / Atividade', snapshot['colaborador'].get('funcao_atividade') or '-'],
         ]
-        if snapshot['custodia'].get('modalidade') == 'PRESTADOR':
-            linhas.append([
-                'Empresa contratada', snapshot['colaborador'].get('empresa_contratada') or '-',
-                'CNPJ contratada', snapshot['colaborador'].get('cnpj_contratada') or '-',
-            ])
         dados = []
         for linha in linhas:
             dados.append([
@@ -458,7 +465,7 @@ class TermoDevolucaoCustodiaService:
                 ),
                 Paragraph(
                     f'Nome: {escape(snapshot["responsavel_recebimento"]["nome"])}<br/>'
-                    f'Empresa: {escape(snapshot["empresa"].get("razao_social") or snapshot["empresa"]["nome"])}<br/>'
+                    f'Empresa: {escape(snapshot["empresa"].get("nome_documento") or snapshot["empresa"]["nome"])}<br/>'
                     f'E-mail: {escape(snapshot["responsavel_recebimento"].get("email") or "-")}<br/><br/>'
                     f'Assinatura: ___________________________<br/>Data: {data_texto}',
                     styles['Celula'],

@@ -123,8 +123,8 @@ class TermoEntregaCustodiaService:
         registrador = custodia.registrado_por
         codigo = f'CUS-{custodia.data_entrega.year}-{custodia.pk:04d}'
         return {
-            'schema_version': 3,
-            'modelo_documento': 'custodia_responsabilidade_modalidade_v3',
+            'schema_version': 4,
+            'modelo_documento': 'custodia_responsabilidade_modalidade_v4',
             'gerado_em': instante.isoformat(),
             'custodia': {
                 'id': custodia.pk,
@@ -139,10 +139,17 @@ class TermoEntregaCustodiaService:
                 'nome': custodia.empresa.nome,
                 'razao_social': custodia.razao_social_responsavel,
                 'cnpj': custodia.cnpj_responsavel,
+                'nome_documento': custodia.nome_empresa_documento,
+                'cnpj_documento': (
+                    custodia.cnpj_contratada
+                    if custodia.empresa_contratada
+                    else custodia.cnpj_responsavel
+                ),
             },
             'base': {
                 'id': custodia.base_id,
                 'nome': custodia.base.nome,
+                'local_fisico': custodia.local_fisico_documento,
             },
             'colaborador': {
                 'id': colaborador.pk,
@@ -332,18 +339,15 @@ class TermoEntregaCustodiaService:
             'codigo', f'CUS-{custodia["data_entrega"][:4]}-{custodia["id"]:04d}',
         )
         rotulo = 'Prestador' if custodia.get('modalidade') == 'PRESTADOR' else 'Colaborador'
+        empresa_documento = snapshot['empresa'].get('nome_documento') or snapshot['empresa']['nome']
+        local_fisico = snapshot['base'].get('local_fisico') or snapshot['base']['nome']
         linhas = [
             ['Termo', codigo, 'Data de entrega', data],
-            ['Empresa no sistema', snapshot['empresa']['nome'], 'Base / Local', snapshot['base']['nome']],
-            ['Razão social responsável', snapshot['empresa'].get('razao_social') or '-', 'CNPJ', snapshot['empresa'].get('cnpj') or '-'],
+            ['Empresa', empresa_documento, 'CNPJ', snapshot['empresa'].get('cnpj_documento') or '-'],
+            ['Base', snapshot['base']['nome'], 'Local físico', local_fisico],
             [rotulo, colaborador['nome'], 'CPF', colaborador.get('cpf') or '-'],
             ['Identificação', colaborador.get('identificacao') or '-', 'Função / Atividade', colaborador.get('funcao_atividade') or '-'],
         ]
-        if custodia.get('modalidade') == 'PRESTADOR':
-            linhas.append([
-                'Empresa contratada', colaborador.get('empresa_contratada') or '-',
-                'CNPJ da contratada', colaborador.get('cnpj_contratada') or '-',
-            ])
         dados = []
         for linha in linhas:
             dados.append([
@@ -491,9 +495,9 @@ class TermoEntregaCustodiaService:
     @classmethod
     def _bloco_assinaturas(cls, snapshot, styles):
         colaborador = escape(snapshot['colaborador']['nome'])
-        responsavel = escape(snapshot.get('responsavel_entrega', {}).get('nome') or snapshot.get('responsavel_registro', {}).get('nome') or snapshot['empresa']['nome'])
+        responsavel = escape(snapshot.get('responsavel_entrega', {}).get('nome') or snapshot.get('responsavel_registro', {}).get('nome') or snapshot['empresa'].get('nome_documento') or snapshot['empresa']['nome'])
         cpf = escape(snapshot['colaborador'].get('cpf') or '-')
-        empresa = escape(snapshot['empresa'].get('razao_social') or snapshot['empresa']['nome'])
+        empresa = escape(snapshot['empresa'].get('nome_documento') or snapshot['empresa']['nome'])
         titulo = 'PRESTADOR / CUSTODIANTE' if snapshot['custodia'].get('modalidade') == 'PRESTADOR' else 'COLABORADOR / CUSTODIANTE'
         data = timezone.datetime.fromisoformat(
             snapshot['custodia']['data_entrega'],

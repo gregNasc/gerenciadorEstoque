@@ -164,10 +164,10 @@ class CustodiaInterfaceR2MTests(TestCase):
     def test_admin_cria_custodia_e_vincula_equipamento(self):
         self.client.force_login(self.admin)
         resposta = self.client.post(reverse('estoque:criar_custodia'), {
-            'empresa': self.empresa.pk,
+            'empresa': '',
             'base': self.base.pk,
             'colaborador': self.colaborador_sem_login.pk,
-            'local_fisico': '',
+            'local_fisico_livre': 'Operação AJN - Portaria 2',
             'data_entrega': '2026-10-15',
             'condicao_geral': Custodia.CondicaoGeral.BOM,
             'modalidade_custodiante': Custodia.ModalidadeCustodiante.COLABORADOR,
@@ -177,7 +177,7 @@ class CustodiaInterfaceR2MTests(TestCase):
             'custodiante_identificacao': 'MAT-SEM-LOGIN',
             'custodiante_funcao_atividade': 'Operação',
             'custodiante_email': 'operacional@example.com',
-            'empresa_contratada': '',
+            'empresa_contratada': 'AJN Serviços',
             'cnpj_contratada': '',
             'responsavel_entrega_nome': 'Admin Custódia',
             'testemunha_1_nome': 'Testemunha RH',
@@ -196,6 +196,17 @@ class CustodiaInterfaceR2MTests(TestCase):
             reverse('estoque:detalhe_custodia', args=[custodia.pk]),
         )
         self.assertEqual(custodia.status, Custodia.Status.ATIVA)
+        self.assertEqual(custodia.empresa, self.empresa)
+        self.assertEqual(custodia.nome_empresa_documento, 'AJN SERVIÇOS')
+        self.assertEqual(custodia.local_fisico_documento, 'OPERAÇÃO AJN - PORTARIA 2')
+        self.assertEqual(
+            custodia.termo_entrega.dados_snapshot['empresa']['nome_documento'],
+            'AJN SERVIÇOS',
+        )
+        self.assertEqual(
+            custodia.termo_entrega.dados_snapshot['base']['local_fisico'],
+            'OPERAÇÃO AJN - PORTARIA 2',
+        )
         self.assertEqual(custodia.itens.get().equipamento, self.equipamento)
         self.assertTrue(hasattr(custodia, 'termo_entrega'))
         self.equipamento.refresh_from_db()
@@ -254,9 +265,17 @@ class CustodiaInterfaceR2MTests(TestCase):
         self.assertContains(resposta, 'data-patrimonio="PAT-CUSTODIA-UI"', html=False)
         self.assertContains(resposta, 'data-numero-serie="SERIE-CUSTODIA-UI"', html=False)
         self.assertContains(resposta, 'Empresa responsável pelos ativos')
-        self.assertContains(resposta, 'Empresa do colaborador ou prestador')
+        self.assertContains(resposta, '>OU<', html=False, count=1)
+        self.assertContains(resposta, 'Digite o nome da empresa')
+        self.assertContains(resposta, '>Local físico<', html=False)
         self.assertContains(resposta, 'id="id_empresa_contratada"', html=False)
-        self.assertContains(resposta, 'por exemplo AJN')
+        self.assertContains(resposta, 'id="id_local_fisico_livre"', html=False)
+        self.assertNotContains(resposta, 'id="id_local_fisico"', html=False)
+        self.assertNotContains(resposta, 'por exemplo AJN')
+        self.assertNotContains(
+            resposta,
+            'Selecione a empresa cadastrada no sistema para localizar a Base e os ativos.',
+        )
         self.assertContains(resposta, 'custodia-sem-equipamentos')
 
     def test_admin_registra_devolucao_e_libera_equipamento(self):

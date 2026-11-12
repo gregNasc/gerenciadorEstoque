@@ -163,7 +163,8 @@ class CustodiaForm(forms.ModelForm):
         model = Custodia
         fields = (
             'empresa', 'base', 'colaborador', 'modalidade_custodiante',
-            'local_fisico', 'data_entrega', 'condicao_geral',
+            'local_fisico_livre', 'data_entrega',
+            'condicao_geral',
             'razao_social_responsavel', 'cnpj_responsavel',
             'custodiante_cpf', 'custodiante_identificacao',
             'custodiante_funcao_atividade', 'custodiante_email',
@@ -197,11 +198,8 @@ class CustodiaForm(forms.ModelForm):
         )
         self.fields['colaborador'].widget = ColaboradorDocumentSelect()
         self.fields['colaborador'].widget.choices = self.fields['colaborador'].choices
-        self.fields['local_fisico'].queryset = self.fields[
-            'local_fisico'
-        ].queryset.filter(empresa__in=empresas, ativo=True).order_by(
-            'empresa__nome', 'nome',
-        )
+        self.fields['empresa'].required = False
+        self.fields['empresa'].empty_label = 'Selecione, se desejar'
 
         equipamentos_ids = set()
         linhas_ids = set()
@@ -241,7 +239,7 @@ class CustodiaForm(forms.ModelForm):
             actor.get_full_name().strip() or actor.get_username(),
         )
         for nome in (
-            'razao_social_responsavel', 'cnpj_responsavel', 'custodiante_cpf',
+            'custodiante_cpf',
             'custodiante_identificacao', 'custodiante_funcao_atividade',
             'custodiante_email', 'responsavel_entrega_nome',
             'testemunha_1_nome', 'testemunha_1_cpf', 'testemunha_1_email',
@@ -249,21 +247,15 @@ class CustodiaForm(forms.ModelForm):
         ):
             self.fields[nome].required = True
         self.fields['empresa'].label = 'Empresa responsável pelos ativos'
-        self.fields['empresa'].help_text = (
-            'Selecione a empresa cadastrada no sistema para localizar a Base e os ativos.'
-        )
-        self.fields['empresa_contratada'].help_text = (
-            'Digite livremente a empresa onde a pessoa trabalha, por exemplo AJN. '
-            'Obrigatório somente para prestador de serviços.'
-        )
-        self.fields['cnpj_contratada'].help_text = (
-            'Obrigatório somente quando a modalidade for Prestador de serviços.'
-        )
+        self.fields['empresa'].help_text = ''
+        self.fields['empresa_contratada'].help_text = ''
+        self.fields['cnpj_contratada'].help_text = ''
         labels = {
             'razao_social_responsavel': 'Razão social responsável',
             'cnpj_responsavel': 'CNPJ da razão social',
-            'empresa_contratada': 'Empresa do colaborador ou prestador',
+            'empresa_contratada': 'Digite o nome da empresa',
             'cnpj_contratada': 'CNPJ da contratada',
+            'local_fisico_livre': 'Local físico',
             'responsavel_entrega_nome': 'Responsável pela entrega',
             'testemunha_1_nome': 'Nome', 'testemunha_1_cpf': 'CPF',
             'testemunha_1_email': 'E-mail', 'testemunha_2_nome': 'Nome',
@@ -277,8 +269,10 @@ class CustodiaForm(forms.ModelForm):
         cleaned = super().clean()
         empresa = cleaned.get('empresa')
         base = cleaned.get('base')
+        if base and not empresa:
+            empresa = base.empresa
+            cleaned['empresa'] = empresa
         colaborador = cleaned.get('colaborador')
-        local_fisico = cleaned.get('local_fisico')
         equipamentos = cleaned.get('equipamentos')
         linhas = cleaned.get('linhas_moveis')
         if not equipamentos and not linhas:
@@ -294,8 +288,6 @@ class CustodiaForm(forms.ModelForm):
             self.add_error('colaborador', 'O colaborador deve pertencer à empresa selecionada.')
         if base and colaborador and colaborador.base_id and colaborador.base_id != base.pk:
             self.add_error('colaborador', 'O colaborador está vinculado a outra Base.')
-        if local_fisico and base and not local_fisico.vinculos_base.filter(base=base).exists():
-            self.add_error('local_fisico', 'O local físico não está vinculado à Base selecionada.')
         for equipamento in equipamentos or ():
             if not empresa or equipamento.regional.empresa_id != empresa.pk:
                 self.add_error('equipamentos', 'Há equipamento de outra empresa na seleção.')
@@ -310,11 +302,6 @@ class CustodiaForm(forms.ModelForm):
             if not base or linha.base_id != base.pk:
                 self.add_error('linhas_moveis', 'Todas as linhas devem pertencer à Base selecionada.')
                 break
-        if cleaned.get('modalidade_custodiante') == Custodia.ModalidadeCustodiante.PRESTADOR:
-            if not (cleaned.get('empresa_contratada') or '').strip():
-                self.add_error('empresa_contratada', 'Informe a empresa contratada.')
-            if not (cleaned.get('cnpj_contratada') or '').strip():
-                self.add_error('cnpj_contratada', 'Informe o CNPJ da empresa contratada.')
         return cleaned
 
     def criar(self):

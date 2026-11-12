@@ -752,6 +752,9 @@ class Custodia(models.Model):
         on_delete=models.PROTECT,
         related_name='custodias',
     )
+    local_fisico_livre = models.CharField(
+        'Local físico informado', max_length=200, blank=True, default='',
+    )
     colaborador = models.ForeignKey(
         Colaborador,
         on_delete=models.PROTECT,
@@ -893,6 +896,22 @@ class Custodia(models.Model):
     def vigente(self):
         return self.status in self.STATUS_VIGENTES
 
+    @property
+    def nome_empresa_documento(self):
+        return (
+            self.empresa_contratada
+            or self.razao_social_responsavel
+            or (self.empresa.nome if self.empresa_id else '')
+        )
+
+    @property
+    def local_fisico_documento(self):
+        return (
+            self.local_fisico_livre
+            or (self.local_fisico.nome if self.local_fisico_id else '')
+            or (self.base.nome if self.base_id else '')
+        )
+
     def save(self, *args, **kwargs):
         with transaction.atomic():
             responsavel_anterior = None
@@ -905,7 +924,8 @@ class Custodia(models.Model):
                     responsavel_anterior = anterior['colaborador__nome']
                     status_anterior = anterior['status']
             for campo in (
-                'observacao', 'razao_social_responsavel', 'cnpj_responsavel',
+                'observacao', 'local_fisico_livre',
+                'razao_social_responsavel', 'cnpj_responsavel',
                 'custodiante_cpf', 'custodiante_identificacao',
                 'custodiante_funcao_atividade', 'custodiante_email',
                 'empresa_contratada', 'cnpj_contratada',

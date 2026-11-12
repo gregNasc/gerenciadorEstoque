@@ -14,14 +14,15 @@
     {% if equipamento_inicial %}<div class="alert alert-info mb-0"><i class="bi bi-pc-display me-2"></i>{% trans "Equipamento selecionado" %}: <strong>{{ equipamento_inicial }}</strong></div>{% endif %}
 
     <section class="card border-0 shadow-sm">
-      <div class="card-header bg-white"><h2 class="h5 mb-1">1. {% trans "Empresa, Base e entrega" %}</h2><p class="small text-secondary mb-0">{% trans "Selecione a empresa responsável pelos ativos e, quando necessário, digite a empresa onde a pessoa trabalha." %}</p></div>
+      <div class="card-header bg-white"><h2 class="h5 mb-1">1. {% trans "Empresa, Base e entrega" %}</h2><p class="small text-secondary mb-0">{% trans "Defina a Base, o nome da empresa que aparecerá no documento e o local da entrega." %}</p></div>
       <div class="card-body"><div class="row g-3">
-        {% for field in form %}{% if field.name == 'empresa' or field.name == 'empresa_contratada' %}
+        <div class="col-md-5"><label class="form-label" for="{{ form.empresa.id_for_label }}">{{ form.empresa.label }}</label>{{ form.empresa }}{% for error in form.empresa.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+        <div class="col-md-2 d-flex align-items-end justify-content-center"><div class="fw-semibold text-secondary pb-2">{% trans "OU" %}</div></div>
+        <div class="col-md-5"><label class="form-label" for="{{ form.empresa_contratada.id_for_label }}">{{ form.empresa_contratada.label }}</label>{{ form.empresa_contratada }}{% for error in form.empresa_contratada.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+        {% for field in form %}{% if field.name == 'base' or field.name == 'data_entrega' or field.name == 'condicao_geral' %}
         <div class="col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
         {% endif %}{% endfor %}
-        {% for field in form %}{% if field.name == 'base' or field.name == 'local_fisico' or field.name == 'data_entrega' or field.name == 'condicao_geral' %}
-        <div class="col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
-        {% endif %}{% endfor %}
+        <div class="col-md-6"><label class="form-label" for="{{ form.local_fisico_livre.id_for_label }}">{{ form.local_fisico_livre.label }}</label>{{ form.local_fisico_livre }}{% for error in form.local_fisico_livre.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
       </div></div>
     </section>
 
@@ -78,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const base = document.getElementById('id_base');
   const colaborador = document.getElementById('id_colaborador');
   const modalidade = document.getElementById('id_modalidade_custodiante');
+  const empresaLivre = document.getElementById('id_empresa_contratada');
   const equipamentos = document.getElementById('id_equipamentos');
   const linhas = document.getElementById('id_linhas_moveis');
   const filtroCategoria = document.getElementById('custodia-filtro-categoria');
@@ -142,14 +144,14 @@ document.addEventListener('DOMContentLoaded', function () {
   function atualizarAtivos() { atualizarCategorias(); filtrarEquipamentos(); filtrar(linhas, false); atualizarComplementos(); }
   function atualizarModalidade() {
     const prestador = modalidade && modalidade.value === 'PRESTADOR'; document.getElementById('dados-prestador')?.classList.toggle('d-none', !prestador);
-    ['id_empresa_contratada', 'id_cnpj_contratada'].forEach(id => { const el = document.getElementById(id); if (el) el.required = prestador; });
   }
   function preencherCustodiante() {
     const option = colaborador?.selectedOptions[0]; if (!option || !option.value) return;
     [['id_custodiante_email','email'], ['id_custodiante_identificacao','identificacao'], ['id_custodiante_funcao_atividade','funcao']].forEach(([id,chave]) => { const el = document.getElementById(id); if (el && !el.value) el.value = option.dataset[chave] || ''; });
   }
   function preencherEmpresa() { const option = empresa?.selectedOptions[0]; const razao = document.getElementById('id_razao_social_responsavel'); if (razao && !razao.value && option?.value) razao.value = option.textContent.trim(); }
-  empresa?.addEventListener('change', () => { atualizarAtivos(); preencherEmpresa(); }); base?.addEventListener('change', atualizarAtivos);
+  empresa?.addEventListener('change', () => { if (empresa.value && empresaLivre) empresaLivre.value = ''; atualizarAtivos(); preencherEmpresa(); }); base?.addEventListener('change', atualizarAtivos);
+  empresaLivre?.addEventListener('input', () => { if (empresaLivre.value && empresa) empresa.value = ''; atualizarAtivos(); });
   filtroCategoria?.addEventListener('change', filtrarEquipamentos); filtroEquipamento?.addEventListener('input', filtrarEquipamentos);
   equipamentos?.addEventListener('change', atualizarComplementos); linhas?.addEventListener('change', atualizarComplementos);
   modalidade?.addEventListener('change', atualizarModalidade); colaborador?.addEventListener('change', preencherCustodiante);
