@@ -15,6 +15,7 @@ from estoque.models import (
     DevolucaoCustodia,
     Empresa,
     Equipamento,
+    Historico,
     ItemCustodia,
     ItemDevolucaoCustodia,
     Perfil,
@@ -162,6 +163,14 @@ class CustodiaInterfaceR2MTests(TestCase):
         self.assertIsNone(colaborador.usuario)
 
     def test_admin_cria_custodia_e_vincula_equipamento(self):
+        equipamento_administrativo = Equipamento.objects.create(
+            produto=self.produto,
+            numero_serie='SERIE-CUSTODIA-ADMIN-UI',
+            patrimonio='PAT-CUSTODIA-ADMIN-UI',
+            regional=self.base,
+            codigo='EQ-CUSTODIA-ADMIN-UI',
+            finalidade=Equipamento.Finalidade.ADMINISTRATIVO,
+        )
         self.client.force_login(self.admin)
         resposta = self.client.post(reverse('estoque:criar_custodia'), {
             'empresa': '',
@@ -187,7 +196,10 @@ class CustodiaInterfaceR2MTests(TestCase):
             'testemunha_2_cpf': '555.666.777-88',
             'testemunha_2_email': 'testemunha@example.com',
             'observacao': 'Entrega controlada',
-            'equipamentos': [self.equipamento.pk],
+            'equipamentos': [
+                self.equipamento.pk,
+                equipamento_administrativo.pk,
+            ],
             'linhas_moveis': [],
         })
         custodia = Custodia.objects.get(colaborador=self.colaborador_sem_login)
@@ -207,10 +219,43 @@ class CustodiaInterfaceR2MTests(TestCase):
             custodia.termo_entrega.dados_snapshot['base']['local_fisico'],
             'OPERAÇÃO AJN - PORTARIA 2',
         )
-        self.assertEqual(custodia.itens.get().equipamento, self.equipamento)
+        self.assertTrue(
+            custodia.itens.filter(equipamento=self.equipamento).exists()
+        )
+        self.assertTrue(
+            custodia.itens.filter(equipamento=equipamento_administrativo).exists()
+        )
         self.assertTrue(hasattr(custodia, 'termo_entrega'))
         self.equipamento.refresh_from_db()
+        equipamento_administrativo.refresh_from_db()
         self.assertEqual(self.equipamento.responsavel, self.colaborador_sem_login.nome)
+        self.assertEqual(
+            self.equipamento.finalidade,
+            Equipamento.Finalidade.ADMINISTRATIVO,
+        )
+        self.assertEqual(
+            equipamento_administrativo.finalidade,
+            Equipamento.Finalidade.ADMINISTRATIVO,
+        )
+        historico = Historico.objects.get(
+            equipamento=self.equipamento,
+            tipo_acao='EDICAO',
+            detalhes__origem='CUSTODIA',
+        )
+        self.assertEqual(historico.detalhes['custodia_id'], custodia.pk)
+        self.assertEqual(
+            historico.detalhes['alteracoes']['finalidade'],
+            {'antes': 'OPERACIONAL', 'depois': 'ADMINISTRATIVO'},
+        )
+        custodia.save()
+        self.assertEqual(Historico.objects.filter(
+            equipamento=self.equipamento,
+            detalhes__origem='CUSTODIA',
+        ).count(), 1)
+        self.assertFalse(Historico.objects.filter(
+            equipamento=equipamento_administrativo,
+            detalhes__origem='CUSTODIA',
+        ).exists())
 
     def test_admin_nao_configura_catalogo_restrito_ao_superadmin(self):
         capacidade = CapacidadeCatalogoProdutoEmpresa.objects.get(

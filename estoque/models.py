@@ -942,6 +942,11 @@ class Custodia(models.Model):
             itens = ItemCustodia.objects.filter(custodia_id=self.pk)
             itens.filter(devolvido_em__isnull=False).update(vigente=False)
             itens.filter(devolvido_em__isnull=True).update(vigente=self.vigente)
+            from estoque.services.custodia_finalidade_service import (
+                CustodiaFinalidadeService,
+            )
+
+            CustodiaFinalidadeService.sincronizar(self)
             from estoque.services.custodia_responsavel_legado_service import (
                 CustodiaResponsavelLegadoService,
             )
@@ -1168,6 +1173,11 @@ class ItemCustodia(models.Model):
         self.acessorios_entregues = (self.acessorios_entregues or '').strip()
         self.full_clean()
         super().save(*args, **kwargs)
+        from estoque.services.custodia_finalidade_service import (
+            CustodiaFinalidadeService,
+        )
+
+        CustodiaFinalidadeService.sincronizar(self.custodia)
         from estoque.services.custodia_responsavel_legado_service import (
             CustodiaResponsavelLegadoService,
         )

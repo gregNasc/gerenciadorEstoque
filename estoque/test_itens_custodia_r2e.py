@@ -125,7 +125,7 @@ class ItensCustodiaR2ETests(TestCase):
                 linha_movel=self.linha,
             )
 
-    def test_equipamento_precisa_ser_elegivel(self):
+    def test_equipamento_da_base_nao_depende_de_capacidade_no_catalogo(self):
         outro_produto = Produto.objects.create(
             codigo='INELEGIVEL-CUSTODIA-R2E',
             descricao='Ativo inelegível',
@@ -145,12 +145,17 @@ class ItensCustodiaR2ETests(TestCase):
             regional=self.base,
             codigo='EQ-INELEGIVEL-R2E',
         )
-        with self.assertRaises(ValidationError) as contexto:
-            ItemCustodia.objects.create(
-                custodia=self.custodia,
-                equipamento=inelegivel,
-            )
-        self.assertIn('equipamento', contexto.exception.message_dict)
+        item = ItemCustodia.objects.create(
+            custodia=self.custodia,
+            equipamento=inelegivel,
+        )
+
+        self.assertEqual(item.equipamento, inelegivel)
+        inelegivel.refresh_from_db()
+        self.assertEqual(
+            inelegivel.finalidade,
+            Equipamento.Finalidade.ADMINISTRATIVO,
+        )
 
     def test_ativo_de_outra_empresa_e_rejeitado(self):
         equipamento = Equipamento.objects.create(
