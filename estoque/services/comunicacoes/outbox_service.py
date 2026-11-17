@@ -44,7 +44,13 @@ class OutboxService:
             entregas = list(
                 ComunicadoEntrega.objects.select_related(
                     'comunicado__criado_por', 'usuario__perfil'
-                ).select_for_update(skip_locked=True).filter(
+                ).select_for_update(
+                    skip_locked=True,
+                    # Os relacionamentos acima incluem Perfil por LEFT JOIN.
+                    # No PostgreSQL, o lock sem alvo tenta alcançar também o
+                    # lado anulável do join e falha antes de consumir a fila.
+                    of=('self',),
+                ).filter(
                     canal=canal,
                     status__in=[ComunicadoEntrega.Status.PENDENTE, ComunicadoEntrega.Status.FALHA],
                 ).filter(
