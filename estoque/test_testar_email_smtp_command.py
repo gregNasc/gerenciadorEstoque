@@ -22,6 +22,7 @@ class TestarEmailSmtpCommandTests(SimpleTestCase):
         )
         self.assertEqual(len(mail.outbox), 0)
         self.assertIn('Nenhuma mensagem foi enviada', stdout.getvalue())
+        self.assertIn('smtp.example.com', stdout.getvalue())
         self.assertNotIn('destino@example.com', stdout.getvalue())
 
     def test_com_confirmacao_envia_um_email(self):
@@ -37,8 +38,23 @@ class TestarEmailSmtpCommandTests(SimpleTestCase):
         side_effect=smtplib.SMTPServerDisconnected('conexão encerrada'),
     )
     def test_falha_de_login_exibe_orientacao_sem_traceback(self, _send):
-        with self.assertRaisesMessage(CommandError, 'senha de app de 16 dígitos'):
+        with self.assertRaisesMessage(CommandError, 'senha de aplicativo/token'):
             call_command(
                 'testar_email_smtp', destino='destino@example.com', enviar=True,
                 stdout=StringIO(),
             )
+
+    @override_settings(EMAIL_HOST='smtp-mail.outlook.com')
+    @patch(
+        'django.core.mail.message.EmailMessage.send',
+        side_effect=smtplib.SMTPAuthenticationError(535, b'Authentication failed'),
+    )
+    def test_falha_outlook_orienta_smtp_auth_sem_mencionar_gmail(self, _send):
+        with self.assertRaises(CommandError) as contexto:
+            call_command(
+                'testar_email_smtp', destino='destino@example.com', enviar=True,
+                stdout=StringIO(),
+            )
+        mensagem = str(contexto.exception)
+        self.assertIn('SMTP AUTH', mensagem)
+        self.assertNotIn('Gmail', mensagem)

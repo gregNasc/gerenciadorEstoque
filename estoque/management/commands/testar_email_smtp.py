@@ -44,6 +44,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f'Configuração SMTP preenchida. Destino de teste: {destino_mascarado}',
         ))
+        self.stdout.write(
+            'Servidor SMTP: '
+            f'{settings.EMAIL_HOST}:{settings.EMAIL_PORT} · '
+            f"STARTTLS: {'sim' if settings.EMAIL_USE_TLS else 'não'} · "
+            f'Remetente: {self._mascarar(settings.DEFAULT_FROM_EMAIL)}'
+        )
         if not options['enviar']:
             self.stdout.write(
                 'Nenhuma mensagem foi enviada. Acrescente --enviar para confirmar o teste.',
@@ -62,11 +68,7 @@ class Command(BaseCommand):
         try:
             enviados = mensagem.send()
         except smtplib.SMTPAuthenticationError as exc:
-            raise CommandError(
-                'O servidor SMTP recusou a autenticação. Para Gmail, use uma '
-                'senha de app de 16 dígitos em EMAIL_HOST_PASSWORD; não use a '
-                'senha comum da conta.',
-            ) from exc
+            raise CommandError(self._orientacao_autenticacao()) from exc
         except smtplib.SMTPServerDisconnected as exc:
             raise CommandError(
                 'O servidor SMTP encerrou a conexão durante o login. Confirme '
@@ -87,3 +89,27 @@ class Command(BaseCommand):
         local, dominio = endereco.rsplit('@', 1)
         local_visivel = local[:2] if len(local) > 2 else local[:1]
         return f'{local_visivel}{"*" * max(3, len(local) - len(local_visivel))}@{dominio}'
+
+    @staticmethod
+    def _orientacao_autenticacao():
+        host = (settings.EMAIL_HOST or '').strip().lower()
+        base = 'O servidor SMTP recusou a autenticação. '
+        if 'gmail' in host:
+            return (
+                base
+                + 'Para Gmail, use uma senha de app de 16 dígitos em '
+                'EMAIL_HOST_PASSWORD; não use a senha comum da conta.'
+            )
+        if 'outlook' in host or 'office365' in host:
+            return (
+                base
+                + 'Para Outlook/Microsoft 365, confirme o servidor correto, '
+                'STARTTLS na porta 587 e se SMTP AUTH está habilitado para a '
+                'caixa postal. Contas que exigem autenticação moderna não '
+                'aceitam a senha comum neste backend SMTP.'
+            )
+        return (
+            base
+            + 'Confirme usuário, senha de aplicativo/token e se o provedor '
+            'permite autenticação SMTP para essa conta.'
+        )
