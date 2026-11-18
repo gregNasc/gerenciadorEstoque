@@ -20,7 +20,10 @@ from .templates import TemplatePayloadError, construir_payload
 
 class OutboxService:
     @classmethod
-    def processar(cls, *, canal=ComunicadoEntrega.Canal.WHATSAPP, limit=100):
+    def processar(
+        cls, *, canal=ComunicadoEntrega.Canal.WHATSAPP, limit=100,
+        comunicado_id=None,
+    ):
         if canal not in (
             ComunicadoEntrega.Canal.EMAIL,
             ComunicadoEntrega.Canal.WHATSAPP,
@@ -41,7 +44,7 @@ class OutboxService:
                 proxima_tentativa_em=agora,
                 ultimo_erro='PROCESSAMENTO ANTERIOR EXPIROU E FOI REAGENDADO.',
             )
-            entregas = list(
+            entregas_queryset = (
                 ComunicadoEntrega.objects.select_related(
                     'comunicado__criado_por', 'usuario__perfil'
                 ).select_for_update(
@@ -55,8 +58,13 @@ class OutboxService:
                     status__in=[ComunicadoEntrega.Status.PENDENTE, ComunicadoEntrega.Status.FALHA],
                 ).filter(
                     Q(proxima_tentativa_em__isnull=True) | Q(proxima_tentativa_em__lte=agora)
-                ).order_by('criada_em')[:limit]
+                )
             )
+            if comunicado_id is not None:
+                entregas_queryset = entregas_queryset.filter(
+                    comunicado_id=comunicado_id,
+                )
+            entregas = list(entregas_queryset.order_by('criada_em')[:limit])
             for entrega in entregas:
                 entrega.status = ComunicadoEntrega.Status.PROCESSANDO
                 entrega.processada_em = agora

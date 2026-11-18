@@ -82,6 +82,45 @@ class EmailComunicacaoTests(TestCase):
         self.assertEqual(mail.outbox[0].to, ['usuario@example.com'])
         self.assertIn('https://estoque.example.com/solicitacoes/1/', mail.outbox[0].body)
 
+    def test_processamento_pode_ser_restrito_a_um_comunicado(self):
+        anterior = self.comunicado()
+        atual = self.comunicado()
+        ComunicacaoDispatcher.criar_entregas(anterior.pk)
+        ComunicacaoDispatcher.criar_entregas(atual.pk)
+
+        ids = OutboxService.processar(
+            canal=ComunicadoEntrega.Canal.EMAIL,
+            limit=10,
+            comunicado_id=atual.pk,
+        )
+
+        entrega_anterior = anterior.entregas.get(canal=ComunicadoEntrega.Canal.EMAIL)
+        entrega_atual = atual.entregas.get(canal=ComunicadoEntrega.Canal.EMAIL)
+        entrega_anterior.refresh_from_db()
+        entrega_atual.refresh_from_db()
+        self.assertEqual(ids, [entrega_atual.pk])
+        self.assertEqual(entrega_anterior.status, ComunicadoEntrega.Status.PENDENTE)
+        self.assertEqual(entrega_atual.status, ComunicadoEntrega.Status.ENVIADA)
+
+    def test_comando_ultimo_comunicado_nao_reenvia_entrega_ja_enviada(self):
+        comunicado = self.comunicado()
+        ComunicacaoDispatcher.criar_entregas(comunicado.pk)
+        OutboxService.processar(
+            canal=ComunicadoEntrega.Canal.EMAIL,
+            comunicado_id=comunicado.pk,
+        )
+        self.assertEqual(len(mail.outbox), 1)
+
+        saida = StringIO()
+        call_command(
+            'enviar_ultimo_comunicado_email',
+            enviar=True,
+            stdout=saida,
+        )
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Entregas processadas agora: 0', saida.getvalue())
+
     @patch('estoque.services.comunicacoes.outbox_service.obter_provedor_email')
     def test_falha_transitoria_de_email_e_reagendada(self, obter_email):
         obter_email.return_value.enviar_payload.return_value = ProviderResult(
